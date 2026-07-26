@@ -67,71 +67,89 @@ the technical build plan). If it doesn't, the fix is prompt/retrieval
 iteration here, not more app scaffolding — don't move to Phase 1 until this
 part earns your own trust.
 
-# Phase 1 — Next.js frontend + FastAPI backend
+# Phase 1 — single Next.js app
 
 Same engine, same schema, same `check_feasibility` / `check_budget_integrity`
-logic as Phase 0 — the backend imports `engine.py` and `trip_brief.py`
-directly rather than reimplementing them. What Phase 1 adds is an HTTP
-boundary: a real form instead of editing `SAMPLE_BRIEFS`, and a server-side
-Anthropic call so the API key never reaches the browser (the earlier
-`web-demo.jsx` browser prototype called the Anthropic API directly from
-client-side JS — fine for a throwaway demo, not something to ship).
+logic as Phase 0 — ported to TypeScript rather than imported, since there's
+no Python process in this architecture. What Phase 1 adds is a real form
+instead of editing `SAMPLE_BRIEFS`, and a server-side Anthropic call so the
+API key never reaches the browser (the earlier `web-demo.jsx` browser
+prototype called the Anthropic API directly from client-side JS — fine for
+a throwaway demo, not something to ship).
+
+This is one Next.js app, not a frontend calling a separate backend server —
+`npm run dev` is the entire setup.
 
 ```
-backend/    FastAPI app — POST /api/itinerary, GET /api/health
-frontend/   Next.js (App Router, TypeScript) — form + result UI
-facts/      moved here from the project root so engine.py's FACTS_DIR
-            (which always pointed at facts/) actually finds them
+frontend/app/api/generate/route.ts   the server-side boundary — calls Claude
+                                      directly using ANTHROPIC_API_KEY from
+                                      the environment (never sent to the browser)
+frontend/lib/engine/prompt.ts        TypeScript port of engine.py's
+                                      SYSTEM_PROMPT + facts-grounding retrieval
+frontend/lib/engine/checks.ts        TypeScript port of check_feasibility /
+                                      check_budget_integrity
+frontend/facts/*.json                grounding data, copied in so the app is
+                                      self-contained (source of truth is
+                                      still the project-root facts/)
+frontend/app, components, lib        form + result UI (unchanged) — confidence
+                                      dots, budget stamp, day-by-day itinerary
 ```
 
-## Running the backend
+An earlier iteration of Phase 1 used a separate FastAPI backend
+(`backend/main.py`) with the Next.js frontend calling it over HTTP. That's
+superseded by the single-app version above — `backend/` is left in the repo
+for reference but nothing runs it anymore.
 
-```bash
-cd backend
-python3 -m venv ../.venv && source ../.venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # then fill in ANTHROPIC_API_KEY
-uvicorn main:app --reload --port 8000
-```
-
-> **`.env.example` vs `.env`**: `.env.example` is a committed template — it
-> should only ever contain the placeholder `your_key_here`, never a real
-> key. Put your actual key in `.env` (copied from the example above), which
-> is gitignored and never leaves this machine. `main.py` loads `.env`
-> automatically via `python-dotenv`, so no manual `export` step is needed.
-
-`GET /api/health` should return `{"status": "ok"}` even without a key set.
-`POST /api/itinerary` needs a valid `ANTHROPIC_API_KEY` — without one it
-returns a clear 500 rather than a raw traceback.
-
-Model is `claude-opus-5` (set in `backend/main.py`, `MODEL` constant) — swap
-to `claude-sonnet-5` there if you want to cut cost roughly in half at a small
-quality tradeoff.
-
-## Running the frontend
+## Running it
 
 ```bash
 cd frontend
 npm install
-cp .env.local.example .env.local   # NEXT_PUBLIC_API_URL, defaults to :8000
+cp .env.local.example .env.local   # then fill in ANTHROPIC_API_KEY
 npm run dev
 ```
 
-> `.env.local.example` → `.env.local` follows the same copy-the-template
-> pattern as the backend's `.env.example` above. `NEXT_PUBLIC_API_URL` isn't
-> a secret (it's a plain URL, bundled into client-side JS by design), but
-> the pattern's still copy-then-edit — don't put local overrides directly
-> into the committed `.example` file.
+> **`.env.local.example` vs `.env.local`**: same pattern as Phase 0's
+> `.env.example` — the committed template only ever holds the placeholder
+> `your_key_here`. Your real key goes in `.env.local`, which is gitignored.
+> Next.js loads it automatically for server-side code (like the API route);
+> since the variable has no `NEXT_PUBLIC_` prefix, it's never bundled into
+> browser JS.
 
-Open `http://localhost:3000` with the backend running on `:8000`. The form
-posts a `TripBrief`-shaped JSON body to `/api/itinerary` and renders the
-full response — budget feasibility stamp, the independent budget-integrity
-warnings (the same lodging-omission check from `engine.py`), key decisions,
-day-by-day items with grounded/unverified dots, and the skip list.
+Open `http://localhost:3000`. The form posts a `TripBrief`-shaped JSON body
+to the same-origin `/api/generate` route and renders the full response —
+budget feasibility stamp, the independent budget-integrity warnings (the
+same lodging-omission check from `engine.py`), key decisions, day-by-day
+items with grounded/unverified dots, and the skip list.
 
 Unlike `web-demo.jsx`, there's no 2-day cap or compact tuple schema — the
-backend isn't fighting a browser output-token budget, so it uses the full
+server isn't fighting a browser output-token budget, so it uses the full
 multi-day JSON schema from `engine.py`'s `SYSTEM_PROMPT` as-is.
+
+Model is `claude-sonnet-5` at `output_config.effort: "low"` (set in
+`frontend/app/api/generate/route.ts`, `MODEL`/`EFFORT` constants) — this
+combination was chosen specifically to fit inside Vercel's free-tier 60s
+function-execution cap with real margin (measured ~35s per call) rather than
+for cost alone. If you're self-hosting or on a plan with a longer timeout
+budget, `claude-opus-5` at `"medium"` or `"high"` effort gives noticeably
+deeper reasoning at the cost of ~70-100s+ per call — raise
+`export const maxDuration` in the same file to match whatever your host allows.
+
+## Deploying (Vercel)
+
+1. Import the repo at [vercel.com/new](https://vercel.com/new)
+2. Set **Root Directory** to `frontend` (this is a monorepo — the Next.js
+   app isn't at the repo root)
+3. Add environment variable `ANTHROPIC_API_KEY` — as **two separate
+   fields**, Key and Value; don't paste `ANTHROPIC_API_KEY=sk-ant-...` as a
+   single string into the Key field, that sets a differently-named variable
+   with an empty value
+4. Deploy
+
+Vercel auto-detects Next.js, so build/output settings need no changes.
+Whatever branch is configured as **Production Branch** (Project Settings →
+Git) is what actually gets served — pushing fixes to a different branch
+than that one deploys nothing, silently.
 
 ## Troubleshooting
 
@@ -142,21 +160,21 @@ didn't ship with Node.js. Install the current LTS from
 [nodejs.org](https://nodejs.org) (or via `nvm`), make sure its `bin/` is on
 your `PATH`, then retry `npm install` in `frontend/`.
 
-**Backend: `Server is misconfigured — check ANTHROPIC_API_KEY is set`** —
-`backend/.env` doesn't exist yet, or has no `ANTHROPIC_API_KEY` line. Copy
-it from `.env.example` (see Setup above) and restart `uvicorn` — env vars
-are only read once, at process start, via `python-dotenv`, so editing
-`.env` while the server is already running doesn't take effect until you
-restart it.
+**`Server is misconfigured (ANTHROPIC_API_KEY is not set)`** —
+`frontend/.env.local` doesn't exist yet, or has no `ANTHROPIC_API_KEY` line.
+Copy it from `.env.local.example` (see "Running it" above) and restart
+`npm run dev` — Next.js only reads `.env.local` at server start, so editing
+it while the dev server is already running doesn't take effect until you
+restart.
 
-**Backend: `Server is misconfigured (invalid API key)`** — different from
-the above: a key *was* found and sent to Anthropic, but Anthropic rejected
-it (HTTP 401). Usually a copy-paste artifact — a stray character glued onto
+**`Server is misconfigured (invalid API key)`** — different from the
+above: a key *was* found and sent to Anthropic, but Anthropic rejected it
+(HTTP 401). Usually a copy-paste artifact — a stray or missing character on
 one end of the key. Real keys start `sk-ant-api03-`; check the prefix and
 length without ever printing the key itself:
 ```bash
 python3 -c "
-v = open('backend/.env').read().split('ANTHROPIC_API_KEY=')[1].split()[0]
+v = open('frontend/.env.local').read().split('ANTHROPIC_API_KEY=')[1].split()[0]
 print('length:', len(v), '| starts sk-ant-:', v.startswith('sk-ant-'))
 "
 ```
@@ -164,24 +182,36 @@ If that looks right but it's still rejected, the key may be revoked or
 belong to a different org than you expect — regenerate one at
 [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys).
 
-**Itinerary request returns 502, "malformed twice in a row"** — `claude-opus-5`
-has extended thinking on by default, and `max_tokens` caps thinking *and*
-response text combined. `backend/main.py` sets `MAX_TOKENS = 12000` for
-exactly this reason (the original `engine.py` default of 8000 was tuned
-against an older, non-thinking model). If you lower `MAX_TOKENS` or switch
-models, truncation can come back — raise it before assuming something else
-is broken.
+**Itinerary request returns 502, "malformed twice in a row"** — the model
+occasionally emits output that isn't strict JSON (a trailing comma before a
+closing `}`/`]` is the one actually observed in testing).
+`extractJson()` in `route.ts` strips trailing commas before parsing and the
+system prompt explicitly forbids them, but if the model finds a new way to
+break strict JSON, this is where to look — either loosen the parser further
+or tighten the prompt's schema instructions.
 
-**CORS error in the browser console** — the backend's `CORSMiddleware` only
-allows `http://localhost:3000` by default. Running the frontend on a
-different port or host needs a matching update to `allow_origins` in
-`backend/main.py`.
+**Generation reliably times out / the client shows a generic "Something
+went wrong"** — check `frontend/app/api/generate/route.ts`'s `MODEL` and
+`EFFORT` constants against your host's function-duration limit. On Vercel's
+free tier that's a hard 60s; `claude-opus-5` needs `"medium"` effort or
+lower to have any chance of fitting, and even then can run 70-100s+. If you
+switch back to `claude-opus-5` or raise effort, either raise `maxDuration`
+to match a paid plan's higher limit, or expect intermittent failures on
+longer trips (more days → more output tokens → longer generation time).
 
 **Every item in a result is tagged "(unverified)"** — expected, not a bug,
-if the destination has no `facts/<city_lowercase>.json` file. This is
-exactly the zero-grounding-data adversarial case the engine is designed to
-hedge honestly on rather than invent numbers for. Add a facts file (see
+if the destination has no `facts/<city_lowercase>.json` file (copied into
+both `frontend/facts/` and the project-root `facts/`). This is exactly the
+zero-grounding-data adversarial case the engine is designed to hedge
+honestly on rather than invent numbers for. Add a facts file (see
 "Extending city coverage" above) to ground that destination.
+
+**Vercel deployment succeeds but nothing you fixed seems to take effect** —
+check **Project Settings → Git → Production Branch**. If it's set to a
+branch you're not pushing to (e.g. it's pinned to `main` while you're
+iterating on a feature branch), every push deploys nothing to the URL
+you're actually testing. Either change Production Branch to match, or merge
+your branch into whatever Production Branch is set to.
 
 **`git push` fails with `could not read Username for 'https://github.com'`**
 — `gh auth login` stores credentials in the system keychain but doesn't
