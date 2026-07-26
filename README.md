@@ -89,9 +89,14 @@ cd backend
 python3 -m venv ../.venv && source ../.venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # then fill in ANTHROPIC_API_KEY
-export $(cat .env | xargs)
 uvicorn main:app --reload --port 8000
 ```
+
+> **`.env.example` vs `.env`**: `.env.example` is a committed template — it
+> should only ever contain the placeholder `your_key_here`, never a real
+> key. Put your actual key in `.env` (copied from the example above), which
+> is gitignored and never leaves this machine. `main.py` loads `.env`
+> automatically via `python-dotenv`, so no manual `export` step is needed.
 
 `GET /api/health` should return `{"status": "ok"}` even without a key set.
 `POST /api/itinerary` needs a valid `ANTHROPIC_API_KEY` — without one it
@@ -103,15 +108,18 @@ quality tradeoff.
 
 ## Running the frontend
 
-This machine didn't have Node.js installed when this was built, so the
-frontend code is untested against a real `npm run dev` — verify it locally:
-
 ```bash
 cd frontend
 npm install
 cp .env.local.example .env.local   # NEXT_PUBLIC_API_URL, defaults to :8000
 npm run dev
 ```
+
+> `.env.local.example` → `.env.local` follows the same copy-the-template
+> pattern as the backend's `.env.example` above. `NEXT_PUBLIC_API_URL` isn't
+> a secret (it's a plain URL, bundled into client-side JS by design), but
+> the pattern's still copy-then-edit — don't put local overrides directly
+> into the committed `.example` file.
 
 Open `http://localhost:3000` with the backend running on `:8000`. The form
 posts a `TripBrief`-shaped JSON body to `/api/itinerary` and renders the
