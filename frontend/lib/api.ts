@@ -1,11 +1,9 @@
 import type { Itinerary, TripBriefInput } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 export class ApiError extends Error {}
 
 export async function generateItinerary(brief: TripBriefInput): Promise<Itinerary> {
-  const response = await fetch(`${API_URL}/api/itinerary`, {
+  const response = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(brief),

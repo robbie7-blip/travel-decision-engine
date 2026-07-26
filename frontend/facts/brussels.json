@@ -1,0 +1,30 @@
+{
+  "city": "Brussels",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "Brussels city center is very walkable; most major sights (Grand Place, Manneken Pis, Mont des Arts) are within a 20-minute walk of each other."
+    },
+    {
+      "category": "transit",
+      "text": "Train from Brussels to Bruges takes roughly 1 hour on a direct IC train; tickets are cheaper booked close to travel via SNCB rather than far in advance (no discount for advance purchase on domestic Belgian rail)."
+    },
+    {
+      "category": "cost",
+      "text": "A sit-down mid-range dinner for two with drinks typically runs €50-80; frites/waffle stands are €3-8 and a legitimate local experience, not just a tourist trap."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants directly on Grand Place are significantly overpriced for average quality; better food is generally 5-10 minutes' walk away in the Dansaert or Saint-Géry areas."
+    },
+    {
+      "category": "activity",
+      "text": "The Belgian Comic Strip Center and Magritte Museum are well-regarded and less crowded than the top Grand Place attractions."
+    },
+    {
+      "category": "practical",
+      "text": "Belgium uses the Euro. Tipping is not obligatory (service is included by law) but rounding up is common."
+    }
+  ]
+}
