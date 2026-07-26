@@ -14,11 +14,19 @@ import { checkBudgetIntegrity, checkFeasibility } from "@/lib/engine/checks";
 import type { Itinerary, TripBriefInput } from "@/lib/types";
 
 export const runtime = "nodejs";
+// Vercel's Hobby plan hard-caps function execution at 60s; at the default
+// "high" effort this call runs ~100s+ (adaptive thinking + full schema), so
+// it must be paired with the lower effort setting below to fit.
+export const maxDuration = 60;
 
 const MODEL = "claude-opus-5";
 // claude-opus-5 has thinking on by default, and max_tokens caps thinking +
 // response text combined, so give it real headroom for the full schema.
 const MAX_TOKENS = 12000;
+// "medium" cuts thinking time substantially vs. the "high" default while
+// keeping thinking enabled (disabling it risks <thinking> tags leaking into
+// the JSON output) — needed to reliably finish inside serverless timeouts.
+const EFFORT = "medium";
 const VALID_PACES = new Set(["relaxed", "moderate", "packed"]);
 
 class ValidationError extends Error {}
@@ -104,6 +112,7 @@ async function callModel(client: Anthropic, brief: TripBriefInput): Promise<Itin
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: SYSTEM_PROMPT,
+    output_config: { effort: EFFORT },
     messages: [{ role: "user", content: buildPrompt(brief) }],
   });
 
