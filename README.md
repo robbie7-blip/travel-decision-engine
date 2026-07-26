@@ -1,6 +1,8 @@
 # Phase 0 — Decision Engine
 
 [![License: Proprietary](https://img.shields.io/badge/license-proprietary-red.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/robbie7-blip/travel-decision-engine)](https://github.com/robbie7-blip/travel-decision-engine/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/robbie7-blip/travel-decision-engine)](https://github.com/robbie7-blip/travel-decision-engine/network/members)
 
 This is the smallest thing that tests the actual product hypothesis: **can an LLM,
 grounded in a small curated fact base, produce travel itineraries with reasoning
