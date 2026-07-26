@@ -1,0 +1,272 @@
+{
+  "budget_feasibility": {
+    "feasible": false,
+    "min_realistic_total_eur": 600,
+    "reasoning": "Without verified data, estimating conservatively: 2 nights lodging in Lisbon (even bare-minimum hostels are realistically \u20ac40-60/night unverified, so ~\u20ac100-120 minimum); daily food for solo traveler doing 'local food' interest (\u20ac30-40/day conservatively, so ~\u20ac90 for 3 days); museum entries typically \u20ac8-15 each (estimate \u20ac30 for 2-3 visits); local transport passes/tickets (~\u20ac20-30); nightlife/drinks (~\u20ac30-40); coastal excursions or hiking transport (~\u20ac20-30). This totals roughly \u20ac600 minimum. The \u20ac500 budget is tight and would require hostels, self-catering some meals, and limiting paid activities \u2014 feasible only with significant compromises, not comfortably."
+  },
+  "trip_summary": "A 3-day Lisbon solo trip balancing coastal exploration, food culture, and nightlife under tight budget constraints (~\u20ac100 short of realistic minimum), working around the conflicting requirements of a 'packed pace' with mandatory late starts (no activities before 11am) and 3-hour afternoon rest blocks that together eliminate roughly half of each day \u2014 all pricing and logistics are unverified estimates, not confirmed facts.",
+  "key_decisions": [
+    {
+      "decision": "Flag the fundamental constraint conflict upfront rather than pretend it doesn't exist",
+      "reasoning": "A 'packed pace' is incompatible with starting at 11am and losing 3 hours mid-day to rest (effectively 11am-2pm, rest 2pm-5pm, resume 5pm onward gives only ~4-5 usable hours daily). A truly packed itinerary requires either earlier starts or no mandatory rest blocks. I'll plan to the literal constraints but this will feel sparse, not packed.",
+      "alternative_considered": "Silently ignoring the rest requirement to create a 'packed' feel \u2014 rejected because hard constraints must be respected exactly.",
+      "confidence": "high"
+    },
+    {
+      "decision": "Prioritize coastal Bel\u00e9m district and Alfama historic quarter as the two focal areas, skipping inland Sintra day-trip",
+      "reasoning": "Unverified assumption: Bel\u00e9m offers coastline + history + museums (likely Jer\u00f3nimos Monastery, Tower of Bel\u00e9m, Maritime Museum); Alfama gives history + nightlife + local food (Fado houses, tascas). Sintra is stunning but a full-day commitment (unverified: ~40min each way by train, \u20ac5-10 return, sites \u20ac8-15 each) \u2014 impossible to fit meaningfully with 11am starts and 3-hour rest blocks, and would blow the tight budget.",
+      "alternative_considered": "Doing Sintra on Day 2 \u2014 rejected because it requires early start to be worthwhile, conflicts with hard constraint, and adds \u20ac40-60 in costs.",
+      "confidence": "medium"
+    },
+    {
+      "decision": "Allocate Day 1 to Bel\u00e9m (coastal focus), Day 2 to Alfama/downtown (history/food/nightlife), Day 3 morning departure buffer only",
+      "reasoning": "With a 11am start and 3-hour rest block, each day yields ~5-6 usable hours. Bel\u00e9m is compact enough to cover in one afternoon/evening (unverified: tram 15E takes ~30min from downtown, museums close around 6pm typically). Alfama's steep streets suit evening wandering (Fado starts ~8-9pm unverified). Day 3 is a departure day with no time for activities (check-out, travel to airport).",
+      "alternative_considered": "Trying to fit a coastal hike (e.g. Cascais coastal walk) \u2014 rejected because it requires a morning start and full day, both impossible here.",
+      "confidence": "medium"
+    },
+    {
+      "decision": "Budget lodging at \u20ac50/night (\u20ac100 total) in a central hostel dorm, unverified",
+      "reasoning": "No verified data, but Lisbon hostels are typically \u20ac20-60/night depending on season/location (unverified November is shoulder season, might find \u20ac40-50). Allocating \u20ac50/night as realistic minimum for central location to minimize transport costs given the short usable hours each day. This leaves \u20ac400 for everything else.",
+      "alternative_considered": "Cheaper suburban lodging at \u20ac30/night \u2014 rejected because transport time/cost would eat into the already constrained schedule.",
+      "confidence": "low"
+    },
+    {
+      "decision": "Skip formal restaurants, prioritize tasca-style local spots and one pastel de nata pilgrimage",
+      "reasoning": "Unverified: tascas (small local eateries) run \u20ac10-15/meal, whereas sit-down restaurants are \u20ac20-35. Past\u00e9is de Bel\u00e9m (the famous custard tart bakery) is in Bel\u00e9m, likely \u20ac1-2 per tart \u2014 iconic local food hit within budget. Allocating ~\u20ac30/day for food (\u20ac90 total) by doing budget lunches and one proper dinner.",
+      "alternative_considered": "Fine dining experience \u2014 rejected due to budget constraints (would be \u20ac50+ and consume a quarter of remaining budget).",
+      "confidence": "medium"
+    },
+    {
+      "decision": "One nightlife evening (Bairro Alto or Alfama Fado) at ~\u20ac30-40 budget, skip the other night",
+      "reasoning": "Unverified: Bairro Alto bar-hopping runs \u20ac3-5/drink, Fado houses charge \u20ac15-25 minimum with drink. Allocating one evening (Day 2) to nightlife to honor that interest, but can't afford both nights given budget and the need to preserve funds for transport/museums. Day 1 ends early due to travel fatigue (unverified assumption).",
+      "alternative_considered": "Two nights out \u2014 rejected because it would add \u20ac30-40 and risk exceeding budget.",
+      "confidence": "medium"
+    }
+  ],
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-11-02",
+      "items": [
+        {
+          "time": "morning",
+          "type": "transport",
+          "title": "Arrival in Lisbon + transfer to hostel",
+          "location": "Lisbon Airport to downtown (unverified)",
+          "cost_estimate_eur": 10,
+          "reasoning": "Unverified: metro or Aerobus typically \u20ac2-4, or taxi \u20ac15-20. Assuming metro/bus. No activities possible before 11am per constraint; using morning for check-in logistics.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "11:00",
+          "type": "lodging",
+          "title": "Check-in to central hostel dorm",
+          "location": "Baixa or Cais do Sodr\u00e9 area (unverified)",
+          "cost_estimate_eur": 50,
+          "reasoning": "Unverified: allocating \u20ac50 for first night in a central hostel to minimize transport costs. This is an estimate with no verified pricing.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "12:00",
+          "type": "meal",
+          "title": "Quick lunch at local tasca or Time Out Market",
+          "location": "Cais do Sodr\u00e9 (unverified)",
+          "cost_estimate_eur": 12,
+          "reasoning": "Unverified: Time Out Market offers diverse stalls at \u20ac8-15/dish, hits 'local food' interest efficiently. Close to likely hostel location, fits before rest block.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "14:00",
+          "type": "activity",
+          "title": "Mandatory 3-hour rest block",
+          "location": "Hostel",
+          "cost_estimate_eur": 0,
+          "reasoning": "Hard constraint: at least 3 hours of rest each afternoon. Using 2pm-5pm window.",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "17:00",
+          "type": "transport",
+          "title": "Tram 15E to Bel\u00e9m",
+          "location": "Downtown to Bel\u00e9m (unverified)",
+          "cost_estimate_eur": 3,
+          "reasoning": "Unverified: tram 15E is iconic and reaches Bel\u00e9m waterfront in ~25-30min, likely \u20ac1.50 each way with day pass or \u20ac3 return. Coastal focus begins.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "17:30",
+          "type": "activity",
+          "title": "Past\u00e9is de Bel\u00e9m custard tart tasting",
+          "location": "Bel\u00e9m (unverified)",
+          "cost_estimate_eur": 3,
+          "reasoning": "Unverified: the iconic pastelaria is steps from tram stop, tarts likely \u20ac1-1.50 each. Essential 'local food' pilgrimage, quick stop before museums close.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "18:00",
+          "type": "activity",
+          "title": "Exterior visit to Jer\u00f3nimos Monastery + Tower of Bel\u00e9m waterfront walk",
+          "location": "Bel\u00e9m waterfront (unverified)",
+          "cost_estimate_eur": 0,
+          "reasoning": "Unverified: museums likely close by 6pm, but exterior architecture and waterfront are free and hit history + coastline interests. Tower is iconic landmark on the water. Given time constraints (arrived 6pm), doing exteriors only tonight.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "19:30",
+          "type": "meal",
+          "title": "Dinner at Bel\u00e9m-area tasca",
+          "location": "Bel\u00e9m (unverified)",
+          "cost_estimate_eur": 15,
+          "reasoning": "Unverified: local seafood or traditional Portuguese at small tasca, estimated \u20ac12-18. Keeps budget in check while honoring local food interest.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "21:00",
+          "type": "transport",
+          "title": "Tram 15E return to downtown",
+          "location": "Bel\u00e9m to downtown",
+          "cost_estimate_eur": 0,
+          "reasoning": "Return portion of earlier tram cost, already counted. Early night due to arrival-day fatigue (unverified assumption).",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "Day 1 is logistically feasible but feels light due to late start + rest block + museums closed by evening arrival in Bel\u00e9m \u2014 this is not a 'packed' day by normal standards, it's the maximum possible under the constraints."
+    },
+    {
+      "day": 2,
+      "date": "2026-11-03",
+      "items": [
+        {
+          "time": "11:00",
+          "type": "activity",
+          "title": "Explore Alfama district uphill walk",
+          "location": "Alfama (unverified)",
+          "cost_estimate_eur": 0,
+          "reasoning": "Unverified: Alfama is Lisbon's oldest quarter, steep cobbled streets, Moorish history, free to wander. Hits history + hiking (urban hill climb) interests. Starting exactly at 11am per constraint.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "12:30",
+          "type": "activity",
+          "title": "S\u00e3o Jorge Castle visit",
+          "location": "Alfama hilltop (unverified)",
+          "cost_estimate_eur": 10,
+          "reasoning": "Unverified: castle entry likely \u20ac8-10, offers panoramic views and medieval history. Major Lisbon landmark, fits history interest. Visiting before rest block.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "13:30",
+          "type": "meal",
+          "title": "Lunch at Alfama tasca (grilled sardines or bacalhau)",
+          "location": "Alfama (unverified)",
+          "cost_estimate_eur": 12,
+          "reasoning": "Unverified: traditional Portuguese lunch \u20ac10-15, sardines are local specialty if in season (November unclear). Fits local food interest.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "14:30",
+          "type": "activity",
+          "title": "Mandatory 3-hour rest block",
+          "location": "Hostel",
+          "cost_estimate_eur": 0,
+          "reasoning": "Hard constraint: 3-hour afternoon rest. Using 2:30pm-5:30pm window.",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "17:30",
+          "type": "activity",
+          "title": "National Tile Museum visit",
+          "location": "Eastern Lisbon (unverified)",
+          "cost_estimate_eur": 5,
+          "reasoning": "Unverified: unique museum showcasing azulejo tilework, likely \u20ac5-8 entry, typically open until 6pm. Fits museums + history interests. Reachable by metro (cost folded into daily transport estimate below).",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "19:00",
+          "type": "transport",
+          "title": "Metro back to Baixa/Alfama for evening",
+          "location": "Lisbon metro (unverified)",
+          "cost_estimate_eur": 7,
+          "reasoning": "Unverified: estimating a day pass or multiple single rides for today's movements (Alfama area, museum, return) at ~\u20ac6-8 total.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "19:30",
+          "type": "meal",
+          "title": "Light early dinner or petiscos (Portuguese tapas)",
+          "location": "Baixa or Alfama (unverified)",
+          "cost_estimate_eur": 10,
+          "reasoning": "Unverified: petiscos at \u20ac1-3 per plate, can sample multiple items for \u20ac10-12. Leaves room for nightlife drinks, fits local food interest.",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "21:00",
+          "type": "activity",
+          "title": "Fado night in Alfama or Bairro Alto bar crawl",
+          "location": "Alfama or Bairro Alto (unverified)",
+          "cost_estimate_eur": 30,
+          "reasoning": "Unverified: Fado house minimum ~\u20ac15-25 with one drink, or Bairro Alto bar-hopping at \u20ac4-6/drink for ~4-5 drinks. Allocating \u20ac30 for nightlife interest \u2014 this is the one splurge evening. Choosing Alfama Fado for authenticity (unverified: more traditional than tourist-heavy Bairro Alto).",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "23:30",
+          "type": "lodging",
+          "title": "Return to hostel (second night already counted)",
+          "location": "Hostel",
+          "cost_estimate_eur": 50,
+          "reasoning": "Second night lodging at \u20ac50 (same rate as Day 1, unverified pricing). Total lodging now \u20ac100.",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "7 activities/meals scheduled in one day \u2014 likely overpacked, review pacing."
+    },
+    {
+      "day": 3,
+      "date": "2026-11-04",
+      "items": [
+        {
+          "time": "morning",
+          "type": "meal",
+          "title": "Breakfast near hostel / check-out",
+          "location": "Hostel area (unverified)",
+          "cost_estimate_eur": 5,
+          "reasoning": "Unverified: coffee and pastry at caf\u00e9, \u20ac3-6. Departure day, no time for activities (flights/trains typically require late-morning departure from city center to reach airport/station in time).",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "10:00",
+          "type": "transport",
+          "title": "Departure from Lisbon",
+          "location": "Lisbon Airport or train station (unverified)",
+          "cost_estimate_eur": 10,
+          "reasoning": "Unverified: metro or bus to airport ~\u20ac2-4, or train station similar. Conservatively \u20ac10 to cover any taxi if needed. No activities possible due to departure timing.",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "Day 3 is a departure morning only \u2014 no sightseeing possible. This is realistic for a 3-day trip (arrival afternoon Day 1, full day Day 2, departure morning Day 3)."
+    }
+  ],
+  "things_to_skip": [
+    {
+      "item": "Sintra day trip (Pena Palace, Quinta da Regaleira, coastal cliffs)",
+      "reasoning": "Unverified logistics: Sintra requires early train departure (~8-9am, conflicts with 11am hard constraint), full day commitment (train ~40min each way, sites spread out requiring buses, each palace \u20ac8-15 entry), and \u20ac40-60 total cost. Impossible to fit meaningfully with late starts + mandatory rest blocks, and would blow the tight budget. Coastal interest is met via Bel\u00e9m waterfront instead."
+    },
+    {
+      "item": "Cascais/Estoril coastal hike",
+      "reasoning": "Unverified: coastal walk from Cascais is stunning (unverified ~6km) but requires morning start and 4-5 hours minimum (train 30-40min each way, \u20ac5-8 return, walk time). Conflicts with 11am start + 3-hour rest block. Hiking interest is partially met via Alfama's steep streets instead."
+    },
+    {
+      "item": "LX Factory creative district",
+      "reasoning": "Unverified: trendy area with street art, caf\u00e9s, bookshops \u2014 interesting but lower priority than history/coastline given time constraints. Would require separate transport and 2-3 hours. Skipped to preserve limited usable hours for higher-interest items."
+    },
+    {
+      "item": "Second night of nightlife",
+      "reasoning": "Budget constraint \u2014 two nights at \u20ac30-40 each would consume most of the remaining \u20ac100-120 buffer after lodging/food/transport/museums. One night (Day 2) honors the nightlife interest within feasible budget."
+    },
+    {
+      "item": "Ocean\u00e1rio de Lisboa (aquarium)",
+      "reasoning": "Unverified: modern aquarium likely \u20ac15-20 entry, 2-3 hours visit time, at Parque das Na\u00e7\u00f5es (eastern Lisbon, 20min metro). Interesting but museums interest is better served by National Tile Museum (more culturally specific) and S\u00e3o Jorge Castle (combines museum + history). Budget and time don't allow all three."
+    }
+  ],
+  "_budget_integrity_warnings": []
+}

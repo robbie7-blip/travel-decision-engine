@@ -1,0 +1,30 @@
+{
+  "city": "Lisbon",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "Lisbon is built on steep hills; the historic trams (like Tram 28) are a real transit option but extremely crowded with tourists — many locals prefer buses or walking for the same routes."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants directly in Baixa/Chiado tourist zones are often lower quality and higher priced than those a few blocks into residential neighborhoods like Alfama or Graça."
+    },
+    {
+      "category": "cost",
+      "text": "A casual local lunch (\"prato do dia\") typically costs €8-12 including a drink, and is both cheaper and often better than tourist-menu options."
+    },
+    {
+      "category": "activity",
+      "text": "Belém's major sights (Jerónimos Monastery, Belém Tower, the original Pastéis de Belém bakery) are a separate district from central Lisbon, roughly 30 minutes by tram/bus — worth planning as a half-day trip rather than an add-on."
+    },
+    {
+      "category": "dietary",
+      "text": "Vegetarian options have expanded significantly in Lisbon in recent years, concentrated especially around Príncipe Real and Intendente; traditional tascas (local taverns) are more limited."
+    },
+    {
+      "category": "practical",
+      "text": "Portugal uses the Euro. Many smaller local restaurants are cash-preferred or cash-only."
+    }
+  ]
+}

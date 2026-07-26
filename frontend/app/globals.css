@@ -1,0 +1,60 @@
+:root {
+  --ink: #edeae0;
+  --ink-dim: #9c9a8e;
+  --bg: #14171c;
+  --bg-panel: #1b1f26;
+  --bg-panel-raised: #20242c;
+  --line: #2e333d;
+  --grounded: #5fa88f;
+  --unverified: #d6a24c;
+  --infeasible: #c0574a;
+  --feasible: #5fa88f;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+body {
+  min-height: 100vh;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--grounded);
+  outline-offset: 1px;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--grounded);
+  outline-offset: 2px;
+}
+
+button {
+  font-family: inherit;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+.font-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

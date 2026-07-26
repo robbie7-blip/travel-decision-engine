@@ -1,0 +1,222 @@
+{
+  "budget_feasibility": {
+    "feasible": false,
+    "min_realistic_total_eur": 320,
+    "reasoning": "\u20ac120 for 2 people over 3 nights is not realistic. Minimum costs (unverified estimates): Lodging is roughly \u20ac25-30/person/night even in the cheapest hostels, so 3 nights = \u20ac150-180 for two. Brussels-Bruges train is typically \u20ac15-20/person round-trip = \u20ac30-40. Minimal food (even supermarket meals) is roughly \u20ac15/person/day = \u20ac90 for two over 3 days. That's \u20ac270-310 before any museum entries, beer tastings, or restaurant meals. With your interests in food and beer culture, a realistic minimum is \u20ac320-400. The stated budget would require sleeping rough, hitchhiking, and skipping almost all activities and proper meals."
+  },
+  "trip_summary": "This itinerary is NOT FEASIBLE at \u20ac120 \u2014 all pricing and logistics are unverified estimates (no grounding data available for either city), and even bare-minimum costs exceed the budget by 2-3x.",
+  "key_decisions": [
+    {
+      "decision": "Base in Brussels, day-trip to Bruges on Day 2",
+      "reasoning": "Unverified, but switching accommodation mid-trip typically adds \u20ac50+ in extra lodging check-in fees and wastes half a day; Bruges is small enough to cover as a day-trip (train likely ~1 hour)",
+      "alternative_considered": "Splitting nights between cities \u2014 rejected because it burns budget and time on logistics",
+      "confidence": "medium"
+    },
+    {
+      "decision": "Budget does not permit lodging \u2014 noting this explicitly rather than fabricating a solution",
+      "reasoning": "No verified hostel data, but realistically even the cheapest beds are \u20ac25-30/night/person; at \u20ac120 total, lodging alone would consume 125-150% of budget before food or transport",
+      "alternative_considered": "Could list a fictional 'cheap hostel' to make the plan look complete, but that would be dishonest given the budget infeasibility",
+      "confidence": "high"
+    },
+    {
+      "decision": "Focus Day 1 on Grand Place area and beer culture, Day 3 on EU Quarter and Atomium",
+      "reasoning": "Unconfirmed, but Grand Place is typically the historic core (food/architecture overlap); EU Quarter and Atomium are typically farther out, so better as a focused half-day before departure",
+      "alternative_considered": "Spreading architecture evenly across all days \u2014 rejected because transport inefficiency",
+      "confidence": "low"
+    },
+    {
+      "decision": "Bruges itinerary prioritizes Markt, canals, and one brewery",
+      "reasoning": "Unverified, but Bruges is known to be compact and walkable; Markt square typically central for architecture, canals for atmosphere, and a brewery visit hits the beer-culture interest without stretching time",
+      "alternative_considered": "Adding Belfry climb or multiple museums \u2014 rejected because moderate pace and day-trip time constraint",
+      "confidence": "low"
+    }
+  ],
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-10-10",
+      "items": [
+        {
+          "time": "morning",
+          "type": "transport",
+          "title": "Arrival in Brussels",
+          "location": "Brussels",
+          "cost_estimate_eur": 0,
+          "reasoning": "Assuming arrival by pre-booked transport not included in trip budget; no verified data on airport/station logistics",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "activity",
+          "title": "Grand Place and surrounding streets",
+          "location": "Grand Place, Brussels",
+          "cost_estimate_eur": 0,
+          "reasoning": "Unverified, but Grand Place is typically free to walk; hits architecture interest and is the historic core; no confirmed hours or accessibility",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "meal",
+          "title": "Frites from a street stand",
+          "location": "Near Grand Place",
+          "cost_estimate_eur": 6,
+          "reasoning": "Unconfirmed pricing, but street frites typically \u20ac3/person; cheaper than a sit-down meal and authentic to Belgian food culture",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "activity",
+          "title": "Beer tasting at a traditional caf\u00e9 (e.g. Delirium or A La Mort Subite)",
+          "location": "Brussels city center",
+          "cost_estimate_eur": 16,
+          "reasoning": "Unverified, but Belgian specialty beers typically \u20ac4-5 each; 2 beers/person = \u20ac16-20; hits beer culture interest directly; no confirmed caf\u00e9 hours or exact locations",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "meal",
+          "title": "Supermarket picnic dinner",
+          "location": "Accommodation (unspecified)",
+          "cost_estimate_eur": 10,
+          "reasoning": "Budget workaround \u2014 unverified, but a Carrefour/Delhaize meal is typically \u20ac5/person vs. \u20ac15-25 for a restaurant; no grounding data on supermarket locations or prices",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "No lodging listed \u2014 budget does not permit realistic accommodation; this day assumes travelers have a place to stay, but that contradicts the budget reality."
+    },
+    {
+      "day": 2,
+      "date": "2026-10-11",
+      "items": [
+        {
+          "time": "08:30",
+          "type": "transport",
+          "title": "Train Brussels to Bruges",
+          "location": "Brussels Midi/Central to Bruges",
+          "cost_estimate_eur": 20,
+          "reasoning": "Unconfirmed, but standard fare is typically \u20ac15-20/person one-way; early departure maximizes day-trip time; no verified schedule or booking details",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "Markt Square and Belfry (exterior)",
+          "location": "Markt, Bruges",
+          "cost_estimate_eur": 0,
+          "reasoning": "Unverified, but Markt is typically the central square (architecture focus); Belfry climb would cost extra and eat time, so exterior view only on a day-trip",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "late morning",
+          "type": "activity",
+          "title": "Canal walk (Rozenhoedkaai area)",
+          "location": "Bruges canals",
+          "cost_estimate_eur": 0,
+          "reasoning": "Unconfirmed, but canals are typically free to walk and photogenic; fits architecture/atmosphere interest; Rozenhoedkaai is often cited as a scenic spot (unverified)",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "meal",
+          "title": "Lunch at a frituur or casual caf\u00e9",
+          "location": "Bruges center",
+          "cost_estimate_eur": 20,
+          "reasoning": "Unverified, but a simple lunch (soup, sandwich, or frites) typically \u20ac8-12/person in Bruges; sit-down meal unavoidable on a day-trip; no confirmed restaurant names or prices",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "activity",
+          "title": "Brewery visit (e.g. De Halve Maan or similar)",
+          "location": "Bruges",
+          "cost_estimate_eur": 20,
+          "reasoning": "Unconfirmed, but brewery tours are typically \u20ac10-12/person including a tasting; hits beer culture interest directly; no verified tour times or need to pre-book",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "17:30",
+          "type": "transport",
+          "title": "Train Bruges to Brussels",
+          "location": "Bruges to Brussels",
+          "cost_estimate_eur": 20,
+          "reasoning": "Return leg, same unverified pricing as morning; moderate pace means leaving by early evening rather than rushing last train",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "meal",
+          "title": "Supermarket picnic dinner",
+          "location": "Accommodation (unspecified)",
+          "cost_estimate_eur": 10,
+          "reasoning": "Same budget workaround as Day 1; unverified supermarket pricing",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "Day cost estimate \u20ac90 (excluding lodging) \u2014 already 75% of total budget; lodging still not accounted for."
+    },
+    {
+      "day": 3,
+      "date": "2026-10-12",
+      "items": [
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "EU Quarter walk (Berlaymont, Parc du Cinquantenaire)",
+          "location": "EU Quarter, Brussels",
+          "cost_estimate_eur": 0,
+          "reasoning": "Unverified, but EU buildings and the park are typically free exteriors; different architectural style than Grand Place; no confirmed accessibility or hours",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "late morning",
+          "type": "activity",
+          "title": "Atomium (exterior view or quick visit)",
+          "location": "Heysel, Brussels",
+          "cost_estimate_eur": 12,
+          "reasoning": "Unconfirmed, but Atomium entry is typically \u20ac12-15/person; iconic architecture; exterior is free if budget is tight; metro ride out is typically \u20ac2-3/person (unverified)",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "meal",
+          "title": "Lunch \u2014 frites or supermarket",
+          "location": "Brussels",
+          "cost_estimate_eur": 8,
+          "reasoning": "Budget tightening; unverified street-food pricing roughly \u20ac3-4/person",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "transport",
+          "title": "Departure from Brussels",
+          "location": "Brussels",
+          "cost_estimate_eur": 0,
+          "reasoning": "Assuming onward travel cost not included in trip budget; moderate pace allows mid-afternoon departure rather than rushing",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "Shortened final day due to budget exhaustion and departure logistics."
+    }
+  ],
+  "things_to_skip": [
+    {
+      "item": "Chocolate museum or tastings beyond casual sampling",
+      "reasoning": "Unverified, but museum entry + tasting flights typically \u20ac10-15/person; budget cannot absorb this on top of brewery visits and meals"
+    },
+    {
+      "item": "Sit-down restaurant dinners",
+      "reasoning": "Unconfirmed pricing, but a modest Belgian restaurant dinner is typically \u20ac20-30/person; at this budget level, supermarket picnics are the only feasible dinner option"
+    },
+    {
+      "item": "Splitting accommodation between Brussels and Bruges",
+      "reasoning": "Unverified, but changing lodging mid-trip typically adds an extra night's cost (check-out/check-in on same day) plus transport time; day-tripping from Brussels is more efficient even if lodging were affordable (which it isn't at \u20ac120)"
+    },
+    {
+      "item": "Any interior museum visits beyond the one brewery tour",
+      "reasoning": "Unconfirmed, but most Brussels/Bruges museums are \u20ac8-12/person; budget is already infeasible, so free exteriors and walks must dominate"
+    }
+  ],
+  "_budget_integrity_warnings": [
+    "Itinerary spans 3 night(s) but has NO lodging line items at all \u2014 the budget total is almost certainly missing a major cost, regardless of what budget_feasibility below claims."
+  ]
+}

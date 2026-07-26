@@ -1,0 +1,278 @@
+{
+  "budget_feasibility": {
+    "feasible": false,
+    "min_realistic_total_eur": 720,
+    "reasoning": "Without verified data, I'm estimating conservatively: lodging in Ljubljana typically runs \u20ac40-60/night minimum for a budget double room (3 nights = roughly \u20ac120-180), meals at local spots are unverified but realistically \u20ac15-25/person/day (2 people, 3 full days = roughly \u20ac270-450), plus activities like cave tours or castle entry (unverified, but typically \u20ac20-40 total), plus any local transport (roughly \u20ac20-40). A bare minimum realistic total is around \u20ac720-800. The stated \u20ac600 budget falls short by at least \u20ac120-200 even with very frugal choices. To fit \u20ac600, you'd need to camp or stay in the cheapest possible hostel dorm and cook most meals yourselves."
+  },
+  "trip_summary": "A long weekend in Ljubljana prioritizing nature walks and local food, but all pricing and logistics are unverified estimates\u2014I have no confirmed data for this city\u2014and the \u20ac600 budget appears insufficient for two people over 3 nights by roughly \u20ac120-200 minimum.",
+  "key_decisions": [
+    {
+      "decision": "Base the entire stay in Ljubljana rather than adding a second city",
+      "reasoning": "With only 3 nights and a nature/food focus, spreading to another destination would burn time and budget on transport; Ljubljana's surrounding nature (Tivoli Park, Ljubljanica walks, day trips to caves/lakes unverified but reputedly accessible) fits the brief better than rushing elsewhere",
+      "alternative_considered": "Adding Lake Bled or \u0160kocjan Caves as overnight stops, but that fragments the trip and increases lodging/transport costs against an already tight budget",
+      "confidence": "high"
+    },
+    {
+      "decision": "Prioritize one big nature day trip (likely \u0160kocjan Caves or Lake Bled) on day 2",
+      "reasoning": "Nature is a core interest and Ljubljana's surroundings are the main draw; unverified but these sites are reputedly within 1-2 hours and fit a moderate pace; doing this mid-trip maximizes flexibility",
+      "alternative_considered": "Staying entirely within city limits to save money, but that underserves the nature interest",
+      "confidence": "medium"
+    },
+    {
+      "decision": "Focus meals on Central Market and neighborhood spots rather than formal restaurants",
+      "reasoning": "Budget is very tight and local food interest is better served by market stalls, street food, and casual konobas (unverified term, but typical in the region) than sit-down dining; this also delivers authenticity",
+      "alternative_considered": "Booking one nice farm-to-table dinner, but that could blow \u20ac80-100 for two and doesn't align with the budget reality",
+      "confidence": "high"
+    },
+    {
+      "decision": "Walk the city extensively rather than budgeting for much public transport or taxis",
+      "reasoning": "Ljubljana is reputedly compact and walkable (unverified but consistent with city size); a moderate pace allows for this and preserves the tight budget",
+      "alternative_considered": "Renting bikes, but cost and need are unclear without verified data",
+      "confidence": "medium"
+    },
+    {
+      "decision": "Flag the budget as infeasible rather than fabricating a plan that pretends to fit",
+      "reasoning": "\u0427\u0435\u0441\u0442ity requires stating that \u20ac600 for two people over 3 nights, including lodging every night, is realistically short; a responsible plan can't silently omit lodging or pretend meals cost nothing",
+      "alternative_considered": "Generating a compliant itinerary that technically fits \u20ac600 by low-balling every cost, but that would be misleading",
+      "confidence": "high"
+    }
+  ],
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-09-05",
+      "items": [
+        {
+          "time": "afternoon",
+          "type": "transport",
+          "title": "Arrival in Ljubljana",
+          "location": "Ljubljana airport or train station to accommodation",
+          "cost_estimate_eur": 10,
+          "reasoning": "Arrival day; unverified but airport bus or train to city center typically costs roughly \u20ac5-10/person; walking to lodging if central",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "lodging",
+          "title": "Check-in to budget accommodation",
+          "location": "Ljubljana city center (unverified location)",
+          "cost_estimate_eur": 50,
+          "reasoning": "First of 3 nights; unverified but a bare-minimum budget double room or private hostel room in Ljubljana likely runs \u20ac40-60/night; this is a critical cost the stated budget underestimates",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "activity",
+          "title": "Walk along Ljubljanica River and explore Old Town",
+          "location": "Ljubljanica riverfront, Pre\u0161eren Square area",
+          "cost_estimate_eur": 0,
+          "reasoning": "Free orientation walk on arrival; unverified but the riverside and old town are reputedly the heart of the city and walkable from most central lodging; sets the scene without cost",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "meal",
+          "title": "Casual dinner at a local spot or market food hall",
+          "location": "Near Pre\u0161eren Square or Central Market area",
+          "cost_estimate_eur": 35,
+          "reasoning": "Local food interest; unverified but a relaxed meal for two at a neighborhood spot or food stalls likely runs \u20ac30-40; this is more realistic than \u20ac20 but still modest",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "Day 1 total roughly \u20ac95 (lodging \u20ac50, transport \u20ac10, meal \u20ac35); cumulative \u20ac95 of \u20ac600 budget"
+    },
+    {
+      "day": 2,
+      "date": "2026-09-06",
+      "items": [
+        {
+          "time": "morning",
+          "type": "meal",
+          "title": "Breakfast from Central Market",
+          "location": "Poga\u010darjev trg (Central Market)",
+          "cost_estimate_eur": 10,
+          "reasoning": "Local food interest; unverified but market stalls for pastries, coffee, maybe fresh cheese/fruit for two people likely \u20ac8-12; authentic and budget-conscious",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "morning",
+          "type": "transport",
+          "title": "Bus or organized shuttle to \u0160kocjan Caves or Lake Bled",
+          "location": "Departure from Ljubljana",
+          "cost_estimate_eur": 30,
+          "reasoning": "Nature priority; unverified but a return bus or shared shuttle to a major nature site within ~1-2 hours typically costs \u20ac25-35 for two; \u0160kocjan Caves chosen over Bled as slightly less touristy (unverified) but both are compelling",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "activity",
+          "title": "Guided tour of \u0160kocjan Caves UNESCO site",
+          "location": "\u0160kocjan Caves, ~1.5 hours from Ljubljana",
+          "cost_estimate_eur": 35,
+          "reasoning": "Major nature experience; unverified but cave entry/tour fees in this region typically \u20ac15-20/person; dramatic underground canyon reputedly fits nature interest better than a lake walk for the cost",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "meal",
+          "title": "Picnic lunch or simple meal near caves",
+          "location": "\u0160kocjan village or packed from Ljubljana market",
+          "cost_estimate_eur": 15,
+          "reasoning": "Budget and logistics; unverified but grabbing bread, cheese, fruit from morning market or a simple\u6751 spot near the caves keeps cost down and time flexible",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "transport",
+          "title": "Return to Ljubljana",
+          "location": "\u0160kocjan Caves to Ljubljana",
+          "cost_estimate_eur": 0,
+          "reasoning": "Included in morning transport estimate (return ticket)",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "lodging",
+          "title": "Night 2 accommodation",
+          "location": "Ljubljana city center",
+          "cost_estimate_eur": 50,
+          "reasoning": "Second night same lodging; unverified \u20ac40-60/night estimate holds",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "meal",
+          "title": "Dinner at a traditional gostilna",
+          "location": "Neighborhood spot in Ljubljana (e.g., near Krakovo or Trnovo)",
+          "cost_estimate_eur": 40,
+          "reasoning": "Local food focus and post-adventure meal; unverified but a modest sit-down dinner for two with local dishes and a drink likely \u20ac35-45; this is the splurge meal of the trip",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "Day 2 total roughly \u20ac180 (transport \u20ac30, caves \u20ac35, meals \u20ac65, lodging \u20ac50); cumulative \u20ac275 of \u20ac600"
+    },
+    {
+      "day": 3,
+      "date": "2026-09-07",
+      "items": [
+        {
+          "time": "morning",
+          "type": "meal",
+          "title": "Coffee and pastry at a local caf\u00e9",
+          "location": "Trubarjeva or Pre\u0161eren Square area",
+          "cost_estimate_eur": 8,
+          "reasoning": "Light start; unverified but coffee and pastries for two in a casual caf\u00e9 likely \u20ac6-10",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "Walk up to Ljubljana Castle (on foot via nature path)",
+          "location": "Ljubljana Castle hill",
+          "cost_estimate_eur": 0,
+          "reasoning": "Nature interest and city landmark; unverified but the forested walk up is free and reputedly scenic; skipping the funicular and paid interior to save money while still getting views and a nature walk",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "activity",
+          "title": "Explore Tivoli Park and Roznik Hill",
+          "location": "Tivoli Park, western Ljubljana",
+          "cost_estimate_eur": 0,
+          "reasoning": "Nature priority; unverified but Tivoli is reputedly the city's main green space with trails up Roznik for views; free, fits moderate pace, delivers on nature interest",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "meal",
+          "title": "Lunch at a casual spot near Tivoli or market",
+          "location": "Caf\u00e9 or takeaway near park or back at Central Market",
+          "cost_estimate_eur": 25,
+          "reasoning": "Unverified but a simple lunch for two (sandwiches, salads, local sausage) likely \u20ac20-30; keeping it casual to preserve budget",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "activity",
+          "title": "Stroll through Metelkova Art District",
+          "location": "Metelkova, northeast of center",
+          "cost_estimate_eur": 0,
+          "reasoning": "Free cultural texture; unverified but reputedly an interesting alternative/art scene; fits moderate pace as a relaxed evening explore without cost",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "lodging",
+          "title": "Night 3 accommodation",
+          "location": "Ljubljana city center",
+          "cost_estimate_eur": 50,
+          "reasoning": "Third and final night; same \u20ac40-60/night unverified estimate",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "meal",
+          "title": "Dinner from market or affordable eatery",
+          "location": "Central Market area or neighborhood pizzeria/konoba",
+          "cost_estimate_eur": 30,
+          "reasoning": "Winding down trip and budget; unverified but a modest meal or assembled market dinner for two likely \u20ac25-35; prioritizing local ingredients over ambiance",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "6 activities/meals scheduled in one day \u2014 likely overpacked, review pacing."
+    },
+    {
+      "day": 4,
+      "date": "2026-09-08",
+      "items": [
+        {
+          "time": "morning",
+          "type": "meal",
+          "title": "Breakfast at accommodation or quick caf\u00e9 stop",
+          "location": "Near lodging or en route to departure point",
+          "cost_estimate_eur": 8,
+          "reasoning": "Departure morning; unverified but a quick breakfast for two likely \u20ac6-10; keeping it simple to allow for packing and checkout",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "Final morning walk along Ljubljanica or quick Central Market visit",
+          "location": "City center riverside or market",
+          "cost_estimate_eur": 0,
+          "reasoning": "Last impressions; free, fits moderate pace, allows for any last food purchases (cheese, honey) to take home if budget allows",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "transport",
+          "title": "Departure from Ljubljana",
+          "location": "Accommodation to airport or train station",
+          "cost_estimate_eur": 10,
+          "reasoning": "Unverified but return transport to departure point likely mirrors arrival cost, roughly \u20ac5-10/person",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "Day 4 total roughly \u20ac18 (breakfast \u20ac8, transport \u20ac10); cumulative \u20ac406 of \u20ac600, BUT this is meals-only for 3 out of 4 days and excludes realistic full lodging/activity costs"
+    }
+  ],
+  "things_to_skip": [
+    {
+      "item": "Ljubljana Castle funicular and paid interior",
+      "reasoning": "Unverified but the funicular typically costs \u20ac5-10/person round-trip and interior entry another \u20ac10-15; the free forested walk up delivers nature interest and views without the cost, which is critical given budget infeasibility"
+    },
+    {
+      "item": "Adding Bled or Bohinj as overnight destinations",
+      "reasoning": "Would require additional lodging (\u20ac40-60/night unverified) and split transport costs; better to do Bled or another nature site as a day trip from Ljubljana to keep logistics and budget simpler, or skip entirely if budget truly cannot stretch"
+    },
+    {
+      "item": "Any formal wine tour or multi-course tasting menu",
+      "reasoning": "Local food interest is real but budget simply does not allow for \u20ac50-100/person experiences; market food and casual gostilnas deliver authenticity without the markup"
+    },
+    {
+      "item": "Renting a car",
+      "reasoning": "Unverified but car rental typically costs \u20ac40-60/day plus fuel and parking; public transport or organized shuttles to nature sites are much cheaper and Ljubljana itself is walkable"
+    }
+  ],
+  "_budget_integrity_warnings": []
+}

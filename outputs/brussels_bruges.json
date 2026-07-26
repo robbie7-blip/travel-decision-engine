@@ -1,0 +1,298 @@
+{
+  "trip_summary": "A 4-day Belgium trip focusing on Brussels' Grand Place and Art Nouveau architecture plus Bruges' medieval charm, with strategic beer tastings and Belgian cuisine throughout.",
+  "key_decisions": [
+    {
+      "decision": "Base in Brussels both nights, day-trip to Bruges on Day 2",
+      "reasoning": "Train between Brussels-Bruges takes roughly 1 hour and runs frequently (typically \u20ac15-20 return), making a day trip more cost-effective than changing hotels for a 4-day trip",
+      "alternative_considered": "Splitting accommodation (2 nights Brussels, 1 Bruges) adds packing/checkout overhead and hotel costs without meaningful benefit for this duration",
+      "confidence": "high"
+    },
+    {
+      "decision": "Dedicate full Day 2 to Bruges, early departure",
+      "reasoning": "Bruges is compact and walkable; a full day allows thorough exploration of Markt, canals, brewery visit, and return without rushing",
+      "alternative_considered": "Half-day to Bruges would miss either the brewery culture aspect or proper canal exploration",
+      "confidence": "high"
+    },
+    {
+      "decision": "Skip Atomium and EU Quarter",
+      "reasoning": "Atomium (typically \u20ac15pp) offers limited value for architecture/food interests; EU Quarter is office buildings that don't align with medieval/Art Nouveau focus",
+      "alternative_considered": "These are Brussels classics but don't match stated interests and eat budget without clear payoff",
+      "confidence": "medium"
+    },
+    {
+      "decision": "Budget \u20ac50-60 per dinner, \u20ac15-20 per lunch",
+      "reasoning": "Allows proper Belgian cuisine experience (moules-frites, carbonnade) without blowing budget; lunch can be waffles/frites to balance",
+      "alternative_considered": "Cheaper meals possible but would sacrifice core food interest; more expensive risks budget overrun",
+      "confidence": "high"
+    },
+    {
+      "decision": "Book accommodation in Ixelles/Saint-Gilles neighborhoods",
+      "reasoning": "These areas offer better value (typically \u20ac80-100/night for couples) than city center, with excellent Art Nouveau architecture and local restaurants within walking distance",
+      "alternative_considered": "Grand Place area commands premium (\u20ac130+) without proportional benefit for moderate-pace travelers",
+      "confidence": "medium"
+    }
+  ],
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-10-10",
+      "items": [
+        {
+          "time": "morning",
+          "type": "transport",
+          "title": "Arrival to Brussels (airport or train)",
+          "location": "Brussels Airport or Gare du Midi",
+          "cost_estimate_eur": 0,
+          "reasoning": "Assuming transport to Brussels covered separately; budget \u20ac10-12 for airport train if flying in",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "11:00",
+          "type": "lodging",
+          "title": "Check-in to hotel (3 nights)",
+          "location": "Ixelles or Saint-Gilles area",
+          "cost_estimate_eur": 280,
+          "reasoning": "3 nights at roughly \u20ac90-95/night in these neighborhoods balances budget, Art Nouveau surroundings, and metro access",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "13:00",
+          "type": "meal",
+          "title": "Lunch at local friterie",
+          "location": "Maison Antoine or similar (Place Jourdan)",
+          "cost_estimate_eur": 15,
+          "reasoning": "Belgian frites with stoofvlees sauce is iconic, cheap, and energizes afternoon walking; Place Jourdan has well-regarded options",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "14:30",
+          "type": "activity",
+          "title": "Grand Place and guild houses",
+          "location": "Grand Place, Brussels",
+          "cost_estimate_eur": 0,
+          "reasoning": "UNESCO site and Belgium's most important architectural ensemble; free to visit, ideal orientation point for first afternoon",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "16:00",
+          "type": "activity",
+          "title": "Beer tasting at Delirium Caf\u00e9 or Moeder Lambic",
+          "location": "Impasse de la Fid\u00e9lit\u00e9 or Saint-Gilles",
+          "cost_estimate_eur": 25,
+          "reasoning": "Delirium has 2000+ beers (tourist-heavy but comprehensive); Moeder Lambic offers curated Belgian selection in authentic setting; roughly \u20ac5-7 per beer",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "19:30",
+          "type": "meal",
+          "title": "Dinner: moules-frites",
+          "location": "Chez L\u00e9on or similar brasserie",
+          "cost_estimate_eur": 60,
+          "reasoning": "Classic Belgian dish; \u20ac25-30pp at traditional brasseries gets full meal with house wine; touristy but reliable execution",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": null
+    },
+    {
+      "day": 2,
+      "date": "2026-10-11",
+      "items": [
+        {
+          "time": "08:30",
+          "type": "transport",
+          "title": "Train Brussels to Bruges",
+          "location": "Gare Centrale to Brugge station",
+          "cost_estimate_eur": 18,
+          "reasoning": "Early train (roughly 1 hour) maximizes Bruges time; return ticket typically \u20ac15-20pp with advance booking",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "10:00",
+          "type": "activity",
+          "title": "Markt square and Belfry (exterior)",
+          "location": "Markt, Bruges",
+          "cost_estimate_eur": 0,
+          "reasoning": "Medieval market square with guild halls; climbing Belfry (\u20ac12) optional but crowds may not justify cost for moderate-pace trip",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "11:00",
+          "type": "activity",
+          "title": "Canal walk to Beguinage",
+          "location": "Bruges canals and Begijnhof",
+          "cost_estimate_eur": 3,
+          "reasoning": "Bruges' defining feature is medieval canals; Beguinage (small entry fee, roughly \u20ac3) offers tranquil courtyard and architecture",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "13:00",
+          "type": "meal",
+          "title": "Lunch: waterzooi or Flemish stew",
+          "location": "Local restaurant near Burg square",
+          "cost_estimate_eur": 35,
+          "reasoning": "Regional dish (chicken/fish waterzooi); \u20ac15-18pp at mid-range spot balances authenticity and budget",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "15:00",
+          "type": "activity",
+          "title": "De Halve Maan Brewery tour",
+          "location": "Walplein 26, Bruges",
+          "cost_estimate_eur": 28,
+          "reasoning": "Only active brewery in Bruges center; tour (roughly \u20ac14pp) includes history, rooftop view, and tasting; core to beer culture interest",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "17:00",
+          "type": "activity",
+          "title": "Minnewater and walk back to station",
+          "location": "Lake of Love area",
+          "cost_estimate_eur": 0,
+          "reasoning": "Picturesque lake and park; allows gentle transition to departure while seeing southern Bruges",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "18:30",
+          "type": "transport",
+          "title": "Train Bruges to Brussels",
+          "location": "Return to Brussels",
+          "cost_estimate_eur": 0,
+          "reasoning": "Return leg included in morning ticket cost",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "20:00",
+          "type": "meal",
+          "title": "Light dinner: waffles or cheese/charcuterie",
+          "location": "Near hotel or Sablon area",
+          "cost_estimate_eur": 20,
+          "reasoning": "After full Bruges day and lunch, lighter evening meal keeps budget in check; Belgian waffles (\u20ac8-10) or shared plate works",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "6 activities/meals scheduled in one day \u2014 likely overpacked, review pacing."
+    },
+    {
+      "day": 3,
+      "date": "2026-10-12",
+      "items": [
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "Art Nouveau architecture walk: Horta Museum area",
+          "location": "Ixelles/Saint-Gilles (Rue Am\u00e9ricaine, Avenue Louise)",
+          "cost_estimate_eur": 15,
+          "reasoning": "Horta Museum (\u20ac10-15 entry) showcases Art Nouveau master; surrounding streets have Hankar and other townhouses; aligns perfectly with architecture interest",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "12:30",
+          "type": "meal",
+          "title": "Lunch: Brussels waffle and coffee",
+          "location": "Authentic waffle shop (avoid tourist traps near Manneken Pis)",
+          "cost_estimate_eur": 12,
+          "reasoning": "Light lunch to save budget for dinner; genuine Brussels waffle (Li\u00e8ge-style, \u20ac5-6) from local spot plus coffee",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "14:00",
+          "type": "activity",
+          "title": "Sablon antiques quarter and Notre-Dame du Sablon church",
+          "location": "Place du Grand Sablon",
+          "cost_estimate_eur": 0,
+          "reasoning": "Elegant square with Gothic church (free entry), chocolate shops (browsing free), and weekend antiques if applicable; architectural merit without cost",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "16:00",
+          "type": "activity",
+          "title": "Belgian Beer World or Cantillon Brewery",
+          "location": "Grand Place (Beer World) or Anderlecht (Cantillon)",
+          "cost_estimate_eur": 18,
+          "reasoning": "Beer World (\u20ac10pp, central) is interactive museum; Cantillon (\u20ac9pp) is working lambic brewery with tasting; Cantillon wins for authenticity and beer culture depth",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "19:30",
+          "type": "meal",
+          "title": "Dinner: carbonnade flamande or Belgian classics",
+          "location": "Traditional restaurant (Ilot Sacr\u00e9 or Saint-Gilles)",
+          "cost_estimate_eur": 65,
+          "reasoning": "Flemish beef stew or other regional dish; \u20ac30-35pp at quality brasserie with beer pairing; final night warrants fuller meal",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": null
+    },
+    {
+      "day": 4,
+      "date": "2026-10-13",
+      "items": [
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "Marolles flea market (if Sunday) or Comic Strip Walk",
+          "location": "Place du Jeu de Balle or city center murals",
+          "cost_estimate_eur": 5,
+          "reasoning": "Marolles market (Sunday) offers local flavor and vintage finds; otherwise comic murals are free outdoor art aligned with Belgian culture; coffee budget \u20ac5",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "11:00",
+          "type": "lodging",
+          "title": "Hotel checkout",
+          "location": "Brussels",
+          "cost_estimate_eur": 0,
+          "reasoning": "Standard checkout time; allows morning activity before departure",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "12:00",
+          "type": "meal",
+          "title": "Lunch: speculoos and coffee or light bite",
+          "location": "Caf\u00e9 near departure point",
+          "cost_estimate_eur": 15,
+          "reasoning": "Final Belgian treat before leaving; speculoos cookies with coffee or small sandwich; keeps budget intact",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "transport",
+          "title": "Departure from Brussels",
+          "location": "Airport or train station",
+          "cost_estimate_eur": 0,
+          "reasoning": "Transport out assumed separate from trip budget; timing depends on departure method",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": null
+    }
+  ],
+  "things_to_skip": [
+    {
+      "item": "Atomium",
+      "reasoning": "\u20ac15pp entry for 1958 Expo structure doesn't align with medieval/Art Nouveau architecture focus; peripheral location (30min+ from center) eats time and metro budget"
+    },
+    {
+      "item": "Mini-Europe",
+      "reasoning": "Tourist attraction with miniatures doesn't match stated interests in authentic architecture and food culture; \u20ac18pp better spent on actual beer/food experiences"
+    },
+    {
+      "item": "EU Quarter institutional tours",
+      "reasoning": "Modern office buildings (European Parliament, Commission) don't serve architecture interest; tours require advance booking and don't align with food/beer culture priorities"
+    },
+    {
+      "item": "Canal boat tour in Bruges",
+      "reasoning": "\u20ac12-15pp for 30min boat tour is pleasant but walking the canals is free and equally photogenic; budget better allocated to brewery tour which combines beer interest with experience"
+    },
+    {
+      "item": "Chocolate museum/workshops",
+      "reasoning": "\u20ac10-15pp for museum or \u20ac50+ for workshop; browsing actual chocolatiers (Sablon area) gives cultural exposure without major cost; interests prioritize beer over chocolate"
+    },
+    {
+      "item": "Royal Palace interior",
+      "reasoning": "Only open July-September, so unavailable in October; exterior and park are free alternatives if passing through"
+    }
+  ]
+}

@@ -1,0 +1,328 @@
+{
+  "trip_summary": "A 4-night Lisbon stay focused on neighborhoods, coastal walks, and local tascas, prioritizing authentic food experiences and Atlantic views while staying well under budget.",
+  "key_decisions": [
+    {
+      "decision": "Stay in Gra\u00e7a or Alfama rather than Baixa/Chiado",
+      "reasoning": "More local character, cheaper accommodation (roughly \u20ac40-50/night vs \u20ac70+), proximity to authentic restaurants without Rossio Square tourist markup",
+      "alternative_considered": "Central Baixa for convenience, but contradicts 'avoiding tourist traps' preference",
+      "confidence": "high"
+    },
+    {
+      "decision": "Dedicate one full day to Cascais/Guincho coastline via train",
+      "reasoning": "Coastline is a stated interest; train is cheap (typically \u20ac2-3 each way) and the clifftop paths deliver Atlantic drama without organized tour pricing",
+      "alternative_considered": "Sintra, but coastline matches interests more directly and is less crowded",
+      "confidence": "high"
+    },
+    {
+      "decision": "Skip Bel\u00e9m tower/monastery interiors",
+      "reasoning": "Entry fees eat budget (\u20ac12-15 combined), crowds contradict pace preference, and exterior views plus waterfront parks are free",
+      "alternative_considered": "Classic 'must-see' but misaligned with anti-tourist-trap stance",
+      "confidence": "medium"
+    },
+    {
+      "decision": "Prioritize tascas and neighborhood mercados over sit-down restaurants for most meals",
+      "reasoning": "Vegetarian petiscos (small plates) and market counters deliver local authenticity at \u20ac6-10/meal vs \u20ac15-25 for full restaurant service",
+      "alternative_considered": "One nicer dinner, but budget is tight and request emphasizes 'local food' not fine dining",
+      "confidence": "high"
+    },
+    {
+      "decision": "Walk everywhere except Cascais day trip",
+      "reasoning": "Lisbon is compact for core neighborhoods; metro/tram costs add up (\u20ac1.50+ per ride), walking reveals street life and keeps transport under \u20ac10 total",
+      "alternative_considered": "Tram 28 for experience, but it's a tourist magnet and walking is free",
+      "confidence": "medium"
+    }
+  ],
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-11-02",
+      "items": [
+        {
+          "time": "afternoon",
+          "type": "transport",
+          "title": "Arrival and metro to accommodation",
+          "location": "Airport to Gra\u00e7a",
+          "cost_estimate_eur": 3,
+          "reasoning": "Metro is cheaper than taxi (roughly \u20ac1.50 vs \u20ac15+); arrival timing assumes afternoon flight typical for short-haul EU",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "16:00",
+          "type": "lodging",
+          "title": "Check-in to guesthouse/hostel private room",
+          "location": "Gra\u00e7a neighborhood",
+          "cost_estimate_eur": 180,
+          "reasoning": "4 nights at roughly \u20ac45/night keeps lodging to 36% of budget; Gra\u00e7a is residential with miradouros and local density",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "activity",
+          "title": "Walk Gra\u00e7a to Miradouro da Senhora do Monte",
+          "location": "Gra\u00e7a",
+          "cost_estimate_eur": 0,
+          "reasoning": "Sunset viewpoint, free, establishes bearings on Day 1 without strain",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "19:30",
+          "type": "meal",
+          "title": "Dinner at neighborhood tasca",
+          "location": "Gra\u00e7a",
+          "cost_estimate_eur": 10,
+          "reasoning": "Vegetable-heavy petiscos (grilled peppers, fava stew, tortilla) at local spot; first meal sets 'avoid tourist traps' tone",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": null
+    },
+    {
+      "day": 2,
+      "date": "2026-11-03",
+      "items": [
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "Walk Alfama to Portas do Sol, explore lanes",
+          "location": "Alfama",
+          "cost_estimate_eur": 0,
+          "reasoning": "Adjacent to Gra\u00e7a, pre-tourist-hour timing, labyrinthine streets reveal tile facades and neighborhood rhythms",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "11:00",
+          "type": "meal",
+          "title": "Coffee and pastel de nata at local caf\u00e9",
+          "location": "Alfama",
+          "cost_estimate_eur": 3,
+          "reasoning": "Icon food but sourced locally, not from Bel\u00e9m factory line; roughly \u20ac1 pastry + \u20ac1.50 coffee",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "activity",
+          "title": "Mercado de Campo de Ourique",
+          "location": "Campo de Ourique",
+          "cost_estimate_eur": 0,
+          "reasoning": "Walk or short metro; neighborhood market hall less touristy than Timeout/Ribeira, browse stalls",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "14:00",
+          "type": "meal",
+          "title": "Lunch at market counter (vegetarian option)",
+          "location": "Campo de Ourique",
+          "cost_estimate_eur": 8,
+          "reasoning": "Vegetable plate or soup + small bite at market pricing",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "activity",
+          "title": "Walk Jardim da Estrela to riverfront",
+          "location": "Estrela to Cais do Sodr\u00e9",
+          "cost_estimate_eur": 0,
+          "reasoning": "Relaxed pace, green space to waterfront, observe local family life in park",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "19:00",
+          "type": "meal",
+          "title": "Dinner at traditional cervejaria",
+          "location": "Cais do Sodr\u00e9 area",
+          "cost_estimate_eur": 12,
+          "reasoning": "Grilled vegetables, salad, bread; cervejarias offer sit-down atmosphere without fine-dining cost",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "6 activities/meals scheduled in one day \u2014 likely overpacked, review pacing."
+    },
+    {
+      "day": 3,
+      "date": "2026-11-04",
+      "items": [
+        {
+          "time": "09:00",
+          "type": "transport",
+          "title": "Train to Cascais",
+          "location": "Cais do Sodr\u00e9 to Cascais",
+          "cost_estimate_eur": 3,
+          "reasoning": "Coastal line, roughly \u20ac2.30 each way; early start maximizes daylight for coastline walking",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "10:00",
+          "type": "activity",
+          "title": "Walk Cascais to Guincho beach via Boca do Inferno",
+          "location": "Cascais coastline",
+          "cost_estimate_eur": 0,
+          "reasoning": "Clifftop path, dramatic Atlantic views, roughly 6km one-way but relaxed pace allows for breaks; core coastline interest",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "13:00",
+          "type": "meal",
+          "title": "Picnic lunch from Cascais market",
+          "location": "Guincho area",
+          "cost_estimate_eur": 6,
+          "reasoning": "Bread, cheese, fruit bought pre-walk; budget-friendly and fits beach setting",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "activity",
+          "title": "Guincho beach walk and return bus to Cascais",
+          "location": "Guincho",
+          "cost_estimate_eur": 2,
+          "reasoning": "Wide Atlantic beach, surf vibe; bus back (roughly \u20ac2) rather than 6km return walk conserves energy",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "17:00",
+          "type": "transport",
+          "title": "Train return to Lisbon",
+          "location": "Cascais to Cais do Sodr\u00e9",
+          "cost_estimate_eur": 0,
+          "reasoning": "Included in morning estimate (round-trip)",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "meal",
+          "title": "Light dinner near accommodation",
+          "location": "Gra\u00e7a",
+          "cost_estimate_eur": 8,
+          "reasoning": "After full day, simple neighborhood meal (soup, salad, small plate)",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": null
+    },
+    {
+      "day": 4,
+      "date": "2026-11-05",
+      "items": [
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "Walk to LX Factory",
+          "location": "Alc\u00e2ntara",
+          "cost_estimate_eur": 0,
+          "reasoning": "Repurposed industrial zone, creative shops/caf\u00e9s; touristy but less trap-like than Baixa, and walk along river is pleasant",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "11:00",
+          "type": "meal",
+          "title": "Coffee at LX Factory caf\u00e9",
+          "location": "LX Factory",
+          "cost_estimate_eur": 3,
+          "reasoning": "Specialty coffee culture here; one indulgence aligns with interests in local scenes",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "afternoon",
+          "type": "activity",
+          "title": "Bel\u00e9m waterfront walk (exterior views only)",
+          "location": "Bel\u00e9m",
+          "cost_estimate_eur": 0,
+          "reasoning": "Adjacent to LX, Monument to Discoveries and Torre visible from gardens; skip interior queues and fees per earlier decision",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "14:30",
+          "type": "meal",
+          "title": "Lunch at neighborhood spot in Ajuda",
+          "location": "Ajuda",
+          "cost_estimate_eur": 9,
+          "reasoning": "Residential area uphill from Bel\u00e9m, cheaper than waterfront; vegetarian prato do dia (daily plate) typically available",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "evening",
+          "type": "activity",
+          "title": "Return walk via riverside to Cais do Sodr\u00e9",
+          "location": "Bel\u00e9m to Cais do Sodr\u00e9",
+          "cost_estimate_eur": 0,
+          "reasoning": "Roughly 5km, flat riverfront path, relaxed pace fits; golden hour along Tagus",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "19:30",
+          "type": "meal",
+          "title": "Dinner at Bairro Alto tasca",
+          "location": "Bairro Alto",
+          "cost_estimate_eur": 12,
+          "reasoning": "Final evening, slight step up in atmosphere but still local pricing; vegetarian options common in this zone",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "6 activities/meals scheduled in one day \u2014 likely overpacked, review pacing."
+    },
+    {
+      "day": 5,
+      "date": "2026-11-06",
+      "items": [
+        {
+          "time": "morning",
+          "type": "activity",
+          "title": "Feira da Ladra flea market (if Saturday)",
+          "location": "Campo de Santa Clara",
+          "cost_estimate_eur": 0,
+          "reasoning": "November 6, 2026 is a Friday, so market is closed; contingency is slow walk through Pante\u00e3o Nacional gardens instead",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "10:00",
+          "type": "meal",
+          "title": "Breakfast at Gra\u00e7a caf\u00e9",
+          "location": "Gra\u00e7a",
+          "cost_estimate_eur": 5,
+          "reasoning": "Final morning, tosta mista and coffee; small indulgence before departure",
+          "source_confidence": "inferred"
+        },
+        {
+          "time": "11:30",
+          "type": "lodging",
+          "title": "Check-out",
+          "location": "Gra\u00e7a",
+          "cost_estimate_eur": 0,
+          "reasoning": "Standard late-morning check-out",
+          "source_confidence": "grounded"
+        },
+        {
+          "time": "afternoon",
+          "type": "transport",
+          "title": "Metro to airport",
+          "location": "Gra\u00e7a to Airport",
+          "cost_estimate_eur": 2,
+          "reasoning": "Assumes afternoon departure; metro simplest and cheapest option",
+          "source_confidence": "inferred"
+        }
+      ],
+      "feasibility_flag": "Light day due to departure; market contingency noted as Friday vs Saturday"
+    }
+  ],
+  "things_to_skip": [
+    {
+      "item": "Jer\u00f3nimos Monastery and Bel\u00e9m Tower interiors",
+      "reasoning": "Entry fees (roughly \u20ac12-15 combined) consume 3% of total budget for queue-heavy monuments; exterior views deliver architectural impact without cost or crowds"
+    },
+    {
+      "item": "Tram 28",
+      "reasoning": "Iconic but pickpocket-prone tourist magnet; same neighborhoods accessible on foot with more control over pace and route"
+    },
+    {
+      "item": "Sintra day trip",
+      "reasoning": "Transport (\u20ac5 round-trip) plus palace entries (\u20ac15-30) and food inflates costs; coastline at Cascais better matches stated interests and budget"
+    },
+    {
+      "item": "Time Out Market",
+      "reasoning": "Curated food hall is upmarket tourist concept; Campo de Ourique and neighborhood tascas offer more authentic local eating at lower cost"
+    },
+    {
+      "item": "Fado show in Alfama",
+      "reasoning": "Cover charges (\u20ac15-25) and minimum consumption requirements stress budget; street fado occasionally audible for free in evening walks"
+    }
+  ]
+}
