@@ -1,5 +1,7 @@
 # Phase 0 — Decision Engine
 
+[![License: Proprietary](https://img.shields.io/badge/license-proprietary-red.svg)](LICENSE)
+
 This is the smallest thing that tests the actual product hypothesis: **can an LLM,
 grounded in a small curated fact base, produce travel itineraries with reasoning
 good enough that a person would trust and act on them?**
