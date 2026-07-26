@@ -130,3 +130,58 @@ day-by-day items with grounded/unverified dots, and the skip list.
 Unlike `web-demo.jsx`, there's no 2-day cap or compact tuple schema — the
 backend isn't fighting a browser output-token budget, so it uses the full
 multi-day JSON schema from `engine.py`'s `SYSTEM_PROMPT` as-is.
+
+## Troubleshooting
+
+Real issues hit while setting this up, in the order you're likely to hit them.
+
+**`node: command not found` / no `npm`** — this project's dev machine
+didn't ship with Node.js. Install the current LTS from
+[nodejs.org](https://nodejs.org) (or via `nvm`), make sure its `bin/` is on
+your `PATH`, then retry `npm install` in `frontend/`.
+
+**Backend: `Server is misconfigured — check ANTHROPIC_API_KEY is set`** —
+`backend/.env` doesn't exist yet, or has no `ANTHROPIC_API_KEY` line. Copy
+it from `.env.example` (see Setup above) and restart `uvicorn` — env vars
+are only read once, at process start, via `python-dotenv`, so editing
+`.env` while the server is already running doesn't take effect until you
+restart it.
+
+**Backend: `Server is misconfigured (invalid API key)`** — different from
+the above: a key *was* found and sent to Anthropic, but Anthropic rejected
+it (HTTP 401). Usually a copy-paste artifact — a stray character glued onto
+one end of the key. Real keys start `sk-ant-api03-`; check the prefix and
+length without ever printing the key itself:
+```bash
+python3 -c "
+v = open('backend/.env').read().split('ANTHROPIC_API_KEY=')[1].split()[0]
+print('length:', len(v), '| starts sk-ant-:', v.startswith('sk-ant-'))
+"
+```
+If that looks right but it's still rejected, the key may be revoked or
+belong to a different org than you expect — regenerate one at
+[console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys).
+
+**Itinerary request returns 502, "malformed twice in a row"** — `claude-opus-5`
+has extended thinking on by default, and `max_tokens` caps thinking *and*
+response text combined. `backend/main.py` sets `MAX_TOKENS = 12000` for
+exactly this reason (the original `engine.py` default of 8000 was tuned
+against an older, non-thinking model). If you lower `MAX_TOKENS` or switch
+models, truncation can come back — raise it before assuming something else
+is broken.
+
+**CORS error in the browser console** — the backend's `CORSMiddleware` only
+allows `http://localhost:3000` by default. Running the frontend on a
+different port or host needs a matching update to `allow_origins` in
+`backend/main.py`.
+
+**Every item in a result is tagged "(unverified)"** — expected, not a bug,
+if the destination has no `facts/<city_lowercase>.json` file. This is
+exactly the zero-grounding-data adversarial case the engine is designed to
+hedge honestly on rather than invent numbers for. Add a facts file (see
+"Extending city coverage" above) to ground that destination.
+
+**`git push` fails with `could not read Username for 'https://github.com'`**
+— `gh auth login` stores credentials in the system keychain but doesn't
+always wire plain `git` to use them. Run `gh auth setup-git` once, then
+push normally.
