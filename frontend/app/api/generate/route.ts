@@ -14,18 +14,14 @@ import { checkBudgetIntegrity, checkFeasibility } from "@/lib/engine/checks";
 import type { Itinerary, TripBriefInput } from "@/lib/types";
 
 export const runtime = "nodejs";
-// Vercel's Hobby plan hard-caps function execution at 60s; at the default
-// "high" effort this call runs ~100s+ (adaptive thinking + full schema), so
-// it must be paired with the lower effort setting below to fit.
+// Vercel's Hobby plan hard-caps function execution at 60s. claude-opus-5 at
+// low effort measured ~53s for this schema — too little margin for a retry
+// or normal latency variance. claude-sonnet-5 at low effort measured ~35s
+// with comparable reasoning quality, giving real headroom under the cap.
 export const maxDuration = 60;
 
-const MODEL = "claude-opus-5";
-// claude-opus-5 has thinking on by default, and max_tokens caps thinking +
-// response text combined, so give it real headroom for the full schema.
+const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 12000;
-// Lower effort cuts thinking time substantially vs. the "high" default while
-// keeping thinking enabled (disabling it risks <thinking> tags leaking into
-// the JSON output) — needed to reliably finish inside serverless timeouts.
 const EFFORT = "low";
 const VALID_PACES = new Set(["relaxed", "moderate", "packed"]);
 
