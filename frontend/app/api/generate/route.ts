@@ -23,10 +23,10 @@ const MODEL = "claude-opus-5";
 // claude-opus-5 has thinking on by default, and max_tokens caps thinking +
 // response text combined, so give it real headroom for the full schema.
 const MAX_TOKENS = 12000;
-// "medium" cuts thinking time substantially vs. the "high" default while
+// Lower effort cuts thinking time substantially vs. the "high" default while
 // keeping thinking enabled (disabling it risks <thinking> tags leaking into
 // the JSON output) — needed to reliably finish inside serverless timeouts.
-const EFFORT = "medium";
+const EFFORT = "low";
 const VALID_PACES = new Set(["relaxed", "moderate", "packed"]);
 
 class ValidationError extends Error {}
@@ -94,7 +94,10 @@ function parseTripBrief(body: unknown): TripBriefInput {
   };
 }
 
-/** Strips a ```json ... ``` fence if the model wrapped its output in one. */
+/** Strips a ```json ... ``` fence if the model wrapped its output in one, and
+ * removes trailing commas before a closing `}`/`]` — a formatting slip
+ * observed occasionally in model output that plain JSON.parse rejects even
+ * though it's otherwise well-formed. */
 function extractJson(text: string): string {
   let t = text.trim();
   if (t.startsWith("```")) {
@@ -102,7 +105,8 @@ function extractJson(text: string): string {
     t = parts[1] ?? t;
     if (t.startsWith("json")) t = t.slice(4);
   }
-  return t.trim();
+  t = t.trim().replace(/,(\s*[}\]])/g, "$1");
+  return t;
 }
 
 class ModelOutputError extends Error {}

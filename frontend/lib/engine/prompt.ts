@@ -37,7 +37,8 @@ You MUST include a "budget_feasibility" object as specified below, and you MUST 
 silently reduce or omit a major cost category (especially lodging) just to make the \
 numbers appear to fit — if lodging is excluded from the daily items, budget_feasibility \
 must say so explicitly and explain why the budget is infeasible as stated.
-- Output ONLY valid JSON matching the schema below. No prose outside the JSON.
+- Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
+No trailing commas after the last property in an object or the last item in an array.
 
 Schema:
 {
