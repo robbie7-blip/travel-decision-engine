@@ -1,0 +1,30 @@
+{
+  "city": "Madrid",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "The Madrid metro is extensive and cheap, arguably the easiest way to move around given the major sights are more spread out than in more compact cities like Florence."
+    },
+    {
+      "category": "practical",
+      "text": "The Spanish dining schedule runs late — lunch is often 2-4pm and dinner rarely starts before 9pm; restaurants that look \"closed\" mid-afternoon are frequently just on their siesta break, not shut for the day."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants directly on Plaza Mayor are a well-known overpriced tourist zone; La Latina and Malasaña a short walk away offer both better tapas and better prices."
+    },
+    {
+      "category": "activity",
+      "text": "The Prado, Reina Sofía, and Thyssen-Bornemisza museums each have specific free-entry windows (typically a few hours in the evening) — worth checking current hours if budget-conscious."
+    },
+    {
+      "category": "cost",
+      "text": "Many smaller Madrid bars and tapas spots are cash-preferred, especially for small tabs."
+    },
+    {
+      "category": "dietary",
+      "text": "Traditional Madrid cuisine is meat-and-seafood heavy (jamón, cocido madrileño, callos); vegetarian tapas are common as a category (patatas bravas, pimientos, tortilla) even at traditional bars, more so than in some other Spanish cities."
+    }
+  ]
+}

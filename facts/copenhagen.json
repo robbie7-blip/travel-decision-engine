@@ -1,0 +1,30 @@
+{
+  "city": "Copenhagen",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "Copenhagen is one of the most bike-friendly cities in Europe; renting a bike is often faster and more pleasant than public transport for central-area sightseeing, but (as in Amsterdam) pedestrians need to stay out of marked bike lanes."
+    },
+    {
+      "category": "cost",
+      "text": "Copenhagen is one of the more expensive European capitals for food and drink — a casual lunch commonly runs 100-150 DKK (~€13-20) and a sit-down dinner with drinks for two can easily exceed 700-900 DKK (~€95-120)."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Nyhavn's waterfront restaurants (the famously photogenic colorful-house strip) charge a substantial premium for the view — food quality doesn't reliably match the price, and better options are a short walk away."
+    },
+    {
+      "category": "activity",
+      "text": "Tivoli Gardens charges separate entry and per-ride tickets (or a combined multi-ride pass) — easy to underestimate the total cost if only budgeting for the entry fee."
+    },
+    {
+      "category": "practical",
+      "text": "Many smaller Danish shops and even some market stalls are card-only now — carrying cash \"just in case\" is less useful in Copenhagen than in many other European cities."
+    },
+    {
+      "category": "dietary",
+      "text": "New Nordic cuisine and smørrebrød (open sandwiches) dominate the food scene; vegetarian options are widely available in central Copenhagen's modern restaurant scene."
+    }
+  ]
+}

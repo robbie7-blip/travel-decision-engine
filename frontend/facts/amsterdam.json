@@ -1,0 +1,30 @@
+{
+  "city": "Amsterdam",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "Cycling is the dominant mode of local transport and rental bikes are cheap and practical for visitors, but pedestrians who wander into the reddish-paved bike lanes are a genuine hazard/annoyance to locals — stay off them."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Coffeeshops and food stalls immediately around Dam Square and the Red Light District charge a tourist premium versus equivalent options a few canals over (Jordaan, De Pijp)."
+    },
+    {
+      "category": "cost",
+      "text": "A canal-side sit-down dinner for two runs roughly €70-100; a \"broodje\" (sandwich) lunch or market food (Albert Cuyp Market) is €5-12 and a genuine local option, not just budget filler."
+    },
+    {
+      "category": "activity",
+      "text": "The Anne Frank House requires online advance booking, often weeks ahead in peak season — there is very limited or no walk-up availability."
+    },
+    {
+      "category": "practical",
+      "text": "Many canal-house staircases are extremely steep and narrow (a historic quirk, not a renovation gap) — worth knowing for travelers with mobility constraints or heavy luggage."
+    },
+    {
+      "category": "dietary",
+      "text": "Dutch traditional food is meat/cheese-heavy (bitterballen, kroketten, cheese boards); vegetarian and vegan availability is nonetheless strong in central Amsterdam relative to much of Europe."
+    }
+  ]
+}

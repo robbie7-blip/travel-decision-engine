@@ -1,0 +1,30 @@
+{
+  "city": "London",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "An Oyster card or contactless payment caps daily/weekly spend automatically and is markedly cheaper than buying single paper tickets; the Underground has \"zones,\" and traveling into or through Zone 1 during weekday peak hours costs more."
+    },
+    {
+      "category": "cost",
+      "text": "A sit-down dinner for two with drinks in central London commonly runs £60-100; a pub lunch at £12-18 is a legitimate, non-touristy option, not just a budget fallback."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants immediately around Leicester Square and Covent Garden's main strip are reliably priced above their quality; a short walk into Soho's side streets or the Borough Market area tends to offer better value."
+    },
+    {
+      "category": "activity",
+      "text": "Most major London museums (British Museum, National Gallery, Tate Modern) are free to enter for the permanent collection — only special/temporary exhibitions charge, which is easy to miss when budgeting."
+    },
+    {
+      "category": "practical",
+      "text": "Standing on the left, walking on the right on Underground escalators is a strongly enforced social norm — blocking the left side draws real irritation from commuters."
+    },
+    {
+      "category": "dietary",
+      "text": "London has one of Europe's most extensive vegetarian/vegan restaurant scenes given its size and diversity; nearly every neighborhood has dedicated options, unlike more traditional-cuisine-bound European capitals."
+    }
+  ]
+}

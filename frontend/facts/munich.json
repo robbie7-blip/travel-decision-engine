@@ -1,0 +1,30 @@
+{
+  "city": "Munich",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "A single Munich transit ticket/day pass covers U-Bahn, S-Bahn, tram, and bus within the relevant zone; central Munich's sights are close enough together that walking is often as practical as transit."
+    },
+    {
+      "category": "cost",
+      "text": "Beer hall meals (Hofbräuhaus and similar) are moderately priced (€12-20/dish) but drinks add up fast at a full liter (\"Maß\") per round — worth budgeting for drinks separately from food."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "The Hofbräuhaus itself is genuinely popular with tourists and locals alike (not purely a trap), but restaurants immediately surrounding Marienplatz tend to be priced above smaller beer gardens and neighborhood Gaststätten a short walk away."
+    },
+    {
+      "category": "activity",
+      "text": "The Glockenspiel show at Marienplatz's New Town Hall runs at fixed times (commonly 11am and 12pm, sometimes 5pm) for only a few minutes — easy to miss if not timed deliberately."
+    },
+    {
+      "category": "practical",
+      "text": "Sundays follow the same near-total retail shutdown as elsewhere in Germany — plan shopping/grocery needs accordingly."
+    },
+    {
+      "category": "dietary",
+      "text": "Bavarian cuisine is meat- and dairy-heavy (sausages, schnitzel, pretzels); dedicated vegetarian/vegan restaurants exist in the center (particularly around Glockenbachviertel) but are far more limited within traditional beer halls."
+    }
+  ]
+}

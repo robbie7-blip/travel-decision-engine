@@ -1,0 +1,30 @@
+{
+  "city": "Florence",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "Central Florence is entirely walkable and a car is a liability, not an asset — much of the historic center is a restricted traffic zone (ZTL) with automatic fines for unauthorized vehicles."
+    },
+    {
+      "category": "activity",
+      "text": "The Uffizi Gallery and Accademia (David) both benefit enormously from advance timed-entry booking — walk-up lines in peak season can run multiple hours."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants with a tout standing outside physically inviting you in, especially near the Duomo or Ponte Vecchio, are reliably lower quality and higher price than places a few streets into Santo Spirito or Sant'Ambrogio."
+    },
+    {
+      "category": "cost",
+      "text": "A \"bistecca alla fiorentina\" (Florentine steak) is traditionally priced and served by weight (often per 100g/hg) — always confirm the total expected price before ordering, as this has been a documented source of bill-shock for tourists."
+    },
+    {
+      "category": "dietary",
+      "text": "Tuscan cuisine is meat-forward (bistecca, wild boar, cured meats); vegetarian options are more available in modern trattorias than traditional ones."
+    },
+    {
+      "category": "practical",
+      "text": "Many museums and churches close on Mondays; check specific opening days before building an itinerary around a single museum-heavy day."
+    }
+  ]
+}
