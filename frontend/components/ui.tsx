@@ -12,10 +12,11 @@ const TIER_COLOR: Record<ConfidenceTier, string> = {
 export function ConfidenceDot({ tier }: { tier: ConfidenceTier }) {
   return (
     <span
+      className={tier === "verified" ? "dot-verified" : undefined}
       style={{
         display: "inline-block",
-        width: 8,
-        height: 8,
+        width: 9,
+        height: 9,
         borderRadius: "50%",
         background: TIER_COLOR[tier],
         marginRight: 8,
@@ -37,7 +38,7 @@ export function Stamp({ ok, children }: { ok: boolean; children: ReactNode }) {
         fontWeight: 700,
         letterSpacing: "0.08em",
         padding: "6px 14px",
-        borderRadius: 2,
+        borderRadius: 6,
         transform: "rotate(-2deg)",
         fontSize: 13,
       }}
@@ -88,8 +89,8 @@ export const inputStyle: CSSProperties = {
   width: "100%",
   background: "var(--bg-panel-raised)",
   border: "1px solid var(--line)",
-  borderRadius: 4,
-  padding: "9px 11px",
+  borderRadius: 8,
+  padding: "10px 13px",
   color: "var(--ink)",
   fontSize: 14,
   boxSizing: "border-box",

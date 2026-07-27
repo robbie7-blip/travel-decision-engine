@@ -66,8 +66,17 @@ function parseTripBrief(body: unknown): TripBriefInput {
     throw new ValidationError(`pace must be one of ${[...VALID_PACES].sort().join(", ")}.`);
   }
 
+  let origin: string | undefined;
+  if (b.origin !== undefined && b.origin !== null) {
+    if (typeof b.origin !== "string") {
+      throw new ValidationError("origin must be a string.");
+    }
+    origin = b.origin.trim() || undefined;
+  }
+
   return {
     destinations,
+    origin,
     start_date: b.start_date.trim(),
     end_date: b.end_date.trim(),
     party_size: Math.trunc(partySize),
@@ -75,6 +84,7 @@ function parseTripBrief(body: unknown): TripBriefInput {
     budget_total_eur: budget,
     pace: b.pace as TripBriefInput["pace"],
     interests: cleanList(b.interests, "interests"),
+    must_see: cleanList(b.must_see, "must_see"),
     dietary_constraints: cleanList(b.dietary_constraints, "dietary_constraints"),
     mobility_constraints: cleanList(b.mobility_constraints, "mobility_constraints"),
     hard_no: cleanList(b.hard_no, "hard_no"),

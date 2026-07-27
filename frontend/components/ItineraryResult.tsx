@@ -155,10 +155,12 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
           {result.key_decisions.map((d, i) => (
             <div
               key={i}
+              className="hover-card"
               style={{
                 display: "flex",
                 gap: 12,
-                padding: "12px 0",
+                padding: "12px 10px",
+                marginTop: -1,
                 borderTop: "1px solid var(--line)",
               }}
             >
@@ -213,10 +215,12 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
             {day.items.map((item, i) => (
               <div
                 key={i}
+                className="hover-card"
                 style={{
                   display: "flex",
                   gap: 4,
-                  padding: "10px 0",
+                  padding: "10px 10px",
+                  marginTop: -1,
                   borderTop: "1px solid var(--line)",
                 }}
               >

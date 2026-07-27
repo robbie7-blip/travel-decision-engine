@@ -1,6 +1,10 @@
 // Mirrors trip_brief.TripBrief (backend/../trip_brief.py) — the input contract.
 export interface TripBriefInput {
   destinations: string[];
+  // Departure city/location, optional — lets the engine estimate a real
+  // arrival/departure transport cost instead of excluding it as unspecified
+  // (previously observed leaving it out of the itinerary entirely).
+  origin?: string;
   start_date: string;
   end_date: string;
   party_size: number;
@@ -8,6 +12,10 @@ export interface TripBriefInput {
   budget_total_eur: number | null;
   pace: "relaxed" | "moderate" | "packed";
   interests: string[];
+  // Specific non-negotiable inclusions (distinct from the broader `interests`
+  // categories) — treated with the same seriousness as hard_no, but as
+  // musts rather than avoids.
+  must_see: string[];
   dietary_constraints: string[];
   mobility_constraints: string[];
   hard_no: string[];

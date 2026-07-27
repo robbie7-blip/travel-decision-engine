@@ -47,23 +47,23 @@ export default function Home() {
       <div style={{ padding: "48px 24px 36px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           <div
-            className="font-mono"
+            className="font-mono eyebrow-badge"
             style={{
               fontSize: 11,
               letterSpacing: "0.12em",
               color: "var(--ink-dim)",
               textTransform: "uppercase",
-              marginBottom: 14,
+              marginBottom: 18,
             }}
           >
             Travel Decision Engine — Phase 1
           </div>
           <h1
-            className="font-display"
+            className="font-display gradient-text"
             style={{
               fontWeight: 600,
-              fontSize: "clamp(28px, 5vw, 42px)",
-              lineHeight: 1.15,
+              fontSize: "clamp(32px, 6vw, 48px)",
+              lineHeight: 1.1,
               margin: "0 0 14px",
             }}
           >
@@ -73,22 +73,28 @@ export default function Home() {
             Every line below carries its own confidence — from two sources agreeing to a plain,
             hedged guess — never hidden, never overstated. That distinction is the whole product.
           </p>
-          <div className="font-mono" style={{ display: "flex", gap: 20, marginTop: 20, fontSize: 13, flexWrap: "wrap" }}>
-            <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
-              <ConfidenceDot tier="verified" /> 2 sources agree
-            </span>
-            <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
-              <ConfidenceDot tier="fact_grounded" /> grounded in a fact
-            </span>
-            <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
-              <ConfidenceDot tier="single_source" /> single source
-            </span>
-            <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
-              <ConfidenceDot tier="conflicting" /> sources disagree
-            </span>
-            <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
-              <ConfidenceDot tier="inferred" /> unverified guess
-            </span>
+          <div className="font-mono" style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap" }}>
+            {[
+              { tier: "verified" as const, label: "2 sources agree" },
+              { tier: "fact_grounded" as const, label: "grounded in a fact" },
+              { tier: "single_source" as const, label: "single source" },
+              { tier: "conflicting" as const, label: "sources disagree" },
+              { tier: "inferred" as const, label: "unverified guess" },
+            ].map(({ tier, label }) => (
+              <span
+                key={tier}
+                style={{
+                  color: "var(--ink-dim)",
+                  display: "flex",
+                  alignItems: "center",
+                  border: "1px solid var(--line)",
+                  borderRadius: 999,
+                  padding: "5px 12px 5px 10px",
+                }}
+              >
+                <ConfidenceDot tier={tier} /> {label}
+              </span>
+            ))}
           </div>
         </div>
       </div>

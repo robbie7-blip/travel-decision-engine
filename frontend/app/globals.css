@@ -1,20 +1,25 @@
 :root {
-  --ink: #edeae0;
-  --ink-dim: #9c9a8e;
-  --bg: #14171c;
-  --bg-panel: #1b1f26;
-  --bg-panel-raised: #20242c;
-  --line: #2e333d;
-  --grounded: #5fa88f;
-  --unverified: #d6a24c;
-  --infeasible: #c0574a;
-  --feasible: #5fa88f;
+  --ink: #f4f2ee;
+  --ink-dim: #9295ac;
+  --bg: #0a0c14;
+  --bg-panel: #121627;
+  --bg-panel-raised: #191f36;
+  --line: #272c44;
+  --grounded: #22c58b;
+  --unverified: #ffb020;
+  --infeasible: #ff5c5c;
+  --feasible: #22c58b;
   /* Confidence tiers (ItineraryItem.confidence_tier). "verified" reuses
      --grounded and "conflicting" reuses --unverified deliberately — a
      conflicting-sources item still deserves the same "treat with caution"
      amber as an ungrounded guess used to convey alone. */
-  --tier-single-source: #7d9a95;
-  --tier-inferred: #6b6960;
+  --tier-single-source: #4fb8c9;
+  --tier-inferred: #565b73;
+  /* Brand gradient accent — used for the headline, CTA, and small brand
+     touches. Not used for any trust/confidence signal, so it can be as
+     vivid as we want without confusing the grounded/unverified meaning. */
+  --accent-1: #7c5cff;
+  --accent-2: #ff5c8a;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -26,24 +31,28 @@ html,
 body {
   padding: 0;
   margin: 0;
-  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
 }
 
 body {
   min-height: 100vh;
+  background:
+    radial-gradient(ellipse 700px 500px at 10% -10%, rgba(124, 92, 255, 0.22), transparent 60%),
+    radial-gradient(ellipse 600px 500px at 100% 0%, rgba(255, 92, 138, 0.16), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid var(--grounded);
+  outline: 2px solid var(--accent-1);
   outline-offset: 1px;
 }
 
 button:focus-visible {
-  outline: 2px solid var(--grounded);
+  outline: 2px solid var(--accent-1);
   outline-offset: 2px;
 }
 
@@ -59,8 +68,69 @@ button {
   font-family: var(--font-mono), ui-monospace, monospace;
 }
 
+.gradient-text {
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.eyebrow-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.14), rgba(255, 92, 138, 0.14));
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: #0a0c14;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px -6px rgba(124, 92, 255, 0.55);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px -6px rgba(124, 92, 255, 0.7);
+}
+
+.btn-primary:disabled {
+  background: var(--bg-panel-raised);
+  color: var(--ink-dim);
+  box-shadow: none;
+  cursor: default;
+}
+
+.hover-card {
+  transition: background-color 0.15s ease;
+  border-radius: 8px;
+}
+
+.hover-card:hover {
+  background-color: var(--bg-panel-raised);
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 139, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(34, 197, 139, 0);
+  }
+}
+
+.dot-verified {
+  animation: pulse-glow 2.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+    animation: none !important;
   }
 }

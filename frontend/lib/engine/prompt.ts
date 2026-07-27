@@ -25,6 +25,14 @@ rather than inventing a precise number.
 - Surface tradeoffs, not just plans. If skipping something is the better call, say so \
 and say why.
 - Respect all hard constraints exactly (dietary, mobility, budget ceiling, "hard_no" items).
+- If a "Traveling from" origin is given, include a real first-day arrival transport item and \
+a last-day departure transport item (e.g. train/flight, with a hedged cost estimate) instead \
+of treating that leg as unspecified or excluding it from the budget. If no origin is given, \
+it's fine to note that inter-city arrival/departure cost is unspecified.
+- Treat "must-see/must-do" items as near-mandatory inclusions — work them into the itinerary \
+explicitly. If one is genuinely infeasible given the pace, dates, or budget, do not silently \
+drop it: say so explicitly in trip_summary and in a key_decisions entry, the same way you \
+would flag a hard_no conflict.
 - Flag anything that looks logistically tight or infeasible (e.g. too much travel \
 crammed into one day) rather than silently including it.
 - If any preferences are in direct tension with each other (e.g. a fast pace combined \
@@ -107,6 +115,12 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
     `Pace: ${brief.pace}`,
     `Interests: ${brief.interests.length ? brief.interests.join(", ") : "general sightseeing"}`,
   ];
+  if (brief.origin?.trim()) {
+    lines.push(`Traveling from: ${brief.origin.trim()}`);
+  }
+  if (brief.must_see.length) {
+    lines.push(`Must-see/must-do (near-mandatory inclusions): ${brief.must_see.join(", ")}`);
+  }
   if (brief.dietary_constraints.length) {
     lines.push(`Dietary constraints: ${brief.dietary_constraints.join(", ")}`);
   }

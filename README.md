@@ -122,6 +122,13 @@ budget feasibility stamp, the independent budget-integrity warnings (the
 same lodging-omission check from `engine.py`), key decisions, day-by-day
 items with grounded/unverified dots, and the skip list.
 
+Two optional fields beyond the original schema: `origin` (departure city —
+used to generate a real first/last-day transport item instead of excluding
+that leg from the budget) and `must_see` (specific non-negotiable
+inclusions, treated with the same seriousness as `hard_no` but as musts
+rather than avoids). Both flow through `TripBriefInput` → `buildPrompt` →
+`SYSTEM_PROMPT` the same way every other field does.
+
 Unlike `web-demo.jsx`, there's no 2-day cap or compact tuple schema — the
 server isn't fighting a browser output-token budget, so it uses the full
 multi-day JSON schema from `engine.py`'s `SYSTEM_PROMPT` as-is.

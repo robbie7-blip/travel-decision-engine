@@ -7,6 +7,7 @@ import type { TripBriefInput } from "@/lib/types";
 // they're split into arrays only at submit time (see toTripBriefInput).
 export interface TripFormState {
   destinations: string;
+  origin: string;
   start_date: string;
   end_date: string;
   party_size: string;
@@ -14,6 +15,7 @@ export interface TripFormState {
   budget_total_eur: string;
   pace: TripBriefInput["pace"];
   interests: string;
+  must_see: string;
   dietary_constraints: string;
   mobility_constraints: string;
   hard_no: string;
@@ -21,6 +23,7 @@ export interface TripFormState {
 
 export const DEFAULT_FORM_STATE: TripFormState = {
   destinations: "Brussels, Bruges",
+  origin: "",
   start_date: "2026-10-10",
   end_date: "2026-10-13",
   party_size: "2",
@@ -28,6 +31,7 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   budget_total_eur: "900",
   pace: "moderate",
   interests: "food, architecture, beer culture",
+  must_see: "",
   dietary_constraints: "",
   mobility_constraints: "",
   hard_no: "",
@@ -43,6 +47,7 @@ function splitList(value: string): string[] {
 export function toTripBriefInput(form: TripFormState): TripBriefInput {
   return {
     destinations: splitList(form.destinations),
+    origin: form.origin.trim() || undefined,
     start_date: form.start_date.trim(),
     end_date: form.end_date.trim(),
     party_size: Number(form.party_size) || 1,
@@ -50,6 +55,7 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     budget_total_eur: form.budget_total_eur.trim() === "" ? null : Number(form.budget_total_eur),
     pace: form.pace,
     interests: splitList(form.interests),
+    must_see: splitList(form.must_see),
     dietary_constraints: splitList(form.dietary_constraints),
     mobility_constraints: splitList(form.mobility_constraints),
     hard_no: splitList(form.hard_no),
@@ -86,6 +92,16 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               value={value.destinations}
               onChange={(e) => update("destinations", e.target.value)}
               placeholder="Brussels, Bruges"
+            />
+          </Field>
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <Field label="Traveling from (optional)">
+            <input
+              style={inputStyle}
+              value={value.origin}
+              onChange={(e) => update("origin", e.target.value)}
+              placeholder="e.g. London — used to estimate real arrival/departure transport cost"
             />
           </Field>
         </div>
@@ -153,6 +169,16 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             />
           </Field>
         </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <Field label="Must-see / must-do (optional, comma-separated)">
+            <input
+              style={inputStyle}
+              value={value.must_see}
+              onChange={(e) => update("must_see", e.target.value)}
+              placeholder="a specific restaurant, a museum you've been wanting to visit"
+            />
+          </Field>
+        </div>
         <Field label="Dietary constraints (optional)">
           <input
             style={inputStyle}
@@ -184,16 +210,12 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
       <button
         onClick={onSubmit}
         disabled={submitting}
-        className="font-mono"
+        className="font-mono btn-primary"
         style={{
-          marginTop: 8,
+          marginTop: 12,
           width: "100%",
-          background: submitting ? "var(--bg-panel-raised)" : "var(--grounded)",
-          color: submitting ? "var(--ink-dim)" : "#0e1210",
-          border: "none",
-          borderRadius: 4,
-          padding: "13px 18px",
-          fontWeight: 600,
+          padding: "14px 18px",
+          fontWeight: 700,
           fontSize: 13,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
