@@ -1,0 +1,34 @@
+{
+  "city": "Paris",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "The Metro is extensive and walkable between adjacent arrondissements; a carnet of tickets or a Navigo Easy pass is cheaper per ride than buying single tickets one at a time."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants with laminated multi-language menus directly on the Champs-Élysées or immediately outside major sights (Louvre, Eiffel Tower base) are reliably overpriced and lower quality than anywhere 2-3 streets away."
+    },
+    {
+      "category": "cost",
+      "text": "A sit-down bistro dinner for two with wine typically runs €60-90; a lunchtime \"formule\" (starter+main or main+dessert) at the same bistros is often €18-25 and much better value than dinner."
+    },
+    {
+      "category": "activity",
+      "text": "The Louvre is far less crowded in the first 90 minutes after opening or during Wednesday/Friday late nights than the mid-afternoon peak most visitors hit by default."
+    },
+    {
+      "category": "practical",
+      "text": "Many small Parisian restaurants and cafés close for a few hours in the afternoon (roughly 2:30-7pm) and are cash-preferred for small amounts."
+    },
+    {
+      "category": "dietary",
+      "text": "Vegetarian and vegan options have expanded significantly, especially in the Marais and around Canal Saint-Martin; traditional bouillons and brasseries are far more limited."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Montmartre near Sacré-Cœur has a high density of pressure-selling street vendors (friendship bracelets, \"found ring\" routines) — politely declining and continuing to walk works better than engaging."
+    }
+  ]
+}

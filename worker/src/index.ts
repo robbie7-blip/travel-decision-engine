@@ -10,10 +10,16 @@ import "./env"; // must run before the engine import below reads FACTS_DIR
 import Anthropic from "@anthropic-ai/sdk";
 import type Redis from "ioredis";
 import { getRedis } from "./redis";
-import { buildPrompt, SYSTEM_PROMPT } from "../../frontend/lib/engine/prompt";
-import { checkBudgetIntegrity, checkFeasibility } from "../../frontend/lib/engine/checks";
-import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "../../frontend/lib/jobs";
-import type { Itinerary, TripBriefInput } from "../../frontend/lib/types";
+// Local copies of the shared engine/job code, not "../../frontend/..." —
+// Railway's "Root Directory: worker" setting deploys only this directory,
+// so a cross-directory import into frontend/ has nothing to resolve
+// against in production (works locally where the full repo is checked
+// out, breaks in the deployed container). Mirrors the existing
+// facts/ vs frontend/facts/ duplication already in this repo.
+import { buildPrompt, SYSTEM_PROMPT } from "./engine/prompt";
+import { checkBudgetIntegrity, checkFeasibility } from "./engine/checks";
+import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "./jobs";
+import type { Itinerary, TripBriefInput } from "./types";
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 12000;

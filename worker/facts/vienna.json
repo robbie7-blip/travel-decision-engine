@@ -1,0 +1,30 @@
+{
+  "city": "Vienna",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "A weekly transit pass is often better value than several individual day tickets if staying 4+ days; trams and the U-Bahn cover the center comprehensively."
+    },
+    {
+      "category": "cost",
+      "text": "Viennese coffeehouse culture expects you to linger — a single coffee (€4-6) buys the table for hours; it isn't rude to sit long, but it does mean a coffeehouse isn't a \"quick stop.\""
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants directly on Stephansplatz or immediately around the Hofburg charge a notable premium for standard Austrian dishes (schnitzel, goulash) versus a few streets into the Innere Stadt or the Naschmarkt area."
+    },
+    {
+      "category": "activity",
+      "text": "The Schönbrunn Palace gardens are free to enter; only the palace interior and certain garden features (maze, gloriette) require paid tickets — easy to accidentally overpay by not distinguishing these."
+    },
+    {
+      "category": "practical",
+      "text": "Jaywalking is culturally frowned upon and can be fined; Viennese pedestrians reliably wait for the signal even with no traffic present."
+    },
+    {
+      "category": "dietary",
+      "text": "Traditional Viennese cuisine is heavy (schnitzel, sausages, pastries); vegetarian options are increasingly available in the center but far more limited in traditional Beisl (tavern) settings."
+    }
+  ]
+}

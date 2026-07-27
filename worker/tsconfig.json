@@ -10,5 +10,5 @@
     "strict": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "../frontend/lib/engine/**/*.ts", "../frontend/lib/jobs.ts", "../frontend/lib/types.ts"]
+  "include": ["src/**/*.ts"]
 }

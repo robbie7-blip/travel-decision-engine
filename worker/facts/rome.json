@@ -1,0 +1,34 @@
+{
+  "city": "Rome",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "Rome's historic center is compact and best done on foot; the metro has only two main lines and doesn't reach many central sights directly because of archaeological restrictions on digging."
+    },
+    {
+      "category": "cost",
+      "text": "A \"coperto\" (cover charge, roughly €1-3/person) is standard and legal at sit-down restaurants; it's not a scam, but an additional service charge stacked on top of it at touristy spots can be."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants with hosts aggressively inviting you in from the street, especially around Trevi Fountain, Piazza Navona, and right beside the Colosseum, are reliably tourist-priced with mediocre food — a few streets away (Trastevere, Monti) tends to be both cheaper and better."
+    },
+    {
+      "category": "activity",
+      "text": "The Colosseum, Roman Forum, and Palatine Hill share one ticket; booking a timed-entry slot in advance avoids the worst of the entry queue, especially in summer."
+    },
+    {
+      "category": "practical",
+      "text": "Many churches and some sights enforce a dress code (shoulders and knees covered) — this applies even in summer heat and is strictly enforced at St. Peter's Basilica."
+    },
+    {
+      "category": "dietary",
+      "text": "Roman cuisine is meat/dairy-heavy (carbonara, cacio e pepe, amatriciana, saltimbocca) — vegetarian options exist but require more deliberate seeking outside the Jewish-Roman (Ghetto) area and modern trattorias."
+    },
+    {
+      "category": "cost",
+      "text": "Tap water (\"acqua del rubinetto\") is safe and free to request in restaurants; bottled water is often pushed by default and adds several euros per meal if you don't specify."
+    }
+  ]
+}

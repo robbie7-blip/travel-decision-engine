@@ -1,0 +1,30 @@
+{
+  "city": "Budapest",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "A single Budapest travel card covers metro, tram, bus, and the funicular for its validity window; trams 4 and 6 running the Grand Boulevard are a cheap way to see a lot of the city without a guided tour."
+    },
+    {
+      "category": "cost",
+      "text": "The thermal baths (Széchenyi, Gellért) charge notably more for a locker versus a private cabin, and towel/robe rental is a separate, often-missed extra cost — factor this in before budgeting a bath visit as just the entry fee."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants directly on Váci utca (the main pedestrian shopping street) are the most tourist-priced in the city; the Jewish Quarter (District VII) has both better food and better prices a short walk away."
+    },
+    {
+      "category": "activity",
+      "text": "The Parliament building interior is only accessible via guided tour (not free wandering) and requires advance booking — tours sell out, especially in summer."
+    },
+    {
+      "category": "practical",
+      "text": "Many smaller Budapest restaurants and shops are cash-preferred; some historic ruin bars and smaller venues don't take cards at all."
+    },
+    {
+      "category": "dietary",
+      "text": "Hungarian cuisine is meat- and paprika-heavy (goulash, lángos); vegetarian options have grown substantially in the Jewish Quarter's more modern restaurants and bars."
+    }
+  ]
+}

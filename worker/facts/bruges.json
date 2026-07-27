@@ -1,0 +1,26 @@
+{
+  "city": "Bruges",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "practical",
+      "text": "Bruges' historic center is compact and best explored entirely on foot; it is not designed for cars and traffic is heavily restricted."
+    },
+    {
+      "category": "activity",
+      "text": "Bruges is extremely popular with day-trippers from Brussels; the center is noticeably calmer before 10am and after 6pm when tour groups have left."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Chocolate shops immediately around Markt square are priced at a premium versus shops a few streets away selling comparable quality."
+    },
+    {
+      "category": "cost",
+      "text": "A canal boat tour is a classic activity (~€12-14 per person, ~30 minutes) and generally considered worth it for first-time visitors."
+    },
+    {
+      "category": "activity",
+      "text": "Climbing the Belfry tower (366 steps) offers the best panoramic view of the city but has limited capacity and can involve a wait in peak season."
+    }
+  ]
+}
