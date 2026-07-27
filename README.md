@@ -248,6 +248,17 @@ client; it isn't a defense against many rotating IPs — if that turns out to
 be the actual abuse pattern, the next layer is auth, payments, or
 Cloudflare-level bot protection, not a bigger rate limit number.
 
+### Feedback admin view
+
+`/admin/feedback` lists every `FeedbackEntry` (newest first), reading
+directly from Redis in a Server Component (`frontend/app/admin/feedback/
+page.tsx`) — no separate API route. Protected by `frontend/middleware.ts`
+via HTTP Basic Auth against a single shared `ADMIN_PASSWORD` env var (any
+username works); the page 503s if that var isn't set, rather than silently
+opening unprotected. This is deliberately minimal — a single-owner internal
+tool, not a multi-user auth system — proportional to a solo developer
+checking on feedback occasionally, not a real admin dashboard.
+
 ## Running Phase 2 locally
 
 Needs three things running at once: a Redis instance, the worker, and the
