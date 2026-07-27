@@ -36,8 +36,9 @@ activities, transit, or anything not about lodging pricing.
 
 If a search returns a usable current price range, use it for lodging cost_estimate_eur items and \
 mark those items' source_confidence as "grounded" (cite that it's from a current source in the \
-reasoning). If search fails or returns nothing specific, fall back to the existing hedged, \
-inferred estimate — do not invent a false current source.
+reasoning), and set that item's source_url to the exact URL of the search result you used. If \
+search fails or returns nothing specific, fall back to the existing hedged, inferred estimate — \
+do not invent a false current source, and set source_url to null on that item.
 
 After any searches, output ONLY the final JSON matching the schema. Do not write any other text \
 before, between, or after — no acknowledgment of the search, no commentary.`;
@@ -68,7 +69,14 @@ async function callModel(client: Anthropic, brief: TripBriefInput): Promise<Itin
       {
         type: "web_search_20260209",
         name: "web_search",
-        max_uses: Math.min(brief.destinations.length, 4),
+        // Each real search costs more than 1 "use" here — the tool's dynamic
+        // filtering makes an internal code_execution call that eats into the
+        // same budget, so a bare per-destination count (e.g. 1 for a single-
+        // destination trip) can be exhausted before a real query completes,
+        // causing a silent, unlogged fallback to an ungrounded estimate.
+        // Empirically confirmed via a live 1-destination test job. 3x with a
+        // floor of 3 gives enough headroom per destination.
+        max_uses: Math.min(Math.max(brief.destinations.length * 3, 3), 12),
       },
     ],
     messages: [{ role: "user", content: buildPrompt(brief) }],

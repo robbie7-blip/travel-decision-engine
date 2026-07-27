@@ -38,6 +38,13 @@ export interface ItineraryItem {
   cost_estimate_eur: number;
   reasoning: string;
   source_confidence: SourceConfidence;
+  // Populated by the worker when a live web search backs this item (see
+  // SEARCH_INSTRUCTIONS in worker/src/index.ts) — the model writes the real
+  // URL it used directly into this field. Deliberately not relying on the
+  // Anthropic API's automatic citation feature: that splits prose into
+  // multiple text blocks around each citation, which would fragment our
+  // forced-JSON output.
+  source_url?: string | null;
 }
 
 export interface ItineraryDay {

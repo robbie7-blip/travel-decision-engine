@@ -66,7 +66,8 @@ Schema:
           "location": "...",
           "cost_estimate_eur": 0,
           "reasoning": "why this, why now",
-          "source_confidence": "grounded|inferred"
+          "source_confidence": "grounded|inferred",
+          "source_url": "exact URL of the web search result this was grounded in, or null if none"
         }
       ],
       "feasibility_flag": null

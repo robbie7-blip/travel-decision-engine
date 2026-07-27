@@ -133,6 +133,23 @@ export function ItineraryResult({ result }: { result: Itinerary }) {
                     {item.location} · {item.time}
                   </div>
                   <div style={{ fontSize: 13, marginTop: 4, color: "#c8c5b8" }}>{item.reasoning}</div>
+                  {item.source_url && (
+                    <a
+                      href={item.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono"
+                      style={{
+                        display: "inline-block",
+                        fontSize: 11,
+                        color: "var(--grounded)",
+                        marginTop: 4,
+                        textDecoration: "underline",
+                      }}
+                    >
+                      source ↗
+                    </a>
+                  )}
                 </div>
               </div>
             ))}

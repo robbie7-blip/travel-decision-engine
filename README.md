@@ -181,12 +181,22 @@ worker/src/index.ts                  main loop: BRPOP a job id, generate,
                                       write the result back
 ```
 
-`worker/` imports `frontend/lib/engine/{prompt,checks}.ts` and
-`frontend/lib/types.ts` directly via relative paths — those files have no
-Next.js-specific dependencies, so the same code that ran in the old blocking
-route now runs in the worker, unchanged (`FACTS_DIR` is set via
-`worker/src/env.ts` so `loadFacts()` finds the project-root `facts/`
-regardless of the worker's own working directory).
+`worker/src/engine/{prompt,checks}.ts` and `worker/src/types.ts` are local
+copies of the same files under `frontend/lib/` (kept in sync by hand), not
+cross-directory imports — Railway's "Root Directory: worker" setting deploys
+only that subdirectory, so an import into `frontend/` would have nothing to
+resolve against in production even though it works locally. `worker/facts/`
+is likewise its own copy of `facts/`, with `FACTS_DIR` set via
+`worker/src/env.ts` so `loadFacts()` finds it regardless of the worker's own
+working directory.
+
+When a live search backs a lodging price, the worker also asks the model to
+put the exact source URL it used into that item's `source_url` field
+(rendered as a "source ↗" link in the UI). This is deliberately not built on
+Anthropic's automatic citation feature — that splits prose into multiple
+text blocks around each citation, which is incompatible with this app's
+forced-single-JSON-block output. `source_url` is `null` when no search
+backed an item.
 
 ## Running Phase 2 locally
 
