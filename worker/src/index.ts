@@ -45,9 +45,21 @@ sources explicitly in the reasoning (e.g. "one source says X/night, another says
 higher figure as the safer budget assumption"), set source_agreement to "disagree", and set \
 source_urls to both URLs. Still use "grounded" if you can make a reasoned call between them; only \
 use "inferred" if the disagreement is too large to responsibly resolve.
+- CRITICAL — never adjust a "grounded" number to fit the budget: whatever cost_estimate_eur you \
+write for a "grounded" item MUST fall within the range actually spanned by its cited source(s) \
+(at or above the lowest figure they reported, at or below the highest). Do NOT quietly write a \
+lower number than your sources found just because the trip's budget is tight — if the real number \
+is high enough that it strains or breaks the budget, that IS the correct finding; report it as \
+infeasible rather than manufacturing a cheaper "grounded" figure that isn't actually what you \
+found. If you want to claim a cheaper tier exists (e.g. hostels vs. the hotels your search \
+returned), you must specifically search for and find that cheaper category — do not assume it \
+without a citation backing that specific number. A cost figure invented to make the budget work, \
+even with real citation links attached, is worse than no citation, because it looks verified when \
+it isn't — never do this.
 - If only one search returns a usable result for a destination, use it, set source_urls to that \
 single URL, and leave source_agreement unset (null) — this is a single-source case, not a \
-cross-check, and should be treated as slightly less certain in the reasoning.
+cross-check, and should be treated as slightly less certain in the reasoning. The same rule above \
+applies: the number must be consistent with what that one source actually reported.
 - If no search returns anything usable for a destination, fall back to the existing hedged, \
 inferred estimate — do not invent a false source. Set source_urls to an empty array and \
 source_agreement to null.
