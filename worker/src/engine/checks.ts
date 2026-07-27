@@ -61,3 +61,30 @@ export function checkBudgetIntegrity(itinerary: Itinerary, brief: TripBriefInput
   itinerary._budget_integrity_warnings = warnings;
   return itinerary;
 }
+
+/** Derives each item's confidence_tier from the cross-check signals the
+ * model already reported (source_urls, source_agreement) rather than having
+ * the model self-report a tier directly — same "verify structurally" reason
+ * checkBudgetIntegrity doesn't trust budget_feasibility.feasible on its own. */
+export function deriveConfidenceTiers(itinerary: Itinerary): Itinerary {
+  for (const day of itinerary.days ?? []) {
+    for (const item of day.items) {
+      const urlCount = item.source_urls?.length ?? 0;
+      if (item.source_confidence !== "grounded") {
+        item.confidence_tier = "inferred";
+      } else if (urlCount === 0) {
+        // Grounded in the curated facts base, not a live search — most
+        // non-lodging items. Distinct from "inferred": it's still checked
+        // data, just not search-cross-checked.
+        item.confidence_tier = "fact_grounded";
+      } else if (urlCount >= 2 && item.source_agreement === "disagree") {
+        item.confidence_tier = "conflicting";
+      } else if (urlCount >= 2 && item.source_agreement === "agree") {
+        item.confidence_tier = "verified";
+      } else {
+        item.confidence_tier = "single_source";
+      }
+    }
+  }
+  return itinerary;
+}

@@ -17,7 +17,7 @@ import { getRedis } from "./redis";
 // out, breaks in the deployed container). Mirrors the existing
 // facts/ vs frontend/facts/ duplication already in this repo.
 import { buildPrompt, SYSTEM_PROMPT } from "./engine/prompt";
-import { checkBudgetIntegrity, checkFeasibility } from "./engine/checks";
+import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "./jobs";
 import type { Itinerary, TripBriefInput } from "./types";
 
@@ -159,6 +159,7 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     let itinerary = await generateItinerary(client, job.brief);
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
+    itinerary = deriveConfidenceTiers(itinerary);
     job.status = "done";
     job.result = itinerary;
   } catch (e) {

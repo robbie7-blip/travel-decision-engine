@@ -1,6 +1,15 @@
 import type { CSSProperties, ReactNode } from "react";
+import type { ConfidenceTier } from "@/lib/types";
 
-export function Dot({ grounded }: { grounded: boolean }) {
+const TIER_COLOR: Record<ConfidenceTier, string> = {
+  verified: "var(--grounded)",
+  fact_grounded: "var(--grounded)",
+  single_source: "var(--tier-single-source)",
+  conflicting: "var(--unverified)",
+  inferred: "var(--tier-inferred)",
+};
+
+export function ConfidenceDot({ tier }: { tier: ConfidenceTier }) {
   return (
     <span
       style={{
@@ -8,7 +17,7 @@ export function Dot({ grounded }: { grounded: boolean }) {
         width: 8,
         height: 8,
         borderRadius: "50%",
-        background: grounded ? "var(--grounded)" : "var(--unverified)",
+        background: TIER_COLOR[tier],
         marginRight: 8,
         flexShrink: 0,
         marginTop: 6,

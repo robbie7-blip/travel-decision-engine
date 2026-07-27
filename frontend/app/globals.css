@@ -9,6 +9,12 @@
   --unverified: #d6a24c;
   --infeasible: #c0574a;
   --feasible: #5fa88f;
+  /* Confidence tiers (ItineraryItem.confidence_tier). "verified" reuses
+     --grounded and "conflicting" reuses --unverified deliberately — a
+     conflicting-sources item still deserves the same "treat with caution"
+     amber as an ungrounded guess used to convey alone. */
+  --tier-single-source: #7d9a95;
+  --tier-inferred: #6b6960;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 

@@ -202,6 +202,19 @@ automatic citation feature — that splits prose into multiple text blocks
 around each citation, which is incompatible with this app's
 forced-single-JSON-block output.
 
+Each item also gets a `confidence_tier` — `verified` (2 sources agree),
+`fact_grounded` (grounded in the curated `facts/*.json` base, no live
+search), `single_source`, `conflicting` (2 sources disagree), or `inferred`
+(a hedged guess with nothing backing it). This is deliberately *derived* in
+`checkBudgetIntegrity`'s sibling function `deriveConfidenceTiers`
+(`worker/src/engine/checks.ts`) from `source_urls`/`source_agreement` the
+model already reported, not self-reported by the model directly — same
+"verify structurally, don't trust the self-report" reasoning as
+`checkBudgetIntegrity` itself. `verified` and `fact_grounded` render with
+the same color (both are genuinely checked data, just via different
+mechanisms); `single_source`, `conflicting`, and `inferred` are each
+visually distinct in the UI.
+
 ## Running Phase 2 locally
 
 Needs three things running at once: a Redis instance, the worker, and the

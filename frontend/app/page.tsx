@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ItineraryResult } from "@/components/ItineraryResult";
 import { DEFAULT_FORM_STATE, TripForm, toTripBriefInput, type TripFormState } from "@/components/TripForm";
-import { Dot } from "@/components/ui";
+import { ConfidenceDot } from "@/components/ui";
 import { ApiError, generateItinerary } from "@/lib/api";
 import type { Job } from "@/lib/jobs";
 import type { Itinerary } from "@/lib/types";
@@ -67,15 +67,24 @@ export default function Home() {
             It doesn&apos;t list options. It decides.
           </h1>
           <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 560, margin: 0 }}>
-            Every line below is either grounded in a checked fact or flagged as a guess — never both,
-            never hidden. That distinction is the whole product.
+            Every line below carries its own confidence — from two sources agreeing to a plain,
+            hedged guess — never hidden, never overstated. That distinction is the whole product.
           </p>
-          <div className="font-mono" style={{ display: "flex", gap: 20, marginTop: 20, fontSize: 13 }}>
+          <div className="font-mono" style={{ display: "flex", gap: 20, marginTop: 20, fontSize: 13, flexWrap: "wrap" }}>
             <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
-              <Dot grounded /> grounded in a fact
+              <ConfidenceDot tier="verified" /> 2 sources agree
             </span>
             <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
-              <Dot grounded={false} /> unverified guess
+              <ConfidenceDot tier="fact_grounded" /> grounded in a fact
+            </span>
+            <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
+              <ConfidenceDot tier="single_source" /> single source
+            </span>
+            <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
+              <ConfidenceDot tier="conflicting" /> sources disagree
+            </span>
+            <span style={{ color: "var(--ink-dim)", display: "flex", alignItems: "center" }}>
+              <ConfidenceDot tier="inferred" /> unverified guess
             </span>
           </div>
         </div>

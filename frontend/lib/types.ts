@@ -52,7 +52,23 @@ export interface ItineraryItem {
   // rather than silently picking one number. Null/absent for single-source
   // or ungrounded items.
   source_agreement?: SourceAgreement | null;
+  // Derived by checkBudgetIntegrity's confidence-tier pass (worker/src/engine/
+  // checks.ts) from source_urls/source_agreement above — NOT self-reported by
+  // the model, on the same "verify structurally, don't trust the self-report"
+  // principle as the budget-integrity check itself.
+  confidence_tier?: ConfidenceTier;
 }
+
+// "fact_grounded" is for items grounded in the curated facts/*.json base
+// (source_confidence: "grounded", no live search — most non-lodging items)
+// — distinct from the live-search tiers below, and NOT the same as
+// "inferred": it's still checked data, just not cross-checked via search.
+export type ConfidenceTier =
+  | "verified"
+  | "fact_grounded"
+  | "single_source"
+  | "conflicting"
+  | "inferred";
 
 export interface ItineraryDay {
   day: number;

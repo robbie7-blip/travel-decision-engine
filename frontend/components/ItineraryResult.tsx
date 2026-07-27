@@ -1,5 +1,10 @@
-import { Dot, SectionLabel, Stamp } from "./ui";
+import { ConfidenceDot, SectionLabel, Stamp } from "./ui";
 import type { Itinerary } from "@/lib/types";
+
+const TIER_LABEL: Record<string, string> = {
+  single_source: "single source",
+  inferred: "unverified",
+};
 
 export function ItineraryResult({ result }: { result: Itinerary }) {
   return (
@@ -120,13 +125,14 @@ export function ItineraryResult({ result }: { result: Itinerary }) {
                   borderTop: "1px solid var(--line)",
                 }}
               >
-                <Dot grounded={item.source_confidence === "grounded"} />
+                <ConfidenceDot tier={item.confidence_tier ?? "inferred"} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
                     <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                       €{item.cost_estimate_eur}
-                      {item.source_confidence !== "grounded" && " (unverified)"}
+                      {TIER_LABEL[item.confidence_tier ?? "inferred"] &&
+                        ` (${TIER_LABEL[item.confidence_tier ?? "inferred"]})`}
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
