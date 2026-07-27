@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { FEEDBACK_LIST_KEY, MAX_COMMENT_LENGTH, type FeedbackEntry, type FeedbackRating } from "@/lib/feedback";
+import { checkRateLimit, getClientIp, FEEDBACK_RATE_LIMIT } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -80,6 +81,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { detail: "Server is misconfigured (feedback store is not set up)." },
       { status: 500 }
+    );
+  }
+
+  // No Anthropic cost here, but this list has no TTL, so unbounded spam
+  // would still grow storage forever.
+  const rateLimit = await checkRateLimit(redis, getClientIp(request), FEEDBACK_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
+    return NextResponse.json(
+      { detail: `Too many requests — ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
+      {
+        status: 429,
+        headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,
+      }
     );
   }
 

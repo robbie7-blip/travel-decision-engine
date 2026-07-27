@@ -229,6 +229,25 @@ different keyspace) — the worker never touches it. There's no review UI
 yet; for now, inspect entries directly (`redis-cli lrange feedback:all 0
 -1`) or write one when volume justifies it.
 
+### Rate limiting
+
+The app is public and unauthenticated, and `/api/generate` costs real
+Anthropic API money per request (1-2 live web searches per destination), so
+both write endpoints are rate-limited per IP via `frontend/lib/ratelimit.ts`
+(`@upstash/ratelimit`, same Redis instance as everything else — no new
+infra). Two sliding windows per endpoint, both checked on every request:
+
+| Endpoint | Per hour | Per day | Env vars to override |
+|---|---|---|---|
+| `/api/generate` | 5 | 20 | `GENERATE_RATE_LIMIT_PER_HOUR`, `GENERATE_RATE_LIMIT_PER_DAY` |
+| `/api/feedback` | 30 | 100 | `FEEDBACK_RATE_LIMIT_PER_HOUR`, `FEEDBACK_RATE_LIMIT_PER_DAY` |
+
+A blocked request gets `429` with a `Retry-After` header and a `detail`
+message stating which window was hit. This bounds worst-case cost per
+client; it isn't a defense against many rotating IPs — if that turns out to
+be the actual abuse pattern, the next layer is auth, payments, or
+Cloudflare-level bot protection, not a bigger rate limit number.
+
 ## Running Phase 2 locally
 
 Needs three things running at once: a Redis instance, the worker, and the

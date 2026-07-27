@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
+import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import type { TripBriefInput } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -99,6 +100,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { detail: "Server is misconfigured (job queue is not set up)." },
       { status: 500 }
+    );
+  }
+
+  // Every request here costs real Anthropic API money once the worker picks
+  // it up (each generation runs 1-2 live web searches per destination), so
+  // this is checked before any job is created — not just cosmetically.
+  const rateLimit = await checkRateLimit(redis, getClientIp(request), GENERATE_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
+    return NextResponse.json(
+      { detail: `Too many requests — ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
+      {
+        status: 429,
+        headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,
+      }
     );
   }
 
