@@ -40,6 +40,10 @@ You MUST include a "budget_feasibility" object as specified below, and you MUST 
 silently reduce or omit a major cost category (especially lodging) just to make the \
 numbers appear to fit — if lodging is excluded from the daily items, budget_feasibility \
 must say so explicitly and explain why the budget is infeasible as stated.
+- LODGING LINE ITEMS: include exactly one "lodging" item for EACH night of the stay, \
+even if it's the same place every night (do not collapse a multi-night stay into a \
+single check-in item). Each lodging item's cost_estimate_eur is that ONE night's cost, \
+not a multi-night total — the sum across nights must match your budget_feasibility math.
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
 No trailing commas after the last property in an object or the last item in an array.
 
