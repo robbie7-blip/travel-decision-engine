@@ -190,13 +190,17 @@ is likewise its own copy of `facts/`, with `FACTS_DIR` set via
 `worker/src/env.ts` so `loadFacts()` finds it regardless of the worker's own
 working directory.
 
-When a live search backs a lodging price, the worker also asks the model to
-put the exact source URL it used into that item's `source_url` field
-(rendered as a "source ↗" link in the UI). This is deliberately not built on
-Anthropic's automatic citation feature — that splits prose into multiple
-text blocks around each citation, which is incompatible with this app's
-forced-single-JSON-block output. `source_url` is `null` when no search
-backed an item.
+When a live search backs a lodging price, the worker asks the model to
+cross-check it with two independent searches (not just one) and put both
+URLs into that item's `source_urls` field (rendered as "source 1"/"source 2"
+links in the UI). If the two results meaningfully disagree, the model must
+say so explicitly in the reasoning and set `source_agreement: "disagree"`
+(shown as a "⚠ sources disagree" flag) rather than silently picking one
+number; `source_urls` has 1 entry for a single-usable-result case, or `[]`
+if no search backed the item. This is deliberately not built on Anthropic's
+automatic citation feature — that splits prose into multiple text blocks
+around each citation, which is incompatible with this app's
+forced-single-JSON-block output.
 
 ## Running Phase 2 locally
 
