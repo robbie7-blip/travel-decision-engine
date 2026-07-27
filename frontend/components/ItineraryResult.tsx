@@ -133,22 +133,38 @@ export function ItineraryResult({ result }: { result: Itinerary }) {
                     {item.location} · {item.time}
                   </div>
                   <div style={{ fontSize: 13, marginTop: 4, color: "#c8c5b8" }}>{item.reasoning}</div>
-                  {item.source_url && (
-                    <a
-                      href={item.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono"
+                  {item.source_urls && item.source_urls.length > 0 && (
+                    <div
                       style={{
-                        display: "inline-block",
-                        fontSize: 11,
-                        color: "var(--grounded)",
+                        display: "flex",
+                        gap: 12,
+                        alignItems: "center",
+                        flexWrap: "wrap",
                         marginTop: 4,
-                        textDecoration: "underline",
                       }}
                     >
-                      source ↗
-                    </a>
+                      {item.source_urls.map((url, si) => (
+                        <a
+                          key={si}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono"
+                          style={{
+                            fontSize: 11,
+                            color: "var(--grounded)",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          {item.source_urls!.length > 1 ? `source ${si + 1}` : "source"} ↗
+                        </a>
+                      ))}
+                      {item.source_agreement === "disagree" && (
+                        <span className="font-mono" style={{ fontSize: 11, color: "var(--unverified)" }}>
+                          ⚠ sources disagree
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

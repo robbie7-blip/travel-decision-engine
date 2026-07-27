@@ -71,7 +71,8 @@ Schema:
           "cost_estimate_eur": 0,
           "reasoning": "why this, why now",
           "source_confidence": "grounded|inferred",
-          "source_url": "exact URL of the web search result this was grounded in, or null if none"
+          "source_urls": ["0-2 exact URLs used to ground this — 2 if cross-checked, 1 if single-source, [] if none"],
+          "source_agreement": "agree|disagree|null — only set when two cross-check searches were performed"
         }
       ],
       "feasibility_flag": null

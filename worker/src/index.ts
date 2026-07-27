@@ -31,14 +31,26 @@ const EFFORT = "low";
 // category) until broader scope is measured and deliberately expanded.
 const SEARCH_INSTRUCTIONS = `You have a web_search tool available. Use it ONLY to check \
 current typical lodging price ranges (budget and mid-range, per night) for each destination in \
-this trip — nothing else. Search at most once per destination. Do not search for restaurants, \
-activities, transit, or anything not about lodging pricing.
+this trip — nothing else. Do not search for restaurants, activities, transit, or anything not \
+about lodging pricing.
 
-If a search returns a usable current price range, use it for lodging cost_estimate_eur items and \
-mark those items' source_confidence as "grounded" (cite that it's from a current source in the \
-reasoning), and set that item's source_url to the exact URL of the search result you used. If \
-search fails or returns nothing specific, fall back to the existing hedged, inferred estimate — \
-do not invent a false current source, and set source_url to null on that item.
+For each destination, perform TWO separate searches for its lodging price range (vary the query \
+phrasing or target a different source each time) rather than relying on a single search — this is \
+a deliberate cross-check, not a duplicate. Then:
+- If the two results roughly agree (within about 20%), use a representative value from them for \
+lodging cost_estimate_eur items in that destination, mark source_confidence as "grounded", set \
+source_urls to both URLs used, and set source_agreement to "agree".
+- If the two results meaningfully disagree, do NOT silently pick one. State both figures and both \
+sources explicitly in the reasoning (e.g. "one source says X/night, another says Y — using the \
+higher figure as the safer budget assumption"), set source_agreement to "disagree", and set \
+source_urls to both URLs. Still use "grounded" if you can make a reasoned call between them; only \
+use "inferred" if the disagreement is too large to responsibly resolve.
+- If only one search returns a usable result for a destination, use it, set source_urls to that \
+single URL, and leave source_agreement unset (null) — this is a single-source case, not a \
+cross-check, and should be treated as slightly less certain in the reasoning.
+- If no search returns anything usable for a destination, fall back to the existing hedged, \
+inferred estimate — do not invent a false source. Set source_urls to an empty array and \
+source_agreement to null.
 
 After any searches, output ONLY the final JSON matching the schema. Do not write any other text \
 before, between, or after — no acknowledgment of the search, no commentary.`;
@@ -71,12 +83,12 @@ async function callModel(client: Anthropic, brief: TripBriefInput): Promise<Itin
         name: "web_search",
         // Each real search costs more than 1 "use" here — the tool's dynamic
         // filtering makes an internal code_execution call that eats into the
-        // same budget, so a bare per-destination count (e.g. 1 for a single-
-        // destination trip) can be exhausted before a real query completes,
-        // causing a silent, unlogged fallback to an ungrounded estimate.
-        // Empirically confirmed via a live 1-destination test job. 3x with a
-        // floor of 3 gives enough headroom per destination.
-        max_uses: Math.min(Math.max(brief.destinations.length * 3, 3), 12),
+        // same budget, so too low a count can be exhausted before a real
+        // query completes, causing a silent, unlogged fallback to an
+        // ungrounded estimate (empirically confirmed via a live test job).
+        // Cross-checking now asks for 2 real searches per destination, so the
+        // budget is roughly doubled from the single-search version.
+        max_uses: Math.min(Math.max(brief.destinations.length * 6, 6), 20),
       },
     ],
     messages: [{ role: "user", content: buildPrompt(brief) }],

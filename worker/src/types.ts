@@ -29,6 +29,7 @@ export interface KeyDecision {
 
 export type ItemType = "transport" | "lodging" | "activity" | "meal";
 export type SourceConfidence = "grounded" | "inferred";
+export type SourceAgreement = "agree" | "disagree";
 
 export interface ItineraryItem {
   time: string;
@@ -38,13 +39,19 @@ export interface ItineraryItem {
   cost_estimate_eur: number;
   reasoning: string;
   source_confidence: SourceConfidence;
-  // Populated by the worker when a live web search backs this item (see
+  // Populated by the worker when live web search backs this item (see
   // SEARCH_INSTRUCTIONS in worker/src/index.ts) — the model writes the real
-  // URL it used directly into this field. Deliberately not relying on the
+  // URL(s) it used directly into this field. Deliberately not relying on the
   // Anthropic API's automatic citation feature: that splits prose into
   // multiple text blocks around each citation, which would fragment our
-  // forced-JSON output.
-  source_url?: string | null;
+  // forced-JSON output. 0-2 entries: 2 when the model cross-checked two
+  // independent searches, 1 for a single usable result, absent/empty otherwise.
+  source_urls?: string[];
+  // Set only when two cross-check searches produced meaningfully conflicting
+  // price info — the reasoning text explains the discrepancy explicitly
+  // rather than silently picking one number. Null/absent for single-source
+  // or ungrounded items.
+  source_agreement?: SourceAgreement | null;
 }
 
 export interface ItineraryDay {
