@@ -1,12 +1,107 @@
+"use client";
+
+import { useState } from "react";
 import { ConfidenceDot, SectionLabel, Stamp } from "./ui";
-import type { Itinerary } from "@/lib/types";
+import { submitFeedback } from "@/lib/api";
+import type { FeedbackRating } from "@/lib/feedback";
+import type { Itinerary, ItineraryItem } from "@/lib/types";
 
 const TIER_LABEL: Record<string, string> = {
   single_source: "single source",
   inferred: "unverified",
 };
 
-export function ItineraryResult({ result }: { result: Itinerary }) {
+const feedbackButtonStyle = {
+  fontSize: 11,
+  background: "none",
+  border: "none",
+  padding: 0,
+  color: "var(--ink-dim)",
+  cursor: "pointer",
+  textDecoration: "underline",
+} as const;
+
+/** Per-item helpful/wrong feedback control — the start of the trust-feedback
+ * loop. Deliberately low-friction: one click for "helpful", one click plus an
+ * optional one-line comment for "wrong". */
+function ItemFeedback({ jobId, day, item }: { jobId: string; day: number; item: ItineraryItem }) {
+  const [state, setState] = useState<"idle" | "commenting" | "submitting" | "done" | "error">("idle");
+  const [comment, setComment] = useState("");
+
+  async function send(rating: FeedbackRating, commentText?: string) {
+    setState("submitting");
+    try {
+      await submitFeedback({ jobId, day, item, rating, comment: commentText });
+      setState("done");
+    } catch {
+      setState("error");
+    }
+  }
+
+  if (state === "done") {
+    return (
+      <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
+        thanks — noted
+      </div>
+    );
+  }
+
+  if (state === "commenting") {
+    return (
+      <div style={{ marginTop: 4, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="what was wrong? (optional)"
+          className="font-mono"
+          style={{
+            fontSize: 11,
+            background: "var(--bg-panel-raised)",
+            border: "1px solid var(--line)",
+            borderRadius: 4,
+            padding: "3px 6px",
+            color: "var(--ink)",
+            flex: 1,
+            minWidth: 160,
+          }}
+        />
+        <button type="button" onClick={() => send("wrong", comment)} className="font-mono" style={feedbackButtonStyle}>
+          submit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 4, display: "flex", gap: 12, alignItems: "center" }}>
+      <button
+        type="button"
+        onClick={() => send("helpful")}
+        disabled={state === "submitting"}
+        className="font-mono"
+        style={feedbackButtonStyle}
+      >
+        looks right
+      </button>
+      <button
+        type="button"
+        onClick={() => setState("commenting")}
+        disabled={state === "submitting"}
+        className="font-mono"
+        style={feedbackButtonStyle}
+      >
+        flag as wrong
+      </button>
+      {state === "error" && (
+        <span className="font-mono" style={{ fontSize: 11, color: "var(--infeasible)" }}>
+          failed — try again
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: string }) {
   return (
     <div>
       {result.budget_feasibility && (
@@ -172,6 +267,7 @@ export function ItineraryResult({ result }: { result: Itinerary }) {
                       )}
                     </div>
                   )}
+                  <ItemFeedback jobId={jobId} day={day.day} item={item} />
                 </div>
               </div>
             ))}

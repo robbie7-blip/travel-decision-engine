@@ -215,6 +215,20 @@ the same color (both are genuinely checked data, just via different
 mechanisms); `single_source`, `conflicting`, and `inferred` are each
 visually distinct in the UI.
 
+### User feedback loop
+
+Every itinerary item has a "looks right" / "flag as wrong" control (the
+latter opens an optional one-line comment box). Submitting either POSTs to
+`frontend/app/api/feedback/route.ts`, which persists a `FeedbackEntry`
+(`frontend/lib/feedback.ts`) to a durable Redis list (`feedback:all`, no
+TTL — unlike job records, which expire after `JOB_TTL_SECONDS`). The entry
+snapshots the full item, not just an id, since the job it came from will
+have expired long before anyone reviews the feedback. This is frontend-only
+(Vercel + the same Upstash Redis instance the job queue uses, just a
+different keyspace) — the worker never touches it. There's no review UI
+yet; for now, inspect entries directly (`redis-cli lrange feedback:all 0
+-1`) or write one when volume justifies it.
+
 ## Running Phase 2 locally
 
 Needs three things running at once: a Redis instance, the worker, and the

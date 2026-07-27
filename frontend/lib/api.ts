@@ -1,5 +1,6 @@
 import type { Itinerary, TripBriefInput } from "./types";
 import type { Job } from "./jobs";
+import type { FeedbackEntry } from "./feedback";
 
 export class ApiError extends Error {}
 
@@ -17,11 +18,13 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
 }
 
 /** Kicks off generation and polls until it's done. `onStatus` is called on
- * every poll so the UI can show progress ("queued" / "generating..."). */
+ * every poll so the UI can show progress ("queued" / "generating..."). Returns
+ * the jobId alongside the result so the caller can attribute feedback
+ * (submitFeedback below) to the job that produced each item. */
 export async function generateItinerary(
   brief: TripBriefInput,
   onStatus?: (status: Job["status"]) => void
-): Promise<Itinerary> {
+): Promise<{ jobId: string; itinerary: Itinerary }> {
   const createResponse = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -50,7 +53,7 @@ export async function generateItinerary(
 
     if (job.status === "done") {
       if (!job.result) throw new ApiError("Job finished but returned no result.");
-      return job.result;
+      return { jobId, itinerary: job.result };
     }
     if (job.status === "error") {
       throw new ApiError(job.error ?? "Generation failed.");
@@ -60,5 +63,22 @@ export async function generateItinerary(
       throw new ApiError("This is taking much longer than expected — try again shortly.");
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  }
+}
+
+/** Submits feedback on one itinerary line item. Swallows nothing — throws
+ * ApiError on failure so the UI can show a real error instead of silently
+ * pretending the feedback was recorded. */
+export async function submitFeedback(entry: Omit<FeedbackEntry, "id" | "createdAt">): Promise<void> {
+  const response = await fetch("/api/feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(entry),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      await readErrorDetail(response, `Feedback submission failed (status ${response.status}).`)
+    );
   }
 }

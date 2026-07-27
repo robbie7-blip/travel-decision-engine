@@ -23,15 +23,18 @@ export default function Home() {
   const [jobStatus, setJobStatus] = useState<Job["status"] | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Itinerary | null>(null);
+  const [resultJobId, setResultJobId] = useState<string | null>(null);
 
   async function handleSubmit() {
     setStatus("loading");
     setJobStatus(null);
     setError("");
     setResult(null);
+    setResultJobId(null);
     try {
-      const itinerary = await generateItinerary(toTripBriefInput(form), setJobStatus);
+      const { jobId, itinerary } = await generateItinerary(toTripBriefInput(form), setJobStatus);
       setResult(itinerary);
+      setResultJobId(jobId);
       setStatus("done");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Something went wrong. Try again.");
@@ -107,10 +110,10 @@ export default function Home() {
         </div>
       </div>
 
-      {result && (
+      {result && resultJobId && (
         <div style={{ padding: "36px 24px 64px" }}>
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
-            <ItineraryResult result={result} />
+            <ItineraryResult result={result} jobId={resultJobId} />
           </div>
         </div>
       )}
