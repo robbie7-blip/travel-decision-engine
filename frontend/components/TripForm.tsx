@@ -61,9 +61,10 @@ interface TripFormProps {
   onChange: (next: TripFormState) => void;
   onSubmit: () => void;
   submitting: boolean;
+  submittingLabel?: string;
 }
 
-export function TripForm({ value, onChange, onSubmit, submitting }: TripFormProps) {
+export function TripForm({ value, onChange, onSubmit, submitting, submittingLabel }: TripFormProps) {
   function update<K extends keyof TripFormState>(key: K, val: TripFormState[K]) {
     onChange({ ...value, [key]: val });
   }
@@ -199,7 +200,7 @@ export function TripForm({ value, onChange, onSubmit, submitting }: TripFormProp
           cursor: submitting ? "default" : "pointer",
         }}
       >
-        {submitting ? "Deciding…" : "Generate itinerary"}
+        {submitting ? (submittingLabel ?? "Deciding…") : "Generate itinerary"}
       </button>
     </div>
   );

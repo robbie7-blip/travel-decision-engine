@@ -151,6 +151,93 @@ Whatever branch is configured as **Production Branch** (Project Settings →
 Git) is what actually gets served — pushing fixes to a different branch
 than that one deploys nothing, silently.
 
+# Phase 2 — async job architecture (live web search)
+
+Phase 1's `/api/generate` called Claude directly and blocked until the
+response came back. That's fine without web search (~35s), but Vercel's
+serverless functions have a hard execution-time cap (60s on Hobby, up to
+800s on Pro) — and even scoped, single-category live search (checking
+current lodging prices) measured ~108s for a 2-destination trip. Rather than
+pay for a bigger Vercel plan to stretch a duration limit, Phase 2 decouples
+generation from the HTTP request entirely: a separate always-on worker does
+the actual Claude call with no time limit at all, communicating with the
+Next.js app through a job queue.
+
+```
+frontend/app/api/generate/route.ts   validates the brief, writes a job record,
+                                      pushes it onto the queue, returns a job id
+                                      immediately — no longer calls Anthropic
+frontend/app/api/job/[id]/route.ts   polling endpoint — reads job status/result
+frontend/lib/jobs.ts                 shared Job type + Redis key conventions
+frontend/lib/redis.ts                Upstash REST client (serverless-friendly,
+                                      used only by the Next.js side)
+worker/                              separate Node project — the actual
+                                      generation happens here, with live web
+                                      search enabled, no duration limit
+worker/src/redis.ts                  standard TCP Redis client (ioredis) — the
+                                      worker is long-running so it can hold a
+                                      connection open and block on it (BRPOP)
+worker/src/index.ts                  main loop: BRPOP a job id, generate,
+                                      write the result back
+```
+
+`worker/` imports `frontend/lib/engine/{prompt,checks}.ts` and
+`frontend/lib/types.ts` directly via relative paths — those files have no
+Next.js-specific dependencies, so the same code that ran in the old blocking
+route now runs in the worker, unchanged (`FACTS_DIR` is set via
+`worker/src/env.ts` so `loadFacts()` finds the project-root `facts/`
+regardless of the worker's own working directory).
+
+## Running Phase 2 locally
+
+Needs three things running at once: a Redis instance, the worker, and the
+Next.js app.
+
+```bash
+# 1. Redis — a real Upstash database, or a local one for testing:
+redis-server --port 6379
+
+# 2. Worker
+cd worker
+npm install
+cp .env.example .env   # ANTHROPIC_API_KEY, REDIS_URL
+npm start
+
+# 3. Next.js app (separate terminal)
+cd frontend
+npm install
+cp .env.local.example .env.local   # then add UPSTASH_REDIS_REST_URL / _TOKEN
+npm run dev
+```
+
+> **Local Redis vs. Upstash**: `@upstash/redis` (used by the Next.js app)
+> speaks Upstash's REST proxy protocol, not raw Redis — a plain
+> `redis-server` won't work for that half. The worker's `ioredis` client
+> speaks standard Redis TCP and works with either. For a fully local dev
+> loop without an Upstash account, run `serverless-redis-http` (Upstash's
+> own local REST-to-Redis proxy) in front of a local `redis-server`; for
+> deployed environments, Upstash provides both endpoints directly.
+
+## Deploying Phase 2
+
+1. **Upstash** — create a Redis database at [upstash.com](https://upstash.com).
+   Grab both the REST URL/token (for Vercel) and the standard Redis
+   connection string (for the worker).
+2. **Vercel** (frontend) — add `UPSTASH_REDIS_REST_URL` and
+   `UPSTASH_REDIS_REST_TOKEN` alongside the existing env vars. `maxDuration`
+   no longer matters here — the route just enqueues and returns.
+3. **Railway** (or Fly.io/Render) for the worker — deploy `worker/` as its
+   own service (set Root Directory to `worker`), with `ANTHROPIC_API_KEY`
+   and `REDIS_URL` (the standard connection string from step 1) as env
+   vars. Start command: `npm start`. This needs to run as an always-on
+   process, not a serverless function.
+
+Cost note: the fixed infra (Vercel + Upstash + a small Railway instance) is
+on the order of $20-30/month at low volume — the real cost driver is
+Anthropic API usage, which scales per generation (~$0.07 without search,
+~$0.32-0.47 with the current lodging-only search scope, measured) rather
+than being a fixed monthly number.
+
 ## Troubleshooting
 
 Real issues hit while setting this up, in the order you're likely to hit them.
@@ -217,3 +304,17 @@ your branch into whatever Production Branch is set to.
 — `gh auth login` stores credentials in the system keychain but doesn't
 always wire plain `git` to use them. Run `gh auth setup-git` once, then
 push normally.
+
+**A job stays "Queued…" forever** (Phase 2) — the worker isn't running, or
+it's pointed at a different Redis instance than the Next.js app. Check the
+worker's logs for `[worker] started, waiting for jobs on jobs:queue`; if
+that never appears, `REDIS_URL` is likely wrong or unreachable. If it does
+appear but the job never gets picked up, confirm both the app's
+`UPSTASH_REDIS_REST_URL`/`_TOKEN` and the worker's `REDIS_URL` point at the
+*same* database — easy to mix up if you have more than one Upstash
+database.
+
+**`Server is misconfigured (job queue is not set up)`** (Phase 2) — the
+Next.js app is missing `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`
+in its environment (`.env.local` locally, or Vercel's env var settings in
+production).

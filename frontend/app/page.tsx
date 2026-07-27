@@ -5,22 +5,32 @@ import { ItineraryResult } from "@/components/ItineraryResult";
 import { DEFAULT_FORM_STATE, TripForm, toTripBriefInput, type TripFormState } from "@/components/TripForm";
 import { Dot } from "@/components/ui";
 import { ApiError, generateItinerary } from "@/lib/api";
+import type { Job } from "@/lib/jobs";
 import type { Itinerary } from "@/lib/types";
 
 type Status = "idle" | "loading" | "error" | "done";
 
+const JOB_STATUS_LABEL: Record<Job["status"], string> = {
+  pending: "Queued…",
+  running: "Generating — checking live prices, this can take a minute or two…",
+  done: "Done",
+  error: "Failed",
+};
+
 export default function Home() {
   const [form, setForm] = useState<TripFormState>(DEFAULT_FORM_STATE);
   const [status, setStatus] = useState<Status>("idle");
+  const [jobStatus, setJobStatus] = useState<Job["status"] | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Itinerary | null>(null);
 
   async function handleSubmit() {
     setStatus("loading");
+    setJobStatus(null);
     setError("");
     setResult(null);
     try {
-      const itinerary = await generateItinerary(toTripBriefInput(form));
+      const itinerary = await generateItinerary(toTripBriefInput(form), setJobStatus);
       setResult(itinerary);
       setStatus("done");
     } catch (e) {
@@ -73,7 +83,13 @@ export default function Home() {
 
       <div style={{ padding: "36px 24px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          <TripForm value={form} onChange={setForm} onSubmit={handleSubmit} submitting={status === "loading"} />
+          <TripForm
+            value={form}
+            onChange={setForm}
+            onSubmit={handleSubmit}
+            submitting={status === "loading"}
+            submittingLabel={jobStatus ? JOB_STATUS_LABEL[jobStatus] : undefined}
+          />
           {status === "error" && (
             <div className="font-mono" style={{ marginTop: 14, color: "var(--infeasible)", fontSize: 13 }}>
               {error}

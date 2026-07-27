@@ -2,7 +2,10 @@
 // These are the rule-based sanity checks that run on top of the LLM output —
 // what makes the product trustworthy rather than just plausible-sounding.
 
-import type { Itinerary, TripBriefInput } from "@/lib/types";
+// Relative, not "@/lib/types" — this file is also imported directly by the
+// worker (a separate Node project outside the Next.js app), which doesn't
+// have the Next.js path-alias resolution configured.
+import type { Itinerary, TripBriefInput } from "../types";
 
 /** Flags days with more than 5 activity/meal items as likely overpacked. */
 export function checkFeasibility(itinerary: Itinerary): Itinerary {

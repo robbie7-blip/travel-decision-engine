@@ -5,9 +5,12 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import type { TripBriefInput } from "@/lib/types";
+// Relative, not "@/lib/types" — also imported directly by the worker.
+import type { TripBriefInput } from "../types";
 
-const FACTS_DIR = path.join(process.cwd(), "facts");
+// Overridable so the worker (running from a different cwd than the Next.js
+// app) can point this at the same facts/ directory without duplicating it.
+const FACTS_DIR = process.env.FACTS_DIR ?? path.join(process.cwd(), "facts");
 
 export const SYSTEM_PROMPT = `You are a travel decision engine. Your job is not to list options — \
 it is to DECIDE and justify. For every meaningful choice (which city to prioritize, \
