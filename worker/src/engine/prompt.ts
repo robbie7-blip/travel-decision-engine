@@ -54,6 +54,9 @@ single check-in item). Each lodging item's cost_estimate_eur is that ONE night's
 not a multi-night total — the sum across nights must match your budget_feasibility math.
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
 No trailing commas after the last property in an object or the last item in an array.
+- WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use \
+an em dash ("—"). If you need a break in a sentence, use a comma, a period, or a short hyphen \
+("-") instead. Keep sentences short and plain.
 
 Schema:
 {
