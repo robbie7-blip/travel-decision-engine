@@ -106,8 +106,18 @@ export function loadFacts(city: string): Fact[] {
   return data.facts ?? [];
 }
 
+const LANGUAGE_LABEL: Record<TripBriefInput["language"], string> = {
+  en: "English",
+  bg: "Bulgarian (български)",
+};
+
 function tripBriefToPromptBlock(brief: TripBriefInput): string {
   const lines = [
+    `Response language: ${LANGUAGE_LABEL[brief.language]} — write every natural-language ` +
+      `field (trip_summary, key_decisions decision/reasoning/alternative_considered, item ` +
+      `reasoning, feasibility_flag, things_to_skip reasoning) in this language. Keep JSON ` +
+      `keys and the schema structure exactly as specified; proper nouns (place/venue names) ` +
+      `may stay in their common form.`,
     `Destinations: ${brief.destinations.join(", ")}`,
     `Dates: ${brief.start_date} to ${brief.end_date}`,
     `Travelers: ${brief.party_size} (${brief.party_composition})`,
