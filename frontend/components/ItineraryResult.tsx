@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ConfidenceDot, SectionLabel, Stamp } from "./ui";
+import { ConfidenceDot, inputStyle, SectionLabel, Stamp } from "./ui";
 import { submitFeedback } from "@/lib/api";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
@@ -107,9 +107,67 @@ function ItemFeedback({
   );
 }
 
-export function ItineraryResult({ result, jobId, t }: { result: Itinerary; jobId: string; t: Dictionary }) {
+interface ItineraryResultProps {
+  result: Itinerary;
+  jobId: string;
+  t: Dictionary;
+  onRefine: (question: string) => void;
+  refining: boolean;
+  refiningLabel?: string;
+  refineError?: string;
+  lastQuestion?: string;
+}
+
+export function ItineraryResult({
+  result,
+  jobId,
+  t,
+  onRefine,
+  refining,
+  refiningLabel,
+  refineError,
+  lastQuestion,
+}: ItineraryResultProps) {
+  const [question, setQuestion] = useState("");
+
+  function submitQuestion() {
+    const trimmed = question.trim();
+    if (!trimmed || refining) return;
+    onRefine(trimmed);
+    setQuestion("");
+  }
+
   return (
     <div>
+      {result.pushback_response && (
+        <div
+          style={{
+            marginBottom: 24,
+            padding: "14px 16px",
+            border: "1px solid var(--line)",
+            borderRadius: 8,
+            background: "var(--bg-panel-raised)",
+          }}
+        >
+          {lastQuestion && (
+            <div
+              className="font-mono"
+              style={{
+                fontSize: 11,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "var(--ink-dim)",
+                marginBottom: 6,
+              }}
+            >
+              {t.result.pushbackYouAsked}:{" "}
+              <span style={{ textTransform: "none", fontStyle: "italic" }}>{lastQuestion}</span>
+            </div>
+          )}
+          <div style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6 }}>{result.pushback_response}</div>
+        </div>
+      )}
+
       {result.budget_feasibility && (
         <div style={{ marginBottom: 24 }}>
           <Stamp ok={result.budget_feasibility.feasible}>
@@ -295,6 +353,43 @@ export function ItineraryResult({ result, jobId, t }: { result: Itinerary; jobId
           ))}
         </div>
       )}
+
+      <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
+        <SectionLabel>{t.result.pushbackLabel}</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitQuestion();
+            }}
+            placeholder={t.result.pushbackPlaceholder}
+            disabled={refining}
+            style={{ ...inputStyle, flex: 1, minWidth: 240 }}
+          />
+          <button
+            type="button"
+            onClick={submitQuestion}
+            disabled={refining || !question.trim()}
+            className="font-mono btn-primary"
+            style={{
+              padding: "10px 22px",
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              cursor: refining || !question.trim() ? "default" : "pointer",
+            }}
+          >
+            {refining ? (refiningLabel ?? t.result.pushbackSubmitting) : t.result.pushbackSubmit}
+          </button>
+        </div>
+        {refineError && (
+          <div className="font-mono" style={{ marginTop: 8, fontSize: 12, color: "var(--infeasible)" }}>
+            {refineError}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { ItineraryResult } from "@/components/ItineraryResult";
 import { DEFAULT_FORM_STATE, TripForm, toTripBriefInput, type TripFormState } from "@/components/TripForm";
 import { ConfidenceDot } from "@/components/ui";
-import { ApiError, generateItinerary } from "@/lib/api";
+import { ApiError, generateItinerary, refineItinerary } from "@/lib/api";
 import { LANGUAGE_NAMES, TRANSLATIONS } from "@/lib/i18n";
 import type { Job } from "@/lib/jobs";
-import type { Itinerary, Language } from "@/lib/types";
+import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
 
 type Status = "idle" | "loading" | "error" | "done";
 
@@ -20,6 +20,11 @@ export default function Home() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<Itinerary | null>(null);
   const [resultJobId, setResultJobId] = useState<string | null>(null);
+  const [lastBrief, setLastBrief] = useState<TripBriefInput | null>(null);
+  const [lastQuestion, setLastQuestion] = useState<string | undefined>(undefined);
+  const [refining, setRefining] = useState(false);
+  const [refineJobStatus, setRefineJobStatus] = useState<Job["status"] | null>(null);
+  const [refineError, setRefineError] = useState("");
 
   const t = TRANSLATIONS[form.language];
 
@@ -41,14 +46,35 @@ export default function Home() {
     setError("");
     setResult(null);
     setResultJobId(null);
+    setLastQuestion(undefined);
+    setRefineError("");
     try {
-      const { jobId, itinerary } = await generateItinerary(toTripBriefInput(form), setJobStatus);
+      const brief = toTripBriefInput(form);
+      const { jobId, itinerary } = await generateItinerary(brief, setJobStatus);
       setResult(itinerary);
       setResultJobId(jobId);
+      setLastBrief(brief);
       setStatus("done");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t.genericError);
       setStatus("error");
+    }
+  }
+
+  async function handleRefine(question: string) {
+    if (!result || !lastBrief) return;
+    setRefining(true);
+    setRefineJobStatus(null);
+    setRefineError("");
+    try {
+      const { jobId, itinerary } = await refineItinerary(lastBrief, result, question, setRefineJobStatus);
+      setResult(itinerary);
+      setResultJobId(jobId);
+      setLastQuestion(question);
+    } catch (e) {
+      setRefineError(e instanceof ApiError ? e.message : t.genericError);
+    } finally {
+      setRefining(false);
     }
   }
 
@@ -167,7 +193,16 @@ export default function Home() {
       {result && resultJobId && (
         <div style={{ padding: "36px 24px 64px" }}>
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
-            <ItineraryResult result={result} jobId={resultJobId} t={t} />
+            <ItineraryResult
+              result={result}
+              jobId={resultJobId}
+              t={t}
+              onRefine={handleRefine}
+              refining={refining}
+              refiningLabel={refineJobStatus ? t.jobStatus[refineJobStatus] : undefined}
+              refineError={refineError}
+              lastQuestion={lastQuestion}
+            />
           </div>
         </div>
       )}
