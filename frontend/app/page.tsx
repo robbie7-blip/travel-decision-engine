@@ -80,60 +80,75 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "48px 24px 36px", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              marginBottom: 18,
-            }}
+      <div style={{ padding: "18px 24px 0" }}>
+        <div
+          style={{
+            maxWidth: 960,
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 24,
+          }}
+        >
+          <a
+            href="#confidence-legend"
+            className="font-mono"
+            style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-icon.svg" alt="" width={52} height={52} />
-              <div>
-                <div className="font-display" style={{ fontSize: 20, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
-                  decide
-                </div>
-                <div
-                  className="font-mono"
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: "0.1em",
-                    color: "var(--ink-dim)",
-                    textTransform: "uppercase",
-                    marginTop: 2,
-                  }}
-                >
-                  {t.tagline}
-                </div>
+            {t.howItWorks}
+          </a>
+          <div
+            className="font-mono"
+            style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
+          >
+            {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                style={{
+                  border: "none",
+                  padding: "6px 12px",
+                  fontSize: 11,
+                  letterSpacing: "0.04em",
+                  cursor: "pointer",
+                  background: form.language === lang ? "var(--grounded)" : "transparent",
+                  color: form.language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
+                }}
+              >
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "10px 24px 36px", borderBottom: "1px solid var(--line)" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 22, marginBottom: 26 }}>
+            {/* Optical alignment: the shield's ink starts ~18% into its viewBox
+                (flat left edge at x=18/100), so a flush box-left placement reads
+                as indented next to the headline below it — pulled left to compensate. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.svg" alt="" width={84} height={84} style={{ marginLeft: -15 }} />
+            <div>
+              <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
+                decide
               </div>
-            </div>
-            <div
-              className="font-mono"
-              style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
-            >
-              {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => setLanguage(lang)}
-                  style={{
-                    border: "none",
-                    padding: "6px 12px",
-                    fontSize: 11,
-                    letterSpacing: "0.04em",
-                    cursor: "pointer",
-                    background: form.language === lang ? "var(--grounded)" : "transparent",
-                    color: form.language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
-                  }}
-                >
-                  {lang.toUpperCase()}
-                </button>
-              ))}
+              <div
+                className="font-mono"
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  letterSpacing: "0.06em",
+                  color: "var(--accent-1)",
+                  textTransform: "uppercase",
+                  marginTop: 8,
+                }}
+              >
+                {t.tagline}
+              </div>
             </div>
           </div>
           <h1
@@ -150,7 +165,11 @@ export default function Home() {
           <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 560, margin: 0 }}>
             {t.subhead}
           </p>
-          <div className="font-mono" style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap" }}>
+          <div
+            id="confidence-legend"
+            className="font-mono"
+            style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap", scrollMarginTop: 24 }}
+          >
             {(
               ["verified", "fact_grounded", "single_source", "conflicting", "inferred"] as const
             ).map((tier) => (
