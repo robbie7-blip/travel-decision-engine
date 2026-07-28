@@ -16,7 +16,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Travel Decision Engine",
+  title: "decide — Travel decision engine",
   description: "It doesn't list options. It decides.",
 };
 

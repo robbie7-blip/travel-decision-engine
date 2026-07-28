@@ -1,4 +1,4 @@
-# Phase 0 — Decision Engine
+# decide — Travel Decision Engine
 
 [![License: Proprietary](https://img.shields.io/badge/license-proprietary-red.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/robbie7-blip/travel-decision-engine)](https://github.com/robbie7-blip/travel-decision-engine/stargazers)

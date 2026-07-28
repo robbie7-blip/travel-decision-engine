@@ -46,17 +46,26 @@ export default function Home() {
     <div style={{ minHeight: "100%" }}>
       <div style={{ padding: "48px 24px 36px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          <div
-            className="font-mono eyebrow-badge"
-            style={{
-              fontSize: 11,
-              letterSpacing: "0.12em",
-              color: "var(--ink-dim)",
-              textTransform: "uppercase",
-              marginBottom: 18,
-            }}
-          >
-            Travel Decision Engine — Phase 1
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="" width={30} height={30} />
+            <div>
+              <div className="font-display" style={{ fontSize: 20, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
+                decide
+              </div>
+              <div
+                className="font-mono"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.1em",
+                  color: "var(--ink-dim)",
+                  textTransform: "uppercase",
+                  marginTop: 2,
+                }}
+              >
+                Travel decision engine
+              </div>
+            </div>
           </div>
           <h1
             className="font-display gradient-text"

@@ -72,15 +72,6 @@ button {
   color: transparent;
 }
 
-.eyebrow-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: linear-gradient(135deg, rgba(217, 100, 63, 0.12), rgba(232, 162, 63, 0.16));
-}
-
 .btn-primary {
   background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
   color: var(--bg-panel);
