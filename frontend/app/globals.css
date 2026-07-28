@@ -98,6 +98,18 @@ button {
   cursor: default;
 }
 
+.trip-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+
+@media (max-width: 560px) {
+  .trip-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .hover-card {
   transition: background-color 0.15s ease;
   border-radius: 8px;
