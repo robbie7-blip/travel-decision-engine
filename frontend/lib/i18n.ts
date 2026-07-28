@@ -15,6 +15,7 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
 
 export interface Dictionary {
   tagline: string;
+  howItWorks: string;
   headline: string;
   subhead: string;
   tierLegend: Record<ConfidenceTier, string>;
@@ -78,7 +79,8 @@ export interface Dictionary {
 }
 
 const en: Dictionary = {
-  tagline: "Travel decision engine",
+  tagline: "Your travel, decided.",
+  howItWorks: "How it works",
   headline: "It doesn’t list options. It decides for you.",
   subhead:
     "Every line below carries its own confidence — from two sources agreeing to a plain, " +
@@ -158,7 +160,8 @@ const en: Dictionary = {
 };
 
 const bg: Dictionary = {
-  tagline: "Двигател за решения за пътуване",
+  tagline: "Твоето пътуване, решено.",
+  howItWorks: "Как работи",
   headline: "Не изброява опции. Решава вместо теб.",
   subhead:
     "Всеки ред по-долу носи собствено ниво на увереност — от съгласие между два източника до откровено предположение — никога скрито, никога преувеличено. Това е цялата същина на продукта.",
