@@ -76,7 +76,7 @@ export default function Home() {
               margin: "0 0 14px",
             }}
           >
-            It doesn&apos;t list options. It decides.
+            It doesn&apos;t list options. It decides for you.
           </h1>
           <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 560, margin: 0 }}>
             Every line below carries its own confidence — from two sources agreeing to a plain,
