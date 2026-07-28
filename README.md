@@ -12,26 +12,27 @@ No app, no database, no accounts. Just a script you run and read.
 
 ## Branding
 
-The mark is a suitcase silhouette with a checkmark cut into the body —
-"travel" (the silhouette) fused with "decided/confirmed" (the checkmark),
-same technique used across every iteration this logo went through (a
-location-pin and a compass were tried first; both failed to survive
-being shrunk to actual favicon size — see git history on
-`frontend/public/logo-icon.svg` if curious why).
+The mark is a shield silhouette with a checkmark cut into the body —
+"protected/backed by something solid" (the shield) fused with
+"decided/confirmed" (the checkmark). It went through several rejected
+iterations first — a literal suitcase, a location-pin, and a compass —
+all read as generic travel clip art (or, for the pin/compass, failed to
+survive being shrunk to actual favicon size); see git history on
+`frontend/public/logo-icon.svg` if curious why each one was dropped.
 
-The color is always the same teal (`#1f8a70` → `#5fd9b8` gradient, or flat
-`#1f8a70`) — the same color already used for "grounded/verified" confidence
+The color is always the same blue (`#1f6f8a` → `#5fc9d9` gradient, or flat
+`#1f6f8a`) — the same color already used for "grounded/verified" confidence
 signals throughout the product (`--grounded` in `globals.css`), so the
 brand mark and the product's own trust language reinforce each other.
-That color and the suitcase-plus-checkmark shape are the fixed identity;
+That color and the shield-plus-checkmark shape are the fixed identity;
 what changes is only the container, per context, because each context has
 different physical constraints:
 
 | Context | Asset | Treatment |
 |---|---|---|
-| Website header | `frontend/public/logo-icon.svg` | Transparent background, teal gradient mark — sits directly on the page's cream background |
+| Website header | `frontend/public/logo-icon.svg` | Transparent background, blue gradient mark — sits directly on the page's cream background |
 | Browser tab favicon | `frontend/app/icon.svg` | Same as above (Next.js App Router auto-detects `app/icon.svg`) |
-| "Add to Home Screen" (iOS) | `frontend/app/apple-icon.png` (180×180) | Solid teal tile, white glyph — iOS shows a plain white/black square behind a transparent icon if you don't supply a filled one, so this context requires its own background |
+| "Add to Home Screen" (iOS) | `frontend/app/apple-icon.png` (180×180) | Solid blue tile, white glyph — iOS shows a plain white/black square behind a transparent icon if you don't supply a filled one, so this context requires its own background |
 | Master/future use (app store, social preview, etc.) | `frontend/public/app-icon-512.png` | Same filled-tile treatment at higher resolution |
 
 A filled tile isn't an inconsistency with the transparent web mark — it's
