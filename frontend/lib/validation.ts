@@ -69,6 +69,8 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     ? (b.language as TripBriefInput["language"])
     : "en";
 
+  const needs_lodging = b.needs_lodging === false ? false : true;
+
   return {
     destinations,
     origin,
@@ -84,5 +86,6 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     mobility_constraints: cleanList(b.mobility_constraints, "mobility_constraints"),
     hard_no: cleanList(b.hard_no, "hard_no"),
     language,
+    needs_lodging,
   };
 }

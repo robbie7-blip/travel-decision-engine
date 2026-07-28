@@ -36,7 +36,7 @@ export function checkBudgetIntegrity(itinerary: Itinerary, brief: TripBriefInput
   );
 
   const warnings: string[] = [];
-  if (nights > 0 && lodgingItems.length === 0) {
+  if (brief.needs_lodging && nights > 0 && lodgingItems.length === 0) {
     warnings.push(
       `Itinerary spans ${nights} night(s) but has NO lodging line items at all — ` +
         `the budget total is almost certainly missing a major cost, regardless ` +

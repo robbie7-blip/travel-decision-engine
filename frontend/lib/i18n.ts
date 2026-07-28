@@ -33,6 +33,7 @@ export interface Dictionary {
     destinationsPlaceholder: string;
     origin: string;
     originPlaceholder: string;
+    skipLodgingLabel: string;
     startDate: string;
     startDatePlaceholder: string;
     endDate: string;
@@ -117,6 +118,7 @@ const en: Dictionary = {
     destinationsPlaceholder: "Brussels, Bruges",
     origin: "Traveling from (optional)",
     originPlaceholder: "e.g. London - used to estimate real arrival/departure transport cost",
+    skipLodgingLabel: "I already have accommodation sorted (e.g. business trip) - skip lodging suggestions",
     startDate: "Start date (YYYY-MM-DD)",
     startDatePlaceholder: "2026-10-10",
     endDate: "End date (YYYY-MM-DD)",
@@ -205,6 +207,7 @@ const bg: Dictionary = {
     origin: "Заминаване от (по избор)",
     originPlaceholder:
       "напр. Лондон - използва се за оценка на реалната цена на транспорта при пристигане/заминаване",
+    skipLodgingLabel: "Вече имам настаняване (напр. командировка) - пропусни предложенията за нощувка",
     startDate: "Начална дата (ГГГГ-ММ-ДД)",
     startDatePlaceholder: "2026-10-10",
     endDate: "Крайна дата (ГГГГ-ММ-ДД)",

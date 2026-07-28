@@ -21,6 +21,7 @@ export interface TripFormState {
   mobility_constraints: string;
   hard_no: string;
   language: Language;
+  needs_lodging: boolean;
 }
 
 export const DEFAULT_FORM_STATE: TripFormState = {
@@ -38,6 +39,7 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   mobility_constraints: "",
   hard_no: "",
   language: "en",
+  needs_lodging: true,
 };
 
 function splitList(value: string): string[] {
@@ -63,6 +65,7 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     mobility_constraints: splitList(form.mobility_constraints),
     hard_no: splitList(form.hard_no),
     language: form.language,
+    needs_lodging: form.needs_lodging,
   };
 }
 
@@ -109,6 +112,19 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               placeholder={t.form.originPlaceholder}
             />
           </Field>
+        </div>
+        <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={!value.needs_lodging}
+              onChange={(e) => update("needs_lodging", !e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: "var(--grounded)", flexShrink: 0 }}
+            />
+            <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+              {t.form.skipLodgingLabel}
+            </span>
+          </label>
         </div>
         <Field label={t.form.startDate}>
           <input
