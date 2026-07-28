@@ -19,6 +19,7 @@ import { getRedis } from "./redis";
 import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prompt";
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
+import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
 import type { Itinerary, TripBriefInput } from "./types";
 
 const MODEL = "claude-sonnet-5";
@@ -169,8 +170,12 @@ async function withOneRetry(fn: () => Promise<Itinerary>): Promise<Itinerary> {
   }
 }
 
-function generateItinerary(client: Anthropic, brief: TripBriefInput): Promise<Itinerary> {
-  return withOneRetry(() => callModel(client, brief, buildPrompt(brief)));
+function generateItinerary(
+  client: Anthropic,
+  brief: TripBriefInput,
+  cachedLodgingFacts: Record<string, string>
+): Promise<Itinerary> {
+  return withOneRetry(() => callModel(client, brief, buildPrompt(brief, cachedLodgingFacts)));
 }
 
 /** Handles a pushback/follow-up request: re-sends the previously generated
@@ -201,14 +206,19 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
   await writeJob(redis, job);
 
   try {
-    let itinerary = job.refinement
-      ? await generateRefinement(client, job.brief, job.refinement)
-      : await generateItinerary(client, job.brief);
+    let itinerary: Itinerary;
+    if (job.refinement) {
+      itinerary = await generateRefinement(client, job.brief, job.refinement);
+    } else {
+      const cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
+      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts);
+    }
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
     itinerary = deriveConfidenceTiers(itinerary);
     job.status = "done";
     job.result = itinerary;
+    await cacheLodgingFacts(redis, job.brief, itinerary);
   } catch (e) {
     console.error(`[worker] job ${id} failed:`, e);
     job.status = "error";

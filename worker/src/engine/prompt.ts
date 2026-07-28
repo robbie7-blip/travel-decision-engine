@@ -146,7 +146,10 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
   return lines.join("\n");
 }
 
-function buildContext(brief: TripBriefInput): { tripBlock: string; factsBlock: string; warning: string } {
+function buildContext(
+  brief: TripBriefInput,
+  cachedLodgingFacts?: Record<string, string>
+): { tripBlock: string; factsBlock: string; warning: string } {
   const factsBlocks: string[] = [];
   let anyUngrounded = false;
 
@@ -166,6 +169,14 @@ function buildContext(brief: TripBriefInput): { tripBlock: string; factsBlock: s
           `rather than as a confident local guide.`
       );
     }
+    // Skips a redundant live lodging search for this destination when a
+    // recent one was already verified (see lodgingCache.ts) — the actual
+    // bottleneck in generation wall-time is search round-trips, not model
+    // reasoning, so this is a real speed win, not just a cost one.
+    const cached = cachedLodgingFacts?.[city];
+    if (cached) {
+      factsBlocks.push(cached);
+    }
   }
 
   const warning = anyUngrounded
@@ -177,8 +188,8 @@ function buildContext(brief: TripBriefInput): { tripBlock: string; factsBlock: s
   return { tripBlock: tripBriefToPromptBlock(brief), factsBlock: factsBlocks.join("\n"), warning };
 }
 
-export function buildPrompt(brief: TripBriefInput): string {
-  const { tripBlock, factsBlock, warning } = buildContext(brief);
+export function buildPrompt(brief: TripBriefInput, cachedLodgingFacts?: Record<string, string>): string {
+  const { tripBlock, factsBlock, warning } = buildContext(brief, cachedLodgingFacts);
 
   return `Trip brief:
 ${tripBlock}
