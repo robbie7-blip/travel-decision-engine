@@ -6,15 +6,20 @@
   --bg-panel: #fffdf8;
   --bg-panel-raised: #f1e7d2;
   --line: #e3d5b3;
-  --grounded: #1f8a70;
+  --grounded: #1f6f8a;
   --unverified: #c97f1e;
   --infeasible: #b8452f;
-  --feasible: #1f8a70;
+  --feasible: #1f6f8a;
   /* Confidence tiers (ItineraryItem.confidence_tier). "verified" reuses
      --grounded and "conflicting" reuses --unverified deliberately — a
      conflicting-sources item still deserves the same "treat with caution"
-     amber as an ungrounded guess used to convey alone. */
-  --tier-single-source: #3f7ea3;
+     amber as an ungrounded guess used to convey alone. --tier-single-source
+     was a second blue (#3f7ea3) until --grounded became blue too (was
+     teal) — the two were nearly indistinguishable at a glance, which
+     defeats the point of a color-coded confidence system, so this is now
+     a muted violet instead: distinct from --grounded's blue, --unverified's
+     amber, and --tier-inferred's grey. */
+  --tier-single-source: #7d5ba6;
   --tier-inferred: #a89a82;
   /* Brand gradient accent (terracotta -> gold) — used for the headline,
      CTA, and small brand touches only, never for a trust/confidence
@@ -105,10 +110,10 @@ button {
 @keyframes pulse-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(31, 138, 112, 0.5);
+    box-shadow: 0 0 0 0 rgba(31, 111, 138, 0.5);
   }
   50% {
-    box-shadow: 0 0 0 5px rgba(31, 138, 112, 0);
+    box-shadow: 0 0 0 5px rgba(31, 111, 138, 0);
   }
 }
 
