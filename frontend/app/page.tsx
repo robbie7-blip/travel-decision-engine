@@ -80,9 +80,11 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "18px 24px 0", maxWidth: 960, margin: "0 auto" }}>
+      <div style={{ padding: "18px 24px 0" }}>
         <div
           style={{
+            maxWidth: 960,
+            margin: "0 auto",
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
