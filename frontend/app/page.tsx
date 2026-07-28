@@ -48,7 +48,7 @@ export default function Home() {
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="" width={30} height={30} />
+            <img src="/logo-icon.png" alt="" width={30} height={30} />
             <div>
               <div className="font-display" style={{ fontSize: 20, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
                 decide
