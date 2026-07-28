@@ -1,7 +1,8 @@
 "use client";
 
 import { Field, inputStyle } from "./ui";
-import type { TripBriefInput } from "@/lib/types";
+import type { Dictionary } from "@/lib/i18n";
+import type { Language, TripBriefInput } from "@/lib/types";
 
 // Form-local shape: comma-separated fields stay strings while being typed;
 // they're split into arrays only at submit time (see toTripBriefInput).
@@ -19,6 +20,7 @@ export interface TripFormState {
   dietary_constraints: string;
   mobility_constraints: string;
   hard_no: string;
+  language: Language;
 }
 
 export const DEFAULT_FORM_STATE: TripFormState = {
@@ -35,6 +37,7 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   dietary_constraints: "",
   mobility_constraints: "",
   hard_no: "",
+  language: "en",
 };
 
 function splitList(value: string): string[] {
@@ -59,6 +62,7 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     dietary_constraints: splitList(form.dietary_constraints),
     mobility_constraints: splitList(form.mobility_constraints),
     hard_no: splitList(form.hard_no),
+    language: form.language,
   };
 }
 
@@ -68,9 +72,10 @@ interface TripFormProps {
   onSubmit: () => void;
   submitting: boolean;
   submittingLabel?: string;
+  t: Dictionary;
 }
 
-export function TripForm({ value, onChange, onSubmit, submitting, submittingLabel }: TripFormProps) {
+export function TripForm({ value, onChange, onSubmit, submitting, submittingLabel, t }: TripFormProps) {
   function update<K extends keyof TripFormState>(key: K, val: TripFormState[K]) {
     onChange({ ...value, [key]: val });
   }
@@ -86,42 +91,42 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
     >
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
         <div style={{ gridColumn: "1 / -1" }}>
-          <Field label="Destinations (comma-separated)">
+          <Field label={t.form.destinations}>
             <input
               style={inputStyle}
               value={value.destinations}
               onChange={(e) => update("destinations", e.target.value)}
-              placeholder="Brussels, Bruges"
+              placeholder={t.form.destinationsPlaceholder}
             />
           </Field>
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
-          <Field label="Traveling from (optional)">
+          <Field label={t.form.origin}>
             <input
               style={inputStyle}
               value={value.origin}
               onChange={(e) => update("origin", e.target.value)}
-              placeholder="e.g. London — used to estimate real arrival/departure transport cost"
+              placeholder={t.form.originPlaceholder}
             />
           </Field>
         </div>
-        <Field label="Start date (YYYY-MM-DD)">
+        <Field label={t.form.startDate}>
           <input
             style={inputStyle}
             value={value.start_date}
             onChange={(e) => update("start_date", e.target.value)}
-            placeholder="2026-10-10"
+            placeholder={t.form.startDatePlaceholder}
           />
         </Field>
-        <Field label="End date (YYYY-MM-DD)">
+        <Field label={t.form.endDate}>
           <input
             style={inputStyle}
             value={value.end_date}
             onChange={(e) => update("end_date", e.target.value)}
-            placeholder="2026-10-13"
+            placeholder={t.form.endDatePlaceholder}
           />
         </Field>
-        <Field label="Party size">
+        <Field label={t.form.partySize}>
           <input
             type="number"
             min="1"
@@ -130,78 +135,78 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             onChange={(e) => update("party_size", e.target.value)}
           />
         </Field>
-        <Field label="Party description">
+        <Field label={t.form.partyDescription}>
           <input
             style={inputStyle}
             value={value.party_composition}
             onChange={(e) => update("party_composition", e.target.value)}
-            placeholder="couple, late 20s"
+            placeholder={t.form.partyPlaceholder}
           />
         </Field>
-        <Field label="Total budget (EUR, optional)">
+        <Field label={t.form.budget}>
           <input
             type="number"
             min="0"
             style={inputStyle}
             value={value.budget_total_eur}
             onChange={(e) => update("budget_total_eur", e.target.value)}
-            placeholder="leave blank if flexible"
+            placeholder={t.form.budgetPlaceholder}
           />
         </Field>
-        <Field label="Pace">
+        <Field label={t.form.pace}>
           <select
             style={inputStyle}
             value={value.pace}
             onChange={(e) => update("pace", e.target.value as TripFormState["pace"])}
           >
-            <option value="relaxed">Relaxed</option>
-            <option value="moderate">Moderate</option>
-            <option value="packed">Packed</option>
+            <option value="relaxed">{t.form.paceRelaxed}</option>
+            <option value="moderate">{t.form.paceModerate}</option>
+            <option value="packed">{t.form.pacePacked}</option>
           </select>
         </Field>
         <div style={{ gridColumn: "1 / -1" }}>
-          <Field label="Interests (comma-separated)">
+          <Field label={t.form.interests}>
             <input
               style={inputStyle}
               value={value.interests}
               onChange={(e) => update("interests", e.target.value)}
-              placeholder="food, architecture, beer culture"
+              placeholder={t.form.interestsPlaceholder}
             />
           </Field>
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
-          <Field label="Must-see / must-do (optional, comma-separated)">
+          <Field label={t.form.mustSee}>
             <input
               style={inputStyle}
               value={value.must_see}
               onChange={(e) => update("must_see", e.target.value)}
-              placeholder="a specific restaurant, a museum you've been wanting to visit"
+              placeholder={t.form.mustSeePlaceholder}
             />
           </Field>
         </div>
-        <Field label="Dietary constraints (optional)">
+        <Field label={t.form.dietary}>
           <input
             style={inputStyle}
             value={value.dietary_constraints}
             onChange={(e) => update("dietary_constraints", e.target.value)}
-            placeholder="vegetarian"
+            placeholder={t.form.dietaryPlaceholder}
           />
         </Field>
-        <Field label="Mobility constraints (optional)">
+        <Field label={t.form.mobility}>
           <input
             style={inputStyle}
             value={value.mobility_constraints}
             onChange={(e) => update("mobility_constraints", e.target.value)}
-            placeholder="limited walking"
+            placeholder={t.form.mobilityPlaceholder}
           />
         </Field>
         <div style={{ gridColumn: "1 / -1" }}>
-          <Field label="Hard constraints (optional, comma-separated)">
+          <Field label={t.form.hardNo}>
             <input
               style={inputStyle}
               value={value.hard_no}
               onChange={(e) => update("hard_no", e.target.value)}
-              placeholder="no overnight trains, no early mornings"
+              placeholder={t.form.hardNoPlaceholder}
             />
           </Field>
         </div>
@@ -222,7 +227,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
           cursor: submitting ? "default" : "pointer",
         }}
       >
-        {submitting ? (submittingLabel ?? "Deciding…") : "Generate itinerary"}
+        {submitting ? (submittingLabel ?? t.form.submitting) : t.form.submit}
       </button>
     </div>
   );

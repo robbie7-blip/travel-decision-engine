@@ -15,6 +15,7 @@ import type { TripBriefInput } from "@/lib/types";
 export const runtime = "nodejs";
 
 const VALID_PACES = new Set(["relaxed", "moderate", "packed"]);
+const VALID_LANGUAGES = new Set(["en", "bg"]);
 
 class ValidationError extends Error {}
 
@@ -74,6 +75,10 @@ function parseTripBrief(body: unknown): TripBriefInput {
     origin = b.origin.trim() || undefined;
   }
 
+  const language = typeof b.language === "string" && VALID_LANGUAGES.has(b.language)
+    ? (b.language as TripBriefInput["language"])
+    : "en";
+
   return {
     destinations,
     origin,
@@ -88,6 +93,7 @@ function parseTripBrief(body: unknown): TripBriefInput {
     dietary_constraints: cleanList(b.dietary_constraints, "dietary_constraints"),
     mobility_constraints: cleanList(b.mobility_constraints, "mobility_constraints"),
     hard_no: cleanList(b.hard_no, "hard_no"),
+    language,
   };
 }
 

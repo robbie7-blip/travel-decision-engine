@@ -1,3 +1,8 @@
+// UI chrome language and generated-content language share one selector (see
+// lib/i18n.ts for the UI dictionary, lib/engine/prompt.ts for how this drives
+// the model's output language).
+export type Language = "en" | "bg";
+
 // Mirrors trip_brief.TripBrief (backend/../trip_brief.py) — the input contract.
 export interface TripBriefInput {
   destinations: string[];
@@ -19,6 +24,7 @@ export interface TripBriefInput {
   dietary_constraints: string[];
   mobility_constraints: string[];
   hard_no: string[];
+  language: Language;
 }
 
 // Mirrors the JSON schema in engine.py's SYSTEM_PROMPT — the output contract.

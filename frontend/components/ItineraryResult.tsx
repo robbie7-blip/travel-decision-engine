@@ -4,12 +4,8 @@ import { useState } from "react";
 import { ConfidenceDot, SectionLabel, Stamp } from "./ui";
 import { submitFeedback } from "@/lib/api";
 import type { FeedbackRating } from "@/lib/feedback";
+import type { Dictionary } from "@/lib/i18n";
 import type { Itinerary, ItineraryItem } from "@/lib/types";
-
-const TIER_LABEL: Record<string, string> = {
-  single_source: "single source",
-  inferred: "unverified",
-};
 
 const feedbackButtonStyle = {
   fontSize: 11,
@@ -24,7 +20,17 @@ const feedbackButtonStyle = {
 /** Per-item helpful/wrong feedback control — the start of the trust-feedback
  * loop. Deliberately low-friction: one click for "helpful", one click plus an
  * optional one-line comment for "wrong". */
-function ItemFeedback({ jobId, day, item }: { jobId: string; day: number; item: ItineraryItem }) {
+function ItemFeedback({
+  jobId,
+  day,
+  item,
+  t,
+}: {
+  jobId: string;
+  day: number;
+  item: ItineraryItem;
+  t: Dictionary;
+}) {
   const [state, setState] = useState<"idle" | "commenting" | "submitting" | "done" | "error">("idle");
   const [comment, setComment] = useState("");
 
@@ -41,7 +47,7 @@ function ItemFeedback({ jobId, day, item }: { jobId: string; day: number; item: 
   if (state === "done") {
     return (
       <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
-        thanks — noted
+        {t.result.feedbackThanks}
       </div>
     );
   }
@@ -52,7 +58,7 @@ function ItemFeedback({ jobId, day, item }: { jobId: string; day: number; item: 
         <input
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="what was wrong? (optional)"
+          placeholder={t.result.feedbackPlaceholder}
           className="font-mono"
           style={{
             fontSize: 11,
@@ -66,7 +72,7 @@ function ItemFeedback({ jobId, day, item }: { jobId: string; day: number; item: 
           }}
         />
         <button type="button" onClick={() => send("wrong", comment)} className="font-mono" style={feedbackButtonStyle}>
-          submit
+          {t.result.feedbackSubmit}
         </button>
       </div>
     );
@@ -81,7 +87,7 @@ function ItemFeedback({ jobId, day, item }: { jobId: string; day: number; item: 
         className="font-mono"
         style={feedbackButtonStyle}
       >
-        looks right
+        {t.result.feedbackHelpful}
       </button>
       <button
         type="button"
@@ -90,27 +96,27 @@ function ItemFeedback({ jobId, day, item }: { jobId: string; day: number; item: 
         className="font-mono"
         style={feedbackButtonStyle}
       >
-        flag as wrong
+        {t.result.feedbackWrong}
       </button>
       {state === "error" && (
         <span className="font-mono" style={{ fontSize: 11, color: "var(--infeasible)" }}>
-          failed — try again
+          {t.result.feedbackFailed}
         </span>
       )}
     </div>
   );
 }
 
-export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: string }) {
+export function ItineraryResult({ result, jobId, t }: { result: Itinerary; jobId: string; t: Dictionary }) {
   return (
     <div>
       {result.budget_feasibility && (
         <div style={{ marginBottom: 24 }}>
           <Stamp ok={result.budget_feasibility.feasible}>
-            {result.budget_feasibility.feasible ? "Budget: feasible" : "Budget: not feasible as stated"}
+            {result.budget_feasibility.feasible ? t.result.budgetFeasible : t.result.budgetNotFeasible}
           </Stamp>
           <p style={{ color: "var(--ink-dim)", fontSize: 13, marginTop: 10, lineHeight: 1.6 }}>
-            Model&apos;s minimum estimate: €{result.budget_feasibility.min_realistic_total_eur} —{" "}
+            {t.result.minEstimate}: €{result.budget_feasibility.min_realistic_total_eur} —{" "}
             {result.budget_feasibility.reasoning}
           </p>
         </div>
@@ -151,7 +157,7 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
 
       {result.key_decisions && result.key_decisions.length > 0 && (
         <div style={{ marginBottom: 32 }}>
-          <SectionLabel>Key decisions</SectionLabel>
+          <SectionLabel>{t.result.keyDecisions}</SectionLabel>
           {result.key_decisions.map((d, i) => (
             <div
               key={i}
@@ -180,14 +186,14 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
                   paddingTop: 3,
                 }}
               >
-                {d.confidence}
+                {t.result.confidenceLevel[d.confidence]}
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{d.decision}</div>
                 <div style={{ fontSize: 13, color: "var(--ink-dim)", marginTop: 3 }}>{d.reasoning}</div>
                 {d.alternative_considered && (
                   <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 3, fontStyle: "italic" }}>
-                    vs: {d.alternative_considered}
+                    {t.result.vs}: {d.alternative_considered}
                   </div>
                 )}
               </div>
@@ -201,7 +207,7 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
           <div key={day.day} style={{ marginBottom: 28 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
               <span className="font-display" style={{ fontSize: 18, fontWeight: 600 }}>
-                Day {String(day.day).padStart(2, "0")}
+                {t.result.day} {String(day.day).padStart(2, "0")}
               </span>
               <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                 {day.date}
@@ -230,8 +236,8 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
                     <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                       €{item.cost_estimate_eur}
-                      {TIER_LABEL[item.confidence_tier ?? "inferred"] &&
-                        ` (${TIER_LABEL[item.confidence_tier ?? "inferred"]})`}
+                      {t.result.inlineTierLabel[item.confidence_tier ?? "inferred"] &&
+                        ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`}
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
@@ -261,17 +267,17 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
                             textDecoration: "underline",
                           }}
                         >
-                          {item.source_urls!.length > 1 ? `source ${si + 1}` : "source"} ↗
+                          {item.source_urls!.length > 1 ? `${t.result.source} ${si + 1}` : t.result.source} ↗
                         </a>
                       ))}
                       {item.source_agreement === "disagree" && (
                         <span className="font-mono" style={{ fontSize: 11, color: "var(--unverified)" }}>
-                          ⚠ sources disagree
+                          ⚠ {t.result.sourcesDisagree}
                         </span>
                       )}
                     </div>
                   )}
-                  <ItemFeedback jobId={jobId} day={day.day} item={item} />
+                  <ItemFeedback jobId={jobId} day={day.day} item={item} t={t} />
                 </div>
               </div>
             ))}
@@ -280,7 +286,7 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
 
       {result.things_to_skip && result.things_to_skip.length > 0 && (
         <div style={{ marginTop: 32 }}>
-          <SectionLabel>Skip this</SectionLabel>
+          <SectionLabel>{t.result.skipThis}</SectionLabel>
           {result.things_to_skip.map((s, i) => (
             <div key={i} style={{ padding: "10px 0", borderTop: "1px solid var(--line)" }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: "var(--infeasible)" }}>{s.item}</span>
