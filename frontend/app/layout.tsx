@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Fraunces, IBM_Plex_Mono } from "next/font/google";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -19,12 +20,24 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "decide — Travel decision engine",
   description: "It doesn't list options. It decides.",
+  appleWebApp: {
+    capable: true,
+    title: "decide",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1f6f8a",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} ${plexMono.variable}`}>{children}</body>
+      <body className={`${fraunces.variable} ${plexMono.variable}`}>
+        {children}
+        <ServiceWorkerRegistration />
+      </body>
     </html>
   );
 }
