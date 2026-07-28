@@ -2,6 +2,7 @@
 // entries submitted via /api/feedback. Reads directly from Redis — no
 // separate API route, since this is the only consumer.
 
+import Link from "next/link";
 import { getRedis } from "@/lib/redis";
 import { FEEDBACK_LIST_KEY, type FeedbackEntry } from "@/lib/feedback";
 
@@ -36,7 +37,10 @@ export default async function FeedbackAdminPage() {
         Feedback
       </h1>
       <div style={{ color: "var(--ink-dim)", fontSize: 13, marginBottom: 24 }}>
-        {entries.length} total · {wrongCount} flagged wrong
+        {entries.length} total · {wrongCount} flagged wrong ·{" "}
+        <Link href="/admin/stats" style={{ color: "var(--grounded)" }}>
+          stats →
+        </Link>
       </div>
 
       {entries.length === 0 && <p style={{ color: "var(--ink-dim)" }}>No feedback yet.</p>}
