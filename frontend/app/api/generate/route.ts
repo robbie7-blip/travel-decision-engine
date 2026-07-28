@@ -11,6 +11,7 @@ import { getRedis } from "@/lib/redis";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
 import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
+import { recordEvent } from "@/lib/analytics";
 import type { TripBriefInput } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -58,6 +59,15 @@ export async function POST(request: NextRequest) {
 
   await redis.set(jobKey(id), JSON.stringify(job), { ex: JOB_TTL_SECONDS });
   await redis.lpush(JOBS_QUEUE_KEY, id);
+
+  // Awaited, not fire-and-forget: a serverless function isn't guaranteed to
+  // keep running after it returns a response, so an un-awaited promise here
+  // could get silently cut off most of the time.
+  try {
+    await recordEvent(redis, "generate", brief.language);
+  } catch {
+    // Analytics must never break generation — swallow and move on.
+  }
 
   return NextResponse.json({ jobId: id }, { status: 202 });
 }
