@@ -66,7 +66,7 @@ export default async function FeedbackAdminPage() {
           <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
             {e.item.location} · {e.item.time}
           </div>
-          <div style={{ fontSize: 13, marginTop: 6, color: "#c8c5b8" }}>{e.item.reasoning}</div>
+          <div style={{ fontSize: 13, marginTop: 6, color: "var(--ink-soft)" }}>{e.item.reasoning}</div>
           {e.comment && (
             <div style={{ fontSize: 13, marginTop: 8, fontStyle: "italic", color: "var(--unverified)" }}>
               &ldquo;{e.comment}&rdquo;

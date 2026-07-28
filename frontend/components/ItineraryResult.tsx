@@ -237,7 +237,7 @@ export function ItineraryResult({ result, jobId }: { result: Itinerary; jobId: s
                   <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
                     {item.location} · {item.time}
                   </div>
-                  <div style={{ fontSize: 13, marginTop: 4, color: "#c8c5b8" }}>{item.reasoning}</div>
+                  <div style={{ fontSize: 13, marginTop: 4, color: "var(--ink-soft)" }}>{item.reasoning}</div>
                   {item.source_urls && item.source_urls.length > 0 && (
                     <div
                       style={{
