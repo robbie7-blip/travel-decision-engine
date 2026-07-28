@@ -10,6 +10,35 @@ good enough that a person would trust and act on them?**
 
 No app, no database, no accounts. Just a script you run and read.
 
+## Branding
+
+The mark is a suitcase silhouette with a checkmark cut into the body —
+"travel" (the silhouette) fused with "decided/confirmed" (the checkmark),
+same technique used across every iteration this logo went through (a
+location-pin and a compass were tried first; both failed to survive
+being shrunk to actual favicon size — see git history on
+`frontend/public/logo-icon.svg` if curious why).
+
+The color is always the same teal (`#1f8a70` → `#5fd9b8` gradient, or flat
+`#1f8a70`) — the same color already used for "grounded/verified" confidence
+signals throughout the product (`--grounded` in `globals.css`), so the
+brand mark and the product's own trust language reinforce each other.
+That color and the suitcase-plus-checkmark shape are the fixed identity;
+what changes is only the container, per context, because each context has
+different physical constraints:
+
+| Context | Asset | Treatment |
+|---|---|---|
+| Website header | `frontend/public/logo-icon.svg` | Transparent background, teal gradient mark — sits directly on the page's cream background |
+| Browser tab favicon | `frontend/app/icon.svg` | Same as above (Next.js App Router auto-detects `app/icon.svg`) |
+| "Add to Home Screen" (iOS) | `frontend/app/apple-icon.png` (180×180) | Solid teal tile, white glyph — iOS shows a plain white/black square behind a transparent icon if you don't supply a filled one, so this context requires its own background |
+| Master/future use (app store, social preview, etc.) | `frontend/public/app-icon-512.png` | Same filled-tile treatment at higher resolution |
+
+A filled tile isn't an inconsistency with the transparent web mark — it's
+the same core identity (shape + color + meaning) adapted to a context that
+can't render transparency the same way. If a new context comes up, adapt
+the container the same way rather than inventing a new mark.
+
 ## Setup
 
 ```bash
