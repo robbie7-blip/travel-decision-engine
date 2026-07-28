@@ -139,41 +139,25 @@ export function ItineraryResult({
 
   return (
     <div>
-      {result.pushback_response && (
-        <div
-          style={{
-            marginBottom: 24,
-            padding: "14px 16px",
-            border: "1px solid var(--line)",
-            borderRadius: 8,
-            background: "var(--bg-panel-raised)",
-          }}
-        >
-          {lastQuestion && (
-            <div
-              className="font-mono"
-              style={{
-                fontSize: 11,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "var(--ink-dim)",
-                marginBottom: 6,
-              }}
-            >
-              {t.result.pushbackYouAsked}:{" "}
-              <span style={{ textTransform: "none", fontStyle: "italic" }}>{lastQuestion}</span>
-            </div>
-          )}
-          <div style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6 }}>{result.pushback_response}</div>
-        </div>
-      )}
+      <h2
+        className="font-display"
+        style={{
+          fontWeight: 600,
+          fontSize: 22,
+          lineHeight: 1.4,
+          margin: "0 0 20px",
+          color: "var(--ink)",
+        }}
+      >
+        {result.trip_summary}
+      </h2>
 
       {result.budget_feasibility && (
         <div style={{ marginBottom: 24 }}>
           <Stamp ok={result.budget_feasibility.feasible}>
             {result.budget_feasibility.feasible ? t.result.budgetFeasible : t.result.budgetNotFeasible}
           </Stamp>
-          <p style={{ color: "var(--ink-dim)", fontSize: 13, marginTop: 10, lineHeight: 1.6 }}>
+          <p style={{ color: "var(--ink-soft)", fontSize: 14, marginTop: 10, lineHeight: 1.6 }}>
             {t.result.minEstimate}: €{result.budget_feasibility.min_realistic_total_eur} -{" "}
             {result.budget_feasibility.reasoning}
           </p>
@@ -199,19 +183,6 @@ export function ItineraryResult({
           ))}
         </div>
       )}
-
-      <h2
-        className="font-display"
-        style={{
-          fontWeight: 600,
-          fontSize: 22,
-          lineHeight: 1.4,
-          margin: "0 0 28px",
-          color: "var(--ink)",
-        }}
-      >
-        {result.trip_summary}
-      </h2>
 
       {result.key_decisions && result.key_decisions.length > 0 && (
         <div style={{ marginBottom: 32 }}>
@@ -381,12 +352,45 @@ export function ItineraryResult({
               cursor: refining || !question.trim() ? "default" : "pointer",
             }}
           >
-            {refining ? (refiningLabel ?? t.result.pushbackSubmitting) : t.result.pushbackSubmit}
+            {refining ? t.result.pushbackSubmitting : t.result.pushbackSubmit}
           </button>
         </div>
+        {refining && refiningLabel && (
+          <div className="font-mono" style={{ marginTop: 8, fontSize: 12, color: "var(--ink-dim)" }}>
+            {refiningLabel}
+          </div>
+        )}
         {refineError && (
           <div className="font-mono" style={{ marginTop: 8, fontSize: 12, color: "var(--infeasible)" }}>
             {refineError}
+          </div>
+        )}
+        {!refining && result.pushback_response && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: "14px 16px",
+              border: "1px solid var(--line)",
+              borderRadius: 8,
+              background: "var(--bg-panel-raised)",
+            }}
+          >
+            {lastQuestion && (
+              <div
+                className="font-mono"
+                style={{
+                  fontSize: 11,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "var(--ink-dim)",
+                  marginBottom: 6,
+                }}
+              >
+                {t.result.pushbackYouAsked}:{" "}
+                <span style={{ textTransform: "none", fontStyle: "italic" }}>{lastQuestion}</span>
+              </div>
+            )}
+            <div style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6 }}>{result.pushback_response}</div>
           </div>
         )}
       </div>
