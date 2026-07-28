@@ -80,74 +80,72 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "18px 24px 0" }}>
-        <div
-          style={{
-            maxWidth: 960,
-            margin: "0 auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: 24,
-          }}
-        >
-          <a
-            href="#confidence-legend"
-            className="font-mono"
-            style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-          >
-            {t.howItWorks}
-          </a>
-          <div
-            className="font-mono"
-            style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
-          >
-            {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => setLanguage(lang)}
-                style={{
-                  border: "none",
-                  padding: "6px 12px",
-                  fontSize: 11,
-                  letterSpacing: "0.04em",
-                  cursor: "pointer",
-                  background: form.language === lang ? "var(--grounded)" : "transparent",
-                  color: form.language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
-                }}
-              >
-                {lang.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: "10px 24px 36px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "28px 24px 36px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 22, marginBottom: 26 }}>
-            {/* Optical alignment: the shield's ink starts ~18% into its viewBox
-                (flat left edge at x=18/100), so a flush box-left placement reads
-                as indented next to the headline below it — pulled left to compensate. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-icon.svg" alt="" width={84} height={84} style={{ marginLeft: -15 }} />
-            <div>
-              <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
-                decide
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 24,
+              marginBottom: 26,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+              {/* Optical alignment: the shield's ink starts ~18% into its viewBox
+                  (flat left edge at x=18/100), so a flush box-left placement reads
+                  as indented next to the headline below it — pulled left to compensate. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-icon.svg" alt="" width={84} height={84} style={{ marginLeft: -15 }} />
+              <div>
+                <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
+                  decide
+                </div>
+                <div
+                  className="font-mono"
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 500,
+                    letterSpacing: "0.06em",
+                    color: "var(--accent-1)",
+                    textTransform: "uppercase",
+                    marginTop: 8,
+                  }}
+                >
+                  {t.tagline}
+                </div>
               </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+              <a
+                href="#how-it-works"
+                className="font-mono"
+                style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+              >
+                {t.howItWorks}
+              </a>
               <div
                 className="font-mono"
-                style={{
-                  fontSize: 14,
-                  fontWeight: 500,
-                  letterSpacing: "0.06em",
-                  color: "var(--accent-1)",
-                  textTransform: "uppercase",
-                  marginTop: 8,
-                }}
+                style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
-                {t.tagline}
+                {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setLanguage(lang)}
+                    style={{
+                      border: "none",
+                      padding: "6px 12px",
+                      fontSize: 11,
+                      letterSpacing: "0.04em",
+                      cursor: "pointer",
+                      background: form.language === lang ? "var(--grounded)" : "transparent",
+                      color: form.language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
+                    }}
+                  >
+                    {lang.toUpperCase()}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -155,20 +153,22 @@ export default function Home() {
             className="font-display gradient-text"
             style={{
               fontWeight: 600,
+              fontStyle: "italic",
               fontSize: "clamp(32px, 6vw, 48px)",
-              lineHeight: 1.1,
-              margin: "0 0 14px",
+              lineHeight: 1.25,
+              paddingBottom: 6,
+              margin: "0 0 10px",
             }}
           >
             {t.headline}
           </h1>
-          <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 560, margin: 0 }}>
+          <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 620, margin: 0 }}>
             {t.subhead}
           </p>
           <div
             id="confidence-legend"
             className="font-mono"
-            style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap", scrollMarginTop: 24 }}
+            style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap" }}
           >
             {(
               ["verified", "fact_grounded", "single_source", "conflicting", "inferred"] as const
@@ -186,6 +186,47 @@ export default function Home() {
               >
                 <ConfidenceDot tier={tier} /> {t.tierLegend[tier]}
               </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "32px 24px", borderBottom: "1px solid var(--line)" }}>
+        <div id="how-it-works" style={{ maxWidth: 960, margin: "0 auto", scrollMarginTop: 24 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 24,
+            }}
+          >
+            {[
+              { title: t.howItWorksSteps.step1Title, body: t.howItWorksSteps.step1Body },
+              { title: t.howItWorksSteps.step2Title, body: t.howItWorksSteps.step2Body },
+              { title: t.howItWorksSteps.step3Title, body: t.howItWorksSteps.step3Body },
+            ].map((step, i) => (
+              <div key={i}>
+                <div
+                  className="font-mono"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: "var(--grounded)",
+                    color: "var(--bg-panel)",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    marginBottom: 10,
+                  }}
+                >
+                  {i + 1}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{step.title}</div>
+                <div style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5 }}>{step.body}</div>
+              </div>
             ))}
           </div>
         </div>
