@@ -25,6 +25,11 @@ export interface TripBriefInput {
   mobility_constraints: string[];
   hard_no: string[];
   language: Language;
+  // Defaults to true. Set false when the traveler already has accommodation
+  // arranged (e.g. a business trip with lodging booked separately) — the
+  // engine then excludes lodging line items and lodging cost from the
+  // budget entirely instead of suggesting/pricing a place to stay.
+  needs_lodging: boolean;
 }
 
 // Mirrors the JSON schema in engine.py's SYSTEM_PROMPT — the output contract.

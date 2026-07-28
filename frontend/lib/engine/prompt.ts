@@ -43,15 +43,21 @@ comply with the literal wording of each constraint while ignoring that they conf
 itinerary, independently estimate a realistic MINIMUM total cost for this trip — \
 including lodging for every night, even if you have no verified lodging data (use \
 general knowledge and hedge it explicitly, e.g. "a bare-minimum hostel is realistically \
-at least roughly €X/night, unverified"). Compare that minimum to the stated budget. \
-You MUST include a "budget_feasibility" object as specified below, and you MUST NOT \
-silently reduce or omit a major cost category (especially lodging) just to make the \
-numbers appear to fit — if lodging is excluded from the daily items, budget_feasibility \
-must say so explicitly and explain why the budget is infeasible as stated.
+at least roughly €X/night, unverified") — UNLESS the trip brief states accommodation is \
+already arranged, in which case exclude lodging from this estimate entirely (see the \
+LODGING LINE ITEMS rule below). Compare that minimum to the stated budget. You MUST \
+include a "budget_feasibility" object as specified below, and you MUST NOT silently \
+reduce or omit a major cost category (especially lodging, when it applies) just to make \
+the numbers appear to fit — if lodging is excluded from the daily items despite being \
+needed, budget_feasibility must say so explicitly and explain why the budget is \
+infeasible as stated.
 - LODGING LINE ITEMS: include exactly one "lodging" item for EACH night of the stay, \
 even if it's the same place every night (do not collapse a multi-night stay into a \
 single check-in item). Each lodging item's cost_estimate_eur is that ONE night's cost, \
-not a multi-night total — the sum across nights must match your budget_feasibility math.
+not a multi-night total — the sum across nights must match your budget_feasibility math. \
+EXCEPTION: if the trip brief states accommodation is already arranged, include NO lodging \
+items at all and exclude lodging from the budget entirely — do not invent a placeholder \
+lodging cost "just in case."
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
 No trailing commas after the last property in an object or the last item in an array.
 - WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use \
@@ -130,6 +136,12 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
   ];
   if (brief.origin?.trim()) {
     lines.push(`Traveling from: ${brief.origin.trim()}`);
+  }
+  if (!brief.needs_lodging) {
+    lines.push(
+      `Accommodation: already arranged separately (e.g. a business trip) — do NOT include any ` +
+        `lodging line items and exclude lodging entirely from budget_feasibility.`
+    );
   }
   if (brief.must_see.length) {
     lines.push(`Must-see/must-do (near-mandatory inclusions): ${brief.must_see.join(", ")}`);
