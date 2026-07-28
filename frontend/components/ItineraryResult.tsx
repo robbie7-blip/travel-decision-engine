@@ -174,7 +174,7 @@ export function ItineraryResult({
             {result.budget_feasibility.feasible ? t.result.budgetFeasible : t.result.budgetNotFeasible}
           </Stamp>
           <p style={{ color: "var(--ink-dim)", fontSize: 13, marginTop: 10, lineHeight: 1.6 }}>
-            {t.result.minEstimate}: €{result.budget_feasibility.min_realistic_total_eur} —{" "}
+            {t.result.minEstimate}: €{result.budget_feasibility.min_realistic_total_eur} -{" "}
             {result.budget_feasibility.reasoning}
           </p>
         </div>
