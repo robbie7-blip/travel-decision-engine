@@ -18,6 +18,14 @@ export interface Dictionary {
   howItWorks: string;
   headline: string;
   subhead: string;
+  howItWorksSteps: {
+    step1Title: string;
+    step1Body: string;
+    step2Title: string;
+    step2Body: string;
+    step3Title: string;
+    step3Body: string;
+  };
   tierLegend: Record<ConfidenceTier, string>;
   jobStatus: Record<JobStatus, string>;
   form: {
@@ -82,9 +90,15 @@ const en: Dictionary = {
   tagline: "Your travel, decided.",
   howItWorks: "How it works",
   headline: "It doesn’t list options. It decides for you.",
-  subhead:
-    "Every line below carries its own confidence — from two sources agreeing to a plain, " +
-    "hedged guess — never hidden, never overstated. That distinction is the whole product.",
+  subhead: "Every line carries its own confidence — a verified fact, a single source, or an honest guess. Never hidden, never overstated.",
+  howItWorksSteps: {
+    step1Title: "Tell us the trip",
+    step1Body: "Destinations, dates, budget, pace — the things a friend would ask before planning.",
+    step2Title: "We check real prices",
+    step2Body: "Live search verifies lodging and named venues instead of guessing.",
+    step3Title: "Every line shows its confidence",
+    step3Body: "Verified, single-source, or an honest guess — never hidden, never overstated.",
+  },
   tierLegend: {
     verified: "2 sources agree",
     fact_grounded: "grounded in a fact",
@@ -163,8 +177,15 @@ const bg: Dictionary = {
   tagline: "Твоето пътуване, решено.",
   howItWorks: "Как работи",
   headline: "Не изброява опции. Решава вместо теб.",
-  subhead:
-    "Всеки ред по-долу носи собствено ниво на увереност — от съгласие между два източника до откровено предположение — никога скрито, никога преувеличено. Това е цялата същина на продукта.",
+  subhead: "Всеки ред носи собствено ниво на увереност — потвърден факт, един източник или честно предположение. Никога скрито, никога преувеличено.",
+  howItWorksSteps: {
+    step1Title: "Кажи ни за пътуването",
+    step1Body: "Дестинации, дати, бюджет, темп — нещата, които приятел би попитал преди да планира.",
+    step2Title: "Проверяваме реални цени",
+    step2Body: "Търсене на живо потвърждава нощувки и конкретни места, вместо да гадаем.",
+    step3Title: "Всеки ред показва увереността си",
+    step3Body: "Потвърдено, от един източник или честно предположение — никога скрито, никога преувеличено.",
+  },
   tierLegend: {
     verified: "2 източника съвпадат",
     fact_grounded: "базирано на факт",
