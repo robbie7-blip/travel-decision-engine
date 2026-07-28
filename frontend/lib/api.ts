@@ -17,28 +17,14 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
   return fallback;
 }
 
-/** Kicks off generation and polls until it's done. `onStatus` is called on
- * every poll so the UI can show progress ("queued" / "generating..."). Returns
- * the jobId alongside the result so the caller can attribute feedback
- * (submitFeedback below) to the job that produced each item. */
-export async function generateItinerary(
-  brief: TripBriefInput,
+/** Polls GET /api/job/[id] until it's done. `onStatus` is called on every
+ * poll so the UI can show progress ("queued" / "generating..."). Shared by
+ * generateItinerary and refineItinerary below — both just differ in how the
+ * job gets created. */
+async function pollJob(
+  jobId: string,
   onStatus?: (status: Job["status"]) => void
 ): Promise<{ jobId: string; itinerary: Itinerary }> {
-  const createResponse = await fetch("/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(brief),
-  });
-
-  if (!createResponse.ok) {
-    throw new ApiError(
-      await readErrorDetail(createResponse, `Request failed with status ${createResponse.status}.`)
-    );
-  }
-
-  const { jobId } = (await createResponse.json()) as { jobId: string };
-
   const start = Date.now();
   for (;;) {
     const jobResponse = await fetch(`/api/job/${jobId}`);
@@ -64,6 +50,56 @@ export async function generateItinerary(
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
+}
+
+/** Kicks off generation and polls until it's done. Returns the jobId
+ * alongside the result so the caller can attribute feedback (submitFeedback
+ * below) to the job that produced each item. */
+export async function generateItinerary(
+  brief: TripBriefInput,
+  onStatus?: (status: Job["status"]) => void
+): Promise<{ jobId: string; itinerary: Itinerary }> {
+  const createResponse = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(brief),
+  });
+
+  if (!createResponse.ok) {
+    throw new ApiError(
+      await readErrorDetail(createResponse, `Request failed with status ${createResponse.status}.`)
+    );
+  }
+
+  const { jobId } = (await createResponse.json()) as { jobId: string };
+  return pollJob(jobId, onStatus);
+}
+
+/** Submits a pushback/follow-up question about an already-generated
+ * itinerary and polls until the model's revision (or justified refusal)
+ * comes back. The returned itinerary replaces the caller's current one —
+ * including its own pushback_response — so a second pushback builds on the
+ * latest revision rather than the original. */
+export async function refineItinerary(
+  brief: TripBriefInput,
+  itinerary: Itinerary,
+  question: string,
+  onStatus?: (status: Job["status"]) => void
+): Promise<{ jobId: string; itinerary: Itinerary }> {
+  const createResponse = await fetch("/api/refine", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ brief, itinerary, question }),
+  });
+
+  if (!createResponse.ok) {
+    throw new ApiError(
+      await readErrorDetail(createResponse, `Request failed with status ${createResponse.status}.`)
+    );
+  }
+
+  const { jobId } = (await createResponse.json()) as { jobId: string };
+  return pollJob(jobId, onStatus);
 }
 
 /** Submits feedback on one itinerary line item. Swallows nothing — throws

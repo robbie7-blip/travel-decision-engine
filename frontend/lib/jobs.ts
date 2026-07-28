@@ -9,10 +9,21 @@ import type { Itinerary, TripBriefInput } from "./types";
 
 export type JobStatus = "pending" | "running" | "done" | "error";
 
+// Present when this job is a pushback/follow-up on a previously generated
+// itinerary rather than a fresh generation — see buildRefinementPrompt.
+// baseItinerary is the client's current (possibly already-revised) view of
+// the itinerary; carrying it in the request avoids depending on the
+// original job still being present under JOB_TTL_SECONDS.
+export interface RefinementRequest {
+  question: string;
+  baseItinerary: Itinerary;
+}
+
 export interface Job {
   id: string;
   status: JobStatus;
   brief: TripBriefInput;
+  refinement?: RefinementRequest;
   result?: Itinerary;
   error?: string;
   createdAt: number;

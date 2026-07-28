@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 // Relative, not "@/lib/types" — also imported directly by the worker.
-import type { TripBriefInput } from "../types";
+import type { Itinerary, TripBriefInput } from "../types";
 
 // Overridable so the worker (running from a different cwd than the Next.js
 // app) can point this at the same facts/ directory without duplicating it.
@@ -143,7 +143,7 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
   return lines.join("\n");
 }
 
-export function buildPrompt(brief: TripBriefInput): string {
+function buildContext(brief: TripBriefInput): { tripBlock: string; factsBlock: string; warning: string } {
   const factsBlocks: string[] = [];
   let anyUngrounded = false;
 
@@ -171,10 +171,54 @@ export function buildPrompt(brief: TripBriefInput): string {
       "are unverified estimates, not confirmed facts.\n"
     : "";
 
-  return `Trip brief:
-${tripBriefToPromptBlock(brief)}
+  return { tripBlock: tripBriefToPromptBlock(brief), factsBlock: factsBlocks.join("\n"), warning };
+}
 
-${factsBlocks.join("\n")}
+export function buildPrompt(brief: TripBriefInput): string {
+  const { tripBlock, factsBlock, warning } = buildContext(brief);
+
+  return `Trip brief:
+${tripBlock}
+
+${factsBlock}
 ${warning}
 Generate the itinerary now, as JSON matching the schema in your instructions.`;
+}
+
+/** Builds the prompt for a pushback/follow-up request: same trip-brief and
+ * facts context as a fresh generation, plus the itinerary already shown to
+ * the traveler and their question about it. Asks the model to answer
+ * directly (pushback_response) and only touch what the pushback actually
+ * warrants, rather than regenerating the whole trip from scratch. */
+export function buildRefinementPrompt(brief: TripBriefInput, baseItinerary: Itinerary, question: string): string {
+  const { tripBlock, factsBlock, warning } = buildContext(brief);
+
+  return `Trip brief:
+${tripBlock}
+
+${factsBlock}
+${warning}
+This is a FOLLOW-UP refinement request, not a fresh itinerary. Here is the itinerary you \
+previously generated for this exact trip brief:
+${JSON.stringify(baseItinerary)}
+
+The traveler has this pushback/follow-up question about it:
+"${question}"
+
+Your job:
+1. Set "pushback_response" to a direct, one-paragraph answer to their question, in the response \
+language specified above. If they're right, say so and explain what you're changing. If they're \
+wrong, or the request conflicts with a hard constraint or the budget, say so plainly and explain \
+why — the same way an opinionated local friend who disagrees with you would. Do not silently \
+comply just to please them, and do not silently ignore the question either.
+2. Then output the full itinerary again, as JSON matching the exact schema you were given \
+originally, with any changes applied (or unchanged, if no change is warranted). Only touch what \
+this pushback actually affects — leave every other item (including its cost, reasoning, \
+source_urls, and confidence signals) exactly as it was. Do not re-run searches for things you \
+aren't changing.
+3. Still enforce all the same rules as before: budget integrity, one lodging item per night, \
+grounding discipline, hedge language for unverified data.
+
+Output ONLY valid JSON matching the schema, now including a top-level "pushback_response" string \
+field alongside the existing fields. No prose outside the JSON.`;
 }

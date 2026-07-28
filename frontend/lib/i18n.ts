@@ -68,6 +68,11 @@ export interface Dictionary {
     feedbackSubmit: string;
     feedbackThanks: string;
     feedbackFailed: string;
+    pushbackLabel: string;
+    pushbackPlaceholder: string;
+    pushbackSubmit: string;
+    pushbackSubmitting: string;
+    pushbackYouAsked: string;
   };
   genericError: string;
 }
@@ -143,6 +148,11 @@ const en: Dictionary = {
     feedbackSubmit: "submit",
     feedbackThanks: "thanks — noted",
     feedbackFailed: "failed — try again",
+    pushbackLabel: "Push back on this",
+    pushbackPlaceholder: "e.g. \"why not the cheaper hotel near the station?\"",
+    pushbackSubmit: "ask",
+    pushbackSubmitting: "thinking…",
+    pushbackYouAsked: "You asked",
   },
   genericError: "Something went wrong. Try again.",
 };
@@ -218,6 +228,11 @@ const bg: Dictionary = {
     feedbackSubmit: "изпрати",
     feedbackThanks: "благодарим — отбелязано",
     feedbackFailed: "неуспешно — опитайте отново",
+    pushbackLabel: "Оспорете това",
+    pushbackPlaceholder: "напр. „защо не по-евтиния хотел до гарата?“",
+    pushbackSubmit: "попитай",
+    pushbackSubmitting: "обмисля…",
+    pushbackYouAsked: "Попитахте",
   },
   genericError: "Нещо не сработи. Опитайте отново.",
 };
