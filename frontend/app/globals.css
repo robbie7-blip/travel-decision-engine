@@ -78,17 +78,17 @@ button {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  background: linear-gradient(135deg, #1f6f8a, #5fc9d9);
   color: var(--bg-panel);
   border: none;
   border-radius: 999px;
-  box-shadow: 0 6px 20px -6px rgba(217, 100, 63, 0.45);
+  box-shadow: 0 6px 20px -6px rgba(31, 111, 138, 0.45);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 28px -6px rgba(217, 100, 63, 0.6);
+  box-shadow: 0 10px 28px -6px rgba(31, 111, 138, 0.6);
 }
 
 .btn-primary:disabled {

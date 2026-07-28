@@ -45,7 +45,7 @@ export default function Home() {
   return (
     <div style={{ minHeight: "100%" }}>
       <div style={{ padding: "48px 24px 36px", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={52} height={52} />
@@ -109,7 +109,7 @@ export default function Home() {
       </div>
 
       <div style={{ padding: "36px 24px", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <TripForm
             value={form}
             onChange={setForm}
@@ -127,7 +127,7 @@ export default function Home() {
 
       {result && resultJobId && (
         <div style={{ padding: "36px 24px 64px" }}>
-          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+          <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <ItineraryResult result={result} jobId={resultJobId} />
           </div>
         </div>
