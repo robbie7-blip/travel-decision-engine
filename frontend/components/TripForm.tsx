@@ -89,7 +89,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         padding: 24,
       }}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+      <div className="trip-form-grid">
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label={t.form.destinations}>
             <input
