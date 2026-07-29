@@ -92,11 +92,8 @@ export default function Home() {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-              {/* Optical alignment: the shield's ink starts ~18% into its viewBox
-                  (flat left edge at x=18/100), so a flush box-left placement reads
-                  as indented next to the headline below it — pulled left to compensate. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-icon.svg" alt="" width={84} height={84} style={{ marginLeft: -15, flexShrink: 0 }} />
+              <img src="/logo-icon.svg" alt="" width={84} height={84} style={{ flexShrink: 0 }} />
               <div>
                 <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
                   decide
