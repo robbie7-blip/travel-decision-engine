@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { listDestinationSlugs, loadDestination, type DestinationFact } from "@/lib/destinations";
+import { DestinationBanner } from "@/components/DestinationBanner";
+import { listDestinations, listDestinationSlugs, loadDestination, type DestinationFact } from "@/lib/destinations";
+import { DESTINATION_INTROS } from "@/lib/destinationIntros";
 
 export function generateStaticParams() {
   return listDestinationSlugs().map((slug) => ({ slug }));
@@ -60,6 +62,14 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
   if (!destination) notFound();
 
   const groups = groupByCategory(destination.facts);
+  const intro = DESTINATION_INTROS[slug];
+
+  const all = listDestinations().sort((a, b) => a.city.localeCompare(b.city));
+  const currentIndex = all.findIndex((d) => d.slug === slug);
+  const more =
+    currentIndex === -1
+      ? all.slice(0, 3)
+      : [all[(currentIndex + 1) % all.length], all[(currentIndex + 2) % all.length], all[(currentIndex + 3) % all.length]];
 
   return (
     <div style={{ minHeight: "100%" }}>
@@ -91,15 +101,28 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
         </div>
       </div>
 
-      <div style={{ padding: "40px 24px 72px" }}>
+      <div style={{ maxWidth: 780, margin: "36px auto 0", padding: "0 24px" }}>
+        <DestinationBanner city={destination.city} slug={slug} />
+      </div>
+
+      <div style={{ padding: "32px 24px 72px" }}>
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
-          <h1
-            className="font-display"
-            style={{ fontWeight: 600, fontSize: "clamp(30px, 5vw, 42px)", lineHeight: 1.15, margin: "0 0 14px", color: "var(--ink)" }}
-          >
-            {destination.city}
-          </h1>
-          <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 620, margin: "0 0 36px" }}>
+          {intro && (
+            <p
+              className="font-display"
+              style={{
+                fontStyle: "italic",
+                fontSize: 20,
+                lineHeight: 1.55,
+                color: "var(--ink-soft)",
+                margin: "0 0 24px",
+                maxWidth: 640,
+              }}
+            >
+              {intro}
+            </p>
+          )}
+          <p style={{ color: "var(--ink-dim)", fontSize: 14, lineHeight: 1.6, maxWidth: 620, margin: "0 0 40px" }}>
             A few things decide already knows about {destination.city} before it even runs a live search — grounded
             background, not a substitute for the price checks a real itinerary still runs.
           </p>
@@ -111,6 +134,9 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                 <div
                   className="font-mono"
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
                     fontSize: 11,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
@@ -118,6 +144,16 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                     marginBottom: 12,
                   }}
                 >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: meta.color,
+                      flexShrink: 0,
+                    }}
+                  />
                   {meta.label}
                 </div>
                 {items.map((text, i) => (
@@ -132,6 +168,16 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
               </div>
             );
           })}
+
+          <a
+            href={`https://en.wikipedia.org/wiki/${encodeURIComponent(destination.city)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono"
+            style={{ fontSize: 12, color: "var(--grounded)", textDecoration: "underline" }}
+          >
+            Read more on Wikipedia ↗
+          </a>
 
           <div style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--line)" }}>
             <a
@@ -154,6 +200,35 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
               checks either way.
             </p>
           </div>
+
+          {more.length > 0 && (
+            <div style={{ marginTop: 48 }}>
+              <div
+                className="font-mono"
+                style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 14 }}
+              >
+                More destination guides
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
+                {more.map((d) => (
+                  <a
+                    key={d.slug}
+                    href={`/destinations/${d.slug}`}
+                    className="hover-card"
+                    style={{
+                      display: "block",
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      border: "1px solid var(--line)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <DestinationBanner city={d.city} slug={d.slug} compact />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

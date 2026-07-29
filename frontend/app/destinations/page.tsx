@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DestinationBanner } from "@/components/DestinationBanner";
 import { listDestinations } from "@/lib/destinations";
 
 const title = "Destination guides — decide";
@@ -53,7 +54,7 @@ export default function DestinationsIndexPage() {
             Not on this list? decide plans anywhere — these are just a head start.
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16 }}>
             {destinations.map((d) => (
               <a
                 key={d.slug}
@@ -61,18 +62,18 @@ export default function DestinationsIndexPage() {
                 className="hover-card"
                 style={{
                   display: "block",
-                  padding: "16px 18px",
                   border: "1px solid var(--line)",
                   borderRadius: 10,
+                  overflow: "hidden",
                   textDecoration: "none",
                   color: "inherit",
                 }}
               >
-                <div className="font-display" style={{ fontSize: 19, fontWeight: 600, color: "var(--ink)" }}>
-                  {d.city}
-                </div>
-                <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
-                  {d.facts.length} local notes
+                <DestinationBanner city={d.city} slug={d.slug} compact />
+                <div style={{ padding: "10px 14px 14px" }}>
+                  <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                    {d.facts.length} local notes
+                  </div>
                 </div>
               </a>
             ))}
