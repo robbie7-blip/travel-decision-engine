@@ -1,0 +1,30 @@
+{
+  "city": "Dubai",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "The Dubai Metro is clean, driverless, and connects most tourist areas plus the airport directly; metered taxis are a reliable, reasonably priced alternative for anywhere the metro doesn't reach."
+    },
+    {
+      "category": "cost",
+      "text": "A mid-range hotel runs roughly AED 270-450/night (~$75-125); a mid-range dinner for two is closer to AED 250-340 (~$70-95) — costs climb fast at anything branded as a luxury or resort experience."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Unlicensed \"desert safari\" touts and gold souk vendors in Deira routinely quote inflated first prices expecting negotiation — haggling is normal and expected in souks, while mall prices are fixed and non-negotiable."
+    },
+    {
+      "category": "activity",
+      "text": "Burj Khalifa \"At the Top\" tickets are noticeably cheaper booked online in advance than at the door, and price varies a lot by time slot — sunset is the most expensive and sells out first."
+    },
+    {
+      "category": "practical",
+      "text": "Modest dress is expected outside beach/resort areas (shoulders and knees covered in malls and mosques); alcohol is only served in licensed hotels and restaurants, not sold in ordinary shops; summer heat (June-September, regularly 40°C+) makes daytime outdoor activity genuinely miserable."
+    },
+    {
+      "category": "dietary",
+      "text": "Halal food is the default virtually everywhere, and the modern dining scene (especially around JBR and Downtown) has strong vegetarian and vegan options alongside it."
+    }
+  ]
+}

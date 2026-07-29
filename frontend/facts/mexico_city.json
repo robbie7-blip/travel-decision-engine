@@ -1,0 +1,30 @@
+{
+  "city": "Mexico City",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "The Metro is extremely cheap and extensive but very crowded at rush hour, with women-and-children-only carriages at the front of some trains; app-based rides (Uber, Didi) or official sitio taxi stands are the safer choice over hailing a cab directly off the street."
+    },
+    {
+      "category": "cost",
+      "text": "A mid-range hotel runs roughly $60-90/night (up to ~$122 in high season); a mid-range dinner for two with drinks is closer to $25-40, while street tacos at $1-2 each are genuinely some of the best food in the city, not just a budget fallback."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Taxis flagged down directly on the street (rather than an app or an official sitio stand) have a real history of overcharging or worse; souvenir and craft stalls immediately at the Zócalo or Teotihuacán entrance are noticeably pricier than the same goods a few stalls further in."
+    },
+    {
+      "category": "activity",
+      "text": "The Teotihuacán pyramids are about an hour outside the city — arriving early morning means both cooler temperatures for the climb and thinner crowds before tour buses arrive."
+    },
+    {
+      "category": "practical",
+      "text": "The city sits at roughly 2,240m (7,350ft) altitude; mild effects (fatigue, shortness of breath on stairs) are common for the first day or two even for otherwise fit travelers."
+    },
+    {
+      "category": "dietary",
+      "text": "Corn- and vegetable-based dishes are everywhere, so vegetarian eating isn't hard, but strict vegan travelers should ask specifically — lard (manteca) is a common traditional cooking fat even in dishes that otherwise look plant-based."
+    }
+  ]
+}

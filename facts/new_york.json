@@ -1,0 +1,30 @@
+{
+  "city": "New York",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "The subway runs 24/7 at a flat tap-to-pay fare (OMNY or MetroCard) and is usually faster than a taxi or rideshare through Manhattan traffic; from JFK or LaGuardia, the AirTrain-plus-subway combination is far cheaper than a taxi, if slower."
+    },
+    {
+      "category": "cost",
+      "text": "A mid-range hotel runs roughly $180-350/night depending on season and neighborhood; a mid-range dinner for two is closer to $135-145 before drinks, while a solid slice of pizza or food-cart meal is $4-8 — the gap between casual and sit-down dining is large."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Restaurants directly on Times Square charge a real premium for unremarkable food compared to a few blocks away in Hell's Kitchen; street vendors selling discount souvenirs or electronics near major sights are a reliable source of low-quality goods at inflated prices."
+    },
+    {
+      "category": "activity",
+      "text": "Timed-entry tickets for the Empire State Building, Top of the Rock, and the Statue of Liberty ferry can sell out days ahead in peak season — book in advance rather than assuming same-day availability."
+    },
+    {
+      "category": "practical",
+      "text": "Tipping around 20% at sit-down restaurants is customary, not optional in the way it might read to a first-time visitor; expect to walk a lot, so comfortable shoes matter more here than in most cities."
+    },
+    {
+      "category": "dietary",
+      "text": "Vegetarian, vegan, kosher, and halal options are all well represented even in casual spots — one of the easier major cities to accommodate a dietary restriction without much advance planning."
+    }
+  ]
+}
