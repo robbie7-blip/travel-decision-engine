@@ -7,6 +7,7 @@ import Link from "next/link";
 import { getRedis } from "@/lib/redis";
 import { loadAnalyticsSnapshot, type AnalyticsSnapshot } from "@/lib/analytics";
 import { checkDailyBudget, type BudgetCheckResult } from "@/lib/spendCheck";
+import { ALERT_THRESHOLD_RATIO } from "@/lib/costBudget";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
 export const runtime = "nodejs";
@@ -38,6 +39,11 @@ export default async function StatsAdminPage() {
 
   const { analytics: snapshot, budget } = loaded;
   const maxDaily = Math.max(1, ...snapshot.daily.map((d) => d.generate + d.refine));
+  // Mirrors the worker's own early-warning threshold (see
+  // maybeAlertBudgetThreshold in worker/src/index.ts) so this page's color
+  // and that alert agree on what "nearing the cap" means.
+  const budgetNearLimit = budget.limitUsd > 0 && budget.spentUsd / budget.limitUsd >= ALERT_THRESHOLD_RATIO;
+  const budgetColor = !budget.allowed ? "var(--infeasible)" : budgetNearLimit ? "var(--unverified)" : "var(--ink)";
 
   return (
     <div className="font-mono" style={{ padding: "32px 24px", maxWidth: 900, margin: "0 auto", color: "var(--ink)" }}>
@@ -77,14 +83,12 @@ export default async function StatsAdminPage() {
           <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Today&apos;s spend
           </div>
-          <div
-            className="font-display"
-            style={{ fontSize: 32, fontWeight: 600, color: budget.allowed ? "var(--ink)" : "var(--tier-inferred, #b8433a)" }}
-          >
+          <div className="font-display" style={{ fontSize: 32, fontWeight: 600, color: budgetColor }}>
             ${budget.spentUsd.toFixed(2)}
           </div>
           <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
-            of ${budget.limitUsd.toFixed(2)} budget{!budget.allowed ? " — new generations paused" : ""}
+            of ${budget.limitUsd.toFixed(2)} budget
+            {!budget.allowed ? " — new generations paused" : budgetNearLimit ? " — nearing cap" : ""}
           </div>
         </div>
       </div>

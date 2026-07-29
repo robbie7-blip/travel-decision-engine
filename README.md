@@ -303,12 +303,22 @@ it's reached, resetting at UTC midnight.
 | `DAILY_BUDGET_USD` | `25` | Total USD/day before new generations are paused |
 | `INPUT_COST_PER_MTOK_USD` | `2.00` | Override if Sonnet 5 input pricing changes |
 | `OUTPUT_COST_PER_MTOK_USD` | `10.00` | Override if Sonnet 5 output pricing changes |
+| `BUDGET_ALERT_WEBHOOK_URL` | unset | If set, POSTed `{text}` once/day when spend crosses 80% (worker only) |
 
 The introductory Sonnet 5 rates ($2/$10 per MTok) above are in effect
 through 2026-08-31; after that, either bump the two override env vars or
 update the defaults in `costBudget.ts` (kept byte-identical between
 `frontend/lib/` and `worker/src/`, same convention as `jobs.ts`/`types.ts`).
-Today's spend vs. budget is visible on `/admin/stats`.
+Today's spend vs. budget is visible on `/admin/stats`, which turns amber at
+80% of budget and red once generations are actually paused.
+
+Separately from the frontend's 100%-blocking check, the worker logs a loud
+`BUDGET ALERT` line (and POSTs to `BUDGET_ALERT_WEBHOOK_URL` if set, a
+generic `{text: string}` body compatible with Slack/Discord-style incoming
+webhooks) the first time a day's spend crosses `ALERT_THRESHOLD_RATIO`
+(80%, see `costBudget.ts`) — an early warning, not a stricter cap, tracked
+via its own once-per-day Redis flag (`spend:alerted:YYYY-MM-DD`) so it
+doesn't re-fire on every job for the rest of the day.
 
 ### Feedback admin view
 

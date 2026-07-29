@@ -21,7 +21,15 @@ import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from ".
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
 import { cacheVenueFacts, loadCachedVenueFacts } from "./venueCache";
-import { estimateCostUsd, spendKey, SPEND_KEY_TTL_SECONDS, type ModelUsage } from "./costBudget";
+import {
+  ALERT_THRESHOLD_RATIO,
+  DAILY_BUDGET_USD,
+  alertKey,
+  estimateCostUsd,
+  spendKey,
+  SPEND_KEY_TTL_SECONDS,
+  type ModelUsage,
+} from "./costBudget";
 import type { Itinerary, TripBriefInput } from "./types";
 
 const MODEL = "claude-sonnet-5";
@@ -214,6 +222,38 @@ async function writeJob(redis: Redis, job: Job): Promise<void> {
   await redis.set(jobKey(job.id), JSON.stringify(job), "EX", JOB_TTL_SECONDS);
 }
 
+/** Fires once per day, the first time a spend update pushes the running
+ * total past ALERT_THRESHOLD_RATIO of the budget — a loud log line always,
+ * plus a POST to BUDGET_ALERT_WEBHOOK_URL if one is configured (a generic
+ * {text: string} payload, compatible with Slack/Discord-style incoming
+ * webhooks). Purely an early warning: checkDailyBudget on the frontend is
+ * what actually blocks new generations at 100%, unaffected by this. */
+async function maybeAlertBudgetThreshold(redis: Redis, totalSpentUsd: number): Promise<void> {
+  if (totalSpentUsd < DAILY_BUDGET_USD * ALERT_THRESHOLD_RATIO) return;
+
+  // SET ... NX so only the job whose spend update first crosses the
+  // threshold today fires the alert, even if several jobs finish at once.
+  const firstToCross = await redis.set(alertKey(), "1", "EX", SPEND_KEY_TTL_SECONDS, "NX");
+  if (firstToCross !== "OK") return;
+
+  const message =
+    `[worker] BUDGET ALERT: today's spend is $${totalSpentUsd.toFixed(2)} of a $${DAILY_BUDGET_USD.toFixed(2)} ` +
+    `daily cap (${Math.round(ALERT_THRESHOLD_RATIO * 100)}%+) — new generations will be rejected once the cap is reached.`;
+  console.warn(message);
+
+  const webhookUrl = process.env.BUDGET_ALERT_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  try {
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: message }),
+    });
+  } catch (e) {
+    console.error("[worker] failed to POST budget alert webhook:", e);
+  }
+}
+
 /** Adds this job's estimated cost onto today's running total — the
  * counterpart to checkDailyBudget on the frontend, which reads this same
  * key before enqueueing new jobs. Called once per job regardless of
@@ -222,8 +262,9 @@ async function writeJob(redis: Redis, job: Job): Promise<void> {
 async function recordSpend(redis: Redis, costUsd: number): Promise<void> {
   if (costUsd <= 0) return;
   const key = spendKey();
-  await redis.incrbyfloat(key, costUsd);
+  const newTotal = await redis.incrbyfloat(key, costUsd);
   await redis.expire(key, SPEND_KEY_TTL_SECONDS);
+  await maybeAlertBudgetThreshold(redis, Number(newTotal));
 }
 
 async function processJob(redis: Redis, client: Anthropic, id: string): Promise<void> {
