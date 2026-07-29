@@ -68,6 +68,8 @@ export interface Dictionary {
     hardNoPlaceholder: string;
     submit: string;
     submitting: string;
+    reassurance: string;
+    notSurePrompt: string;
   };
   result: {
     budgetFeasible: string;
@@ -160,6 +162,8 @@ const en: Dictionary = {
     hardNoPlaceholder: "no overnight trains, no early mornings",
     submit: "Generate itinerary",
     submitting: "Deciding…",
+    reassurance: "Takes about a minute - we check live prices as we plan, not guesses.",
+    notSurePrompt: "Not sure where to go yet? Browse destination guides →",
   },
   result: {
     budgetFeasible: "Budget: feasible",
@@ -256,6 +260,8 @@ const bg: Dictionary = {
     hardNoPlaceholder: "без нощни влакове, без ранни сутрини",
     submit: "Генерирай маршрут",
     submitting: "Решаваме…",
+    reassurance: "Отнема около минута - проверяваме актуални цени, докато планираме, не гадаем.",
+    notSurePrompt: "Все още не сте сигурни къде? Разгледайте пътеводителите →",
   },
   result: {
     budgetFeasible: "Бюджет: постижим",

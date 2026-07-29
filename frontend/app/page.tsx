@@ -87,7 +87,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 24, marginLeft: "auto" }}>
+            <div className="header-nav-row" style={{ display: "flex", alignItems: "center", gap: 24, marginLeft: "auto" }}>
               <a
                 href="#how-it-works"
                 className="font-mono"
@@ -224,6 +224,26 @@ export default function Home() {
           {status === "error" && (
             <div className="font-mono" style={{ marginTop: 14, color: "var(--infeasible)", fontSize: 13 }}>
               {error}
+            </div>
+          )}
+          {status !== "loading" && (
+            <div style={{ marginTop: 16 }}>
+              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: 0 }}>
+                {t.form.reassurance}
+              </p>
+              <a
+                href="/destinations"
+                className="font-mono"
+                style={{
+                  fontSize: 12,
+                  color: "var(--grounded)",
+                  textDecoration: "underline",
+                  display: "inline-block",
+                  marginTop: 6,
+                }}
+              >
+                {t.form.notSurePrompt}
+              </a>
             </div>
           )}
         </div>
