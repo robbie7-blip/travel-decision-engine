@@ -12,6 +12,7 @@ import {
 } from "@/lib/destinations";
 import { DESTINATION_INTROS } from "@/lib/destinationIntros";
 import { TRANSLATIONS } from "@/lib/i18n";
+import { getSiteUrl } from "@/lib/siteUrl";
 import type { Language } from "@/lib/types";
 
 export function generateStaticParams() {
@@ -104,8 +105,26 @@ export default async function DestinationPage({
       ? all.slice(0, 3)
       : [all[(currentIndex + 1) % all.length], all[(currentIndex + 2) % all.length], all[(currentIndex + 3) % all.length]];
 
+  // Structured data for search engines — a lightweight TouristDestination
+  // entry, not a substitute for the meta description above, just a machine-
+  // readable version of the same facts for rich-result eligibility.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TouristDestination",
+    name: displayCity,
+    description: dt.metaDetailDescription.replace("{city}", displayCity),
+    url: `${getSiteUrl()}/destinations/${slug}`,
+  };
+
   return (
     <div style={{ minHeight: "100%" }}>
+      <script
+        type="application/ld+json"
+        // JSON.stringify already escapes for JSON; the extra </ escape is
+        // defense in depth against breaking out of the script tag, though
+        // none of our (fixed, curated) inputs actually contain it.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)" }}>
         <div
           style={{
