@@ -31,7 +31,10 @@ export interface Job {
 }
 
 export const JOBS_QUEUE_KEY = "jobs:queue";
-export const JOB_TTL_SECONDS = 60 * 60; // 1 hour — plenty for a user to poll to completion
+// 30 days — a finished job is also the payload behind a shareable /trip/[id]
+// link (see app/trip/[jobId]), so this needs to outlive a single polling
+// session by a lot, not just cover the few minutes generation takes.
+export const JOB_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 export function jobKey(id: string): string {
   return `job:${id}`;
