@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DEFAULT_FORM_STATE, TripForm, toTripBriefInput, type TripFormState } from "@/components/TripForm";
+import { RecentTrips } from "@/components/RecentTrips";
 import { ConfidenceDot } from "@/components/ui";
 import { ApiError, createGenerateJob } from "@/lib/api";
 import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
@@ -182,6 +183,7 @@ export default function Home() {
               </span>
             ))}
           </div>
+          <RecentTrips t={t} />
         </div>
       </div>
 

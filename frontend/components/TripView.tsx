@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ItineraryResult } from "./ItineraryResult";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
+import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
 import type { Job } from "@/lib/jobs";
 import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
 
@@ -47,6 +48,16 @@ export function TripView({ jobId }: { jobId: string }) {
         setLastBrief(brief);
         const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
         if (saved !== "en" && saved !== "bg") setLanguageState(brief.language);
+        // Bookmarks this visit so a returning visitor can find their way
+        // back from the homepage (see lib/recentTrips.ts) — no accounts,
+        // just this browser's own localStorage.
+        saveRecentTrip({
+          jobId,
+          destinations: brief.destinations,
+          startDate: brief.start_date,
+          endDate: brief.end_date,
+          language: brief.language,
+        });
       })
       .catch((e) => {
         if (cancelled) return;
@@ -74,6 +85,17 @@ export function TripView({ jobId }: { jobId: string }) {
       setResult(itinerary);
       setLastBrief(brief);
       setLastQuestion(question);
+      // The refined itinerary lives at a new job id — swap the bookmarked
+      // entry over rather than leaving a stale duplicate pointing at the
+      // pre-refinement version.
+      removeRecentTrip(currentJobId);
+      saveRecentTrip({
+        jobId: newJobId,
+        destinations: brief.destinations,
+        startDate: brief.start_date,
+        endDate: brief.end_date,
+        language: brief.language,
+      });
       setCurrentJobId(newJobId);
       router.push(`/trip/${newJobId}`);
     } catch (e) {

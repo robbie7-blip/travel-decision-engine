@@ -105,6 +105,12 @@ export interface Dictionary {
     notFound: string;
     loading: string;
   };
+  // Bookmarks a browser has visited (see lib/recentTrips.ts) — no accounts,
+  // purely a localStorage list of previously generated /trip/[jobId] links.
+  recentTrips: {
+    heading: string;
+    remove: string; // aria-label on the per-entry remove button
+  };
   destinations: {
     pageTitle: string;
     pageDescription: string; // "{count}" placeholder for the city count
@@ -220,6 +226,10 @@ const en: Dictionary = {
     planAnother: "Plan your own trip",
     notFound: "This trip link has expired or doesn't exist.",
     loading: "Loading your trip…",
+  },
+  recentTrips: {
+    heading: "Your recent trips",
+    remove: "Remove",
   },
   destinations: {
     pageTitle: "Destination guides",
@@ -347,6 +357,10 @@ const bg: Dictionary = {
     planAnother: "Планирайте свое пътуване",
     notFound: "Тази връзка е изтекла или не съществува.",
     loading: "Зареждане на пътуването…",
+  },
+  recentTrips: {
+    heading: "Скорошни пътувания",
+    remove: "Премахни",
   },
   destinations: {
     pageTitle: "Пътеводители по дестинации",
