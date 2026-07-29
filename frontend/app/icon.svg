@@ -1,13 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
     <linearGradient id="pathGradient" x1="50" y1="45" x2="50" y2="86" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#5fc9d9"/>
+      <stop offset="0" stop-color="#4f9aa8"/>
       <stop offset="1" stop-color="#1f6f8a"/>
     </linearGradient>
+    <radialGradient id="dotGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#d9643f" stop-opacity="0.4"/>
+      <stop offset="70%" stop-color="#d9643f" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#d9643f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="leftLine" x1="22" y1="18" x2="50" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e8a23f"/>
+      <stop offset="1" stop-color="#8a7d68"/>
+    </linearGradient>
+    <linearGradient id="rightLine" x1="78" y1="18" x2="50" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e8a23f"/>
+      <stop offset="1" stop-color="#8a7d68"/>
+    </linearGradient>
+    <linearGradient id="midLine" x1="50" y1="12" x2="50" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e8a23f"/>
+      <stop offset="1" stop-color="#8a7d68"/>
+    </linearGradient>
   </defs>
-  <path d="M22 18 Q 36 34 50 50" fill="none" stroke="#8a7d68" stroke-width="3.5" stroke-linecap="round" opacity="0.45"/>
-  <path d="M50 12 L 50 50" fill="none" stroke="#8a7d68" stroke-width="3.5" stroke-linecap="round" opacity="0.45"/>
-  <path d="M78 18 Q 64 34 50 50" fill="none" stroke="#8a7d68" stroke-width="3.5" stroke-linecap="round" opacity="0.45"/>
+  <path d="M22 18 Q 36 34 50 50" fill="none" stroke="url(#leftLine)" stroke-width="3.5" stroke-linecap="round" opacity="0.6"/>
+  <path d="M50 12 L 50 50" fill="none" stroke="url(#midLine)" stroke-width="3.5" stroke-linecap="round" opacity="0.6"/>
+  <path d="M78 18 Q 64 34 50 50" fill="none" stroke="url(#rightLine)" stroke-width="3.5" stroke-linecap="round" opacity="0.6"/>
   <path d="M50 50 L 50 78" fill="none" stroke="url(#pathGradient)" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="50" cy="84" r="7" fill="#d9643f"/>
+  <circle cx="50" cy="84" r="15" fill="url(#dotGlow)"/>
+  <circle cx="50" cy="84" r="9" fill="#d9643f"/>
 </svg>
