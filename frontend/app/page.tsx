@@ -53,7 +53,9 @@ export default function Home() {
               flexWrap: "wrap",
               alignItems: "center",
               gap: 16,
+              paddingBottom: 24,
               marginBottom: 26,
+              borderBottom: "1px solid var(--line)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
@@ -125,7 +127,9 @@ export default function Home() {
             {t.headline}
           </h1>
           <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 620, margin: 0 }}>
-            {t.subhead}
+            {t.subheadLine1}
+            <br />
+            {t.subheadLine2}
           </p>
           <div
             id="confidence-legend"
