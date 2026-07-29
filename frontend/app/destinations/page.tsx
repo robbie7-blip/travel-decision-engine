@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DestinationBanner } from "@/components/DestinationBanner";
+import { DestinationHero } from "@/components/DestinationHero";
 import { listDestinations } from "@/lib/destinations";
 
 const title = "Destination guides — decide";
@@ -69,7 +69,7 @@ export default function DestinationsIndexPage() {
                   color: "inherit",
                 }}
               >
-                <DestinationBanner city={d.city} slug={d.slug} compact />
+                <DestinationHero city={d.city} slug={d.slug} compact />
                 <div style={{ padding: "10px 14px 14px" }}>
                   <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
                     {d.facts.length} local notes

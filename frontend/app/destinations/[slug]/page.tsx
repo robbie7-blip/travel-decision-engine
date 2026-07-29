@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { DestinationBanner } from "@/components/DestinationBanner";
-import { listDestinations, listDestinationSlugs, loadDestination, type DestinationFact } from "@/lib/destinations";
+import { DestinationHero } from "@/components/DestinationHero";
+import {
+  getDestinationPhoto,
+  listDestinations,
+  listDestinationSlugs,
+  loadDestination,
+  type DestinationFact,
+} from "@/lib/destinations";
 import { DESTINATION_INTROS } from "@/lib/destinationIntros";
 
 export function generateStaticParams() {
@@ -63,6 +69,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
 
   const groups = groupByCategory(destination.facts);
   const intro = DESTINATION_INTROS[slug];
+  const photo = getDestinationPhoto(slug);
 
   const all = listDestinations().sort((a, b) => a.city.localeCompare(b.city));
   const currentIndex = all.findIndex((d) => d.slug === slug);
@@ -102,7 +109,16 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
       </div>
 
       <div style={{ maxWidth: 780, margin: "36px auto 0", padding: "0 24px" }}>
-        <DestinationBanner city={destination.city} slug={slug} />
+        <DestinationHero city={destination.city} slug={slug} />
+        {photo?.credit && (
+          <p className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
+            Photo:{" "}
+            <a href={photo.credit.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
+              {photo.credit.artist}
+            </a>{" "}
+            · {photo.credit.license}
+          </p>
+        )}
       </div>
 
       <div style={{ padding: "32px 24px 72px" }}>
@@ -223,7 +239,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                       textDecoration: "none",
                     }}
                   >
-                    <DestinationBanner city={d.city} slug={d.slug} compact />
+                    <DestinationHero city={d.city} slug={d.slug} compact />
                   </a>
                 ))}
               </div>
