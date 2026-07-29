@@ -21,7 +21,11 @@ export interface Dictionary {
   tagline: string;
   howItWorks: string;
   headline: string;
-  subhead: string;
+  // Two sentences, rendered on separate lines (see page.tsx) — kept apart so
+  // "Never hidden, never overstated." never gets split by a text wrap that
+  // strands "Never" alone at the end of the line above it.
+  subheadLine1: string;
+  subheadLine2: string;
   howItWorksSteps: {
     step1Title: string;
     step1Body: string;
@@ -100,7 +104,8 @@ const en: Dictionary = {
   tagline: "Your travel, decided.",
   howItWorks: "How it works",
   headline: "It doesn’t list options. It decides for you.",
-  subhead: "Every line carries its own confidence - a verified fact, a single source, or an honest guess. Never hidden, never overstated.",
+  subheadLine1: "Every line carries its own confidence - a verified fact, a single source, or an honest guess.",
+  subheadLine2: "Never hidden, never overstated.",
   howItWorksSteps: {
     step1Title: "Tell us the trip",
     step1Body: "Destinations, dates, budget, pace - the things a friend would ask before planning.",
@@ -193,7 +198,8 @@ const bg: Dictionary = {
   tagline: "Твоето пътуване, измислено.",
   howItWorks: "Как работи",
   headline: "Без опции. Решава вместо теб.",
-  subhead: "Всеки ред носи собствено ниво на увереност - потвърден факт, един източник или честно предположение. Никога скрито, никога преувеличено.",
+  subheadLine1: "Всеки ред носи собствено ниво на увереност - потвърден факт, един източник или честно предположение.",
+  subheadLine2: "Никога скрито, никога преувеличено.",
   howItWorksSteps: {
     step1Title: "Кажи ни за пътуването",
     step1Body: "Дестинации, дати, бюджет, темп - нещата, които приятел би попитал преди да планира.",
