@@ -13,6 +13,10 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
   bg: "Български",
 };
 
+// Shared between the home page and /trip/[jobId] so a language choice made
+// on either one sticks across the whole site.
+export const LANGUAGE_STORAGE_KEY = "decide:language";
+
 export interface Dictionary {
   tagline: string;
   howItWorks: string;
@@ -85,6 +89,11 @@ export interface Dictionary {
     pushbackYouAsked: string;
   };
   genericError: string;
+  trip: {
+    planAnother: string;
+    notFound: string;
+    loading: string;
+  };
 }
 
 const en: Dictionary = {
@@ -173,6 +182,11 @@ const en: Dictionary = {
     pushbackYouAsked: "You asked",
   },
   genericError: "Something went wrong. Try again.",
+  trip: {
+    planAnother: "Plan your own trip",
+    notFound: "This trip link has expired or doesn't exist.",
+    loading: "Loading your trip…",
+  },
 };
 
 const bg: Dictionary = {
@@ -262,6 +276,11 @@ const bg: Dictionary = {
     pushbackYouAsked: "Попитахте",
   },
   genericError: "Нещо не сработи. Опитайте отново.",
+  trip: {
+    planAnother: "Планирайте свое пътуване",
+    notFound: "Тази връзка е изтекла или не съществува.",
+    loading: "Зареждане на пътуването…",
+  },
 };
 
 export const TRANSLATIONS: Record<Language, Dictionary> = { en, bg };

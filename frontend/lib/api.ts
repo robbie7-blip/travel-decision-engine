@@ -19,12 +19,14 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
 
 /** Polls GET /api/job/[id] until it's done. `onStatus` is called on every
  * poll so the UI can show progress ("queued" / "generating..."). Shared by
- * generateItinerary and refineItinerary below — both just differ in how the
- * job gets created. */
-async function pollJob(
+ * refineItinerary below and by the /trip/[jobId] page, which polls a job it
+ * didn't create itself (loaded straight from a shared link). Returns the
+ * brief alongside the result since a page loading a job cold — rather than
+ * holding the brief in form state already — needs it to submit a pushback. */
+export async function pollJob(
   jobId: string,
   onStatus?: (status: Job["status"]) => void
-): Promise<{ jobId: string; itinerary: Itinerary }> {
+): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput }> {
   const start = Date.now();
   for (;;) {
     const jobResponse = await fetch(`/api/job/${jobId}`);
@@ -39,7 +41,7 @@ async function pollJob(
 
     if (job.status === "done") {
       if (!job.result) throw new ApiError("Job finished but returned no result.");
-      return { jobId, itinerary: job.result };
+      return { jobId, itinerary: job.result, brief: job.brief };
     }
     if (job.status === "error") {
       throw new ApiError(job.error ?? "Generation failed.");
@@ -52,13 +54,11 @@ async function pollJob(
   }
 }
 
-/** Kicks off generation and polls until it's done. Returns the jobId
- * alongside the result so the caller can attribute feedback (submitFeedback
- * below) to the job that produced each item. */
-export async function generateItinerary(
-  brief: TripBriefInput,
-  onStatus?: (status: Job["status"]) => void
-): Promise<{ jobId: string; itinerary: Itinerary }> {
+/** Enqueues a generation job and returns its id immediately, without
+ * polling — the caller (the trip form) navigates to /trip/[jobId] right
+ * away and lets that page own polling, so the result has a shareable,
+ * bookmarkable URL from the moment generation starts. */
+export async function createGenerateJob(brief: TripBriefInput): Promise<string> {
   const createResponse = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -72,7 +72,7 @@ export async function generateItinerary(
   }
 
   const { jobId } = (await createResponse.json()) as { jobId: string };
-  return pollJob(jobId, onStatus);
+  return jobId;
 }
 
 /** Submits a pushback/follow-up question about an already-generated
@@ -85,7 +85,7 @@ export async function refineItinerary(
   itinerary: Itinerary,
   question: string,
   onStatus?: (status: Job["status"]) => void
-): Promise<{ jobId: string; itinerary: Itinerary }> {
+): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput }> {
   const createResponse = await fetch("/api/refine", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
