@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Fraunces, IBM_Plex_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { getSiteUrl } from "@/lib/siteUrl";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -17,15 +18,7 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-// Vercel injects these automatically at build/runtime — no manual env setup
-// needed. Prefer the stable production domain over the current deployment's
-// own URL so preview-deploy builds still generate share links pointing at
-// production, not at themselves.
-const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  : process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
+const siteUrl = getSiteUrl();
 
 const title = "decide — Travel decision engine";
 const description = "It doesn't list options. It decides.";
