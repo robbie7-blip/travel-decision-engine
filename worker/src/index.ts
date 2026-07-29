@@ -20,6 +20,7 @@ import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prom
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
+import { cacheVenueFacts, loadCachedVenueFacts } from "./venueCache";
 import { estimateCostUsd, spendKey, SPEND_KEY_TTL_SECONDS, type ModelUsage } from "./costBudget";
 import type { Itinerary, TripBriefInput } from "./types";
 
@@ -185,9 +186,12 @@ function generateItinerary(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
+  cachedVenueFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<Itinerary> {
-  return withOneRetry(() => callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage));
+  return withOneRetry(() =>
+    callModel(client, brief, buildPrompt(brief, cachedLodgingFacts, cachedVenueFacts), onUsage)
+  );
 }
 
 /** Handles a pushback/follow-up request: re-sends the previously generated
@@ -244,8 +248,11 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     if (job.refinement) {
       itinerary = await generateRefinement(client, job.brief, job.refinement, onUsage);
     } else {
-      const cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
-      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, onUsage);
+      const [cachedLodgingFacts, cachedVenueFacts] = await Promise.all([
+        loadCachedLodgingFacts(redis, job.brief.destinations),
+        loadCachedVenueFacts(redis, job.brief.destinations),
+      ]);
+      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, cachedVenueFacts, onUsage);
     }
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
@@ -253,6 +260,7 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     job.status = "done";
     job.result = itinerary;
     await cacheLodgingFacts(redis, job.brief, itinerary);
+    await cacheVenueFacts(redis, job.brief, itinerary);
   } catch (e) {
     console.error(`[worker] job ${id} failed:`, e);
     job.status = "error";
