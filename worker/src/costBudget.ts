@@ -44,6 +44,20 @@ export function spendKey(day: string = dayKey()): string {
   return `spend:day:${day}`;
 }
 
+// Early-warning threshold: the worker logs (and optionally pings a webhook,
+// see BUDGET_ALERT_WEBHOOK_URL in index.ts) once actual spend crosses this
+// fraction of DAILY_BUDGET_USD, so a climb toward the cap is visible before
+// generations actually start getting rejected. Not a stricter enforcement
+// rule — checkDailyBudget still only blocks at 100%.
+export const ALERT_THRESHOLD_RATIO = 0.8;
+
+// Separate from spendKey so "have we already alerted today" is its own
+// flag — set once (via SET NX, see index.ts) the first time a job's spend
+// update crosses the threshold, so later jobs that same day don't re-alert.
+export function alertKey(day: string = dayKey()): string {
+  return `spend:alerted:${day}`;
+}
+
 export interface ModelUsage {
   input_tokens: number;
   output_tokens: number;
