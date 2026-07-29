@@ -20,6 +20,7 @@ export const LANGUAGE_STORAGE_KEY = "decide:language";
 export interface Dictionary {
   tagline: string;
   howItWorks: string;
+  browseDestinations: string;
   headline: string;
   // Two sentences, rendered on separate lines (see page.tsx) — kept apart so
   // "Never hidden, never overstated." never gets split by a text wrap that
@@ -103,6 +104,7 @@ export interface Dictionary {
 const en: Dictionary = {
   tagline: "Your travel, decided.",
   howItWorks: "How it works",
+  browseDestinations: "Destination guides",
   headline: "It doesn’t list options. It decides for you.",
   subheadLine1: "Every line carries its own confidence - a verified fact, a single source, or an honest guess.",
   subheadLine2: "Never hidden, never overstated.",
@@ -197,6 +199,7 @@ const en: Dictionary = {
 const bg: Dictionary = {
   tagline: "Твоето пътуване, измислено.",
   howItWorks: "Как работи",
+  browseDestinations: "Пътеводители",
   headline: "Без опции. Решава вместо теб.",
   subheadLine1: "Всеки ред носи собствено ниво на увереност - потвърден факт, един източник или честно предположение.",
   subheadLine2: "Никога скрито, никога преувеличено.",
