@@ -20,6 +20,7 @@ import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prom
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
+import { estimateCostUsd, spendKey, SPEND_KEY_TTL_SECONDS, type ModelUsage } from "./costBudget";
 import type { Itinerary, TripBriefInput } from "./types";
 
 const MODEL = "claude-sonnet-5";
@@ -119,7 +120,12 @@ function estimateMaxSearchUses(brief: TripBriefInput): number {
   return Math.min((lodgingSearches + itemSearches) * 3, 60);
 }
 
-async function callModel(client: Anthropic, brief: TripBriefInput, userPrompt: string): Promise<Itinerary> {
+async function callModel(
+  client: Anthropic,
+  brief: TripBriefInput,
+  userPrompt: string,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<Itinerary> {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: MAX_TOKENS,
@@ -137,6 +143,11 @@ async function callModel(client: Anthropic, brief: TripBriefInput, userPrompt: s
     ],
     messages: [{ role: "user", content: userPrompt }],
   });
+
+  // Anthropic bills for this call whether or not the response below turns
+  // out to be a refusal or malformed JSON, so usage is recorded right away
+  // rather than only on a successful parse.
+  onUsage?.(response.usage);
 
   if (response.stop_reason === "refusal") {
     throw new ModelOutputError(
@@ -173,24 +184,42 @@ async function withOneRetry(fn: () => Promise<Itinerary>): Promise<Itinerary> {
 function generateItinerary(
   client: Anthropic,
   brief: TripBriefInput,
-  cachedLodgingFacts: Record<string, string>
+  cachedLodgingFacts: Record<string, string>,
+  onUsage?: (usage: ModelUsage) => void
 ): Promise<Itinerary> {
-  return withOneRetry(() => callModel(client, brief, buildPrompt(brief, cachedLodgingFacts)));
+  return withOneRetry(() => callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage));
 }
 
 /** Handles a pushback/follow-up request: re-sends the previously generated
  * itinerary plus the traveler's question, and asks the model to either
  * revise the itinerary or explain why it's standing firm — see
  * buildRefinementPrompt for the exact instructions given. */
-function generateRefinement(client: Anthropic, brief: TripBriefInput, refinement: RefinementRequest): Promise<Itinerary> {
+function generateRefinement(
+  client: Anthropic,
+  brief: TripBriefInput,
+  refinement: RefinementRequest,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<Itinerary> {
   return withOneRetry(() =>
-    callModel(client, brief, buildRefinementPrompt(brief, refinement.baseItinerary, refinement.question))
+    callModel(client, brief, buildRefinementPrompt(brief, refinement.baseItinerary, refinement.question), onUsage)
   );
 }
 
 async function writeJob(redis: Redis, job: Job): Promise<void> {
   job.updatedAt = Date.now();
   await redis.set(jobKey(job.id), JSON.stringify(job), "EX", JOB_TTL_SECONDS);
+}
+
+/** Adds this job's estimated cost onto today's running total — the
+ * counterpart to checkDailyBudget on the frontend, which reads this same
+ * key before enqueueing new jobs. Called once per job regardless of
+ * success/failure/retries, since a retry after malformed JSON still bills
+ * a second model call. */
+async function recordSpend(redis: Redis, costUsd: number): Promise<void> {
+  if (costUsd <= 0) return;
+  const key = spendKey();
+  await redis.incrbyfloat(key, costUsd);
+  await redis.expire(key, SPEND_KEY_TTL_SECONDS);
 }
 
 async function processJob(redis: Redis, client: Anthropic, id: string): Promise<void> {
@@ -205,13 +234,18 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
   job.status = "running";
   await writeJob(redis, job);
 
+  let costUsd = 0;
+  const onUsage = (usage: ModelUsage) => {
+    costUsd += estimateCostUsd(usage);
+  };
+
   try {
     let itinerary: Itinerary;
     if (job.refinement) {
-      itinerary = await generateRefinement(client, job.brief, job.refinement);
+      itinerary = await generateRefinement(client, job.brief, job.refinement, onUsage);
     } else {
       const cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
-      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts);
+      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, onUsage);
     }
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
@@ -236,8 +270,9 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
                 : "Unexpected error generating itinerary.";
   }
 
+  await recordSpend(redis, costUsd);
   await writeJob(redis, job);
-  console.log(`[worker] finished ${id}: ${job.status}`);
+  console.log(`[worker] finished ${id}: ${job.status}${costUsd > 0 ? ` (~$${costUsd.toFixed(4)})` : ""}`);
 }
 
 async function main() {

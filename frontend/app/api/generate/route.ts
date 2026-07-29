@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
 import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
+import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent } from "@/lib/analytics";
 import type { TripBriefInput } from "@/lib/types";
@@ -35,6 +36,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { detail: "Server is misconfigured (job queue is not set up)." },
       { status: 500 }
+    );
+  }
+
+  // Global check first: if today's aggregate spend is already at budget,
+  // there's no point burning this client's per-IP rate-limit quota on a
+  // request that's going to be rejected anyway.
+  const budget = await checkDailyBudget(redis);
+  if (!budget.allowed) {
+    return NextResponse.json(
+      { detail: "We've hit today's usage budget for generating new itineraries. Please try again tomorrow." },
+      { status: 503 }
     );
   }
 
