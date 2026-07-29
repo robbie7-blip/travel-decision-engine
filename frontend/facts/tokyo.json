@@ -1,0 +1,30 @@
+{
+  "city": "Tokyo",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "The subway and JR rail network is extensive and punctual enough to set a watch by; a rechargeable IC card (Suica or Pasmo) works across nearly every train, subway, and bus and is far less hassle than single-fare tickets."
+    },
+    {
+      "category": "cost",
+      "text": "A mid-range hotel runs roughly ¥15,000-25,000/night (~$100-160); a proper mid-range dinner for two is roughly ¥7,000-10,000 (~$50-70), while a bowl of ramen or a convenience-store meal is closer to ¥800-1,200 per person."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Izakayas with staff calling out to passersby and picture menus right outside major stations (Shinjuku, Shibuya) often tack on a cover charge and markup that a similar spot two streets over won't."
+    },
+    {
+      "category": "activity",
+      "text": "Popular attractions (teamLab, some observation decks, well-known ramen shops) routinely require booking a timed slot or standing in a real line — walk-up access isn't guaranteed the way it might be elsewhere."
+    },
+    {
+      "category": "practical",
+      "text": "Despite the high-tech reputation, plenty of smaller restaurants and shops are cash-only — carrying yen is still necessary, not just a backup. Tipping isn't customary and can visibly confuse staff if offered."
+    },
+    {
+      "category": "dietary",
+      "text": "Vegetarian and vegan travelers need to ask specifically: dashi (a fish-based stock) underlies many dishes that otherwise look plant-based, including some miso soups and broths."
+    }
+  ]
+}

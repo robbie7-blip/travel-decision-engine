@@ -1,0 +1,30 @@
+{
+  "city": "Singapore",
+  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "facts": [
+    {
+      "category": "transit",
+      "text": "The MRT is clean, cheap, and extensive enough to reach nearly every tourist area directly; an EZ-Link card taps onto trains and buses alike, and Changi Airport itself is worth budgeting time for as a first-day activity."
+    },
+    {
+      "category": "cost",
+      "text": "A hawker centre meal runs roughly S$5-10 (~$4-7); a mid-range hotel is closer to S$150-250/night (~$110-185) — the gap between eating well at a hawker centre and a proper sit-down restaurant is large, not marginal."
+    },
+    {
+      "category": "tourist_trap_warning",
+      "text": "Hawker stalls directly facing Chinatown's or Clarke Quay's main tourist strips are often marked up compared to equally good stalls a few stalls or streets over (Maxwell Food Centre and neighborhood centres tend to be both cheaper and more authentic)."
+    },
+    {
+      "category": "activity",
+      "text": "Gardens by the Bay and Marina Bay Sands SkyPark sell timed tickets, and sunset slots sell out — book ahead rather than assuming walk-up entry."
+    },
+    {
+      "category": "practical",
+      "text": "Laws around chewing gum import, littering, and jaywalking are genuinely enforced with real fines, not just reputation; the climate is hot and humid essentially year-round."
+    },
+    {
+      "category": "dietary",
+      "text": "Hawker centres typically have dedicated halal-certified and vegetarian stalls side by side, making Singapore one of the easier major cities to eat well regardless of dietary restriction."
+    }
+  ]
+}
