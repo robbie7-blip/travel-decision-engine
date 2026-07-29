@@ -110,6 +110,19 @@ button {
   }
 }
 
+/* When the header nav (how it works / destinations / language) wraps below
+   the logo lockup on narrow screens, give it its own clearly separated row
+   instead of sitting right under the tagline with barely any gap. */
+@media (max-width: 700px) {
+  .header-nav-row {
+    margin-left: 0 !important;
+    width: 100%;
+    padding-top: 18px;
+    margin-top: 6px;
+    border-top: 1px solid var(--line);
+  }
+}
+
 .hover-card {
   transition: background-color 0.15s ease;
   border-radius: 8px;

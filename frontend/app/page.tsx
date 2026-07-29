@@ -75,11 +75,12 @@ export default function Home() {
                 <div
                   className="font-mono"
                   style={{
-                    fontSize: 14,
+                    fontSize: "clamp(10px, 2.6vw, 14px)",
                     fontWeight: 500,
                     letterSpacing: "0.06em",
                     color: "var(--accent-1)",
                     textTransform: "uppercase",
+                    whiteSpace: "nowrap",
                     marginTop: 8,
                   }}
                 >
@@ -87,7 +88,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 24, marginLeft: "auto" }}>
+            <div className="header-nav-row" style={{ display: "flex", alignItems: "center", gap: 24, marginLeft: "auto" }}>
               <a
                 href="#how-it-works"
                 className="font-mono"
@@ -138,7 +139,9 @@ export default function Home() {
               margin: "0 0 10px",
             }}
           >
-            {t.headline}
+            {t.headlineLine1}
+            <br />
+            {t.headlineLine2}
           </h1>
           <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 620, margin: 0 }}>
             {t.subheadLine1}
@@ -224,6 +227,26 @@ export default function Home() {
           {status === "error" && (
             <div className="font-mono" style={{ marginTop: 14, color: "var(--infeasible)", fontSize: 13 }}>
               {error}
+            </div>
+          )}
+          {status !== "loading" && (
+            <div style={{ marginTop: 16 }}>
+              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: 0 }}>
+                {t.form.reassurance}
+              </p>
+              <a
+                href="/destinations"
+                className="font-mono"
+                style={{
+                  fontSize: 12,
+                  color: "var(--grounded)",
+                  textDecoration: "underline",
+                  display: "inline-block",
+                  marginTop: 6,
+                }}
+              >
+                {t.form.notSurePrompt}
+              </a>
             </div>
           )}
         </div>
