@@ -6,24 +6,26 @@
 import Link from "next/link";
 import { getRedis } from "@/lib/redis";
 import { loadAnalyticsSnapshot, type AnalyticsSnapshot } from "@/lib/analytics";
+import { checkDailyBudget, type BudgetCheckResult } from "@/lib/spendCheck";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
 export const runtime = "nodejs";
 
-async function loadSnapshot(): Promise<AnalyticsSnapshot | null> {
+async function loadSnapshot(): Promise<{ analytics: AnalyticsSnapshot; budget: BudgetCheckResult } | null> {
   let redis;
   try {
     redis = getRedis();
   } catch {
     return null;
   }
-  return loadAnalyticsSnapshot(redis);
+  const [analytics, budget] = await Promise.all([loadAnalyticsSnapshot(redis), checkDailyBudget(redis)]);
+  return { analytics, budget };
 }
 
 export default async function StatsAdminPage() {
-  const snapshot = await loadSnapshot();
+  const loaded = await loadSnapshot();
 
-  if (!snapshot) {
+  if (!loaded) {
     return (
       <div className="font-mono" style={{ padding: "32px 24px", maxWidth: 900, margin: "0 auto", color: "var(--ink)" }}>
         <h1 className="font-display" style={{ fontSize: 24, marginBottom: 8 }}>
@@ -34,6 +36,7 @@ export default async function StatsAdminPage() {
     );
   }
 
+  const { analytics: snapshot, budget } = loaded;
   const maxDaily = Math.max(1, ...snapshot.daily.map((d) => d.generate + d.refine));
 
   return (
@@ -68,6 +71,20 @@ export default async function StatsAdminPage() {
           </div>
           <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
             {snapshot.refineByLang.en} en · {snapshot.refineByLang.bg} bg
+          </div>
+        </div>
+        <div style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "16px 20px", minWidth: 160 }}>
+          <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Today&apos;s spend
+          </div>
+          <div
+            className="font-display"
+            style={{ fontSize: 32, fontWeight: 600, color: budget.allowed ? "var(--ink)" : "var(--tier-inferred, #b8433a)" }}
+          >
+            ${budget.spentUsd.toFixed(2)}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+            of ${budget.limitUsd.toFixed(2)} budget{!budget.allowed ? " — new generations paused" : ""}
           </div>
         </div>
       </div>

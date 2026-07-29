@@ -281,9 +281,34 @@ infra). Two sliding windows per endpoint, both checked on every request:
 
 A blocked request gets `429` with a `Retry-After` header and a `detail`
 message stating which window was hit. This bounds worst-case cost per
-client; it isn't a defense against many rotating IPs — if that turns out to
-be the actual abuse pattern, the next layer is auth, payments, or
-Cloudflare-level bot protection, not a bigger rate limit number.
+client, but not aggregate spend across many rotating IPs each individually
+staying under their own limit — that's what the daily spend cap below is
+for. For a defense against distinct-IP abuse at a much larger scale than
+that, the next layer would be auth, payments, or Cloudflare-level bot
+protection.
+
+### Daily spend cap
+
+On top of per-IP rate limiting, a global daily USD budget guards against
+many distinct clients collectively costing more than intended. The worker
+computes each generation's actual cost from `response.usage` (input/output
+tokens × Claude Sonnet 5 pricing, see `worker/src/costBudget.ts`) and adds
+it to a running total in Redis (`spend:day:YYYY-MM-DD`, UTC, 3-day TTL).
+Both `/api/generate` and `/api/refine` check that same total before
+enqueueing a job (`frontend/lib/spendCheck.ts`) and reject with `503` once
+it's reached, resetting at UTC midnight.
+
+| Env var | Default | Meaning |
+|---|---|---|
+| `DAILY_BUDGET_USD` | `25` | Total USD/day before new generations are paused |
+| `INPUT_COST_PER_MTOK_USD` | `2.00` | Override if Sonnet 5 input pricing changes |
+| `OUTPUT_COST_PER_MTOK_USD` | `10.00` | Override if Sonnet 5 output pricing changes |
+
+The introductory Sonnet 5 rates ($2/$10 per MTok) above are in effect
+through 2026-08-31; after that, either bump the two override env vars or
+update the defaults in `costBudget.ts` (kept byte-identical between
+`frontend/lib/` and `worker/src/`, same convention as `jobs.ts`/`types.ts`).
+Today's spend vs. budget is visible on `/admin/stats`.
 
 ### Feedback admin view
 
