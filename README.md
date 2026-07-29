@@ -12,13 +12,14 @@ No app, no database, no accounts. Just a script you run and read.
 
 ## Branding
 
-The mark is a shield silhouette with a checkmark cut into the body —
-"protected/backed by something solid" (the shield) fused with
-"decided/confirmed" (the checkmark). It went through several rejected
-iterations first — a literal suitcase, a location-pin, and a compass —
-all read as generic travel clip art (or, for the pin/compass, failed to
-survive being shrunk to actual favicon size); see git history on
-`frontend/public/logo-icon.svg` if curious why each one was dropped.
+The mark is three converging lines — routes, or options — meeting at a
+single point, then continuing on as one stroke down to a dot: many
+possibilities funneled into one decided destination, the same idea the
+product name is about. It went through several rejected iterations first —
+a literal suitcase, a location-pin, and a compass — all read as generic
+travel clip art (or, for the pin/compass, failed to survive being shrunk
+to actual favicon size); see git history on `frontend/public/logo-icon.svg`
+if curious why each one was dropped.
 
 The decided stroke is a blue gradient (`#4f9aa8` → `#1f6f8a`) — the same
 color already used for "grounded/verified" confidence signals throughout
@@ -36,8 +37,8 @@ different physical constraints:
 |---|---|---|
 | Website header | `frontend/public/logo-icon.svg` | Transparent background, blue gradient mark — sits directly on the page's cream background |
 | Browser tab favicon | `frontend/app/icon.svg` | Same as above (Next.js App Router auto-detects `app/icon.svg`) |
-| "Add to Home Screen" (iOS) | `frontend/app/apple-icon.png` (180×180) | Solid blue tile, white glyph — iOS shows a plain white/black square behind a transparent icon if you don't supply a filled one, so this context requires its own background |
-| Master/future use (app store, social preview, etc.) | `frontend/public/app-icon-512.png` | Same filled-tile treatment at higher resolution |
+| "Add to Home Screen" (iOS) | `frontend/app/apple-icon.png` (180×180) | Filled with the page's own cream background (`--bg` `#f7f1e2`), full-color mark — iOS shows a plain white/black square behind a transparent icon if you don't supply a filled one, so this context requires its own background |
+| Master/future use (app store, social preview, etc.) | `frontend/public/app-icon-512.png` | Same cream-filled treatment at higher resolution |
 
 A filled tile isn't an inconsistency with the transparent web mark — it's
 the same core identity (shape + color + meaning) adapted to a context that
