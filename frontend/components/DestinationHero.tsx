@@ -41,7 +41,11 @@ export function DestinationHero({
         style={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(to top, rgba(20,16,10,0.6), rgba(20,16,10,0) 60%)",
+          // Darkens both ends so the eyebrow label and city name stay
+          // legible regardless of how bright the photo is at either edge
+          // (a clear sky behind the label was unreadable without this).
+          background:
+            "linear-gradient(to bottom, rgba(20,16,10,0.45) 0%, rgba(20,16,10,0) 22%, rgba(20,16,10,0) 45%, rgba(20,16,10,0.65) 100%)",
         }}
       />
       {!compact && (
