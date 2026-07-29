@@ -20,12 +20,16 @@ all read as generic travel clip art (or, for the pin/compass, failed to
 survive being shrunk to actual favicon size); see git history on
 `frontend/public/logo-icon.svg` if curious why each one was dropped.
 
-The color is always the same blue (`#1f6f8a` → `#5fc9d9` gradient, or flat
-`#1f6f8a`) — the same color already used for "grounded/verified" confidence
-signals throughout the product (`--grounded` in `globals.css`), so the
-brand mark and the product's own trust language reinforce each other.
-That color and the shield-plus-checkmark shape are the fixed identity;
-what changes is only the container, per context, because each context has
+The decided stroke is a blue gradient (`#4f9aa8` → `#1f6f8a`) — the same
+color already used for "grounded/verified" confidence signals throughout
+the product (`--grounded` in `globals.css`), so the brand mark and the
+product's own trust language reinforce each other. The three converging
+"before the decision" lines fade from warm amber (`#e8a23f`) into neutral
+taupe, and the destination dot (`#d9643f`, with a soft glow) is the other
+warm anchor — early feedback that an all-blue version read as too cold led
+to this warm/cool balance instead of a single flat color. That balance and
+the converging-paths-to-a-decision shape are the fixed identity; what
+changes is only the container, per context, because each context has
 different physical constraints:
 
 | Context | Asset | Treatment |
