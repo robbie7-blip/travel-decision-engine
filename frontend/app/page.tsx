@@ -23,6 +23,13 @@ export default function Home() {
     if (saved === "en" || saved === "bg") {
       setForm((prev) => ({ ...prev, language: saved }));
     }
+
+    // Arriving from a /destinations/[slug] page's "Plan a trip to X" link —
+    // prefill the destination instead of leaving the sample data in place.
+    const dest = new URLSearchParams(window.location.search).get("dest");
+    if (dest) {
+      setForm((prev) => ({ ...prev, destinations: dest }));
+    }
   }, []);
 
   function setLanguage(language: Language) {
@@ -87,6 +94,13 @@ export default function Home() {
                 style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
               >
                 {t.howItWorks}
+              </a>
+              <a
+                href="/destinations"
+                className="font-mono"
+                style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+              >
+                {t.browseDestinations}
               </a>
               <div
                 className="font-mono"
