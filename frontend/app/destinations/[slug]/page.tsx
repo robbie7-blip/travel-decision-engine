@@ -3,28 +3,42 @@ import { notFound } from "next/navigation";
 import { DestinationHero } from "@/components/DestinationHero";
 import {
   getDestinationPhoto,
+  getLocalizedCityName,
+  getLocalizedFacts,
   listDestinations,
   listDestinationSlugs,
   loadDestination,
   type DestinationFact,
 } from "@/lib/destinations";
 import { DESTINATION_INTROS } from "@/lib/destinationIntros";
+import { TRANSLATIONS } from "@/lib/i18n";
+import type { Language } from "@/lib/types";
 
 export function generateStaticParams() {
   return listDestinationSlugs().map((slug) => ({ slug }));
 }
 
+function resolveLanguage(lang?: string): Language {
+  return lang === "bg" ? "bg" : "en";
+}
+
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ lang?: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const { lang } = await searchParams;
   const destination = loadDestination(slug);
   if (!destination) return {};
 
-  const title = `${destination.city} travel notes — decide`;
-  const description = `What decide already knows about ${destination.city} before it even runs a live search: getting around, real costs, and what locals skip.`;
+  const language = resolveLanguage(lang);
+  const t = TRANSLATIONS[language].destinations;
+  const displayCity = getLocalizedCityName(slug, language, destination.city);
+  const title = t.metaDetailTitle.replace("{city}", displayCity);
+  const description = t.metaDetailDescription.replace("{city}", displayCity);
   return {
     title,
     description,
@@ -33,21 +47,17 @@ export async function generateMetadata({
   };
 }
 
-// Friendly label + accent color per curated-fact category. Colors reuse the
-// same CSS variables the rest of the app uses for the same meaning —
-// tourist-trap warnings get the same tone as a budget-integrity warning.
-const CATEGORY_META: Record<string, { label: string; color: string }> = {
-  transit: { label: "Getting around", color: "var(--grounded)" },
-  cost: { label: "What things cost", color: "var(--accent-1)" },
-  dietary: { label: "Dietary notes", color: "var(--tier-single-source)" },
-  tourist_trap_warning: { label: "Tourist-trap watch", color: "var(--infeasible)" },
-  activity: { label: "Worth knowing", color: "var(--accent-2)" },
-  practical: { label: "Practical", color: "var(--ink-dim)" },
+// Colors reuse the same CSS variables the rest of the app uses for the same
+// meaning — tourist-trap warnings get the same tone as a budget-integrity
+// warning — independent of language; only the label text is translated.
+const CATEGORY_COLOR: Record<string, string> = {
+  transit: "var(--grounded)",
+  cost: "var(--accent-1)",
+  dietary: "var(--tier-single-source)",
+  tourist_trap_warning: "var(--infeasible)",
+  activity: "var(--accent-2)",
+  practical: "var(--ink-dim)",
 };
-
-function categoryMeta(category: string) {
-  return CATEGORY_META[category] ?? { label: category, color: "var(--ink-dim)" };
-}
 
 function groupByCategory(facts: DestinationFact[]): Array<{ category: string; items: string[] }> {
   const order: string[] = [];
@@ -62,16 +72,32 @@ function groupByCategory(facts: DestinationFact[]): Array<{ category: string; it
   return order.map((category) => ({ category, items: groups[category] }));
 }
 
-export default async function DestinationPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function DestinationPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ lang?: string }>;
+}) {
   const { slug } = await params;
+  const { lang } = await searchParams;
   const destination = loadDestination(slug);
   if (!destination) notFound();
 
-  const groups = groupByCategory(destination.facts);
-  const intro = DESTINATION_INTROS[slug];
+  const language = resolveLanguage(lang);
+  const t = TRANSLATIONS[language];
+  const dt = t.destinations;
+  const langSuffix = language === "bg" ? "?lang=bg" : "";
+
+  const displayCity = getLocalizedCityName(slug, language, destination.city);
+  const facts = getLocalizedFacts(slug, language, destination.facts);
+  const groups = groupByCategory(facts);
+  const intro = DESTINATION_INTROS[language][slug];
   const photo = getDestinationPhoto(slug);
 
-  const all = listDestinations().sort((a, b) => a.city.localeCompare(b.city));
+  const all = listDestinations()
+    .map((d) => ({ ...d, displayCity: getLocalizedCityName(d.slug, language, d.city) }))
+    .sort((a, b) => a.displayCity.localeCompare(b.displayCity, language));
   const currentIndex = all.findIndex((d) => d.slug === slug);
   const more =
     currentIndex === -1
@@ -91,28 +117,61 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
             gap: 16,
           }}
         >
-          <a href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+          <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
             <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
               decide
             </span>
           </a>
-          <a
-            href="/destinations"
-            className="font-mono"
-            style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none", marginLeft: "auto" }}
-          >
-            ← All destinations
-          </a>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginLeft: "auto" }}>
+            <a
+              href={`/destinations${langSuffix}`}
+              className="font-mono"
+              style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+            >
+              {dt.backToAll}
+            </a>
+            <div
+              className="font-mono"
+              style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
+            >
+              <a
+                href={`/destinations/${slug}`}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 11,
+                  letterSpacing: "0.04em",
+                  textDecoration: "none",
+                  background: language === "en" ? "var(--grounded)" : "transparent",
+                  color: language === "en" ? "var(--bg-panel)" : "var(--ink-dim)",
+                }}
+              >
+                EN
+              </a>
+              <a
+                href={`/destinations/${slug}?lang=bg`}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 11,
+                  letterSpacing: "0.04em",
+                  textDecoration: "none",
+                  background: language === "bg" ? "var(--grounded)" : "transparent",
+                  color: language === "bg" ? "var(--bg-panel)" : "var(--ink-dim)",
+                }}
+              >
+                BG
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 
       <div style={{ maxWidth: 780, margin: "36px auto 0", padding: "0 24px" }}>
-        <DestinationHero city={destination.city} slug={slug} />
+        <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
         {photo?.credit && (
           <p className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
-            Photo:{" "}
+            {dt.photoCredit}{" "}
             <a href={photo.credit.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
               {photo.credit.artist}
             </a>{" "}
@@ -139,12 +198,13 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
             </p>
           )}
           <p style={{ color: "var(--ink-dim)", fontSize: 14, lineHeight: 1.6, maxWidth: 620, margin: "0 0 40px" }}>
-            A few things decide already knows about {destination.city} before it even runs a live search — grounded
-            background, not a substitute for the price checks a real itinerary still runs.
+            {dt.introDisclaimer.replace("{city}", displayCity)}
           </p>
 
           {groups.map(({ category, items }) => {
-            const meta = categoryMeta(category);
+            const color = CATEGORY_COLOR[category] ?? "var(--ink-dim)";
+            const label =
+              dt.categoryLabels[category as keyof typeof dt.categoryLabels] ?? category;
             return (
               <div key={category} style={{ marginBottom: 32 }}>
                 <div
@@ -156,7 +216,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                     fontSize: 11,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    color: meta.color,
+                    color,
                     marginBottom: 12,
                   }}
                 >
@@ -166,11 +226,11 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                       width: 8,
                       height: 8,
                       borderRadius: "50%",
-                      background: meta.color,
+                      background: color,
                       flexShrink: 0,
                     }}
                   />
-                  {meta.label}
+                  {label}
                 </div>
                 {items.map((text, i) => (
                   <div
@@ -192,12 +252,12 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
             className="font-mono"
             style={{ fontSize: 12, color: "var(--grounded)", textDecoration: "underline" }}
           >
-            Read more on Wikipedia ↗
+            {dt.readMoreWikipedia}
           </a>
 
           <div style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--line)" }}>
             <a
-              href={`/?dest=${encodeURIComponent(destination.city)}`}
+              href={`/?dest=${encodeURIComponent(destination.city)}${language === "bg" ? "&lang=bg" : ""}`}
               className="font-mono btn-primary"
               style={{
                 display: "inline-block",
@@ -209,11 +269,10 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                 textDecoration: "none",
               }}
             >
-              Plan a trip to {destination.city} →
+              {dt.planTrip.replace("{city}", displayCity)}
             </a>
             <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 14, lineHeight: 1.6 }}>
-              decide isn&apos;t limited to these cities — tell it any destination and it runs the same live price
-              checks either way.
+              {dt.notLimitedNote}
             </p>
           </div>
 
@@ -223,13 +282,13 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                 className="font-mono"
                 style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 14 }}
               >
-                More destination guides
+                {dt.moreGuides}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
                 {more.map((d) => (
                   <a
                     key={d.slug}
-                    href={`/destinations/${d.slug}`}
+                    href={`/destinations/${d.slug}${langSuffix}`}
                     className="hover-card"
                     style={{
                       display: "block",
@@ -239,7 +298,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                       textDecoration: "none",
                     }}
                   >
-                    <DestinationHero city={d.city} slug={d.slug} compact />
+                    <DestinationHero city={d.displayCity} slug={d.slug} compact eyebrow={dt.eyebrow} />
                   </a>
                 ))}
               </div>

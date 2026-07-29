@@ -19,14 +19,25 @@ export default function Home() {
   const t = TRANSLATIONS[form.language];
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (saved === "en" || saved === "bg") {
-      setForm((prev) => ({ ...prev, language: saved }));
+    const params = new URLSearchParams(window.location.search);
+
+    // A ?lang= from a /destinations link takes priority over the saved
+    // preference — it reflects where the visitor just came from — and gets
+    // persisted so it sticks on the next visit too.
+    const urlLang = params.get("lang");
+    if (urlLang === "en" || urlLang === "bg") {
+      setForm((prev) => ({ ...prev, language: urlLang }));
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, urlLang);
+    } else {
+      const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+      if (saved === "en" || saved === "bg") {
+        setForm((prev) => ({ ...prev, language: saved }));
+      }
     }
 
     // Arriving from a /destinations/[slug] page's "Plan a trip to X" link —
     // prefill the destination instead of leaving the sample data in place.
-    const dest = new URLSearchParams(window.location.search).get("dest");
+    const dest = params.get("dest");
     if (dest) {
       setForm((prev) => ({ ...prev, destinations: dest }));
     }
@@ -97,7 +108,7 @@ export default function Home() {
                 {t.howItWorks}
               </a>
               <a
-                href="/destinations"
+                href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
                 className="font-mono"
                 style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
               >
@@ -235,7 +246,7 @@ export default function Home() {
                 {t.form.reassurance}
               </p>
               <a
-                href="/destinations"
+                href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
                 className="font-mono"
                 style={{
                   fontSize: 12,

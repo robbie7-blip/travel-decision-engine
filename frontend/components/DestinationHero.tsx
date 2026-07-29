@@ -10,14 +10,16 @@ export function DestinationHero({
   city,
   slug,
   compact = false,
+  eyebrow = "DESTINATION GUIDE",
 }: {
   city: string;
   slug: string;
   compact?: boolean;
+  eyebrow?: string;
 }) {
   const photo = getDestinationPhoto(slug);
   if (!photo) {
-    return <DestinationBanner city={city} slug={slug} compact={compact} />;
+    return <DestinationBanner city={city} slug={slug} compact={compact} eyebrow={eyebrow} />;
   }
 
   return (
@@ -60,7 +62,7 @@ export function DestinationHero({
             color: "rgba(255,253,248,0.8)",
           }}
         >
-          DESTINATION GUIDE
+          {eyebrow}
         </div>
       )}
       <div

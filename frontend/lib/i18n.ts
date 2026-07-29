@@ -105,6 +105,24 @@ export interface Dictionary {
     notFound: string;
     loading: string;
   };
+  destinations: {
+    pageTitle: string;
+    pageDescription: string; // "{count}" placeholder for the city count
+    notOnListNote: string;
+    localNotesCount: string; // "{count}" placeholder
+    backToAll: string;
+    eyebrow: string;
+    introDisclaimer: string; // "{city}" placeholder
+    categoryLabels: Record<"transit" | "cost" | "dietary" | "tourist_trap_warning" | "activity" | "practical", string>;
+    readMoreWikipedia: string;
+    planTrip: string; // "{city}" placeholder
+    notLimitedNote: string;
+    moreGuides: string;
+    photoCredit: string;
+    metaIndexDescription: string;
+    metaDetailTitle: string; // "{city}" placeholder
+    metaDetailDescription: string; // "{city}" placeholder
+  };
 }
 
 const en: Dictionary = {
@@ -203,6 +221,34 @@ const en: Dictionary = {
     notFound: "This trip link has expired or doesn't exist.",
     loading: "Loading your trip…",
   },
+  destinations: {
+    pageTitle: "Destination guides",
+    pageDescription:
+      "Local notes decide already has on hand for these {count} cities - real costs, how to get around, and what to skip - before a live search ever runs.",
+    notOnListNote: "Not on this list? decide plans anywhere - these are just a head start.",
+    localNotesCount: "{count} local notes",
+    backToAll: "← All destinations",
+    eyebrow: "DESTINATION GUIDE",
+    introDisclaimer:
+      "A few things decide already knows about {city} before it even runs a live search - grounded background, not a substitute for the price checks a real itinerary still runs.",
+    categoryLabels: {
+      transit: "Getting around",
+      cost: "What things cost",
+      dietary: "Dietary notes",
+      tourist_trap_warning: "Tourist-trap watch",
+      activity: "Worth knowing",
+      practical: "Practical",
+    },
+    readMoreWikipedia: "Read more on Wikipedia ↗",
+    planTrip: "Plan a trip to {city} →",
+    notLimitedNote: "decide isn't limited to these cities - tell it any destination and it runs the same live price checks either way.",
+    moreGuides: "More destination guides",
+    photoCredit: "Photo:",
+    metaIndexDescription: "What decide already knows about 18 cities before it even runs a live search.",
+    metaDetailTitle: "{city} travel notes — decide",
+    metaDetailDescription:
+      "What decide already knows about {city} before it even runs a live search: getting around, real costs, and what locals skip.",
+  },
 };
 
 const bg: Dictionary = {
@@ -211,7 +257,7 @@ const bg: Dictionary = {
   browseDestinations: "Пътеводители",
   headlineLine1: "Без опции.",
   headlineLine2: "Решава вместо теб.",
-  subheadLine1: "Всеки ред носи собствено ниво на увереност - потвърден факт, един източник или честно предположение.",
+  subheadLine1: "Всеки ред носи собствена увереност - факт, единствен източник или предположение.",
   subheadLine2: "Никога скрито, никога преувеличено.",
   howItWorksSteps: {
     step1Title: "Кажи ни за пътуването",
@@ -301,6 +347,34 @@ const bg: Dictionary = {
     planAnother: "Планирайте свое пътуване",
     notFound: "Тази връзка е изтекла или не съществува.",
     loading: "Зареждане на пътуването…",
+  },
+  destinations: {
+    pageTitle: "Пътеводители по дестинации",
+    pageDescription:
+      "Местни бележки, които decide вече има за тези {count} града - реални разходи, как да се придвижвате и какво да пропуснете - преди изобщо да се направи търсене на живо.",
+    notOnListNote: "Няма я в списъка? decide планира навсякъде - тези градове са само примери.",
+    localNotesCount: "{count} местни бележки",
+    backToAll: "← Всички дестинации",
+    eyebrow: "ПЪТЕВОДИТЕЛ",
+    introDisclaimer:
+      "Няколко неща, които decide вече знае за {city}, преди изобщо да направи търсене на живо - основна информация, не заместител на проверките на цени, които реален маршрут все пак прави.",
+    categoryLabels: {
+      transit: "Придвижване",
+      cost: "Колко струват нещата",
+      dietary: "Хранителни бележки",
+      tourist_trap_warning: "Внимание за туристически капани",
+      activity: "Полезно е да знаете",
+      practical: "Практично",
+    },
+    readMoreWikipedia: "Прочетете повече в Уикипедия ↗",
+    planTrip: "Планирай пътуване до {city} →",
+    notLimitedNote: "decide не е ограничен до тези градове - кажете му всяка дестинация и той прави същите проверки на живо цени.",
+    moreGuides: "Още пътеводители",
+    photoCredit: "Снимка:",
+    metaIndexDescription: "Какво decide вече знае за 18 града, преди изобщо да направи търсене на живо.",
+    metaDetailTitle: "{city} - бележки за пътуване - decide",
+    metaDetailDescription:
+      "Какво decide вече знае за {city}, преди изобщо да направи търсене на живо: придвижване, реални разходи и какво пропускат местните.",
   },
 };
 
