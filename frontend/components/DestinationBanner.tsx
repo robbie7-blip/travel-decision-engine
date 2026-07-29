@@ -1,9 +1,16 @@
 // Generative hero banner for the /destinations guides — there's no photo
-// budget (no external network access to fetch real photography), so each
-// city gets a distinct-but-on-brand banner instead: one of a handful of
-// gradient pairs built entirely from the app's existing palette, plus a
-// faint great-circle arc motif that echoes the "one committed route" idea
-// behind the logo, rather than a generic stock-photo stand-in.
+// budget (no external network access to fetch real photography in this
+// session — see the accompanying scripts/fetch-destination-photos.mjs for
+// a real-photo path), so each city gets a distinct-but-on-brand banner
+// instead: one of a handful of gradient pairs built entirely from the app's
+// existing palette, plus a faint great-circle arc motif that echoes the
+// "one committed route" idea behind the logo.
+//
+// Both variants share one viewBox aspect ratio and scale uniformly (no
+// preserveAspectRatio="none", no fixed pixel height) — forcing a mismatched
+// height previously squished the text horizontally whenever the rendered
+// width didn't match the 1200-unit coordinate space, which is exactly what
+// happened on the index page's narrower cards.
 
 const PALETTES: [string, string][] = [
   ["#1f6f8a", "#5fc9d9"], // teal — the button/lodging-verified gradient
@@ -31,15 +38,13 @@ export function DestinationBanner({
 }) {
   const [from, to] = paletteFor(slug);
   const gradId = `bannerGrad-${slug}`;
-  const height = compact ? 140 : 280;
+  const height = compact ? 480 : 420;
 
   return (
     <svg
       viewBox={`0 0 1200 ${height}`}
       width="100%"
-      height={compact ? 140 : 280}
-      preserveAspectRatio="none"
-      style={{ display: "block", borderRadius: compact ? 10 : 14 }}
+      style={{ display: "block", width: "100%", height: "auto", borderRadius: compact ? 10 : 14 }}
     >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="1200" y2={height} gradientUnits="userSpaceOnUse">
@@ -52,25 +57,25 @@ export function DestinationBanner({
         d={`M -60 ${height * 0.78} Q 600 ${height * -0.5} 1260 ${height * 0.5}`}
         fill="none"
         stroke="rgba(255,253,248,0.22)"
-        strokeWidth={compact ? 1.5 : 2}
+        strokeWidth={3}
       />
-      <circle cx={1130} cy={height * 0.3} r={compact ? 4 : 6} fill="rgba(255,253,248,0.55)" />
+      <circle cx={1130} cy={height * 0.3} r={10} fill="rgba(255,253,248,0.55)" />
       {!compact && (
         <text
           x={56}
-          y={44}
-          style={{ fontFamily: "var(--font-mono), monospace", fontSize: 13, letterSpacing: 3, fill: "rgba(255,253,248,0.75)" }}
+          y={70}
+          style={{ fontFamily: "var(--font-mono), monospace", fontSize: 20, letterSpacing: 4, fill: "rgba(255,253,248,0.75)" }}
         >
           DESTINATION GUIDE
         </text>
       )}
       <text
         x={56}
-        y={compact ? height - 32 : height - 52}
+        y={compact ? height - 70 : height - 80}
         style={{
           fontFamily: "var(--font-display), Georgia, serif",
           fontWeight: 600,
-          fontSize: compact ? 32 : 58,
+          fontSize: compact ? 100 : 92,
           fill: "#fffdf8",
         }}
       >
