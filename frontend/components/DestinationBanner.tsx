@@ -31,10 +31,12 @@ export function DestinationBanner({
   city,
   slug,
   compact = false,
+  eyebrow = "DESTINATION GUIDE",
 }: {
   city: string;
   slug: string;
   compact?: boolean;
+  eyebrow?: string;
 }) {
   const [from, to] = paletteFor(slug);
   const gradId = `bannerGrad-${slug}`;
@@ -66,7 +68,7 @@ export function DestinationBanner({
           y={70}
           style={{ fontFamily: "var(--font-mono), monospace", fontSize: 20, letterSpacing: 4, fill: "rgba(255,253,248,0.75)" }}
         >
-          DESTINATION GUIDE
+          {eyebrow}
         </text>
       )}
       <text

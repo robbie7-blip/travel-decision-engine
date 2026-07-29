@@ -7,6 +7,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { DESTINATION_FACTS_BG } from "./destinationFactsBg";
+import { DESTINATION_CITY_NAMES_BG } from "./destinationCityNamesBg";
+import type { Language } from "./types";
 
 const FACTS_DIR = path.join(process.cwd(), "facts");
 
@@ -65,6 +68,22 @@ export function listDestinations(): Destination[] {
   return listDestinationSlugs()
     .map(loadDestination)
     .filter((d): d is Destination => d !== null);
+}
+
+/** Facts for a destination in the requested language — falls back to the
+ * English facts (from facts/*.json) if no Bulgarian translation exists yet
+ * for this slug in destinationFactsBg.ts, rather than showing nothing. */
+export function getLocalizedFacts(slug: string, language: Language, fallback: DestinationFact[]): DestinationFact[] {
+  if (language === "bg" && DESTINATION_FACTS_BG[slug]) return DESTINATION_FACTS_BG[slug];
+  return fallback;
+}
+
+/** Display name only — never used for ?dest= or anything the engine
+ * matches destinations against, which always stays the canonical English
+ * name from facts/*.json. */
+export function getLocalizedCityName(slug: string, language: Language, fallback: string): string {
+  if (language === "bg" && DESTINATION_CITY_NAMES_BG[slug]) return DESTINATION_CITY_NAMES_BG[slug];
+  return fallback;
 }
 
 let creditsCache: Record<string, DestinationPhotoCredit> | null = null;
