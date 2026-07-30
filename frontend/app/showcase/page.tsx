@@ -103,7 +103,7 @@ export default async function ShowcasePage({
           <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
-            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
+            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--accent-green)" }}>
               decide
             </span>
           </a>
@@ -118,7 +118,7 @@ export default async function ShowcasePage({
                 fontSize: 11,
                 letterSpacing: "0.04em",
                 textDecoration: "none",
-                background: language === "en" ? "var(--grounded)" : "transparent",
+                background: language === "en" ? "var(--accent-green)" : "transparent",
                 color: language === "en" ? "var(--bg-panel)" : "var(--ink-dim)",
               }}
             >
@@ -131,7 +131,7 @@ export default async function ShowcasePage({
                 fontSize: 11,
                 letterSpacing: "0.04em",
                 textDecoration: "none",
-                background: language === "bg" ? "var(--grounded)" : "transparent",
+                background: language === "bg" ? "var(--accent-green)" : "transparent",
                 color: language === "bg" ? "var(--bg-panel)" : "var(--ink-dim)",
               }}
             >

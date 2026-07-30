@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddToShowcaseButton } from "./AddToShowcaseButton";
+import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
@@ -16,6 +17,7 @@ import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
  * comes from the job record itself once it's fetched. */
 export function TripView({ jobId }: { jobId: string }) {
   const router = useRouter();
+  const { currency, setCurrency, rates } = useCurrency();
   const [language, setLanguageState] = useState<Language>("en");
   const [jobStatus, setJobStatus] = useState<Job["status"] | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -122,7 +124,7 @@ export function TripView({ jobId }: { jobId: string }) {
           <a href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
-            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
+            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--accent-green)" }}>
               decide
             </span>
           </a>
@@ -134,6 +136,7 @@ export function TripView({ jobId }: { jobId: string }) {
             >
               {t.trip.planAnother} →
             </a>
+            <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
             <div
               className="font-mono"
               style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
@@ -149,7 +152,7 @@ export function TripView({ jobId }: { jobId: string }) {
                     fontSize: 11,
                     letterSpacing: "0.04em",
                     cursor: "pointer",
-                    background: language === lang ? "var(--grounded)" : "transparent",
+                    background: language === lang ? "var(--accent-green)" : "transparent",
                     color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
                   }}
                 >
@@ -187,6 +190,8 @@ export function TripView({ jobId }: { jobId: string }) {
                 refiningLabel={refineJobStatus ? t.jobStatus[refineJobStatus] : undefined}
                 refineError={refineError}
                 lastQuestion={lastQuestion}
+                currency={currency}
+                rates={rates}
               />
               <AddToShowcaseButton jobId={currentJobId} />
             </>

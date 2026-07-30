@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DEFAULT_FORM_STATE, splitList, TripForm, toTripBriefInput, type TripFormState } from "@/components/TripForm";
+import { CurrencySwitcher, useCurrency } from "@/components/CurrencySwitcher";
 import { RecentTrips } from "@/components/RecentTrips";
+import { TrustFooter } from "@/components/TrustFooter";
 import { ConfidenceDot } from "@/components/ui";
 import { ApiError, createGenerateJob } from "@/lib/api";
 import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
@@ -18,6 +20,7 @@ interface DemoTrip {
 
 export default function Home() {
   const router = useRouter();
+  const { currency, setCurrency } = useCurrency();
   const [form, setForm] = useState<TripFormState>(DEFAULT_FORM_STATE);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
@@ -110,7 +113,7 @@ export default function Home() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={84} height={84} style={{ flexShrink: 0 }} />
               <div>
-                <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
+                <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--accent-green)" }}>
                   decide
                 </div>
                 <div
@@ -151,6 +154,7 @@ export default function Home() {
               >
                 {t.showcase.navLabel}
               </a>
+              <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
               <div
                 className="font-mono"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
@@ -166,7 +170,7 @@ export default function Home() {
                       fontSize: 11,
                       letterSpacing: "0.04em",
                       cursor: "pointer",
-                      background: form.language === lang ? "var(--grounded)" : "transparent",
+                      background: form.language === lang ? "var(--accent-green)" : "transparent",
                       color: form.language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
                     }}
                   >
@@ -315,6 +319,8 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      <TrustFooter t={t} />
     </div>
   );
 }
