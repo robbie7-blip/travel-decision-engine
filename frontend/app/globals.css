@@ -127,6 +127,13 @@ button {
     margin-top: 6px;
     border-top: 1px solid var(--line);
   }
+
+  /* The links/controls groups already wrap onto separate lines at this
+     width, which separates them on its own — the vertical rule between
+     them would just float oddly at the start of a wrapped line instead. */
+  .nav-divider {
+    display: none;
+  }
 }
 
 .hover-card {
