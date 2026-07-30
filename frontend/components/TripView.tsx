@@ -124,7 +124,7 @@ export function TripView({ jobId }: { jobId: string }) {
           <a href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
-            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--accent-green)" }}>
+            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
               decide
             </span>
           </a>

@@ -113,7 +113,7 @@ export default function Home() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={84} height={84} style={{ flexShrink: 0 }} />
               <div>
-                <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--accent-green)" }}>
+                <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
                   decide
                 </div>
                 <div
