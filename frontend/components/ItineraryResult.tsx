@@ -107,6 +107,57 @@ function ItemFeedback({
   );
 }
 
+function itemKey(day: number, index: number): string {
+  return `${day}-${index}`;
+}
+
+/** The "how do we know this?" disclosure — a tier-specific plain-language
+ * explanation (not just the dot color) plus the item's actual evidence
+ * (source links, cross-check agreement) when there is any. Collapsed by
+ * default so a long itinerary doesn't turn into a wall of links; this is
+ * the one place that evidence now lives, replacing what used to be an
+ * always-visible source-links row under every grounded item. */
+function ItemEvidence({ item, t }: { item: ItineraryItem; t: Dictionary }) {
+  const tier = item.confidence_tier ?? "inferred";
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        padding: "10px 12px",
+        background: "var(--bg-panel-raised)",
+        border: "1px solid var(--line)",
+        borderRadius: 6,
+        fontSize: 12,
+        color: "var(--ink-soft)",
+        lineHeight: 1.5,
+      }}
+    >
+      <div>{t.result.tierExplainer[tier]}</div>
+      {item.source_urls && item.source_urls.length > 0 && (
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+          {item.source_urls.map((url, si) => (
+            <a
+              key={si}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono"
+              style={{ fontSize: 11, color: "var(--grounded)", textDecoration: "underline" }}
+            >
+              {item.source_urls!.length > 1 ? `${t.result.source} ${si + 1}` : t.result.source} ↗
+            </a>
+          ))}
+          {item.source_agreement === "disagree" && (
+            <span className="font-mono" style={{ fontSize: 11, color: "var(--unverified)" }}>
+              ⚠ {t.result.sourcesDisagree}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface ItineraryResultProps {
   result: Itinerary;
   jobId: string;
@@ -129,6 +180,16 @@ export function ItineraryResult({
   lastQuestion,
 }: ItineraryResultProps) {
   const [question, setQuestion] = useState("");
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  function toggleEvidence(key: string) {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   function submitQuestion() {
     const trimmed = question.trim();
@@ -247,69 +308,66 @@ export function ItineraryResult({
                 </span>
               )}
             </div>
-            {day.items.map((item, i) => (
-              <div
-                key={i}
-                className="hover-card"
-                style={{
-                  display: "flex",
-                  gap: 4,
-                  padding: "10px 10px",
-                  marginTop: -1,
-                  borderTop: "1px solid var(--line)",
-                }}
-              >
-                <ConfidenceDot tier={item.confidence_tier ?? "inferred"} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
-                    <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
-                      €{item.cost_estimate_eur}
-                      {t.result.inlineTierLabel[item.confidence_tier ?? "inferred"] &&
-                        ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
-                    {item.location} · {item.time}
-                  </div>
-                  <div style={{ fontSize: 13, marginTop: 4, color: "var(--ink-soft)" }}>{item.reasoning}</div>
-                  {item.source_urls && item.source_urls.length > 0 && (
-                    <div
+            {day.items.map((item, i) => {
+              const key = itemKey(day.day, i);
+              const expanded = expandedItems.has(key);
+              return (
+                <div
+                  key={i}
+                  className="hover-card"
+                  style={{
+                    display: "flex",
+                    gap: 4,
+                    padding: "10px 10px",
+                    marginTop: -1,
+                    borderTop: "1px solid var(--line)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleEvidence(key)}
+                    aria-expanded={expanded}
+                    aria-label={expanded ? t.result.evidenceHide : t.result.evidenceShow}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                  >
+                    <ConfidenceDot tier={item.confidence_tier ?? "inferred"} />
+                  </button>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
+                      <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+                        €{item.cost_estimate_eur}
+                        {t.result.inlineTierLabel[item.confidence_tier ?? "inferred"] &&
+                          ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
+                      {item.location} · {item.time}
+                    </div>
+                    <div style={{ fontSize: 13, marginTop: 4, color: "var(--ink-soft)" }}>{item.reasoning}</div>
+                    <button
+                      type="button"
+                      onClick={() => toggleEvidence(key)}
+                      className="font-mono"
                       style={{
-                        display: "flex",
-                        gap: 12,
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        marginTop: 4,
+                        marginTop: 6,
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        fontSize: 11,
+                        color: "var(--ink-dim)",
+                        textDecoration: "underline",
+                        cursor: "pointer",
                       }}
                     >
-                      {item.source_urls.map((url, si) => (
-                        <a
-                          key={si}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-mono"
-                          style={{
-                            fontSize: 11,
-                            color: "var(--grounded)",
-                            textDecoration: "underline",
-                          }}
-                        >
-                          {item.source_urls!.length > 1 ? `${t.result.source} ${si + 1}` : t.result.source} ↗
-                        </a>
-                      ))}
-                      {item.source_agreement === "disagree" && (
-                        <span className="font-mono" style={{ fontSize: 11, color: "var(--unverified)" }}>
-                          ⚠ {t.result.sourcesDisagree}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  <ItemFeedback jobId={jobId} day={day.day} item={item} t={t} />
+                      {expanded ? t.result.evidenceHide : t.result.evidenceShow}
+                    </button>
+                    {expanded && <ItemEvidence item={item} t={t} />}
+                    <ItemFeedback jobId={jobId} day={day.day} item={item} t={t} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
 
