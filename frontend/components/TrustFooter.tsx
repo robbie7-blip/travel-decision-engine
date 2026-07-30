@@ -14,7 +14,7 @@ const TIERS: ConfidenceTier[] = ["verified", "fact_grounded", "single_source", "
 export function TrustFooter({ t }: { t: Dictionary }) {
   return (
     <div style={{ padding: "40px 24px", background: "var(--bg-panel-raised)", borderTop: "1px solid var(--line)" }}>
-      <div style={{ maxWidth: 780, margin: "0 auto" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <h2 className="font-display" style={{ fontSize: 22, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
           {t.trustFooter.heading}
         </h2>
