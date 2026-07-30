@@ -18,23 +18,23 @@ export const contentType = "image/png";
 const MARK_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
-    <linearGradient id="l" x1="18" y1="10" x2="50" y2="52" gradientUnits="userSpaceOnUse">
+    <linearGradient id="l" x1="18" y1="15" x2="50" y2="72" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#e8a23f"/>
       <stop offset="1" stop-color="#8a7d68"/>
     </linearGradient>
-    <linearGradient id="r" x1="82" y1="10" x2="50" y2="52" gradientUnits="userSpaceOnUse">
+    <linearGradient id="r" x1="82" y1="15" x2="50" y2="72" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#e8a23f"/>
       <stop offset="1" stop-color="#8a7d68"/>
     </linearGradient>
-    <linearGradient id="m" x1="50" y1="5" x2="50" y2="52" gradientUnits="userSpaceOnUse">
+    <linearGradient id="m" x1="50" y1="10" x2="50" y2="72" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#4f9aa8"/>
       <stop offset="1" stop-color="#1f6f8a"/>
     </linearGradient>
   </defs>
-  <path d="M18 10 Q 34 32 50 52" fill="none" stroke="url(#l)" stroke-width="3.5" stroke-linecap="round" opacity="0.65"/>
-  <path d="M82 10 Q 66 32 50 52" fill="none" stroke="url(#r)" stroke-width="3.5" stroke-linecap="round" opacity="0.65"/>
-  <path d="M50 5 L 50 52" fill="none" stroke="url(#m)" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
-  <path d="M50 50 C 39 50 31 58 31 68 C 31 80 50 98 50 98 C 50 98 69 80 69 68 C 69 58 61 50 50 50 Z" fill="#d9643f"/>
+  <path d="M18 15 Q 34 40 50 72" fill="none" stroke="url(#l)" stroke-width="3.5" stroke-linecap="round" opacity="0.65"/>
+  <path d="M82 15 Q 66 40 50 72" fill="none" stroke="url(#r)" stroke-width="3.5" stroke-linecap="round" opacity="0.65"/>
+  <path d="M50 10 L 50 72" fill="none" stroke="url(#m)" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
+  <circle cx="50" cy="78" r="8" fill="#d9643f"/>
 </svg>`;
 const MARK_DATA_URI = `data:image/svg+xml;base64,${Buffer.from(MARK_SVG).toString("base64")}`;
 
