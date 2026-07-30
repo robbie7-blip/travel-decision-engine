@@ -34,5 +34,9 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  // /api/admin/:path* covers the demo-trip admin API (see
+  // app/api/admin/demo-trip/route.ts) — it lives under /api, not /admin,
+  // since Next.js route handlers alongside a page path is unconventional,
+  // so it needs its own matcher entry rather than falling under /admin/:path*.
+  matcher: ["/admin/:path*", "/api/admin/:path*"],
 };
