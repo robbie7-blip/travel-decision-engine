@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AddToShowcaseButton } from "./AddToShowcaseButton";
 import { ItineraryResult } from "./ItineraryResult";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
@@ -176,16 +177,19 @@ export function TripView({ jobId }: { jobId: string }) {
             </div>
           )}
           {result && (
-            <ItineraryResult
-              result={result}
-              jobId={currentJobId}
-              t={t}
-              onRefine={handleRefine}
-              refining={refining}
-              refiningLabel={refineJobStatus ? t.jobStatus[refineJobStatus] : undefined}
-              refineError={refineError}
-              lastQuestion={lastQuestion}
-            />
+            <>
+              <ItineraryResult
+                result={result}
+                jobId={currentJobId}
+                t={t}
+                onRefine={handleRefine}
+                refining={refining}
+                refiningLabel={refineJobStatus ? t.jobStatus[refineJobStatus] : undefined}
+                refineError={refineError}
+                lastQuestion={lastQuestion}
+              />
+              <AddToShowcaseButton jobId={currentJobId} />
+            </>
           )}
         </div>
       </div>
