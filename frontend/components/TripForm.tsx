@@ -128,6 +128,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         </div>
         <Field label={t.form.startDate}>
           <input
+            type="date"
             style={inputStyle}
             value={value.start_date}
             onChange={(e) => update("start_date", e.target.value)}
@@ -136,6 +137,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         </Field>
         <Field label={t.form.endDate}>
           <input
+            type="date"
             style={inputStyle}
             value={value.end_date}
             onChange={(e) => update("end_date", e.target.value)}
