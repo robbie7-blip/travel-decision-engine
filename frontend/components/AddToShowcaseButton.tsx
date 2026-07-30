@@ -2,43 +2,31 @@
 
 // Lets an already-authenticated admin add the current /trip/[jobId] straight
 // to the /showcase gallery, without copying the jobId over to
-// /admin/showcase by hand. Deliberately has no auth of its own: a background
-// fetch to /api/admin/showcase (protected by middleware.ts) only succeeds if
-// this browser already has Basic Auth credentials cached for that realm
-// (i.e. an admin who's previously logged into /admin/showcase or
-// /admin/demo-trip) — every other visitor's browser has nothing cached, so
-// the fetch 401s/503s and the button never renders. No separate admin
-// session or role check to build or maintain.
+// /admin/showcase by hand. Visibility is driven purely by a localStorage
+// flag (see lib/adminUi.ts) set by the /admin/* pages themselves, NOT by
+// probing /api/admin/showcase on load — an earlier version did that and it
+// meant every visitor who opened a shared /trip/[jobId] link got a native
+// browser Basic Auth popup, because some browsers (Safari included) show
+// that dialog for a background fetch() against a 401-challenging URL, not
+// just for a top-level page navigation. Only the click-to-add action itself
+// talks to the protected endpoint now, which is a deliberate admin action
+// rather than something that fires on every page load for every visitor.
 
 import { useEffect, useState } from "react";
-import type { ShowcaseTrip } from "@/lib/showcase";
+import { isAdminUi } from "@/lib/adminUi";
 
-type Visibility = "checking" | "hidden" | "visible";
 type AddStatus = "idle" | "loading" | "added" | "error";
 
 export function AddToShowcaseButton({ jobId }: { jobId: string }) {
-  const [visibility, setVisibility] = useState<Visibility>("checking");
+  const [visible, setVisible] = useState(false);
   const [status, setStatus] = useState<AddStatus>("idle");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/admin/showcase")
-      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data: { trips: ShowcaseTrip[] }) => {
-        if (cancelled) return;
-        setVisibility("visible");
-        if (data.trips.some((t) => t.jobId === jobId)) setStatus("added");
-      })
-      .catch(() => {
-        if (!cancelled) setVisibility("hidden");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [jobId]);
+    setVisible(isAdminUi());
+  }, []);
 
-  if (visibility !== "visible") return null;
+  if (!visible) return null;
 
   async function handleAdd() {
     setStatus("loading");
@@ -51,6 +39,12 @@ export function AddToShowcaseButton({ jobId }: { jobId: string }) {
       });
       const data = await res.json();
       if (!res.ok) {
+        // "already in the showcase" isn't really an error from the
+        // clicker's point of view — treat it the same as a fresh add.
+        if (res.status === 400 && typeof data.detail === "string" && data.detail.includes("already")) {
+          setStatus("added");
+          return;
+        }
         setError(data.detail ?? "Something went wrong.");
         setStatus("error");
         return;

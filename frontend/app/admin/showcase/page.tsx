@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { markAdminUi } from "@/lib/adminUi";
 import type { ShowcaseTrip } from "@/lib/showcase";
 
 type Status = "idle" | "loading" | "error";
@@ -24,6 +25,11 @@ export default function ShowcaseAdminPage() {
   }
 
   useEffect(() => {
+    // Reaching this page at all means middleware.ts already required Basic
+    // Auth to succeed — see lib/adminUi.ts for why AddToShowcaseButton reads
+    // this flag instead of probing a protected endpoint on every visitor's
+    // /trip/[jobId] page load.
+    markAdminUi();
     load();
   }, []);
 

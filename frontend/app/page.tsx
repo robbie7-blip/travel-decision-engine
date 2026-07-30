@@ -134,52 +134,57 @@ export default function Home() {
             </div>
             <div
               className="header-nav-row"
-              style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 24, marginLeft: "auto" }}
+              style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}
             >
-              <a
-                href="#how-it-works"
-                className="font-mono"
-                style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-              >
-                {t.howItWorks}
-              </a>
-              <a
-                href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
-                className="font-mono"
-                style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-              >
-                {t.browseDestinations}
-              </a>
-              <a
-                href={form.language === "bg" ? "/showcase?lang=bg" : "/showcase"}
-                className="font-mono"
-                style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-              >
-                {t.showcase.navLabel}
-              </a>
-              <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
-              <div
-                className="font-mono"
-                style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
-              >
-                {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => setLanguage(lang)}
-                    style={{
-                      border: "none",
-                      padding: "6px 12px",
-                      fontSize: 11,
-                      letterSpacing: "0.04em",
-                      cursor: "pointer",
-                      background: form.language === lang ? "var(--accent-green)" : "transparent",
-                      color: form.language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
-                    }}
-                  >
-                    {lang.toUpperCase()}
-                  </button>
-                ))}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20 }}>
+                <a
+                  href="#how-it-works"
+                  className="font-mono"
+                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+                >
+                  {t.howItWorks}
+                </a>
+                <a
+                  href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
+                  className="font-mono"
+                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+                >
+                  {t.browseDestinations}
+                </a>
+                <a
+                  href={form.language === "bg" ? "/showcase?lang=bg" : "/showcase"}
+                  className="font-mono"
+                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+                >
+                  {t.showcase.navLabel}
+                </a>
+              </div>
+              <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
+                <div
+                  className="font-mono"
+                  style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
+                >
+                  {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => setLanguage(lang)}
+                      style={{
+                        border: "none",
+                        padding: "6px 12px",
+                        fontSize: 11,
+                        letterSpacing: "0.04em",
+                        cursor: "pointer",
+                        background: form.language === lang ? "var(--accent-green)" : "transparent",
+                        color: form.language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
+                      }}
+                    >
+                      {lang.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

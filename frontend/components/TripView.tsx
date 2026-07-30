@@ -136,29 +136,32 @@ export function TripView({ jobId }: { jobId: string }) {
             >
               {t.trip.planAnother} →
             </a>
-            <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
-            <div
-              className="font-mono"
-              style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
-            >
-              {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => setLanguage(lang)}
-                  style={{
-                    border: "none",
-                    padding: "6px 12px",
-                    fontSize: 11,
-                    letterSpacing: "0.04em",
-                    cursor: "pointer",
-                    background: language === lang ? "var(--accent-green)" : "transparent",
-                    color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
-                  }}
-                >
-                  {lang.toUpperCase()}
-                </button>
-              ))}
+            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
+              <div
+                className="font-mono"
+                style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
+              >
+                {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setLanguage(lang)}
+                    style={{
+                      border: "none",
+                      padding: "6px 12px",
+                      fontSize: 11,
+                      letterSpacing: "0.04em",
+                      cursor: "pointer",
+                      background: language === lang ? "var(--accent-green)" : "transparent",
+                      color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
+                    }}
+                  >
+                    {lang.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
