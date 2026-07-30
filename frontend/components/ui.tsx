@@ -27,14 +27,15 @@ export function ConfidenceDot({ tier }: { tier: ConfidenceTier }) {
   );
 }
 
-export function Stamp({ ok, children }: { ok: boolean; children: ReactNode }) {
+export function Stamp({ ok, color, children }: { ok: boolean; color?: string; children: ReactNode }) {
+  const resolved = color ?? (ok ? "var(--feasible)" : "var(--infeasible)");
   return (
     <div
       className="font-mono"
       style={{
         display: "inline-block",
-        border: `2px solid ${ok ? "var(--feasible)" : "var(--infeasible)"}`,
-        color: ok ? "var(--feasible)" : "var(--infeasible)",
+        border: `2px solid ${resolved}`,
+        color: resolved,
         fontWeight: 700,
         letterSpacing: "0.08em",
         padding: "6px 14px",

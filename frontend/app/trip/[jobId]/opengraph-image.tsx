@@ -6,6 +6,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { loadJob } from "@/lib/loadJob";
+import { computeTrustScore } from "@/lib/trustScore";
 
 export const runtime = "nodejs";
 export const alt = "A trip planned with decide";
@@ -42,6 +43,14 @@ const MARK_DATA_URI = `data:image/svg+xml;base64,${Buffer.from(MARK_SVG).toStrin
 
 const MAX_SUMMARY_LENGTH = 150;
 
+// Same thresholds as trustScoreColor in ItineraryResult.tsx, in hex since
+// this renderer (satori) doesn't resolve CSS custom properties.
+function trustScoreColor(percent: number): string {
+  if (percent >= 80) return "#1f6f8a"; // --grounded
+  if (percent >= 50) return "#c97f1e"; // --unverified
+  return "#b8452f"; // --infeasible
+}
+
 export default async function TripOgImage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
   const job = await loadJob(jobId);
@@ -50,6 +59,7 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
   const rawSummary = job?.result?.trip_summary ?? "It doesn't list options. It decides for you.";
   const summary = rawSummary.length > MAX_SUMMARY_LENGTH ? `${rawSummary.slice(0, MAX_SUMMARY_LENGTH - 1)}…` : rawSummary;
   const feasible = job?.result?.budget_feasibility?.feasible;
+  const trustScore = job?.result ? computeTrustScore(job.result) : null;
 
   let fraunces: Buffer | null = null;
   try {
@@ -84,22 +94,42 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
             {summary}
           </div>
         </div>
-        {typeof feasible === "boolean" && (
-          <div
-            style={{
-              display: "flex",
-              alignSelf: "flex-start",
-              border: `3px solid ${feasible ? "#1f6f8a" : "#b8452f"}`,
-              color: feasible ? "#1f6f8a" : "#b8452f",
-              fontSize: 22,
-              fontWeight: 700,
-              letterSpacing: 2,
-              padding: "10px 22px",
-              borderRadius: 8,
-              textTransform: "uppercase",
-            }}
-          >
-            {feasible ? "Budget: feasible" : "Budget: not feasible"}
+        {(typeof feasible === "boolean" || (trustScore && trustScore.totalCount > 0)) && (
+          <div style={{ display: "flex", alignSelf: "flex-start", gap: 16 }}>
+            {typeof feasible === "boolean" && (
+              <div
+                style={{
+                  display: "flex",
+                  border: `3px solid ${feasible ? "#1f6f8a" : "#b8452f"}`,
+                  color: feasible ? "#1f6f8a" : "#b8452f",
+                  fontSize: 22,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  padding: "10px 22px",
+                  borderRadius: 8,
+                  textTransform: "uppercase",
+                }}
+              >
+                {feasible ? "Budget: feasible" : "Budget: not feasible"}
+              </div>
+            )}
+            {trustScore && trustScore.totalCount > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  border: `3px solid ${trustScoreColor(trustScore.percent)}`,
+                  color: trustScoreColor(trustScore.percent),
+                  fontSize: 22,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  padding: "10px 22px",
+                  borderRadius: 8,
+                  textTransform: "uppercase",
+                }}
+              >
+                {trustScore.percent}% verified
+              </div>
+            )}
           </div>
         )}
       </div>

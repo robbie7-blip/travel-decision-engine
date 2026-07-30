@@ -3,9 +3,19 @@
 import { useState } from "react";
 import { ConfidenceDot, inputStyle, SectionLabel, Stamp } from "./ui";
 import { submitFeedback } from "@/lib/api";
+import { computeTrustScore } from "@/lib/trustScore";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
 import type { Itinerary, ItineraryItem } from "@/lib/types";
+
+/** >=80% grounded reuses the same teal as the "verified" tier dot; below
+ * 50% reuses the infeasible red — thresholds chosen to match, not clash
+ * with, the per-item confidence colors already established elsewhere. */
+function trustScoreColor(percent: number): string {
+  if (percent >= 80) return "var(--grounded)";
+  if (percent >= 50) return "var(--unverified)";
+  return "var(--infeasible)";
+}
 
 const feedbackButtonStyle = {
   fontSize: 11,
@@ -198,6 +208,8 @@ export function ItineraryResult({
     setQuestion("");
   }
 
+  const trustScore = computeTrustScore(result);
+
   return (
     <div>
       <h2
@@ -215,9 +227,23 @@ export function ItineraryResult({
 
       {result.budget_feasibility && (
         <div style={{ marginBottom: 24 }}>
-          <Stamp ok={result.budget_feasibility.feasible}>
-            {result.budget_feasibility.feasible ? t.result.budgetFeasible : t.result.budgetNotFeasible}
-          </Stamp>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <Stamp ok={result.budget_feasibility.feasible}>
+              {result.budget_feasibility.feasible ? t.result.budgetFeasible : t.result.budgetNotFeasible}
+            </Stamp>
+            {trustScore.totalCount > 0 && (
+              <Stamp ok color={trustScoreColor(trustScore.percent)}>
+                {trustScore.percent}% {t.result.trustScoreLabel}
+              </Stamp>
+            )}
+          </div>
+          {trustScore.totalCount > 0 && (
+            <p style={{ color: "var(--ink-dim)", fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+              {t.result.trustScoreDetail
+                .replace("{grounded}", String(trustScore.groundedCount))
+                .replace("{total}", String(trustScore.totalCount))}
+            </p>
+          )}
           <p style={{ color: "var(--ink-soft)", fontSize: 14, marginTop: 10, lineHeight: 1.6 }}>
             {t.result.minEstimate}: €{result.budget_feasibility.min_realistic_total_eur} -{" "}
             {result.budget_feasibility.reasoning}
