@@ -11,13 +11,29 @@ import type { Language } from "@/lib/types";
 
 type Status = "idle" | "loading" | "error";
 
+interface DemoTrip {
+  jobId: string;
+  destinations: string[];
+}
+
 export default function Home() {
   const router = useRouter();
   const [form, setForm] = useState<TripFormState>(DEFAULT_FORM_STATE);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+  const [demo, setDemo] = useState<DemoTrip | null>(null);
 
   const t = TRANSLATIONS[form.language];
+
+  useEffect(() => {
+    // Zero-commitment homepage demo: only shows up once an admin has set a
+    // real, already-generated trip via /admin/demo-trip — never a
+    // fabricated example (see lib/demoTrip.ts).
+    fetch("/api/demo-trip")
+      .then((res) => res.json())
+      .then((data) => setDemo(data.demo ?? null))
+      .catch(() => setDemo(null));
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -173,6 +189,21 @@ export default function Home() {
             <br />
             {t.subheadLine2}
           </p>
+          {demo && (
+            <a
+              href={`/trip/${demo.jobId}`}
+              className="font-mono"
+              style={{
+                display: "inline-block",
+                marginTop: 16,
+                fontSize: 13,
+                color: "var(--grounded)",
+                textDecoration: "underline",
+              }}
+            >
+              {t.demo.seeExample.replace("{destination}", demo.destinations.join(" · "))}
+            </a>
+          )}
           <div
             id="confidence-legend"
             className="font-mono"

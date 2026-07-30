@@ -127,6 +127,12 @@ export interface Dictionary {
     heading: string;
     remove: string; // aria-label on the per-entry remove button
   };
+  // Homepage "see a real example" link — only rendered when an admin has
+  // set a real, already-generated trip via /admin/demo-trip (see
+  // lib/demoTrip.ts). "{destination}" placeholder.
+  demo: {
+    seeExample: string;
+  };
   // The /compare page — two full generations, same trip, different
   // destination, shown side by side.
   compare: {
@@ -269,6 +275,9 @@ const en: Dictionary = {
   recentTrips: {
     heading: "Your recent trips",
     remove: "Remove",
+  },
+  demo: {
+    seeExample: "See a real example: {destination} →",
   },
   compare: {
     heading: "Which one actually works better?",
@@ -421,6 +430,9 @@ const bg: Dictionary = {
   recentTrips: {
     heading: "Скорошни пътувания",
     remove: "Премахни",
+  },
+  demo: {
+    seeExample: "Виж реален пример: {destination} →",
   },
   compare: {
     heading: "Кое всъщност е по-добрият избор?",
