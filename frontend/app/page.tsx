@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DEFAULT_FORM_STATE, TripForm, toTripBriefInput, type TripFormState } from "@/components/TripForm";
+import { DEFAULT_FORM_STATE, splitList, TripForm, toTripBriefInput, type TripFormState } from "@/components/TripForm";
 import { RecentTrips } from "@/components/RecentTrips";
 import { ConfidenceDot } from "@/components/ui";
 import { ApiError, createGenerateJob } from "@/lib/api";
@@ -54,6 +54,19 @@ export default function Home() {
     setError("");
     try {
       const brief = toTripBriefInput(form);
+
+      const compareDestinations = form.compareEnabled ? form.compareDestinations.trim() : "";
+      if (compareDestinations) {
+        // Same trip (dates/budget/party/pace/etc.) — only the destination
+        // differs — so both jobs are queued from the same brief with just
+        // that field swapped, same as any other generation (same rate
+        // limit, same spend cap, just twice).
+        const compareBrief = { ...brief, destinations: splitList(compareDestinations) };
+        const [jobIdA, jobIdB] = await Promise.all([createGenerateJob(brief), createGenerateJob(compareBrief)]);
+        router.push(`/compare?a=${jobIdA}&b=${jobIdB}`);
+        return;
+      }
+
       const jobId = await createGenerateJob(brief);
       router.push(`/trip/${jobId}`);
     } catch (e) {

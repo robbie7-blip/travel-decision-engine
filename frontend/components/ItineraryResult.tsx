@@ -173,8 +173,12 @@ interface ItineraryResultProps {
   result: Itinerary;
   jobId: string;
   t: Dictionary;
-  onRefine: (question: string) => void;
-  refining: boolean;
+  // Omitted entirely on the /compare page (see app/compare/page.tsx) —
+  // pushback there would mean juggling two independently-refinable job ids
+  // in one query string, which isn't worth it for a first version of
+  // side-by-side comparison. The pushback section just doesn't render.
+  onRefine?: (question: string) => void;
+  refining?: boolean;
   refiningLabel?: string;
   refineError?: string;
   lastQuestion?: string;
@@ -185,7 +189,7 @@ export function ItineraryResult({
   jobId,
   t,
   onRefine,
-  refining,
+  refining = false,
   refiningLabel,
   refineError,
   lastQuestion,
@@ -204,7 +208,7 @@ export function ItineraryResult({
 
   function submitQuestion() {
     const trimmed = question.trim();
-    if (!trimmed || refining) return;
+    if (!trimmed || refining || !onRefine) return;
     onRefine(trimmed);
     setQuestion("");
   }
@@ -433,6 +437,7 @@ export function ItineraryResult({
         </div>
       )}
 
+      {onRefine && (
       <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
         <SectionLabel>{t.result.pushbackLabel}</SectionLabel>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -502,6 +507,7 @@ export function ItineraryResult({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -22,6 +22,11 @@ export interface TripFormState {
   hard_no: string;
   language: Language;
   needs_lodging: boolean;
+  // Compare mode: same trip (dates/budget/party/pace/etc.), a second
+  // destination — the toggle is separate from the text so unchecking it
+  // doesn't need to also clear whatever was typed.
+  compareEnabled: boolean;
+  compareDestinations: string;
 }
 
 export const DEFAULT_FORM_STATE: TripFormState = {
@@ -40,9 +45,11 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   hard_no: "",
   language: "en",
   needs_lodging: true,
+  compareEnabled: false,
+  compareDestinations: "",
 };
 
-function splitList(value: string): string[] {
+export function splitList(value: string): string[] {
   return value
     .split(",")
     .map((s) => s.trim())
@@ -103,6 +110,31 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             />
           </Field>
         </div>
+        <div style={{ gridColumn: "1 / -1", marginBottom: value.compareEnabled ? 0 : 16 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={value.compareEnabled}
+              onChange={(e) => update("compareEnabled", e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: "var(--grounded)", flexShrink: 0 }}
+            />
+            <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+              {t.form.compareToggleLabel}
+            </span>
+          </label>
+        </div>
+        {value.compareEnabled && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <Field label={t.form.compareDestinations}>
+              <input
+                style={inputStyle}
+                value={value.compareDestinations}
+                onChange={(e) => update("compareDestinations", e.target.value)}
+                placeholder={t.form.compareDestinationsPlaceholder}
+              />
+            </Field>
+          </div>
+        )}
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label={t.form.origin}>
             <input
