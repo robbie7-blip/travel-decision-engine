@@ -84,7 +84,7 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img width={52} height={52} src={MARK_DATA_URI} alt="" />
-          <span style={{ fontSize: 28, fontWeight: 600, color: "#2b241c" }}>decide</span>
+          <span style={{ fontSize: 28, fontWeight: 600, color: "#3f7a4a" }}>decide</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", gap: 24 }}>
           <div style={{ display: "flex", fontSize: 58, fontWeight: 600, color: "#2b241c", lineHeight: 1.15, maxWidth: 1000 }}>

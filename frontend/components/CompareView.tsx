@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
 import { Stamp } from "./ui";
 import { ApiError, pollJob } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
+import { formatMoney } from "@/lib/currency";
 import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Job } from "@/lib/jobs";
 import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
@@ -70,6 +72,7 @@ export function CompareView() {
   const jobIdA = searchParams.get("a");
   const jobIdB = searchParams.get("b");
 
+  const { currency, setCurrency, rates } = useCurrency();
   const [language, setLanguageState] = useState<Language>("en");
   useEffect(() => {
     const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -94,7 +97,7 @@ export function CompareView() {
         <a href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
-          <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--ink)" }}>
+          <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--accent-green)" }}>
             decide
           </span>
         </a>
@@ -106,6 +109,7 @@ export function CompareView() {
           >
             {t.compare.planAnother} →
           </a>
+          <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
           <div
             className="font-mono"
             style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
@@ -121,7 +125,7 @@ export function CompareView() {
                   fontSize: 11,
                   letterSpacing: "0.04em",
                   cursor: "pointer",
-                  background: language === lang ? "var(--grounded)" : "transparent",
+                  background: language === lang ? "var(--accent-green)" : "transparent",
                   color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
                 }}
               >
@@ -198,7 +202,7 @@ export function CompareView() {
                       )}
                     </div>
                     <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
-                      {t.compare.totalCost}: €{totalCost(col.result)}
+                      {t.compare.totalCost}: {formatMoney(totalCost(col.result), currency, rates)}
                     </div>
                   </div>
                 );
@@ -219,7 +223,9 @@ export function CompareView() {
                     {state.loadError}
                   </div>
                 )}
-                {state.result && <ItineraryResult result={state.result} jobId={jobId} t={t} />}
+                {state.result && (
+                  <ItineraryResult result={state.result} jobId={jobId} t={t} currency={currency} rates={rates} />
+                )}
               </div>
             ))}
           </div>

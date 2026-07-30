@@ -116,6 +116,16 @@ export interface Dictionary {
     pushbackYouAsked: string;
   };
   genericError: string;
+  // Homepage footer band translating the confidence-tier system into plain
+  // language (see components/TrustFooter.tsx) — decide's answer to a
+  // Booking.com-style "why trust us" strip, built from claims the app
+  // already makes rather than partner logos or certifications it doesn't
+  // have. Reuses tierLegend (short label) and result.tierExplainer (the
+  // one-sentence explanation) rather than duplicating that copy.
+  trustFooter: {
+    heading: string;
+    intro: string;
+  };
   trip: {
     planAnother: string;
     notFound: string;
@@ -277,6 +287,10 @@ const en: Dictionary = {
     pushbackYouAsked: "You asked",
   },
   genericError: "Something went wrong. Try again.",
+  trustFooter: {
+    heading: "Why the numbers can be trusted",
+    intro: "Every line in an itinerary carries one of five confidence levels - shown openly, never averaged away or hidden behind a single score.",
+  },
   trip: {
     planAnother: "Plan your own trip",
     notFound: "This trip link has expired or doesn't exist.",
@@ -440,6 +454,10 @@ const bg: Dictionary = {
     pushbackYouAsked: "Попитахте",
   },
   genericError: "Нещо не сработи. Опитайте отново.",
+  trustFooter: {
+    heading: "Защо на цифрите може да се вярва",
+    intro: "Всеки ред в плана носи едно от пет нива на увереност - показани открито, никога осреднени или скрити зад една обща оценка.",
+  },
   trip: {
     planAnother: "Планирайте свое пътуване",
     notFound: "Тази връзка е изтекла или не съществува.",

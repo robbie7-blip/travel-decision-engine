@@ -5,6 +5,7 @@ import { ConfidenceDot, inputStyle, SectionLabel, Stamp } from "./ui";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
+import { formatMoney, type Currency, type FxRates } from "@/lib/currency";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
 import type { Itinerary, ItineraryItem } from "@/lib/types";
@@ -182,6 +183,10 @@ interface ItineraryResultProps {
   refiningLabel?: string;
   refineError?: string;
   lastQuestion?: string;
+  // Defaults to EUR/no rates — every cost figure just renders in EUR, the
+  // currency the itinerary was actually generated and budget-checked in.
+  currency?: Currency;
+  rates?: FxRates | null;
 }
 
 export function ItineraryResult({
@@ -193,6 +198,8 @@ export function ItineraryResult({
   refiningLabel,
   refineError,
   lastQuestion,
+  currency = "EUR",
+  rates = null,
 }: ItineraryResultProps) {
   const [question, setQuestion] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -273,7 +280,7 @@ export function ItineraryResult({
             </p>
           )}
           <p style={{ color: "var(--ink-soft)", fontSize: 14, marginTop: 10, lineHeight: 1.6 }}>
-            {t.result.minEstimate}: €{result.budget_feasibility.min_realistic_total_eur} -{" "}
+            {t.result.minEstimate}: {formatMoney(result.budget_feasibility.min_realistic_total_eur, currency, rates)} -{" "}
             {result.budget_feasibility.reasoning}
           </p>
         </div>
@@ -390,7 +397,7 @@ export function ItineraryResult({
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
                       <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
-                        €{item.cost_estimate_eur}
+                        {formatMoney(item.cost_estimate_eur, currency, rates)}
                         {t.result.inlineTierLabel[item.confidence_tier ?? "inferred"] &&
                           ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`}
                       </span>
