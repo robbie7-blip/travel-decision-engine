@@ -44,6 +44,9 @@ export interface Dictionary {
   form: {
     destinations: string;
     destinationsPlaceholder: string;
+    compareToggleLabel: string;
+    compareDestinations: string;
+    compareDestinationsPlaceholder: string;
     origin: string;
     originPlaceholder: string;
     skipLodgingLabel: string;
@@ -124,6 +127,14 @@ export interface Dictionary {
     heading: string;
     remove: string; // aria-label on the per-entry remove button
   };
+  // The /compare page — two full generations, same trip, different
+  // destination, shown side by side.
+  compare: {
+    heading: string;
+    totalCost: string;
+    missingJobs: string; // shown if the page is loaded without both ?a=/?b= ids
+    planAnother: string;
+  };
   destinations: {
     pageTitle: string;
     pageDescription: string; // "{count}" placeholder for the city count
@@ -176,6 +187,9 @@ const en: Dictionary = {
   form: {
     destinations: "Destinations (comma-separated)",
     destinationsPlaceholder: "Brussels, Bruges",
+    compareToggleLabel: "Compare with another destination (same dates, budget, and preferences)",
+    compareDestinations: "Compare against",
+    compareDestinationsPlaceholder: "e.g. Athens",
     origin: "Traveling from (optional)",
     originPlaceholder: "e.g. London - used to estimate real arrival/departure transport cost",
     skipLodgingLabel: "I already have accommodation sorted (e.g. business trip) - skip lodging suggestions",
@@ -256,6 +270,12 @@ const en: Dictionary = {
     heading: "Your recent trips",
     remove: "Remove",
   },
+  compare: {
+    heading: "Which one actually works better?",
+    totalCost: "Est. total cost",
+    missingJobs: "This comparison link is missing one or both trips.",
+    planAnother: "Plan a new comparison",
+  },
   destinations: {
     pageTitle: "Destination guides",
     pageDescription:
@@ -318,6 +338,9 @@ const bg: Dictionary = {
   form: {
     destinations: "Дестинации (разделени със запетая)",
     destinationsPlaceholder: "Брюксел, Брюж",
+    compareToggleLabel: "Сравни с друга дестинация (същите дати, бюджет и предпочитания)",
+    compareDestinations: "Сравни със",
+    compareDestinationsPlaceholder: "напр. Атина",
     origin: "Заминаване от (по избор)",
     originPlaceholder:
       "напр. Лондон - използва се за оценка на реалната цена на транспорта при пристигане/заминаване",
@@ -398,6 +421,12 @@ const bg: Dictionary = {
   recentTrips: {
     heading: "Скорошни пътувания",
     remove: "Премахни",
+  },
+  compare: {
+    heading: "Кое всъщност е по-добрият избор?",
+    totalCost: "Прибл. обща цена",
+    missingJobs: "На тази връзка за сравнение липсва едно или и двете пътувания.",
+    planAnother: "Планирай ново сравнение",
   },
   destinations: {
     pageTitle: "Пътеводители по дестинации",
