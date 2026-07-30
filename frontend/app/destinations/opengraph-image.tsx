@@ -1,14 +1,14 @@
-// Per-trip social share image. Bundles the Fraunces weight already used for
-// the "decide" wordmark (frontend/lib/fonts, SIL OFL) so a shared trip link
-// renders on-brand in iMessage/Slack/WhatsApp instead of a bare URL.
+// Social share image for the /destinations index — same branding as the
+// per-city guide image (see [slug]/opengraph-image.tsx) and the trip
+// share image, just without a specific city's photo to feature.
 
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { loadJob } from "@/lib/loadJob";
+import { listDestinationSlugs } from "@/lib/destinations";
 
 export const runtime = "nodejs";
-export const alt = "A trip planned with decide";
+export const alt = "decide — destination guides";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -40,16 +40,8 @@ const MARK_SVG = `
 </svg>`;
 const MARK_DATA_URI = `data:image/svg+xml;base64,${Buffer.from(MARK_SVG).toString("base64")}`;
 
-const MAX_SUMMARY_LENGTH = 150;
-
-export default async function TripOgImage({ params }: { params: Promise<{ jobId: string }> }) {
-  const { jobId } = await params;
-  const job = await loadJob(jobId);
-
-  const destinations = job?.brief?.destinations?.join(" · ") ?? "A trip, decided";
-  const rawSummary = job?.result?.trip_summary ?? "It doesn't list options. It decides for you.";
-  const summary = rawSummary.length > MAX_SUMMARY_LENGTH ? `${rawSummary.slice(0, MAX_SUMMARY_LENGTH - 1)}…` : rawSummary;
-  const feasible = job?.result?.budget_feasibility?.feasible;
+export default async function DestinationsIndexOgImage() {
+  const count = listDestinationSlugs().length;
 
   let fraunces: Buffer | null = null;
   try {
@@ -77,31 +69,13 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
           <span style={{ fontSize: 28, fontWeight: 600, color: "#2b241c" }}>decide</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", gap: 24 }}>
-          <div style={{ display: "flex", fontSize: 58, fontWeight: 600, color: "#2b241c", lineHeight: 1.15, maxWidth: 1000 }}>
-            {destinations}
+          <div style={{ display: "flex", fontSize: 64, fontWeight: 600, color: "#2b241c", lineHeight: 1.15 }}>
+            Destination guides
           </div>
           <div style={{ display: "flex", fontSize: 27, color: "#4a4136", lineHeight: 1.5, maxWidth: 940 }}>
-            {summary}
+            What decide already knows about {count} cities before it even runs a live search.
           </div>
         </div>
-        {typeof feasible === "boolean" && (
-          <div
-            style={{
-              display: "flex",
-              alignSelf: "flex-start",
-              border: `3px solid ${feasible ? "#1f6f8a" : "#b8452f"}`,
-              color: feasible ? "#1f6f8a" : "#b8452f",
-              fontSize: 22,
-              fontWeight: 700,
-              letterSpacing: 2,
-              padding: "10px 22px",
-              borderRadius: 8,
-              textTransform: "uppercase",
-            }}
-          >
-            {feasible ? "Budget: feasible" : "Budget: not feasible"}
-          </div>
-        )}
       </div>
     ),
     {
