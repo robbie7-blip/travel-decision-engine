@@ -133,6 +133,16 @@ export interface Dictionary {
   demo: {
     seeExample: string;
   };
+  // The /showcase gallery — a curated list of real, already-generated trips
+  // (see lib/showcase.ts), admin-managed via /admin/showcase.
+  showcase: {
+    navLabel: string;
+    pageTitle: string;
+    pageDescription: string;
+    emptyState: string;
+    viewTrip: string;
+    daysLabel: string; // "{count}" placeholder, e.g. "9 days"
+  };
   // The /compare page — two full generations, same trip, different
   // destination, shown side by side.
   compare: {
@@ -278,6 +288,14 @@ const en: Dictionary = {
   },
   demo: {
     seeExample: "See a real example: {destination} →",
+  },
+  showcase: {
+    navLabel: "Real examples",
+    pageTitle: "Real trips decide has already planned",
+    pageDescription: "Full itineraries, not mockups - every confidence dot, budget stamp, and trust score exactly as generated.",
+    emptyState: "No examples here yet - check back soon.",
+    viewTrip: "View full itinerary →",
+    daysLabel: "{count} days",
   },
   compare: {
     heading: "Which one actually works better?",
@@ -433,6 +451,14 @@ const bg: Dictionary = {
   },
   demo: {
     seeExample: "Виж реален пример: {destination} →",
+  },
+  showcase: {
+    navLabel: "Реални примери",
+    pageTitle: "Реални пътувания, планирани от decide",
+    pageDescription: "Пълни планове, не макети - всяка точка на увереност, печат за бюджет и оценка на доверие точно както са генерирани.",
+    emptyState: "Все още няма примери тук - провери отново скоро.",
+    viewTrip: "Виж целия план →",
+    daysLabel: "{count} дни",
   },
   compare: {
     heading: "Кое всъщност е по-добрият избор?",

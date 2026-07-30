@@ -144,6 +144,13 @@ export default function Home() {
               >
                 {t.browseDestinations}
               </a>
+              <a
+                href={form.language === "bg" ? "/showcase?lang=bg" : "/showcase"}
+                className="font-mono"
+                style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+              >
+                {t.showcase.navLabel}
+              </a>
               <div
                 className="font-mono"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
