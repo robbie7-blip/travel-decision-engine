@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ConfidenceDot, inputStyle, SectionLabel, Stamp } from "./ui";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
+import { downloadItineraryIcs } from "@/lib/exportIcs";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
 import type { Itinerary, ItineraryItem } from "@/lib/types";
@@ -224,6 +225,29 @@ export function ItineraryResult({
       >
         {result.trip_summary}
       </h2>
+
+      {result.days && result.days.length > 0 && (
+        <button
+          type="button"
+          onClick={() => downloadItineraryIcs(result, jobId)}
+          className="font-mono"
+          style={{
+            marginBottom: 20,
+            background: "none",
+            border: "1px solid var(--line)",
+            borderRadius: 6,
+            padding: "8px 14px",
+            fontSize: 12,
+            color: "var(--ink-soft)",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          ⬇ {t.result.downloadCalendar}
+        </button>
+      )}
 
       {result.budget_feasibility && (
         <div style={{ marginBottom: 24 }}>

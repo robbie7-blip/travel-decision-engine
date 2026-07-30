@@ -85,6 +85,7 @@ export interface Dictionary {
     // "{grounded}" / "{total}" placeholders — one sentence explaining what
     // the trust score percentage actually counted.
     trustScoreDetail: string;
+    downloadCalendar: string;
     keyDecisions: string;
     confidenceLevel: Record<"high" | "medium" | "low", string>;
     vs: string;
@@ -212,6 +213,7 @@ const en: Dictionary = {
     minEstimate: "Model's minimum estimate",
     trustScoreLabel: "verified",
     trustScoreDetail: "{grounded} of {total} line items are backed by a live search or a checked fact - the rest are honest, hedged guesses, not fabricated numbers.",
+    downloadCalendar: "Add to calendar (.ics)",
     keyDecisions: "Key decisions",
     confidenceLevel: { high: "high", medium: "medium", low: "low" },
     vs: "vs",
@@ -354,6 +356,7 @@ const bg: Dictionary = {
     minEstimate: "Минимална оценка на модела",
     trustScoreLabel: "проверено",
     trustScoreDetail: "{grounded} от {total} елемента са базирани на търсене на живо или проверен факт - останалите са честни, хеджирани предположения, не измислени цифри.",
+    downloadCalendar: "Добави в календар (.ics)",
     keyDecisions: "Ключови решения",
     confidenceLevel: { high: "висока", medium: "средна", low: "ниска" },
     vs: "срещу",
