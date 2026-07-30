@@ -84,6 +84,12 @@ export interface Dictionary {
     vs: string;
     day: string;
     inlineTierLabel: Partial<Record<ConfidenceTier, string>>;
+    // One-sentence, tier-specific explanation of what that confidence level
+    // actually means — shown when a visitor expands an item's evidence
+    // rather than just taking the dot color on faith.
+    tierExplainer: Record<ConfidenceTier, string>;
+    evidenceShow: string;
+    evidenceHide: string;
     sourcesDisagree: string;
     source: string;
     skipThis: string;
@@ -206,6 +212,15 @@ const en: Dictionary = {
       single_source: "single source",
       inferred: "unverified",
     },
+    tierExplainer: {
+      verified: "Two independent searches were checked against each other and roughly agreed — this number reflects what was actually found, not a guess.",
+      fact_grounded: "This comes from decide's curated local knowledge base, not a live search — solid background, not price-checked in real time.",
+      single_source: "One live search returned a usable result. It wasn't cross-checked against a second source, so treat it as reliable but not double-verified.",
+      conflicting: "Two live searches disagreed on this. Both figures are shown so you can judge for yourself — the higher one was used as the safer assumption.",
+      inferred: "No reliable live search result was found for this. This is an honest, hedged estimate based on general knowledge, not a checked price.",
+    },
+    evidenceShow: "How do we know this?",
+    evidenceHide: "Hide",
     sourcesDisagree: "sources disagree",
     source: "source",
     skipThis: "Skip this",
@@ -337,6 +352,15 @@ const bg: Dictionary = {
       single_source: "един източник",
       inferred: "непотвърдено",
     },
+    tierExplainer: {
+      verified: "Две независими търсения бяха сравнени едно с друго и приблизително съвпаднаха - тази цифра отразява какво реално беше намерено, не предположение.",
+      fact_grounded: "Това идва от подбраната база от местни знания на decide, а не от търсене на живо - солидна основа, но не проверена в реално време.",
+      single_source: "Едно търсене на живо върна използваем резултат. Не беше кръстосано проверено с втори източник, така че го приемайте като надеждно, но не двойно потвърдено.",
+      conflicting: "Две търсения на живо се разминаха по този въпрос. И двете цифри са показани, за да прецените сами - по-високата беше използвана като по-безопасно предположение.",
+      inferred: "Не беше намерен надежден резултат от търсене на живо за това. Това е честна, хеджирана оценка, базирана на общи познания, не проверена цена.",
+    },
+    evidenceShow: "Откъде знаем това?",
+    evidenceHide: "Скрий",
     sourcesDisagree: "източниците се разминават",
     source: "източник",
     skipThis: "Пропуснете това",
