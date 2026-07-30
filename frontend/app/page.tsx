@@ -132,7 +132,10 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="header-nav-row" style={{ display: "flex", alignItems: "center", gap: 24, marginLeft: "auto" }}>
+            <div
+              className="header-nav-row"
+              style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 24, marginLeft: "auto" }}
+            >
               <a
                 href="#how-it-works"
                 className="font-mono"

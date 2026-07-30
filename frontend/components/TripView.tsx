@@ -128,7 +128,7 @@ export function TripView({ jobId }: { jobId: string }) {
               decide
             </span>
           </a>
-          <div style={{ display: "flex", alignItems: "center", gap: 24, marginLeft: "auto" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
             <a
               href="/"
               className="font-mono"
