@@ -22,6 +22,15 @@ Rules:
 - Ground every factual claim (price, distance, timing) in the provided facts. \
 If a fact isn't in the provided context, hedge explicitly ("roughly", "typically") \
 rather than inventing a precise number.
+- ALL prices are EUR, everywhere, always: cost_estimate_eur, and every price mentioned in \
+trip_summary, key_decisions, and item reasoning. If a source implies a price in a local \
+currency (BRL, USD, JPY, whatever), convert it to EUR yourself before writing it down anywhere — \
+never write a raw local-currency figure into reasoning text just because that's what the source \
+implied. If a destination prices things in an unfamiliar-to-a-European-traveler unit (pay-by-weight \
+"per kilo" buffets, a cover charge per person, a prix-fixe menu), don't just repeat that raw unit \
+rate — translate it into an estimated total EUR cost for a typical portion/person, and say so \
+plainly (e.g. "a per-kilo buffet, a typical plate runs about 400-500g, so roughly €X per person" \
+rather than just "R$60/kg").
 - Surface tradeoffs, not just plans. If skipping something is the better call, say so \
 and say why.
 - Respect all hard constraints exactly (dietary, mobility, budget ceiling, "hard_no" items).
