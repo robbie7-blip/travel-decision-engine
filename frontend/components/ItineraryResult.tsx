@@ -19,6 +19,20 @@ function trustScoreColor(percent: number): string {
   return "var(--infeasible)";
 }
 
+/** Splits the model's free-text budget reasoning into sentences for display
+ * as bullet points, since the reasoning itself is unstructured prose (no
+ * schema field breaks it into a list) — a period/!/? followed by whitespace
+ * and then a capital letter or a currency symbol is a safe-enough split
+ * point given this app's plain, short-sentence prompt style (see WRITING
+ * STYLE in the system prompt). Worst case a sentence splits oddly; the
+ * underlying text is never altered or dropped either way. */
+function splitIntoSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+(?=[A-Z€])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 const feedbackButtonStyle = {
   fontSize: 11,
   background: "none",
@@ -272,17 +286,33 @@ export function ItineraryResult({
               </Stamp>
             )}
           </div>
-          {trustScore.totalCount > 0 && (
-            <p style={{ color: "var(--ink-dim)", fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
-              {t.result.trustScoreDetail
-                .replace("{grounded}", String(trustScore.groundedCount))
-                .replace("{total}", String(trustScore.totalCount))}
-            </p>
-          )}
-          <p style={{ color: "var(--ink-soft)", fontSize: 14, marginTop: 10, lineHeight: 1.6 }}>
-            {t.result.minEstimate}: {formatMoney(result.budget_feasibility.min_realistic_total_eur, currency, rates)} -{" "}
-            {result.budget_feasibility.reasoning}
-          </p>
+          <div
+            style={{
+              marginTop: 12,
+              padding: "14px 16px",
+              background: "var(--bg-panel-raised)",
+              border: "1px solid var(--line)",
+              borderRadius: 8,
+            }}
+          >
+            {trustScore.totalCount > 0 && (
+              <p style={{ color: "var(--ink-dim)", fontSize: 12, lineHeight: 1.5, margin: "0 0 10px" }}>
+                {t.result.trustScoreDetail
+                  .replace("{grounded}", String(trustScore.groundedCount))
+                  .replace("{total}", String(trustScore.totalCount))}
+              </p>
+            )}
+            <div style={{ color: "var(--ink-soft)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+              {t.result.minEstimate}: {formatMoney(result.budget_feasibility.min_realistic_total_eur, currency, rates)}
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 18, color: "var(--ink-soft)", fontSize: 14, lineHeight: 1.6 }}>
+              {splitIntoSentences(result.budget_feasibility.reasoning).map((sentence, i) => (
+                <li key={i} style={{ marginBottom: 4 }}>
+                  {sentence}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
