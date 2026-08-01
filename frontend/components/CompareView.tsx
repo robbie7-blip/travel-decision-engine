@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
+import { useJobStatusMessage } from "./useJobStatusMessage";
 import { Stamp } from "./ui";
 import { ApiError, pollJob } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -88,6 +89,10 @@ export function CompareView() {
   const columnA = usePolledJob(jobIdA);
   const columnB = usePolledJob(jobIdB);
   const bothDone = Boolean(columnA.result && columnB.result);
+  // Hooks can't be called inside the columns.map() below, so both columns'
+  // rotating status messages are computed here up front instead.
+  const statusMessageA = useJobStatusMessage(columnA.jobStatus, t);
+  const statusMessageB = useJobStatusMessage(columnB.jobStatus, t);
 
   const header = (
     <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)" }}>
@@ -157,9 +162,9 @@ export function CompareView() {
     );
   }
 
-  const columns: Array<{ jobId: string; state: ColumnState }> = [
-    { jobId: jobIdA, state: columnA },
-    { jobId: jobIdB, state: columnB },
+  const columns: Array<{ jobId: string; state: ColumnState; statusMessage?: string }> = [
+    { jobId: jobIdA, state: columnA, statusMessage: statusMessageA },
+    { jobId: jobIdB, state: columnB, statusMessage: statusMessageB },
   ];
 
   return (
@@ -214,11 +219,11 @@ export function CompareView() {
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 32 }}>
-            {columns.map(({ jobId, state }, i) => (
+            {columns.map(({ jobId, state, statusMessage }, i) => (
               <div key={i} style={{ minWidth: 0 }}>
                 {!state.result && !state.loadError && (
                   <div className="font-mono" style={{ fontSize: 14, color: "var(--ink-dim)" }}>
-                    {state.jobStatus ? t.jobStatus[state.jobStatus] : t.trip.loading}
+                    {statusMessage ?? t.trip.loading}
                   </div>
                 )}
                 {state.loadError && (

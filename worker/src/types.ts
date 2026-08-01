@@ -30,6 +30,18 @@ export interface TripBriefInput {
   // engine then excludes lodging line items and lodging cost from the
   // budget entirely instead of suggesting/pricing a place to stay.
   needs_lodging: boolean;
+  // Only meaningful when needs_lodging is false — where the traveler is
+  // actually staying (a hotel name, an address, a neighborhood), so the
+  // engine can factor real proximity into sequencing (which sights are
+  // closer, which metro/transit stations are convenient) without pricing
+  // or suggesting lodging itself, which it already excludes entirely.
+  accommodation_location?: string;
+  // Defaults to true. Only meaningful when `origin` is set (that's the only
+  // case the engine generates arrival/departure transport items at all) —
+  // set false when the traveler already has a flight/train booked, and the
+  // engine excludes those transport line items and their cost from the
+  // budget entirely instead of pricing a trip they've already paid for.
+  needs_flight: boolean;
 }
 
 // Mirrors the JSON schema in engine.py's SYSTEM_PROMPT — the output contract.

@@ -41,6 +41,12 @@ export interface Dictionary {
   };
   tierLegend: Record<ConfidenceTier, string>;
   jobStatus: Record<JobStatus, string>;
+  // Cycled through (one at a time, every few seconds) while a job is
+  // "running" instead of showing one static "Generating…" message for the
+  // full minute-plus wait — same idea as Booking.com/Wizzair's loading
+  // screens. Every other job status still uses the single static
+  // jobStatus label above.
+  runningMessages: string[];
   form: {
     destinations: string;
     destinationsPlaceholder: string;
@@ -50,10 +56,16 @@ export interface Dictionary {
     origin: string;
     originPlaceholder: string;
     skipLodgingLabel: string;
-    startDate: string;
-    startDatePlaceholder: string;
-    endDate: string;
-    endDatePlaceholder: string;
+    accommodationLocation: string;
+    accommodationLocationPlaceholder: string;
+    skipFlightLabel: string;
+    // A single combined start/end date picker (see components/
+    // DateRangePicker.tsx) rather than two separate date fields.
+    dates: string;
+    datesPlaceholder: string;
+    // Shown under the calendar once a start date is picked but no end date
+    // yet, prompting the second click.
+    datesPickEnd: string;
     partySize: string;
     partyDescription: string;
     partyPlaceholder: string;
@@ -193,7 +205,7 @@ const en: Dictionary = {
     step1Title: "Tell us the trip",
     step1Body: "Destinations, dates, budget, pace - the things a friend would ask before planning.",
     step2Title: "We check real prices",
-    step2Body: "Live search verifies lodging and named venues instead of guessing.",
+    step2Body: "Live search verifies accommodation and named venues instead of guessing.",
     step3Title: "Every line shows its confidence",
     step3Body: "Verified, single-source, or an honest guess - never hidden, never overstated.",
   },
@@ -210,6 +222,14 @@ const en: Dictionary = {
     done: "Done",
     error: "Failed",
   },
+  runningMessages: [
+    "Checking live prices…",
+    "Cross-referencing accommodation costs…",
+    "Confirming named venues are still open…",
+    "Weighing options against your budget…",
+    "Double-checking the numbers that matter…",
+    "Putting the itinerary together…",
+  ],
   form: {
     destinations: "Destinations (comma-separated)",
     destinationsPlaceholder: "Brussels, Bruges",
@@ -218,11 +238,13 @@ const en: Dictionary = {
     compareDestinationsPlaceholder: "e.g. Athens",
     origin: "Traveling from (optional)",
     originPlaceholder: "e.g. London - used to estimate real arrival/departure transport cost",
-    skipLodgingLabel: "I already have accommodation sorted (e.g. business trip) - skip lodging suggestions",
-    startDate: "Start date (YYYY-MM-DD)",
-    startDatePlaceholder: "2026-10-10",
-    endDate: "End date (YYYY-MM-DD)",
-    endDatePlaceholder: "2026-10-13",
+    skipLodgingLabel: "I already have accommodation sorted (e.g. business trip) - skip accommodation suggestions",
+    accommodationLocation: "Where are you staying? (optional)",
+    accommodationLocationPlaceholder: "e.g. Hotel Ibis, near Gare du Nord - helps plan routes and timing",
+    skipFlightLabel: "I already have a flight/train booked - skip transport suggestions and cost",
+    dates: "Dates",
+    datesPlaceholder: "Select start and end dates",
+    datesPickEnd: "Now pick the end date",
     partySize: "Party size",
     partyDescription: "Party description",
     partyPlaceholder: "couple, late 20s",
@@ -359,7 +381,7 @@ const bg: Dictionary = {
     step1Title: "Кажи ни за пътуването",
     step1Body: "Дестинации, дати, бюджет, темп - нещата, които приятел би попитал преди да планира.",
     step2Title: "Проверяваме реални цени",
-    step2Body: "Търсене на живо потвърждава нощувки и конкретни места, вместо да гадаем.",
+    step2Body: "Търсене на живо потвърждава настаняване и конкретни места, вместо да гадаем.",
     step3Title: "Всеки ред показва увереността си",
     step3Body: "Потвърдено, един източник или честно предположение - винаги ясно означено.",
   },
@@ -376,6 +398,14 @@ const bg: Dictionary = {
     done: "Готово",
     error: "Неуспешно",
   },
+  runningMessages: [
+    "Проверка на актуални цени…",
+    "Кръстосана проверка на цени за настаняване…",
+    "Потвърждаване, че местата все още работят…",
+    "Съпоставяне на опциите с бюджета…",
+    "Двойна проверка на важните цифри…",
+    "Сглобяване на плана…",
+  ],
   form: {
     destinations: "Дестинации (разделени със запетая)",
     destinationsPlaceholder: "Брюксел, Брюж",
@@ -386,10 +416,12 @@ const bg: Dictionary = {
     originPlaceholder:
       "напр. Лондон - използва се за оценка на реалната цена на транспорта при пристигане/заминаване",
     skipLodgingLabel: "Вече имам настаняване (напр. командировка) - пропусни предложенията за нощувка",
-    startDate: "Начална дата (ГГГГ-ММ-ДД)",
-    startDatePlaceholder: "2026-10-10",
-    endDate: "Крайна дата (ГГГГ-ММ-ДД)",
-    endDatePlaceholder: "2026-10-13",
+    accommodationLocation: "Къде отсядаш? (по избор)",
+    accommodationLocationPlaceholder: "напр. хотел Ibis, до Gare du Nord - помага за маршрути и време",
+    skipFlightLabel: "Вече имам резервиран полет/влак - пропусни предложенията и цената за транспорт",
+    dates: "Дати",
+    datesPlaceholder: "Избери начална и крайна дата",
+    datesPickEnd: "Сега избери крайната дата",
     partySize: "Брой пътуващи",
     partyDescription: "Описание на групата",
     partyPlaceholder: "двойка, около 20-те",

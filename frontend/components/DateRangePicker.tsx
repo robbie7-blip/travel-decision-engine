@@ -1,0 +1,240 @@
+"use client";
+
+// A single combined start/end date picker — click once to set the start,
+// click again to set the end, instead of two separate native <input
+// type="date"> fields that don't visually relate to each other. No date
+// library: date math stays in local Date objects (safe for calendar grid
+// generation) and is only ever serialized back to "YYYY-MM-DD" via manual
+// zero-padded formatting, never toISOString() (which would shift the date
+// across a UTC boundary).
+
+import { useEffect, useRef, useState } from "react";
+import { inputStyle } from "./ui";
+import type { Language } from "@/lib/types";
+
+interface DateRangePickerProps {
+  startDate: string;
+  endDate: string;
+  onChange: (startDate: string, endDate: string) => void;
+  language: Language;
+  placeholder: string;
+  toLabel: string;
+}
+
+const LOCALE_BY_LANGUAGE: Record<Language, string> = {
+  en: "en-GB",
+  bg: "bg-BG",
+};
+
+function parseIsoDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  return new Date(Number(y), Number(m) - 1, Number(d));
+}
+
+function formatIsoDate(date: Date): string {
+  const y = String(date.getFullYear()).padStart(4, "0");
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function sameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** Weeks of the given month, as arrays of 7 cells (null = padding from an
+ * adjacent month), starting the week on Monday. */
+function getMonthWeeks(year: number, month: number): (Date | null)[][] {
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // getDay() is 0=Sunday; convert to a Monday-first offset (0=Monday..6=Sunday).
+  const leadingBlanks = (firstDay.getDay() + 6) % 7;
+
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < leadingBlanks; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks: (Date | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+export function DateRangePicker({ startDate, endDate, onChange, language, placeholder, toLabel }: DateRangePickerProps) {
+  const [open, setOpen] = useState(false);
+  const [hoverDate, setHoverDate] = useState<Date | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const start = parseIsoDate(startDate);
+  const end = parseIsoDate(endDate);
+
+  const [viewDate, setViewDate] = useState(() => start ?? new Date());
+  const locale = LOCALE_BY_LANGUAGE[language];
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  function handleDayClick(day: Date) {
+    const iso = formatIsoDate(day);
+    if (!start || (start && end)) {
+      // Nothing selected yet, or a full range already picked — this click
+      // starts a fresh selection.
+      onChange(iso, "");
+      return;
+    }
+    // A start is set but no end yet — this click completes the range,
+    // swapping the order if the traveler clicked an earlier date second.
+    if (day < start) {
+      onChange(iso, formatIsoDate(start));
+    } else {
+      onChange(formatIsoDate(start), iso);
+    }
+    setOpen(false);
+  }
+
+  function isInPreviewRange(day: Date): boolean {
+    if (!start || end || !hoverDate) return false;
+    const lo = start < hoverDate ? start : hoverDate;
+    const hi = start < hoverDate ? hoverDate : start;
+    return day >= lo && day <= hi;
+  }
+
+  const monthLabel = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(viewDate);
+  const weekdayLabels = Array.from({ length: 7 }, (_, i) => {
+    // A Monday-starting reference week (2024-01-01 was a Monday), just to
+    // read locale-correct short weekday names off it.
+    const ref = new Date(2024, 0, 1 + i);
+    return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(ref);
+  });
+
+  const displayFormatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
+  const displayText =
+    start && end
+      ? `${displayFormatter.format(start)} → ${displayFormatter.format(end)}`
+      : start
+        ? `${displayFormatter.format(start)} → ?`
+        : placeholder;
+
+  const today = startOfDay(new Date());
+  const weeks = getMonthWeeks(viewDate.getFullYear(), viewDate.getMonth());
+
+  return (
+    <div ref={containerRef} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="font-mono"
+        style={{
+          ...inputStyle,
+          textAlign: "left",
+          cursor: "pointer",
+          color: start ? "var(--ink)" : "var(--ink-dim)",
+        }}
+      >
+        {displayText}
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            zIndex: 20,
+            top: "calc(100% + 6px)",
+            left: 0,
+            background: "var(--bg-panel)",
+            border: "1px solid var(--line)",
+            borderRadius: 10,
+            padding: 16,
+            boxShadow: "0 8px 24px -8px rgba(43, 36, 28, 0.25)",
+            width: 300,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <button
+              type="button"
+              onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
+              aria-label="Previous month"
+              style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "var(--ink-soft)", padding: 4 }}
+            >
+              ←
+            </button>
+            <div className="font-display" style={{ fontSize: 15, fontWeight: 600, textTransform: "capitalize" }}>
+              {monthLabel}
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
+              aria-label="Next month"
+              style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "var(--ink-soft)", padding: 4 }}
+            >
+              →
+            </button>
+          </div>
+
+          <div className="font-mono" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
+            {weekdayLabels.map((label, i) => (
+              <div key={i} style={{ fontSize: 10, textAlign: "center", color: "var(--ink-dim)", padding: "4px 0", textTransform: "uppercase" }}>
+                {label}
+              </div>
+            ))}
+          </div>
+
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+              {week.map((day, di) => {
+                if (!day) return <div key={di} />;
+                const isStart = start && sameDay(day, start);
+                const isEnd = end && sameDay(day, end);
+                const inRange = start && end && day > start && day < end;
+                const isToday = sameDay(day, today);
+                const preview = isInPreviewRange(day) && !isStart;
+
+                return (
+                  <button
+                    key={di}
+                    type="button"
+                    onClick={() => handleDayClick(day)}
+                    onMouseEnter={() => setHoverDate(day)}
+                    className="font-mono"
+                    style={{
+                      border: isToday && !isStart && !isEnd ? "1px solid var(--line)" : "none",
+                      borderRadius: 6,
+                      margin: 1,
+                      padding: "7px 0",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      background: isStart || isEnd ? "var(--accent-green)" : inRange || preview ? "var(--bg-panel-raised)" : "transparent",
+                      color: isStart || isEnd ? "var(--bg-panel)" : "var(--ink)",
+                    }}
+                  >
+                    {day.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+
+          {start && !end && (
+            <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10 }}>
+              {toLabel}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

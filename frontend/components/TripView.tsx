@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AddToShowcaseButton } from "./AddToShowcaseButton";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
+import { useJobStatusMessage } from "./useJobStatusMessage";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
@@ -30,6 +31,8 @@ export function TripView({ jobId }: { jobId: string }) {
   const [refineError, setRefineError] = useState("");
 
   const t = TRANSLATIONS[language];
+  const statusMessage = useJobStatusMessage(jobStatus, t);
+  const refiningMessage = useJobStatusMessage(refineJobStatus, t);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -171,7 +174,7 @@ export function TripView({ jobId }: { jobId: string }) {
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
           {!result && !loadError && (
             <div className="font-mono" style={{ fontSize: 14, color: "var(--ink-dim)" }}>
-              {jobStatus ? t.jobStatus[jobStatus] : t.trip.loading}
+              {statusMessage ?? t.trip.loading}
             </div>
           )}
           {loadError && (
@@ -190,7 +193,7 @@ export function TripView({ jobId }: { jobId: string }) {
                 t={t}
                 onRefine={handleRefine}
                 refining={refining}
-                refiningLabel={refineJobStatus ? t.jobStatus[refineJobStatus] : undefined}
+                refiningLabel={refiningMessage}
                 refineError={refineError}
                 lastQuestion={lastQuestion}
                 currency={currency}

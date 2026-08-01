@@ -92,6 +92,14 @@ that cheaper option — do not assume it without a citation backing that specifi
 figure invented to make the budget work, even with real citation links attached, is worse than no \
 citation, because it looks verified when it isn't — never do this.
 
+SHARED RULE FOR BOTH CATEGORIES — CURRENCY: a search result will often quote a price in the local \
+currency (BRL, USD, THB, whatever), not EUR. Convert it to EUR yourself before writing cost_estimate_eur \
+or mentioning that price anywhere in reasoning — never leave a raw local-currency figure in the output, \
+even inside a citation-backed reasoning sentence. If the local pricing convention itself is unfamiliar \
+to a European traveler (pay-by-weight, a per-person cover charge, a prix-fixe menu), translate it into \
+an estimated total EUR cost for a typical portion or person, and explain the convention in plain terms \
+rather than just repeating the local unit rate.
+
 After any searches, output ONLY the final JSON matching the schema. Do not write any other text \
 before, between, or after — no acknowledgment of the search, no commentary.`;
 
