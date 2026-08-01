@@ -41,6 +41,12 @@ export interface Dictionary {
   };
   tierLegend: Record<ConfidenceTier, string>;
   jobStatus: Record<JobStatus, string>;
+  // Cycled through (one at a time, every few seconds) while a job is
+  // "running" instead of showing one static "Generating…" message for the
+  // full minute-plus wait — same idea as Booking.com/Wizzair's loading
+  // screens. Every other job status still uses the single static
+  // jobStatus label above.
+  runningMessages: string[];
   form: {
     destinations: string;
     destinationsPlaceholder: string;
@@ -50,6 +56,7 @@ export interface Dictionary {
     origin: string;
     originPlaceholder: string;
     skipLodgingLabel: string;
+    skipFlightLabel: string;
     startDate: string;
     startDatePlaceholder: string;
     endDate: string;
@@ -210,6 +217,14 @@ const en: Dictionary = {
     done: "Done",
     error: "Failed",
   },
+  runningMessages: [
+    "Checking live prices…",
+    "Cross-referencing lodging costs…",
+    "Confirming named venues are still open…",
+    "Weighing options against your budget…",
+    "Double-checking the numbers that matter…",
+    "Putting the itinerary together…",
+  ],
   form: {
     destinations: "Destinations (comma-separated)",
     destinationsPlaceholder: "Brussels, Bruges",
@@ -219,6 +234,7 @@ const en: Dictionary = {
     origin: "Traveling from (optional)",
     originPlaceholder: "e.g. London - used to estimate real arrival/departure transport cost",
     skipLodgingLabel: "I already have accommodation sorted (e.g. business trip) - skip lodging suggestions",
+    skipFlightLabel: "I already have a flight/train booked - skip transport suggestions and cost",
     startDate: "Start date (YYYY-MM-DD)",
     startDatePlaceholder: "2026-10-10",
     endDate: "End date (YYYY-MM-DD)",
@@ -376,6 +392,14 @@ const bg: Dictionary = {
     done: "Готово",
     error: "Неуспешно",
   },
+  runningMessages: [
+    "Проверка на актуални цени…",
+    "Кръстосана проверка на цени за настаняване…",
+    "Потвърждаване, че местата все още работят…",
+    "Съпоставяне на опциите с бюджета…",
+    "Двойна проверка на важните цифри…",
+    "Сглобяване на плана…",
+  ],
   form: {
     destinations: "Дестинации (разделени със запетая)",
     destinationsPlaceholder: "Брюксел, Брюж",
@@ -386,6 +410,7 @@ const bg: Dictionary = {
     originPlaceholder:
       "напр. Лондон - използва се за оценка на реалната цена на транспорта при пристигане/заминаване",
     skipLodgingLabel: "Вече имам настаняване (напр. командировка) - пропусни предложенията за нощувка",
+    skipFlightLabel: "Вече имам резервиран полет/влак - пропусни предложенията и цената за транспорт",
     startDate: "Начална дата (ГГГГ-ММ-ДД)",
     startDatePlaceholder: "2026-10-10",
     endDate: "Крайна дата (ГГГГ-ММ-ДД)",

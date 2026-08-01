@@ -70,6 +70,7 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     : "en";
 
   const needs_lodging = b.needs_lodging === false ? false : true;
+  const needs_flight = b.needs_flight === false ? false : true;
 
   return {
     destinations,
@@ -87,5 +88,6 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     hard_no: cleanList(b.hard_no, "hard_no"),
     language,
     needs_lodging,
+    needs_flight,
   };
 }

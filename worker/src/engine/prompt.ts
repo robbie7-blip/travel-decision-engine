@@ -136,6 +136,13 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
   ];
   if (brief.origin?.trim()) {
     lines.push(`Traveling from: ${brief.origin.trim()}`);
+    if (!brief.needs_flight) {
+      lines.push(
+        `Flight/train to and from the destination is already booked separately — do NOT include ` +
+          `arrival or departure transport line items and exclude that cost entirely from ` +
+          `budget_feasibility, even though an origin is given above.`
+      );
+    }
   }
   if (!brief.needs_lodging) {
     lines.push(

@@ -22,6 +22,7 @@ export interface TripFormState {
   hard_no: string;
   language: Language;
   needs_lodging: boolean;
+  needs_flight: boolean;
   // Compare mode: same trip (dates/budget/party/pace/etc.), a second
   // destination — the toggle is separate from the text so unchecking it
   // doesn't need to also clear whatever was typed.
@@ -45,6 +46,7 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   hard_no: "",
   language: "en",
   needs_lodging: true,
+  needs_flight: true,
   compareEnabled: false,
   compareDestinations: "",
 };
@@ -73,6 +75,7 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     hard_no: splitList(form.hard_no),
     language: form.language,
     needs_lodging: form.needs_lodging,
+    needs_flight: form.needs_flight,
   };
 }
 
@@ -145,6 +148,21 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             />
           </Field>
         </div>
+        {value.origin.trim() && (
+          <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={!value.needs_flight}
+                onChange={(e) => update("needs_flight", !e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "var(--grounded)", flexShrink: 0 }}
+              />
+              <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+                {t.form.skipFlightLabel}
+              </span>
+            </label>
+          </div>
+        )}
         <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
             <input
