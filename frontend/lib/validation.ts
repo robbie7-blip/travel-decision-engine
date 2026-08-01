@@ -72,6 +72,14 @@ export function parseTripBrief(body: unknown): TripBriefInput {
   const needs_lodging = b.needs_lodging === false ? false : true;
   const needs_flight = b.needs_flight === false ? false : true;
 
+  let accommodation_location: string | undefined;
+  if (b.accommodation_location !== undefined && b.accommodation_location !== null) {
+    if (typeof b.accommodation_location !== "string") {
+      throw new ValidationError("accommodation_location must be a string.");
+    }
+    accommodation_location = b.accommodation_location.trim() || undefined;
+  }
+
   return {
     destinations,
     origin,
@@ -88,6 +96,7 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     hard_no: cleanList(b.hard_no, "hard_no"),
     language,
     needs_lodging,
+    accommodation_location,
     needs_flight,
   };
 }

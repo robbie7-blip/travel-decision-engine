@@ -56,6 +56,8 @@ export interface Dictionary {
     origin: string;
     originPlaceholder: string;
     skipLodgingLabel: string;
+    accommodationLocation: string;
+    accommodationLocationPlaceholder: string;
     skipFlightLabel: string;
     // A single combined start/end date picker (see components/
     // DateRangePicker.tsx) rather than two separate date fields.
@@ -237,6 +239,8 @@ const en: Dictionary = {
     origin: "Traveling from (optional)",
     originPlaceholder: "e.g. London - used to estimate real arrival/departure transport cost",
     skipLodgingLabel: "I already have accommodation sorted (e.g. business trip) - skip lodging suggestions",
+    accommodationLocation: "Where are you staying? (optional)",
+    accommodationLocationPlaceholder: "e.g. Hotel Ibis, near Gare du Nord - helps plan routes and timing",
     skipFlightLabel: "I already have a flight/train booked - skip transport suggestions and cost",
     dates: "Dates",
     datesPlaceholder: "Select start and end dates",
@@ -412,6 +416,8 @@ const bg: Dictionary = {
     originPlaceholder:
       "напр. Лондон - използва се за оценка на реалната цена на транспорта при пристигане/заминаване",
     skipLodgingLabel: "Вече имам настаняване (напр. командировка) - пропусни предложенията за нощувка",
+    accommodationLocation: "Къде отсядаш? (по избор)",
+    accommodationLocationPlaceholder: "напр. хотел Ibis, до Gare du Nord - помага за маршрути и време",
     skipFlightLabel: "Вече имам резервиран полет/влак - пропусни предложенията и цената за транспорт",
     dates: "Дати",
     datesPlaceholder: "Избери начална и крайна дата",

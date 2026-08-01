@@ -158,6 +158,15 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
       `Accommodation: already arranged separately (e.g. a business trip) — do NOT include any ` +
         `lodging line items and exclude lodging entirely from budget_feasibility.`
     );
+    if (brief.accommodation_location?.trim()) {
+      lines.push(
+        `Traveler is staying at/near: ${brief.accommodation_location.trim()} — factor its real ` +
+          `location into sequencing (which sights are closer, which metro/transit station or ` +
+          `route is convenient from there) the same way you would for a hotel you chose yourself, ` +
+          `but do NOT price it, describe it, or add it as a line item — it's given only for ` +
+          `logistics, not as something to plan or budget for.`
+      );
+    }
   }
   if (brief.must_see.length) {
     lines.push(`Must-see/must-do (near-mandatory inclusions): ${brief.must_see.join(", ")}`);

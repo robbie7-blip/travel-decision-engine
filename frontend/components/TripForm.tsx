@@ -23,6 +23,7 @@ export interface TripFormState {
   hard_no: string;
   language: Language;
   needs_lodging: boolean;
+  accommodation_location: string;
   needs_flight: boolean;
   // Compare mode: same trip (dates/budget/party/pace/etc.), a second
   // destination — the toggle is separate from the text so unchecking it
@@ -47,6 +48,7 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   hard_no: "",
   language: "en",
   needs_lodging: true,
+  accommodation_location: "",
   needs_flight: true,
   compareEnabled: false,
   compareDestinations: "",
@@ -76,6 +78,7 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     hard_no: splitList(form.hard_no),
     language: form.language,
     needs_lodging: form.needs_lodging,
+    accommodation_location: form.needs_lodging ? undefined : form.accommodation_location.trim() || undefined,
     needs_flight: form.needs_flight,
   };
 }
@@ -177,6 +180,18 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             </span>
           </label>
         </div>
+        {!value.needs_lodging && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <Field label={t.form.accommodationLocation}>
+              <input
+                style={inputStyle}
+                value={value.accommodation_location}
+                onChange={(e) => update("accommodation_location", e.target.value)}
+                placeholder={t.form.accommodationLocationPlaceholder}
+              />
+            </Field>
+          </div>
+        )}
         <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
           {/* Not <Field>: its wrapping <label> would forward a click from any
               button inside it (the calendar's day buttons) to the first
