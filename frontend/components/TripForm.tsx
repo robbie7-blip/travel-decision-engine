@@ -1,5 +1,6 @@
 "use client";
 
+import { DateRangePicker } from "./DateRangePicker";
 import { Field, inputStyle } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language, TripBriefInput } from "@/lib/types";
@@ -176,24 +177,28 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             </span>
           </label>
         </div>
-        <Field label={t.form.startDate}>
-          <input
-            type="date"
-            style={inputStyle}
-            value={value.start_date}
-            onChange={(e) => update("start_date", e.target.value)}
-            placeholder={t.form.startDatePlaceholder}
+        <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
+          {/* Not <Field>: its wrapping <label> would forward a click from any
+              button inside it (the calendar's day buttons) to the first
+              control in the label — the trigger button — re-toggling it
+              open right after a day-click closes it. Plain <div> here
+              replicates Field's label styling without that label-click
+              side effect. */}
+          <div
+            className="font-mono"
+            style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
+          >
+            {t.form.dates}
+          </div>
+          <DateRangePicker
+            startDate={value.start_date}
+            endDate={value.end_date}
+            onChange={(start, end) => onChange({ ...value, start_date: start, end_date: end })}
+            language={value.language}
+            placeholder={t.form.datesPlaceholder}
+            toLabel={t.form.datesPickEnd}
           />
-        </Field>
-        <Field label={t.form.endDate}>
-          <input
-            type="date"
-            style={inputStyle}
-            value={value.end_date}
-            onChange={(e) => update("end_date", e.target.value)}
-            placeholder={t.form.endDatePlaceholder}
-          />
-        </Field>
+        </div>
         <Field label={t.form.partySize}>
           <input
             type="number"

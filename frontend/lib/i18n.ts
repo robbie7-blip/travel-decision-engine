@@ -57,10 +57,13 @@ export interface Dictionary {
     originPlaceholder: string;
     skipLodgingLabel: string;
     skipFlightLabel: string;
-    startDate: string;
-    startDatePlaceholder: string;
-    endDate: string;
-    endDatePlaceholder: string;
+    // A single combined start/end date picker (see components/
+    // DateRangePicker.tsx) rather than two separate date fields.
+    dates: string;
+    datesPlaceholder: string;
+    // Shown under the calendar once a start date is picked but no end date
+    // yet, prompting the second click.
+    datesPickEnd: string;
     partySize: string;
     partyDescription: string;
     partyPlaceholder: string;
@@ -235,10 +238,9 @@ const en: Dictionary = {
     originPlaceholder: "e.g. London - used to estimate real arrival/departure transport cost",
     skipLodgingLabel: "I already have accommodation sorted (e.g. business trip) - skip lodging suggestions",
     skipFlightLabel: "I already have a flight/train booked - skip transport suggestions and cost",
-    startDate: "Start date (YYYY-MM-DD)",
-    startDatePlaceholder: "2026-10-10",
-    endDate: "End date (YYYY-MM-DD)",
-    endDatePlaceholder: "2026-10-13",
+    dates: "Dates",
+    datesPlaceholder: "Select start and end dates",
+    datesPickEnd: "Now pick the end date",
     partySize: "Party size",
     partyDescription: "Party description",
     partyPlaceholder: "couple, late 20s",
@@ -411,10 +413,9 @@ const bg: Dictionary = {
       "напр. Лондон - използва се за оценка на реалната цена на транспорта при пристигане/заминаване",
     skipLodgingLabel: "Вече имам настаняване (напр. командировка) - пропусни предложенията за нощувка",
     skipFlightLabel: "Вече имам резервиран полет/влак - пропусни предложенията и цената за транспорт",
-    startDate: "Начална дата (ГГГГ-ММ-ДД)",
-    startDatePlaceholder: "2026-10-10",
-    endDate: "Крайна дата (ГГГГ-ММ-ДД)",
-    endDatePlaceholder: "2026-10-13",
+    dates: "Дати",
+    datesPlaceholder: "Избери начална и крайна дата",
+    datesPickEnd: "Сега избери крайната дата",
     partySize: "Брой пътуващи",
     partyDescription: "Описание на групата",
     partyPlaceholder: "двойка, около 20-те",
