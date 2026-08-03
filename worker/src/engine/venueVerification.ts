@@ -17,7 +17,8 @@ import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary } from "../types
 const MIN_RATING = 4.2;
 
 const PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
-const FIELD_MASK = "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id";
+const FIELD_MASK =
+  "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id,places.displayName";
 
 interface PlacesApiPlace {
   rating?: number;
@@ -25,6 +26,44 @@ interface PlacesApiPlace {
   businessStatus?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY";
   priceLevel?: string; // e.g. "PRICE_LEVEL_INEXPENSIVE" — see mapPriceLevel
   id?: string;
+  displayName?: { text?: string };
+}
+
+/** Loose overlap check between the venue name in the item's title and what
+ * Text Search actually matched — normalizes case/accents/punctuation and
+ * checks for a meaningful shared word, rather than an exact match (titles
+ * and Google's listed name legitimately differ in small ways — "Restaurante
+ * Vegetariano Apfel" vs "Apfel Vegetariano"). This exists specifically to
+ * catch Text Search matching a WRONG business entirely (a stale/duplicate
+ * listing, a similarly-named place in a different area) — confirmed to
+ * happen in practice: three real, currently-operating restaurants all came
+ * back "permanently closed" in one run, which is far more consistent with
+ * mismatched listings than three coincidentally-wrong real closures. */
+function namesLikelyMatch(venueName: string, placeName: string): boolean {
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // strip accents (combining diacritical marks)
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2); // skip short/common words (a, at, de, do...)
+
+  const venueWords = new Set(normalize(venueName));
+  const placeWords = normalize(placeName);
+  if (venueWords.size === 0 || placeWords.length === 0) return false;
+  return placeWords.some((w) => venueWords.has(w));
+}
+
+/** Strips a leading "Lunch at "/"Dinner at "/etc. prefix so both the search
+ * query and the name-match check target just the venue's proper name, not
+ * the whole item title. Falls back to the full title if no such prefix is
+ * present (e.g. an activity title that isn't phrased that way). */
+function extractVenueName(title: string): string {
+  const match = /^(?:breakfast|brunch|lunch|dinner|snack|coffee|tattoo session|visit|tour)\s+(?:at|@)\s+(.+)$/i.exec(
+    title.trim()
+  );
+  return match ? match[1] : title;
 }
 
 interface PlacesApiResponse {
@@ -94,16 +133,27 @@ export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
   if (!apiKey) return itinerary;
 
   const targets = (itinerary.days ?? []).flatMap((day) => day.items.filter(isNamedVenueItem));
+  const venueNames = targets.map((item) => extractVenueName(item.title));
 
   // Parallelized — these lookups are independent (each writes to a different
   // item), and running them sequentially would otherwise add a few seconds
   // per named venue to an already-slow generation.
-  const results = await Promise.all(targets.map((item) => lookupPlace(apiKey, `${item.title}, ${item.location}`)));
+  const results = await Promise.all(
+    targets.map((item, i) => lookupPlace(apiKey, `${venueNames[i]}, ${item.location}`))
+  );
 
   const warnings: string[] = [];
   targets.forEach((item, i) => {
     const place = results[i];
     if (!place) return;
+
+    // Skip entirely rather than trust a Text Search result that doesn't
+    // actually look like the venue we asked about — a wrong match (a stale
+    // duplicate listing, a different branch, an unrelated business with a
+    // similar query) is worse to show than nothing, especially for a
+    // "permanently closed" flag, which actively damages trust if wrong.
+    const placeName = place.displayName?.text;
+    if (!placeName || !namesLikelyMatch(venueNames[i], placeName)) return;
 
     item.google_rating = place.rating;
     item.google_rating_count = place.userRatingCount;

@@ -240,8 +240,7 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
 
 function buildContext(
   brief: TripBriefInput,
-  cachedLodgingFacts?: Record<string, string>,
-  cachedVenueFacts?: Record<string, string>
+  cachedLodgingFacts?: Record<string, string>
 ): { tripBlock: string; factsBlock: string; warning: string } {
   const factsBlocks: string[] = [];
   let anyUngrounded = false;
@@ -270,14 +269,6 @@ function buildContext(
     if (cachedLodging) {
       factsBlocks.push(cachedLodging);
     }
-    // Same idea for specific named restaurants/activities (see
-    // venueCache.ts) — offered as reuse candidates rather than forced,
-    // since unlike lodging, fit depends on this traveler's own
-    // dietary/interest/mobility constraints.
-    const cachedVenues = cachedVenueFacts?.[city];
-    if (cachedVenues) {
-      factsBlocks.push(cachedVenues);
-    }
   }
 
   const warning = anyUngrounded
@@ -290,12 +281,8 @@ function buildContext(
   return { tripBlock: tripBriefToPromptBlock(brief), factsBlock: factsBlocks.join("\n"), warning };
 }
 
-export function buildPrompt(
-  brief: TripBriefInput,
-  cachedLodgingFacts?: Record<string, string>,
-  cachedVenueFacts?: Record<string, string>
-): string {
-  const { tripBlock, factsBlock, warning } = buildContext(brief, cachedLodgingFacts, cachedVenueFacts);
+export function buildPrompt(brief: TripBriefInput, cachedLodgingFacts?: Record<string, string>): string {
+  const { tripBlock, factsBlock, warning } = buildContext(brief, cachedLodgingFacts);
 
   return `Trip brief:
 ${tripBlock}
