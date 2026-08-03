@@ -95,6 +95,9 @@ export interface Dictionary {
     budgetFeasible: string;
     budgetNotFeasible: string;
     minEstimate: string;
+    // Shown instead of a price + confidence tier for a zero-cost item — free
+    // by nature (a walk, browsing a neighborhood) needs no verification badge.
+    free: string;
     // "{percent}% " is prepended by the component; this is just the word
     // after the number (e.g. "92% verified").
     trustScoreLabel: string;
@@ -275,6 +278,7 @@ const en: Dictionary = {
     budgetFeasible: "Budget: feasible",
     budgetNotFeasible: "Budget: not feasible as stated",
     minEstimate: "Model's minimum estimate",
+    free: "Free",
     trustScoreLabel: "verified",
     trustScoreDetail: "{grounded} of {total} line items are backed by a live search or a checked fact - the rest are honest, hedged guesses, not fabricated numbers.",
     downloadCalendar: "Add to calendar (.ics)",
@@ -453,6 +457,7 @@ const bg: Dictionary = {
     budgetFeasible: "Бюджет: постижим",
     budgetNotFeasible: "Бюджет: непостижим при тези условия",
     minEstimate: "Минимална оценка на модела",
+    free: "Безплатно",
     trustScoreLabel: "проверено",
     trustScoreDetail: "{grounded} от {total} елемента са базирани на търсене на живо или проверен факт - останалите са честни, хеджирани предположения, не измислени цифри.",
     downloadCalendar: "Добави в календар (.ics)",

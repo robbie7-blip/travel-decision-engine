@@ -67,6 +67,19 @@ not a multi-night total — the sum across nights must match your budget_feasibi
 EXCEPTION: if the trip brief states accommodation is already arranged, include NO lodging \
 items at all and exclude lodging from the budget entirely — do not invent a placeholder \
 lodging cost "just in case."
+- NAME SPECIFIC VENUES, DON'T JUST DESCRIBE A CATEGORY OR AREA: every meal item must name an \
+actual restaurant (a real, findable name), not just a neighborhood or cuisine type ("Vegetarian \
+dinner near Jardim Paulista" is not acceptable — name the restaurant). The same applies to any \
+activity tied to a stated interest that would naturally map to a specific place (a tattoo \
+interest means naming an actual tattoo studio, not "browse a tattoo studio in the area"; a \
+cooking-class interest means naming the actual class/provider). If you don't have a verified \
+name, use your general knowledge to name your best real candidate anyway and mark it \
+source_confidence "inferred" with an explicit hedge in the reasoning ("I can't confirm this \
+specific spot is still open/has these hours, but it's a real, well-known choice for this") — a \
+named best-guess is far more useful than a generic area description, and is what search will \
+then attempt to verify (see search instructions). Genuinely generic, unnamed activities (a walk \
+through a neighborhood, resting at the hotel, browsing a market) are fine to leave as-is — this \
+rule is specifically about items that stand in for a real named business.
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
 No trailing commas after the last property in an object or the last item in an array.
 - WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use \
@@ -80,7 +93,7 @@ Schema:
     "min_realistic_total_eur": 0,
     "reasoning": "explain your minimum estimate and whether/why the stated budget is or isn't realistic, noting explicitly if any cost category (e.g. lodging) had to be excluded or reduced to fit"
   },
-  "trip_summary": "one sentence — MUST mention if budget is infeasible or data is unverified",
+  "trip_summary": "one confident, appealing sentence describing the trip itself (destinations, what it's built around, the vibe) — never mention data verification, confidence, or hedging here, that's conveyed separately by the per-item confidence indicators and trust score, and leading with it undermines trust rather than building it. Only exception: if the budget is genuinely infeasible, still say so plainly here, since that's actionable for the traveler",
   "key_decisions": [
     {"decision": "...", "reasoning": "...", "alternative_considered": "...", "confidence": "high|medium|low"}
   ],
@@ -226,9 +239,10 @@ function buildContext(
   }
 
   const warning = anyUngrounded
-    ? "\nIMPORTANT: at least one destination has no grounding data. Your " +
-      "trip_summary must explicitly state that pricing/logistics for that city " +
-      "are unverified estimates, not confirmed facts.\n"
+    ? "\nIMPORTANT: at least one destination has no grounding data. Note this in " +
+      "budget_feasibility.reasoning (pricing/logistics for that city are unverified " +
+      "estimates, not confirmed facts) — do NOT put this in trip_summary, which should " +
+      "stay a confident, appealing one-liner about the trip itself.\n"
     : "";
 
   return { tripBlock: tripBriefToPromptBlock(brief), factsBlock: factsBlocks.join("\n"), warning };
