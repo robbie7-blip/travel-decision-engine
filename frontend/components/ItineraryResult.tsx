@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ConfidenceDot, inputStyle, SectionLabel, Stamp } from "./ui";
+import { WeatherStrip } from "./WeatherStrip";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
@@ -201,6 +202,11 @@ interface ItineraryResultProps {
   // currency the itinerary was actually generated and budget-checked in.
   currency?: Currency;
   rates?: FxRates | null;
+  // Drives the weather outlook strip — omitted (strip just doesn't render)
+  // if the caller doesn't have the brief handy for some reason.
+  destinations?: string[];
+  startDate?: string;
+  endDate?: string;
 }
 
 export function ItineraryResult({
@@ -214,6 +220,9 @@ export function ItineraryResult({
   lastQuestion,
   currency = "EUR",
   rates = null,
+  destinations,
+  startDate,
+  endDate,
 }: ItineraryResultProps) {
   const [question, setQuestion] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -314,6 +323,10 @@ export function ItineraryResult({
             </ul>
           </div>
         </div>
+      )}
+
+      {destinations && destinations.length > 0 && startDate && endDate && (
+        <WeatherStrip destinations={destinations} startDate={startDate} endDate={endDate} t={t} />
       )}
 
       {result._budget_integrity_warnings && result._budget_integrity_warnings.length > 0 && (

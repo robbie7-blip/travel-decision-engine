@@ -231,7 +231,16 @@ export function CompareView() {
                   </div>
                 )}
                 {state.result && (
-                  <ItineraryResult result={state.result} jobId={jobId} t={t} currency={currency} rates={rates} />
+                  <ItineraryResult
+                    result={state.result}
+                    jobId={jobId}
+                    t={t}
+                    currency={currency}
+                    rates={rates}
+                    destinations={state.brief?.destinations}
+                    startDate={state.brief?.start_date}
+                    endDate={state.brief?.end_date}
+                  />
                 )}
               </div>
             ))}

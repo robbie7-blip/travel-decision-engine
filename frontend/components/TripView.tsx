@@ -195,6 +195,9 @@ export function TripView({ jobId }: { jobId: string }) {
                 lastQuestion={lastQuestion}
                 currency={currency}
                 rates={rates}
+                destinations={lastBrief?.destinations}
+                startDate={lastBrief?.start_date}
+                endDate={lastBrief?.end_date}
               />
               <AddToShowcaseButton jobId={currentJobId} />
             </>

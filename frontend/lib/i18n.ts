@@ -98,6 +98,13 @@ export interface Dictionary {
     // Shown instead of a price + confidence tier for a zero-cost item — free
     // by nature (a walk, browsing a neighborhood) needs no verification badge.
     free: string;
+    // Weather outlook strip (see components/WeatherStrip.tsx) — sourced from
+    // Open-Meteo, a real forecast when the trip is soon, a labeled historical
+    // average otherwise (historicalNote explains which one is showing).
+    weather: {
+      heading: string;
+      historicalNote: string;
+    };
     // "{percent}% " is prepended by the component; this is just the word
     // after the number (e.g. "92% verified").
     trustScoreLabel: string;
@@ -279,6 +286,10 @@ const en: Dictionary = {
     budgetNotFeasible: "Budget: not feasible as stated",
     minEstimate: "Model's minimum estimate",
     free: "Free",
+    weather: {
+      heading: "Weather outlook",
+      historicalNote: "Some of these dates are beyond real forecast range - showing typical weather for these dates based on the last few years, not a forecast.",
+    },
     trustScoreLabel: "verified",
     trustScoreDetail: "{grounded} of {total} line items are backed by a live search or a checked fact - the rest are honest, hedged guesses, not fabricated numbers.",
     downloadCalendar: "Add to calendar (.ics)",
@@ -458,6 +469,10 @@ const bg: Dictionary = {
     budgetNotFeasible: "Бюджет: непостижим при тези условия",
     minEstimate: "Минимална оценка на модела",
     free: "Безплатно",
+    weather: {
+      heading: "Прогноза за времето",
+      historicalNote: "Част от тези дати са извън обхвата на реална прогноза - показваме типично време за тези дати въз основа на последните няколко години, не прогноза.",
+    },
     trustScoreLabel: "проверено",
     trustScoreDetail: "{grounded} от {total} елемента са базирани на търсене на живо или проверен факт - останалите са честни, хеджирани предположения, не измислени цифри.",
     downloadCalendar: "Добави в календар (.ics)",
