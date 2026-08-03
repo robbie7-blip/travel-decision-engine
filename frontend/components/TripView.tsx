@@ -6,6 +6,7 @@ import { AddToShowcaseButton } from "./AddToShowcaseButton";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
 import { useJobStatusMessage } from "./useJobStatusMessage";
+import { LoadingScreen } from "./LoadingScreen";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
@@ -172,11 +173,7 @@ export function TripView({ jobId }: { jobId: string }) {
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          {!result && !loadError && (
-            <div className="font-mono" style={{ fontSize: 14, color: "var(--ink-dim)" }}>
-              {statusMessage ?? t.trip.loading}
-            </div>
-          )}
+          {!result && !loadError && <LoadingScreen message={statusMessage ?? t.trip.loading} />}
           {loadError && (
             <div className="font-mono" style={{ fontSize: 14, color: "var(--infeasible)" }}>
               {loadError}{" "}
