@@ -67,6 +67,7 @@ export interface Dictionary {
     // yet, prompting the second click.
     datesPickEnd: string;
     partySize: string;
+    partySizePlaceholder: string;
     partyDescription: string;
     partyPlaceholder: string;
     budget: string;
@@ -246,6 +247,7 @@ const en: Dictionary = {
     datesPlaceholder: "Select start and end dates",
     datesPickEnd: "Now pick the end date",
     partySize: "Party size",
+    partySizePlaceholder: "2",
     partyDescription: "Party description",
     partyPlaceholder: "couple, late 20s",
     budget: "Total budget (EUR, optional)",
@@ -423,6 +425,7 @@ const bg: Dictionary = {
     datesPlaceholder: "Избери начална и крайна дата",
     datesPickEnd: "Сега избери крайната дата",
     partySize: "Брой пътуващи",
+    partySizePlaceholder: "2",
     partyDescription: "Описание на групата",
     partyPlaceholder: "двойка, около 20-те",
     budget: "Общ бюджет (EUR, по избор)",
