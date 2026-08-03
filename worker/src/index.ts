@@ -45,6 +45,16 @@ const EFFORT = "low";
 // after generation, the model no longer needs to search them itself — it
 // only searches for lodging, which stays the one price category Places
 // doesn't cover. This roughly halves-or-better real generation time.
+//
+// Lodging itself is now a SINGLE search per destination, not a two-search
+// cross-check: even after cutting meal/activity searches, a real trip still
+// measured ~80s end to end, and each extra search is a real sequential model
+// pause (the web_search tool's dynamic filtering does its own internal
+// code_execution call per search, so two searches isn't just double the
+// network time). A single grounded source per destination is still a real
+// improvement over an inferred guess, and is reported as "single_source"
+// confidence rather than "verified" — an honest, already-supported tier —
+// rather than paying for a second round-trip just to upgrade that label.
 const SEARCH_INSTRUCTIONS = `You have a web_search tool available. Use it ONLY for lodging price \
 research — do NOT use it for meals or activities, even ones that name a specific venue: a \
 separate, much faster automated step verifies those (real business, open/closed status, rating, \
@@ -52,22 +62,14 @@ price tier) right after you finish, so spending search budget on them here only 
 without adding trust. Do not search for transit/transport items either — those stay hedged \
 estimates unless already covered by the provided facts.
 
-LODGING (cross-checked — the only category to search):
-For each destination, perform TWO separate searches for its lodging price range (vary the query \
-phrasing or target a different source each time) rather than relying on a single search — this is \
-a deliberate cross-check, not a duplicate. Then:
-- If the two results roughly agree (within about 20%), use a representative value from them for \
-lodging cost_estimate_eur items in that destination, mark source_confidence as "grounded", set \
-source_urls to both URLs used, and set source_agreement to "agree".
-- If the two results meaningfully disagree, do NOT silently pick one. State both figures and both \
-sources explicitly in the reasoning (e.g. "one source says X/night, another says Y — using the \
-higher figure as the safer budget assumption"), set source_agreement to "disagree", and set \
-source_urls to both URLs. Still use "grounded" if you can make a reasoned call between them; only \
-use "inferred" if the disagreement is too large to responsibly resolve.
-- If only one search returns a usable result for a destination, use it, set source_urls to that \
-single URL, and leave source_agreement unset (null) — this is a single-source case, not a \
-cross-check, and should be treated as slightly less certain in the reasoning.
-- If no search returns anything usable for a destination, fall back to the existing hedged, \
+LODGING (the only category to search):
+For each destination, perform ONE search for its lodging price range — do not perform a second \
+search for the same destination, even to cross-check; speed matters more here than a second \
+opinion on a number that's already grounded once.
+- If the search returns a usable result, use it for lodging cost_estimate_eur items in that \
+destination, mark source_confidence as "grounded", set source_urls to that single URL, and leave \
+source_agreement unset (null) — this is a single-source grounding, not a cross-check.
+- If the search returns nothing usable for a destination, fall back to the existing hedged, \
 inferred estimate — do not invent a false source. Set source_urls to an empty array and \
 source_agreement to null.
 
@@ -114,15 +116,15 @@ class ModelOutputError extends Error {}
 // filtering makes an internal code_execution call that eats into the same
 // budget, so too low a count can be exhausted before a real query completes,
 // causing a silent, unlogged fallback to an ungrounded estimate (empirically
-// confirmed via a live test job). Only budgets for lodging's 2 cross-check
-// searches per destination now — meals/activities are deliberately not
-// searched by the model at all anymore (see SEARCH_INSTRUCTIONS), so there's
-// no per-day item budget to account for. This is the main lever behind
-// cutting overall generation time: fewer searches means fewer multi-second
-// round-trips in the critical path.
+// confirmed via a live test job). Only budgets for lodging's single search
+// per destination now (see SEARCH_INSTRUCTIONS) — meals/activities are
+// deliberately not searched by the model at all, so there's no per-day item
+// budget to account for. This is the main lever behind cutting overall
+// generation time: fewer searches means fewer multi-second round-trips in
+// the critical path.
 function estimateMaxSearchUses(brief: TripBriefInput): number {
-  const lodgingSearches = brief.destinations.length * 2;
-  return Math.min(lodgingSearches * 3, 20);
+  const lodgingSearches = brief.destinations.length;
+  return Math.min(lodgingSearches * 3, 12);
 }
 
 async function callModel(
