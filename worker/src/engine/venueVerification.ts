@@ -109,6 +109,9 @@ export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
     item.google_rating_count = place.userRatingCount;
     item.google_price_level = mapPriceLevel(place.priceLevel);
     item.google_business_status = mapBusinessStatus(place.businessStatus);
+    if (place.id) {
+      item.google_maps_url = `https://www.google.com/maps/place/?q=place_id:${place.id}`;
+    }
 
     if (item.google_business_status === "closed_permanently") {
       warnings.push(`"${item.title}" appears permanently closed according to Google Places — treat as unreliable.`);

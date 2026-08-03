@@ -59,6 +59,20 @@ export interface Dictionary {
     accommodationLocation: string;
     accommodationLocationPlaceholder: string;
     skipFlightLabel: string;
+    // Shown only when flights/trains are already booked separately — lets
+    // the traveler state their real arrival timing so the engine doesn't
+    // presume day 1 must be a light "just landed" day.
+    arrivalDate: string;
+    arrivalDatePlaceholder: string;
+    arrivalTime: string;
+    arrivalTimePlaceholder: string;
+    // How the traveler wants to get around locally (see transport_preference
+    // on TripBriefInput) — always shown, optional, defaults to no preference.
+    transportPreference: string;
+    transportNoPreference: string;
+    transportPublicTransit: string;
+    transportTaxiRideshare: string;
+    transportWalking: string;
     // A single combined start/end date picker (see components/
     // DateRangePicker.tsx) rather than two separate date fields.
     dates: string;
@@ -104,12 +118,17 @@ export interface Dictionary {
     weather: {
       heading: string;
       historicalNote: string;
+      // Labels the bare percentage/mm figure so it's unambiguous what it
+      // means (was previously shown as just "0%" with no context).
+      rainChance: string;
+      avgRain: string;
     };
     // Google Places verification on named-venue items (see worker/src/engine/
     // venueVerification.ts) — "{count}" placeholder for googleRatingCount.
     googleRatingCount: string;
     closedTemporarily: string;
     closedPermanently: string;
+    viewOnGoogleMaps: string;
     // "{percent}% " is prepended by the component; this is just the word
     // after the number (e.g. "92% verified").
     trustScoreLabel: string;
@@ -258,6 +277,15 @@ const en: Dictionary = {
     accommodationLocation: "Where are you staying? (optional)",
     accommodationLocationPlaceholder: "e.g. Hotel Ibis, near Gare du Nord - helps plan routes and timing",
     skipFlightLabel: "I already have a flight/train booked - skip transport suggestions and cost",
+    arrivalDate: "Arrival date (optional)",
+    arrivalDatePlaceholder: "Select your arrival date",
+    arrivalTime: "Arrival time (optional)",
+    arrivalTimePlaceholder: "e.g. 8pm, or 'evening'",
+    transportPreference: "Preferred way to get around (optional)",
+    transportNoPreference: "No preference",
+    transportPublicTransit: "Public transit (metro/bus/train)",
+    transportTaxiRideshare: "Taxi / rideshare",
+    transportWalking: "Walking where possible",
     dates: "Dates",
     datesPlaceholder: "Select start and end dates",
     datesPickEnd: "Now pick the end date",
@@ -294,10 +322,13 @@ const en: Dictionary = {
     weather: {
       heading: "Weather outlook",
       historicalNote: "Some of these dates are beyond real forecast range - showing typical weather for these dates based on the last few years, not a forecast.",
+      rainChance: "Rain",
+      avgRain: "Avg rain",
     },
     googleRatingCount: "{count} reviews",
     closedTemporarily: "Temporarily closed (Google)",
     closedPermanently: "Permanently closed (Google)",
+    viewOnGoogleMaps: "View on Google Maps",
     trustScoreLabel: "verified",
     trustScoreDetail: "{grounded} of {total} line items are backed by a live search or a checked fact - the rest are honest, hedged guesses, not fabricated numbers.",
     downloadCalendar: "Add to calendar (.ics)",
@@ -444,6 +475,15 @@ const bg: Dictionary = {
     accommodationLocation: "Къде отсядаш? (по избор)",
     accommodationLocationPlaceholder: "напр. хотел Ibis, до Gare du Nord - помага за маршрути и време",
     skipFlightLabel: "Вече имам резервиран полет/влак - пропусни предложенията и цената за транспорт",
+    arrivalDate: "Дата на пристигане (по избор)",
+    arrivalDatePlaceholder: "Избери дата на пристигане",
+    arrivalTime: "Час на пристигане (по избор)",
+    arrivalTimePlaceholder: "напр. 20:00, или 'вечерта'",
+    transportPreference: "Предпочитан начин на придвижване (по избор)",
+    transportNoPreference: "Без предпочитание",
+    transportPublicTransit: "Градски транспорт (метро/автобус/влак)",
+    transportTaxiRideshare: "Такси / рийдшеър",
+    transportWalking: "Пеша, когато е възможно",
     dates: "Дати",
     datesPlaceholder: "Избери начална и крайна дата",
     datesPickEnd: "Сега избери крайната дата",
@@ -480,10 +520,13 @@ const bg: Dictionary = {
     weather: {
       heading: "Прогноза за времето",
       historicalNote: "Част от тези дати са извън обхвата на реална прогноза - показваме типично време за тези дати въз основа на последните няколко години, не прогноза.",
+      rainChance: "Дъжд",
+      avgRain: "Ср. валежи",
     },
     googleRatingCount: "{count} отзива",
     closedTemporarily: "Временно затворено (Google)",
     closedPermanently: "Трайно затворено (Google)",
+    viewOnGoogleMaps: "Виж в Google Maps",
     trustScoreLabel: "проверено",
     trustScoreDetail: "{grounded} от {total} елемента са базирани на търсене на живо или проверен факт - останалите са честни, хеджирани предположения, не измислени цифри.",
     downloadCalendar: "Добави в календар (.ics)",

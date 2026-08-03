@@ -502,6 +502,17 @@ export function ItineraryResult({
                         </div>
                       )
                     )}
+                    {item.google_maps_url && item.google_business_status !== "closed_permanently" && (
+                      <a
+                        href={item.google_maps_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono"
+                        style={{ fontSize: 11, color: "var(--grounded)", textDecoration: "underline", marginTop: 4, display: "inline-block" }}
+                      >
+                        {t.result.viewOnGoogleMaps} ↗
+                      </a>
+                    )}
                     <div style={{ fontSize: 13, marginTop: 4, color: "var(--ink-soft)" }}>{item.reasoning}</div>
                     <button
                       type="button"
