@@ -33,15 +33,15 @@ export interface TripFormState {
 }
 
 export const DEFAULT_FORM_STATE: TripFormState = {
-  destinations: "Brussels, Bruges",
+  destinations: "",
   origin: "",
-  start_date: "2026-10-10",
-  end_date: "2026-10-13",
-  party_size: "2",
-  party_composition: "couple, late 20s",
-  budget_total_eur: "900",
+  start_date: "",
+  end_date: "",
+  party_size: "",
+  party_composition: "",
+  budget_total_eur: "",
   pace: "moderate",
-  interests: "food, architecture, beer culture",
+  interests: "",
   must_see: "",
   dietary_constraints: "",
   mobility_constraints: "",
@@ -221,6 +221,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             style={inputStyle}
             value={value.party_size}
             onChange={(e) => update("party_size", e.target.value)}
+            placeholder={t.form.partySizePlaceholder}
           />
         </Field>
         <Field label={t.form.partyDescription}>
