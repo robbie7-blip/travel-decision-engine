@@ -427,9 +427,13 @@ export function ItineraryResult({
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
                       <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
-                        {formatMoney(item.cost_estimate_eur, currency, rates)}
-                        {t.result.inlineTierLabel[item.confidence_tier ?? "inferred"] &&
-                          ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`}
+                        {item.cost_estimate_eur === 0
+                          ? t.result.free
+                          : `${formatMoney(item.cost_estimate_eur, currency, rates)}${
+                              t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]
+                                ? ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`
+                                : ""
+                            }`}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
