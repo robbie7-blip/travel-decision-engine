@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const MIN_VISIBLE_MS = 650;
+const MIN_VISIBLE_MS = 1650;
 const FADE_MS = 300;
 
 /** Brief branded overlay shown once when the app is first opened in a
@@ -42,24 +42,13 @@ export function AppSplash() {
         pointerEvents: fading ? "none" : "auto",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-icon.svg" alt="" width={48} height={48} />
-        <span className="font-display" style={{ fontSize: 30, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
+        <img src="/logo-icon.svg" alt="" width={76} height={76} />
+        <span className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
           decide
         </span>
       </div>
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: "50%",
-          border: "3px solid var(--line)",
-          borderTopColor: "var(--accent-1)",
-          borderRightColor: "var(--accent-2)",
-          animation: "decide-spin 0.8s linear infinite",
-        }}
-      />
     </div>
   );
 }
