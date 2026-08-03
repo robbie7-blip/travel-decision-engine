@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Fraunces, IBM_Plex_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { AppSplash } from "@/components/AppSplash";
 import { getSiteUrl } from "@/lib/siteUrl";
 import "./globals.css";
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className={`${fraunces.variable} ${plexMono.variable}`}>
+        <AppSplash />
         {children}
         <ServiceWorkerRegistration />
       </body>
