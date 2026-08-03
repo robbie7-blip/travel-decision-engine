@@ -42,6 +42,15 @@ export interface TripBriefInput {
   // engine excludes those transport line items and their cost from the
   // budget entirely instead of pricing a trip they've already paid for.
   needs_flight: boolean;
+  // Optional — how the traveler wants to get around locally (e.g. taxi/
+  // rideshare over public transit for safety/convenience reasons). Absent
+  // means no preference stated; the engine picks whatever's sensible.
+  transport_preference?: "public_transit" | "taxi_rideshare" | "walking";
+  // Only meaningful when needs_flight is false — the traveler's actual
+  // arrival date/time as free text (e.g. "Aug 10, landing around 8pm"), so
+  // the engine doesn't presume day 1 must be a light "just landed" day when
+  // it has no real booking info to base that on.
+  arrival_note?: string;
 }
 
 // Mirrors the JSON schema in engine.py's SYSTEM_PROMPT — the output contract.
@@ -97,6 +106,11 @@ export interface ItineraryItem {
   google_rating_count?: number;
   google_price_level?: GooglePriceLevel;
   google_business_status?: GoogleBusinessStatus;
+  // A real, verified Google Maps link built from the matched place's actual
+  // ID — not a search-by-name guess, so it always resolves to the exact
+  // place Google Places matched (or doesn't appear at all, rather than
+  // linking somewhere that might not be the right result).
+  google_maps_url?: string;
 }
 
 export type GooglePriceLevel = "free" | "inexpensive" | "moderate" | "expensive" | "very_expensive";

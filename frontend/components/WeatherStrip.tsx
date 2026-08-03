@@ -143,9 +143,9 @@ export function WeatherStrip({
                 </div>
                 <div className="font-mono" style={{ fontSize: 10, color: "var(--grounded)", marginTop: 2 }}>
                   {day.precipitationChance != null
-                    ? `${day.precipitationChance}%`
+                    ? `${t.result.weather.rainChance}: ${day.precipitationChance}%`
                     : day.precipitationMm != null
-                      ? `${day.precipitationMm}mm`
+                      ? `${t.result.weather.avgRain}: ${day.precipitationMm}mm`
                       : ""}
                 </div>
               </div>

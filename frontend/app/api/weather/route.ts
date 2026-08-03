@@ -19,7 +19,13 @@ import {
 
 export const runtime = "nodejs";
 
-const CACHE_TTL_SECONDS = 60 * 60 * 12; // 12h — matches /api/rates
+// A real forecast (especially precipitation) can meaningfully change within
+// hours, so it's cached briefly — long enough to spare repeat page views
+// from re-hitting Open-Meteo, short enough that the shown forecast doesn't
+// go stale. A historical average across past years barely moves day to day,
+// so it's safe to cache far longer.
+const FORECAST_CACHE_TTL_SECONDS = 60 * 60 * 2; // 2h
+const HISTORICAL_CACHE_TTL_SECONDS = 60 * 60 * 24; // 24h
 
 interface GeoResult {
   latitude: number;
@@ -187,7 +193,12 @@ export async function GET(req: NextRequest) {
   );
 
   if (redis && Object.keys(result).length > 0) {
-    await redis.set(cacheKey, JSON.stringify(result), { ex: CACHE_TTL_SECONDS });
+    // All destinations share the same trip dates, so they're uniformly
+    // forecast-or-historical together — checking any one day is enough to
+    // pick the right TTL for the whole cached response.
+    const isForecast = Object.values(result).some((days) => days[0]?.isForecast);
+    const ttl = isForecast ? FORECAST_CACHE_TTL_SECONDS : HISTORICAL_CACHE_TTL_SECONDS;
+    await redis.set(cacheKey, JSON.stringify(result), { ex: ttl });
   }
 
   return NextResponse.json(result);

@@ -89,6 +89,16 @@ No trailing commas after the last property in an object or the last item in an a
 - WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use \
 an em dash ("—"). If you need a break in a sentence, use a comma, a period, or a short hyphen \
 ("-") instead. Keep sentences short and plain.
+- TONE — CONFIDENT AND REASSURING, NEVER ANXIOUS: this applies to trip_summary, key_decisions, \
+and every item's reasoning. Never frame a tradeoff or a full schedule as "tension," "conflict," \
+"pressure," or a problem the traveler should feel worried about — a traveler opening this should \
+feel like a capable friend already sorted it out, not like they're being warned about a stressful \
+trip. Instead of "There's a real tension between X and Y," write the confident version of the \
+same information: "Because both X and Y matter here, I've [specific thing you did] so it still \
+feels relaxed" — state how it's handled, not that a problem exists. This does NOT mean hiding real \
+constraints: a genuinely infeasible budget, an overpacked day, or a hard_no conflict must still be \
+stated plainly (per the rules above) — state it as a clear, matter-of-fact choice the traveler \
+needs to make, never as something alarming.
 
 Schema:
 {
@@ -168,7 +178,32 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
           `arrival or departure transport line items and exclude that cost entirely from ` +
           `budget_feasibility, even though an origin is given above.`
       );
+      if (brief.arrival_note?.trim()) {
+        lines.push(
+          `Traveler's actual arrival: ${brief.arrival_note.trim()} — sequence day 1 around this ` +
+            `real arrival timing rather than presuming it must be a light "just landed" day. Only ` +
+            `make day 1 lighter if this arrival info itself indicates a late or tiring arrival.`
+        );
+      } else {
+        lines.push(
+          `No specific arrival time was given, and flights/trains are already booked separately — ` +
+            `do NOT automatically presume day 1 must be a light arrival day just because travel is ` +
+            `pre-arranged; the traveler may already be in the city or arrive early. Plan day 1 with ` +
+            `a normal full schedule unless something else in this brief suggests otherwise.`
+        );
+      }
     }
+  }
+  if (brief.transport_preference) {
+    const TRANSPORT_PREFERENCE_LABEL: Record<NonNullable<TripBriefInput["transport_preference"]>, string> = {
+      public_transit: "public transit (metro/bus/train) as the default way to get around",
+      taxi_rideshare:
+        "taxis/rideshare (e.g. Uber) as the default way to get around instead of public transit — the " +
+        "traveler has specifically asked for this (often for safety or convenience reasons), so don't " +
+        "default back to metro/bus suggestions",
+      walking: "walking wherever realistically possible, minimizing any vehicle transport",
+    };
+    lines.push(`Preferred local transport: ${TRANSPORT_PREFERENCE_LABEL[brief.transport_preference]}.`);
   }
   if (!brief.needs_lodging) {
     lines.push(

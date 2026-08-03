@@ -8,6 +8,7 @@ export class ValidationError extends Error {}
 
 const VALID_PACES = new Set(["relaxed", "moderate", "packed"]);
 const VALID_LANGUAGES = new Set(["en", "bg"]);
+const VALID_TRANSPORT_PREFERENCES = new Set(["public_transit", "taxi_rideshare", "walking"]);
 
 function cleanList(value: unknown, field: string): string[] {
   if (value === undefined || value === null) return [];
@@ -80,6 +81,22 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     accommodation_location = b.accommodation_location.trim() || undefined;
   }
 
+  let transport_preference: TripBriefInput["transport_preference"];
+  if (b.transport_preference !== undefined && b.transport_preference !== null && b.transport_preference !== "") {
+    if (typeof b.transport_preference !== "string" || !VALID_TRANSPORT_PREFERENCES.has(b.transport_preference)) {
+      throw new ValidationError(`transport_preference must be one of ${[...VALID_TRANSPORT_PREFERENCES].sort().join(", ")}.`);
+    }
+    transport_preference = b.transport_preference as TripBriefInput["transport_preference"];
+  }
+
+  let arrival_note: string | undefined;
+  if (b.arrival_note !== undefined && b.arrival_note !== null) {
+    if (typeof b.arrival_note !== "string") {
+      throw new ValidationError("arrival_note must be a string.");
+    }
+    arrival_note = b.arrival_note.trim() || undefined;
+  }
+
   return {
     destinations,
     origin,
@@ -98,5 +115,7 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     needs_lodging,
     accommodation_location,
     needs_flight,
+    transport_preference,
+    arrival_note,
   };
 }

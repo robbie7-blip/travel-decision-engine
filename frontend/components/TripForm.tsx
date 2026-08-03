@@ -25,6 +25,10 @@ export interface TripFormState {
   needs_lodging: boolean;
   accommodation_location: string;
   needs_flight: boolean;
+  // "" means no preference — kept as a plain string (not the narrower
+  // TripBriefInput union) so an empty <select> value works naturally.
+  transport_preference: string;
+  arrival_note: string;
   // Compare mode: same trip (dates/budget/party/pace/etc.), a second
   // destination — the toggle is separate from the text so unchecking it
   // doesn't need to also clear whatever was typed.
@@ -50,6 +54,8 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   needs_lodging: true,
   accommodation_location: "",
   needs_flight: true,
+  transport_preference: "",
+  arrival_note: "",
   compareEnabled: false,
   compareDestinations: "",
 };
@@ -80,6 +86,8 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     needs_lodging: form.needs_lodging,
     accommodation_location: form.needs_lodging ? undefined : form.accommodation_location.trim() || undefined,
     needs_flight: form.needs_flight,
+    transport_preference: (form.transport_preference || undefined) as TripBriefInput["transport_preference"],
+    arrival_note: form.needs_flight ? undefined : form.arrival_note.trim() || undefined,
   };
 }
 
@@ -167,6 +175,18 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             </label>
           </div>
         )}
+        {value.origin.trim() && !value.needs_flight && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <Field label={t.form.arrivalNote}>
+              <input
+                style={inputStyle}
+                value={value.arrival_note}
+                onChange={(e) => update("arrival_note", e.target.value)}
+                placeholder={t.form.arrivalNotePlaceholder}
+              />
+            </Field>
+          </div>
+        )}
         <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
             <input
@@ -251,6 +271,18 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             <option value="relaxed">{t.form.paceRelaxed}</option>
             <option value="moderate">{t.form.paceModerate}</option>
             <option value="packed">{t.form.pacePacked}</option>
+          </select>
+        </Field>
+        <Field label={t.form.transportPreference}>
+          <select
+            style={inputStyle}
+            value={value.transport_preference}
+            onChange={(e) => update("transport_preference", e.target.value)}
+          >
+            <option value="">{t.form.transportNoPreference}</option>
+            <option value="public_transit">{t.form.transportPublicTransit}</option>
+            <option value="taxi_rideshare">{t.form.transportTaxiRideshare}</option>
+            <option value="walking">{t.form.transportWalking}</option>
           </select>
         </Field>
         <div style={{ gridColumn: "1 / -1" }}>
