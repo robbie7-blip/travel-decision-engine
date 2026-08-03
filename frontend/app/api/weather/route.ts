@@ -116,8 +116,12 @@ async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string
   // year's dates differ) — every valid year should have the same number of
   // days for the same start/end month-day span.
   const dayCount = validYears[0].time.length;
+  const [startY, startM, startD] = start.split("-").map(Number);
   const tripDates = Array.from({ length: dayCount }, (_, i) => {
-    const d = new Date(Date.UTC(...(start.split("-").map(Number) as [number, number, number])));
+    // Date.UTC's month is 0-indexed — startM (e.g. 11 for November) must be
+    // passed as startM - 1, or it silently rolls forward a month (November
+    // becoming December was confirmed happening in practice).
+    const d = new Date(Date.UTC(startY, startM - 1, startD));
     d.setUTCDate(d.getUTCDate() + i);
     return d.toISOString().slice(0, 10);
   });

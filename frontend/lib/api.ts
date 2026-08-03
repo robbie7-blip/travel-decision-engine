@@ -18,14 +18,19 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
 }
 
 /** Polls GET /api/job/[id] until it's done. `onStatus` is called on every
- * poll so the UI can show progress ("queued" / "generating..."). Shared by
- * refineItinerary below and by the /trip/[jobId] page, which polls a job it
- * didn't create itself (loaded straight from a shared link). Returns the
- * brief alongside the result since a page loading a job cold — rather than
- * holding the brief in form state already — needs it to submit a pushback. */
+ * poll so the UI can show progress ("queued" / "generating...") — it also
+ * receives the job's brief on every call (not just once done), since the
+ * brief is written at job-creation time and is available from the very
+ * first poll. This lets the loading screen show destination-aware content
+ * (see LoadingScreen's city-facts rotation) before generation finishes, not
+ * just after. Shared by refineItinerary below and by the /trip/[jobId] page,
+ * which polls a job it didn't create itself (loaded straight from a shared
+ * link). Also returns the brief alongside the final result since a page
+ * loading a job cold — rather than holding the brief in form state already —
+ * needs it to submit a pushback. */
 export async function pollJob(
   jobId: string,
-  onStatus?: (status: Job["status"]) => void
+  onStatus?: (status: Job["status"], brief: TripBriefInput) => void
 ): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput }> {
   const start = Date.now();
   for (;;) {
@@ -37,7 +42,7 @@ export async function pollJob(
     }
 
     const job = (await jobResponse.json()) as Job;
-    onStatus?.(job.status);
+    onStatus?.(job.status, job.brief);
 
     if (job.status === "done") {
       if (!job.result) throw new ApiError("Job finished but returned no result.");

@@ -33,8 +33,8 @@ function usePolledJob(jobId: string | null): ColumnState {
     let cancelled = false;
     setState(EMPTY_COLUMN);
 
-    pollJob(jobId, (status) => {
-      if (!cancelled) setState((prev) => ({ ...prev, jobStatus: status }));
+    pollJob(jobId, (status, brief) => {
+      if (!cancelled) setState((prev) => ({ ...prev, jobStatus: status, brief }));
     })
       .then(({ itinerary, brief }) => {
         if (cancelled) return;
@@ -223,7 +223,7 @@ export function CompareView() {
             {columns.map(({ jobId, state, statusMessage }, i) => (
               <div key={i} style={{ minWidth: 0 }}>
                 {!state.result && !state.loadError && (
-                  <LoadingScreen message={statusMessage ?? t.trip.loading} />
+                  <LoadingScreen message={statusMessage ?? t.trip.loading} destinations={state.brief?.destinations} t={t} />
                 )}
                 {state.loadError && (
                   <div className="font-mono" style={{ fontSize: 14, color: "var(--infeasible)" }}>

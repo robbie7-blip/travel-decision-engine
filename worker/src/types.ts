@@ -149,11 +149,6 @@ export interface Itinerary {
   days: ItineraryDay[];
   things_to_skip: SkipItem[];
   _budget_integrity_warnings?: string[];
-  // Populated by checkVenues — flags a named venue Google Places reports as
-  // permanently closed, or rated below the app's quality bar (see MIN_RATING
-  // in worker/src/engine/venueVerification.ts). Empty/absent when the
-  // Places API isn't configured or every checked venue passed.
-  _venue_warnings?: string[];
   // Only present when this itinerary is the result of a pushback/follow-up
   // refinement request (see buildRefinementPrompt in engine/prompt.ts) — the
   // model's direct answer to the traveler's question, shown above the
