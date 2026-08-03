@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
 import { useJobStatusMessage } from "./useJobStatusMessage";
+import { LoadingScreen } from "./LoadingScreen";
 import { Stamp } from "./ui";
 import { ApiError, pollJob } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -222,9 +223,7 @@ export function CompareView() {
             {columns.map(({ jobId, state, statusMessage }, i) => (
               <div key={i} style={{ minWidth: 0 }}>
                 {!state.result && !state.loadError && (
-                  <div className="font-mono" style={{ fontSize: 14, color: "var(--ink-dim)" }}>
-                    {statusMessage ?? t.trip.loading}
-                  </div>
+                  <LoadingScreen message={statusMessage ?? t.trip.loading} />
                 )}
                 {state.loadError && (
                   <div className="font-mono" style={{ fontSize: 14, color: "var(--infeasible)" }}>

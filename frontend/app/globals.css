@@ -145,6 +145,12 @@ button {
   background-color: var(--bg-panel-raised);
 }
 
+@keyframes decide-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes pulse-glow {
   0%,
   100% {
