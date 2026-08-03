@@ -19,15 +19,42 @@
 // generation (confirmed: ~90s vs ~40s on a trip with a few failures) for a
 // step whose whole point was supposed to be fast. All lookups run in
 // parallel regardless.
+//
+// Text Search alone is NOT a reliable geographic filter: confirmed in
+// practice, it matched a same-or-similarly-named venue in a completely
+// wrong place — a different city on the same island (~100km+ away), and
+// once a same-named restaurant in New York for a Cyprus trip. namesLikelyMatch
+// only checks the name, not the place, so a name match there wasn't enough
+// to catch it. Fixed with a real geographic cross-check: the item's stated
+// location is geocoded (Open-Meteo, free, no key — same provider already
+// used for weather) to bias the Places search toward the right area AND to
+// hard-reject a match that lands too far from where it should be, even if
+// the name lined up.
 
 import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem } from "../types";
 
 // Below this, a venue is dropped rather than shown.
 const MIN_RATING = 4.2;
 
+// A same-named match further than this from the item's stated location is
+// treated as the wrong venue entirely, regardless of name similarity — chosen
+// to comfortably cover a city's metro/outskirts sprawl while still rejecting
+// a different city on the same island (Paphos-to-Nicosia-area is ~100km+)
+// or, worse, a different country.
+const MAX_MATCH_DISTANCE_KM = 60;
+// Soft bias radius handed to Places itself, in meters — generous since the
+// hard cutoff above is what actually enforces correctness.
+const LOCATION_BIAS_RADIUS_M = 30000;
+
 const PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
+const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FIELD_MASK =
-  "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id,places.displayName";
+  "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id,places.displayName,places.location";
+
+interface GeoPoint {
+  latitude: number;
+  longitude: number;
+}
 
 interface PlacesApiPlace {
   rating?: number;
@@ -36,10 +63,60 @@ interface PlacesApiPlace {
   priceLevel?: string; // e.g. "PRICE_LEVEL_INEXPENSIVE" — see mapPriceLevel
   id?: string;
   displayName?: { text?: string };
+  location?: GeoPoint;
 }
 
 interface PlacesApiResponse {
   places?: PlacesApiPlace[];
+}
+
+/** Great-circle distance in km — used to sanity-check a Places match against
+ * where the item actually says it is, not just whether the name matches. */
+function distanceKm(a: GeoPoint, b: GeoPoint): number {
+  const R = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const lat1 = (a.latitude * Math.PI) / 180;
+  const lat2 = (b.latitude * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+async function geocodeRaw(query: string): Promise<GeoPoint | null> {
+  try {
+    const res = await fetch(
+      `${GEOCODE_URL}?name=${encodeURIComponent(query)}&count=1&language=en&format=json`
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { results?: Array<{ latitude: number; longitude: number }> };
+    const r = data.results?.[0];
+    return r ? { latitude: r.latitude, longitude: r.longitude } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Geocodes an item's location string, memoized per unique string within one
+ * checkVenues call (many items share the same destination city). Falls back
+ * to the text after the last comma — usually the city, per the "location"
+ * schema instruction requiring it be included — when the full string (often
+ * "Neighborhood, City") doesn't resolve on its own. Returns null (skip the
+ * geo cross-check for this item) rather than throwing, if both fail — a
+ * geocoding hiccup should never block generation. */
+function geocode(query: string, cache: Map<string, Promise<GeoPoint | null>>): Promise<GeoPoint | null> {
+  const cached = cache.get(query);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    const direct = await geocodeRaw(query);
+    if (direct) return direct;
+    const commaIndex = query.lastIndexOf(",");
+    if (commaIndex === -1) return null;
+    return geocodeRaw(query.slice(commaIndex + 1).trim());
+  })();
+
+  cache.set(query, promise);
+  return promise;
 }
 
 /** Loose overlap check between the venue name in the item's title and what
@@ -129,7 +206,7 @@ function buildMapsUrl(placeName: string, placeId: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeName)}&query_place_id=${placeId}`;
 }
 
-async function lookupPlace(apiKey: string, query: string): Promise<PlacesApiPlace | null> {
+async function lookupPlace(apiKey: string, query: string, bias?: GeoPoint | null): Promise<PlacesApiPlace | null> {
   try {
     const res = await fetch(PLACES_SEARCH_URL, {
       method: "POST",
@@ -138,7 +215,13 @@ async function lookupPlace(apiKey: string, query: string): Promise<PlacesApiPlac
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": FIELD_MASK,
       },
-      body: JSON.stringify({ textQuery: query, maxResultCount: 1 }),
+      body: JSON.stringify({
+        textQuery: query,
+        maxResultCount: 1,
+        ...(bias && {
+          locationBias: { circle: { center: bias, radius: LOCATION_BIAS_RADIUS_M } },
+        }),
+      }),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as PlacesApiResponse;
@@ -174,18 +257,29 @@ export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
 
   const targets = (itinerary.days ?? []).flatMap((day) => day.items.filter(isNamedVenueItem));
   const toRemove = new Set<ItineraryItem>();
+  const geoCache = new Map<string, Promise<GeoPoint | null>>();
 
   await Promise.all(
     targets.map(async (item) => {
       // Safe: item is only in targets because isNamedVenueItem already
       // confirmed extractVenueName(item.title) is non-null.
       const venueName = extractVenueName(item.title)!;
-      const place = await lookupPlace(apiKey, `${venueName}, ${item.location}`);
+      const bias = await geocode(item.location, geoCache);
+      const place = await lookupPlace(apiKey, `${venueName}, ${item.location}`, bias);
       const placeName = place?.displayName?.text;
       const matched = place && placeName && namesLikelyMatch(venueName, placeName);
 
       if (!place || !matched) {
         toRemove.add(item); // couldn't confirm this business exists at all
+        return;
+      }
+
+      // Name matched, but a same/similarly-named venue can still exist
+      // somewhere entirely wrong — the failure mode confirmed in practice
+      // (a different city, once a different country). Reject on distance
+      // regardless of how well the name matched.
+      if (bias && place.location && distanceKm(bias, place.location) > MAX_MATCH_DISTANCE_KM) {
+        toRemove.add(item);
         return;
       }
 

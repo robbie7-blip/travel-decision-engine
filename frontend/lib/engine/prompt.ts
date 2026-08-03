@@ -120,7 +120,7 @@ Schema:
           "time": "morning|afternoon|evening or HH:MM",
           "type": "transport|lodging|activity|meal",
           "title": "...",
-          "location": "...",
+          "location": "neighborhood/area AND the destination city, e.g. 'Kato Paphos, Paphos' not just 'Kato Paphos' — always name the actual city, never just a neighborhood, landmark, or venue name alone, so the venue can be looked up unambiguously",
           "cost_estimate_eur": 0,
           "reasoning": "why this, why now",
           "source_confidence": "grounded|inferred",
