@@ -6,23 +6,23 @@
 // GOOGLE_PLACES_API_KEY isn't set, so a missing key never breaks generation.
 //
 // Hard rule (non-negotiable): if a title names a specific business, that
-// business must be confirmed to exist and get a real Maps link, full stop.
-// "Places found nothing" and "Places matched something, but it doesn't look
-// like the same business" are both treated as failures, exactly like
-// "permanently closed" or "rated below the bar" — there is no silent
-// "leave it unverified" path. A failing venue gets ONE targeted replacement
-// attempt (a small, tool-free follow-up call asking for a single real
-// alternative, then re-verified the same way); if that also fails, the item
-// is removed from the itinerary entirely rather than ever showing a
-// business that couldn't be confirmed. This is deliberately not a full
-// itinerary regeneration: only the specific failing item gets a small,
-// cheap follow-up call, kept fast by running all items' checks (and any
-// replacement attempts) in parallel.
+// business must be confirmed to exist, open, and well-rated, with a real
+// Maps link — or it doesn't appear at all. "Places found nothing," "found
+// something that doesn't look like the same business," "closed (temporarily
+// or permanently)," and "rated below the bar" are all treated the same way:
+// the item is silently dropped from the itinerary. No warning is surfaced
+// for this — the traveler doesn't need to know an item was swapped out, just
+// see an itinerary made only of confirmed real places. Deliberately a single
+// Places lookup per item with no follow-up model call for a replacement
+// suggestion: an earlier version tried one real alternative via a small
+// extra model round-trip per failing venue, but that meaningfully slowed
+// generation (confirmed: ~90s vs ~40s on a trip with a few failures) for a
+// step whose whole point was supposed to be fast. All lookups run in
+// parallel regardless.
 
-import type Anthropic from "@anthropic-ai/sdk";
-import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem, TripBriefInput } from "../types";
+import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem } from "../types";
 
-// Below this, a venue gets one replacement attempt rather than being shown.
+// Below this, a venue is dropped rather than shown.
 const MIN_RATING = 4.2;
 
 const PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
@@ -158,65 +158,6 @@ function isNamedVenueItem(item: { type: string; title: string }): boolean {
   return (item.type === "meal" || item.type === "activity") && extractVenueName(item.title) !== null;
 }
 
-function extractJsonLoose(text: string): string {
-  let t = text.trim();
-  if (t.startsWith("```")) {
-    const parts = t.split("```");
-    t = parts[1] ?? t;
-    if (t.startsWith("json")) t = t.slice(4);
-  }
-  return t.trim().replace(/,(\s*[}\]])/g, "$1");
-}
-
-/** One small, tool-free follow-up call asking for a single alternative venue
- * — deliberately not a full itinerary regeneration, just enough context to
- * pick a real, constraint-respecting replacement for the one item that
- * failed verification. */
-async function suggestReplacement(
-  client: Anthropic,
-  model: string,
-  item: ItineraryItem,
-  brief: TripBriefInput,
-  reason: string
-): Promise<{ title: string; reasoning: string } | null> {
-  try {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 300,
-      messages: [
-        {
-          role: "user",
-          content:
-            `A travel itinerary item needs a replacement: "${item.title}" (${item.type}) in ${item.location}, ` +
-            `${reason}.\n\n` +
-            `Traveler context — dietary constraints: ${brief.dietary_constraints.join(", ") || "none"}; ` +
-            `interests: ${brief.interests.join(", ") || "general sightseeing"}; ` +
-            `mobility constraints: ${brief.mobility_constraints.join(", ") || "none"}.\n\n` +
-            `Suggest ONE real, specific, well-known alternative ${item.type === "meal" ? "restaurant" : "venue"} ` +
-            `in the same area that fits this traveler. Respond with ONLY this JSON, no other text:\n` +
-            `{"title": "${item.type === "meal" ? "Dinner at ..." : "..."}", "reasoning": "one short sentence"}`,
-        },
-      ],
-    });
-    const text = response.content.find((b) => b.type === "text")?.text ?? "";
-    const parsed = JSON.parse(extractJsonLoose(text));
-    if (typeof parsed.title === "string" && typeof parsed.reasoning === "string") {
-      return { title: parsed.title, reasoning: parsed.reasoning };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function passesBar(place: PlacesApiPlace | null): boolean {
-  if (!place) return false;
-  const status = mapBusinessStatus(place.businessStatus);
-  if (status === "closed_permanently") return false;
-  if (place.rating != null && place.rating < MIN_RATING) return false;
-  return true;
-}
-
 function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
   item.google_rating = place.rating;
   item.google_rating_count = place.userRatingCount;
@@ -227,18 +168,12 @@ function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
   }
 }
 
-export async function checkVenues(
-  itinerary: Itinerary,
-  client?: Anthropic,
-  brief?: TripBriefInput,
-  model?: string
-): Promise<Itinerary> {
+export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return itinerary;
 
   const targets = (itinerary.days ?? []).flatMap((day) => day.items.filter(isNamedVenueItem));
   const toRemove = new Set<ItineraryItem>();
-  const warnings: string[] = [];
 
   await Promise.all(
     targets.map(async (item) => {
@@ -249,51 +184,18 @@ export async function checkVenues(
       const placeName = place?.displayName?.text;
       const matched = place && placeName && namesLikelyMatch(venueName, placeName);
 
-      // Hard rule: a named venue must be confirmed to exist, full stop.
-      // "Nothing found" and "found something, but it doesn't look like the
-      // same business" are both failures here, exactly like "closed" or
-      // "rated too low" below — there is no silent "leave it unverified"
-      // outcome. A wrong match is also worse to act on than none, so it's
-      // never applied to the item even when found.
-      let reason: string | null = null;
-      if (!place) {
-        reason = "no matching business could be confirmed on Google Places";
-      } else if (!matched) {
-        reason = "the closest Google Places match doesn't look like the same business";
-      } else {
-        applyPlaceData(item, place);
-        if (item.google_business_status === "closed_permanently") {
-          reason = "it appears permanently closed on Google";
-        } else if (place.rating != null && place.rating < MIN_RATING) {
-          reason = `its Google rating is ${place.rating.toFixed(1)}, below this app's ${MIN_RATING} bar`;
-        }
+      if (!place || !matched) {
+        toRemove.add(item); // couldn't confirm this business exists at all
+        return;
       }
 
-      if (!reason) return; // confirmed real, open, and well-rated — done
-
-      const suggestion = client && brief && model ? await suggestReplacement(client, model, item, brief, reason) : null;
-      const newVenueName = suggestion ? extractVenueName(suggestion.title) : null;
-      if (suggestion && newVenueName) {
-        const newPlace = await lookupPlace(apiKey, `${newVenueName}, ${item.location}`);
-        const newPlaceName = newPlace?.displayName?.text;
-        const newMatches = newPlace && newPlaceName && namesLikelyMatch(newVenueName, newPlaceName);
-
-        if (newMatches && passesBar(newPlace)) {
-          item.title = suggestion.title;
-          item.reasoning = `${item.reasoning} (Swapped from the original pick since ${reason} — this one's real, open, and well-rated.)`;
-          item.source_confidence = "inferred";
-          applyPlaceData(item, newPlace!);
-          return; // replacement succeeded, done
-        }
+      applyPlaceData(item, place);
+      const status = item.google_business_status;
+      if (status === "closed_permanently" || status === "closed_temporarily") {
+        toRemove.add(item);
+      } else if (place.rating != null && place.rating < MIN_RATING) {
+        toRemove.add(item);
       }
-
-      // No client/brief available, or the replacement itself didn't pan
-      // out — remove rather than ever show an unconfirmed or failing venue.
-      toRemove.add(item);
-      warnings.push(
-        `Removed "${item.title}" from the itinerary — ${reason}, and no solid automatic replacement was ` +
-          `found. Consider picking your own ${item.type === "meal" ? "meal" : "activity"} for this slot.`
-      );
     })
   );
 
@@ -303,6 +205,5 @@ export async function checkVenues(
     }
   }
 
-  itinerary._venue_warnings = warnings;
   return itinerary;
 }

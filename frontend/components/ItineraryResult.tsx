@@ -360,26 +360,6 @@ export function ItineraryResult({
         </div>
       )}
 
-      {result._venue_warnings && result._venue_warnings.length > 0 && (
-        <div
-          className="font-mono"
-          style={{
-            border: "1px solid var(--unverified)",
-            borderRadius: 6,
-            padding: "12px 16px",
-            marginBottom: 24,
-            fontSize: 12,
-            color: "var(--unverified)",
-          }}
-        >
-          {result._venue_warnings.map((w, i) => (
-            <div key={i} style={{ marginBottom: 4 }}>
-              ⚠ {w}
-            </div>
-          ))}
-        </div>
-      )}
-
       {result.key_decisions && result.key_decisions.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <SectionLabel>{t.result.keyDecisions}</SectionLabel>
