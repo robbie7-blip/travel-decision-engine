@@ -21,7 +21,6 @@ import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from ".
 import { checkVenues } from "./engine/venueVerification";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
-import { cacheVenueFacts, loadCachedVenueFacts } from "./venueCache";
 import {
   ALERT_THRESHOLD_RATIO,
   DAILY_BUDGET_USD,
@@ -38,16 +37,22 @@ const MAX_TOKENS = 12000;
 const EFFORT = "low";
 
 // Full search is the entire point of moving generation into a worker with
-// no execution-time limit. Two tiers of rigor, by budget impact: lodging
-// gets a deliberate two-search cross-check (below); restaurants/activities
-// get a single verification search each (added after lodging-only proved
-// out) — enough to confirm a named venue is real and roughly priced,
-// without doubling the search budget for the lower-stakes category.
-const SEARCH_INSTRUCTIONS = `You have a web_search tool available. Use it for two categories \
-of items, with different rigor. Do not search for transit/transport items — those stay hedged \
+// no execution-time limit — but per-item restaurant/activity searches were
+// the single biggest generation-time cost (each search round-trip is a real
+// model pause, easily several seconds, multiplied across ~4 named venues a
+// day). Now that checkVenues (worker/src/engine/venueVerification.ts) does a
+// fast, fully-parallelized Google Places lookup for every named venue right
+// after generation, the model no longer needs to search them itself — it
+// only searches for lodging, which stays the one price category Places
+// doesn't cover. This roughly halves-or-better real generation time.
+const SEARCH_INSTRUCTIONS = `You have a web_search tool available. Use it ONLY for lodging price \
+research — do NOT use it for meals or activities, even ones that name a specific venue: a \
+separate, much faster automated step verifies those (real business, open/closed status, rating, \
+price tier) right after you finish, so spending search budget on them here only adds latency \
+without adding trust. Do not search for transit/transport items either — those stay hedged \
 estimates unless already covered by the provided facts.
 
-LODGING (cross-checked — highest budget impact):
+LODGING (cross-checked — the only category to search):
 For each destination, perform TWO separate searches for its lodging price range (vary the query \
 phrasing or target a different source each time) rather than relying on a single search — this is \
 a deliberate cross-check, not a duplicate. Then:
@@ -66,40 +71,28 @@ cross-check, and should be treated as slightly less certain in the reasoning.
 inferred estimate — do not invent a false source. Set source_urls to an empty array and \
 source_agreement to null.
 
-RESTAURANTS AND ACTIVITIES (single verification search each):
-For each meal or activity item that names a SPECIFIC venue (a named restaurant, museum, tour, \
-paid attraction — not a generic, unnamed thing like "walk through the old town" or "relax at the \
-hotel"), perform ONE search to confirm the venue is real, still operating, and to get a rough \
-current price (entry fee, or typical meal cost). Then:
-- If the search returns a usable result, set source_confidence to "grounded", source_urls to that \
-one URL, and leave source_agreement unset (null) — this is single-source, not a cross-check.
-- If the search returns nothing usable (venue not found, ambiguous, search fails), fall back to \
-the existing hedged, inferred estimate — do not invent a false source.
-- Skip searching generic/free items with no specific named venue — there's nothing to verify.
-- Search budget is limited and shared across the whole itinerary. Prioritize the lodging \
-cross-check first, then the most expensive or most decision-relevant named-venue items. If you \
-run low on budget, it is fine to leave lower-stakes items hedged/inferred rather than cutting \
-corners on lodging.
+MEALS AND ACTIVITIES — DO NOT SEARCH: still name a real, specific venue per the NAME SPECIFIC \
+VENUES rule, and still give your best hedged price estimate from general knowledge, but set \
+source_confidence to "inferred" and source_urls to an empty array for these — the automated \
+Places check afterward is what actually confirms the venue is real, open, and well-rated, and \
+does it far faster than a per-item search would here.
 
-SHARED RULE FOR BOTH CATEGORIES — CRITICAL: never adjust a "grounded" number to fit the budget: \
-whatever cost_estimate_eur you write for a "grounded" item MUST fall within (or match, for a \
-single price) what its cited source(s) actually reported. Do NOT quietly write a lower number than \
-your source found just because the trip's budget is tight — if the real number is high enough \
-that it strains or breaks the budget, that IS the correct finding; report it as infeasible rather \
-than manufacturing a cheaper "grounded" figure that isn't actually what you found. If you want to \
-claim a cheaper option exists (e.g. a hostel instead of the hotels your search returned, or a \
-cheaper restaurant instead of the one you searched), you must specifically search for and find \
-that cheaper option — do not assume it without a citation backing that specific number. A cost \
-figure invented to make the budget work, even with real citation links attached, is worse than no \
-citation, because it looks verified when it isn't — never do this.
+CRITICAL: never adjust a "grounded" lodging number to fit the budget: whatever cost_estimate_eur \
+you write for a "grounded" lodging item MUST fall within (or match, for a single price) what its \
+cited source(s) actually reported. Do NOT quietly write a lower number than your source found just \
+because the trip's budget is tight — if the real number is high enough that it strains or breaks \
+the budget, that IS the correct finding; report it as infeasible rather than manufacturing a \
+cheaper "grounded" figure that isn't actually what you found. A cost figure invented to make the \
+budget work, even with a real citation link attached, is worse than no citation, because it looks \
+verified when it isn't — never do this.
 
-SHARED RULE FOR BOTH CATEGORIES — CURRENCY: a search result will often quote a price in the local \
-currency (BRL, USD, THB, whatever), not EUR. Convert it to EUR yourself before writing cost_estimate_eur \
-or mentioning that price anywhere in reasoning — never leave a raw local-currency figure in the output, \
-even inside a citation-backed reasoning sentence. If the local pricing convention itself is unfamiliar \
-to a European traveler (pay-by-weight, a per-person cover charge, a prix-fixe menu), translate it into \
-an estimated total EUR cost for a typical portion or person, and explain the convention in plain terms \
-rather than just repeating the local unit rate.
+CURRENCY: a search result will often quote a price in the local currency (BRL, USD, THB, \
+whatever), not EUR. Convert it to EUR yourself before writing cost_estimate_eur or mentioning that \
+price anywhere in reasoning — never leave a raw local-currency figure in the output, even inside a \
+citation-backed reasoning sentence. If the local pricing convention itself is unfamiliar to a \
+European traveler (pay-by-weight, a per-person cover charge, a prix-fixe menu), translate it into \
+an estimated total EUR cost for a typical portion or person, and explain the convention in plain \
+terms rather than just repeating the local unit rate.
 
 After any searches, output ONLY the final JSON matching the schema. Do not write any other text \
 before, between, or after — no acknowledgment of the search, no commentary.`;
@@ -121,21 +114,15 @@ class ModelOutputError extends Error {}
 // filtering makes an internal code_execution call that eats into the same
 // budget, so too low a count can be exhausted before a real query completes,
 // causing a silent, unlogged fallback to an ungrounded estimate (empirically
-// confirmed via a live test job). Budget for lodging's 2 cross-check
-// searches per destination, plus 1 search for each of an estimated ~4
-// named-venue meals/activities per day — a rough ceiling, since the actual
-// count depends on what the model decides to name. Capped so a long trip
-// can't runaway the search budget (and the cost/latency that comes with it).
+// confirmed via a live test job). Only budgets for lodging's 2 cross-check
+// searches per destination now — meals/activities are deliberately not
+// searched by the model at all anymore (see SEARCH_INSTRUCTIONS), so there's
+// no per-day item budget to account for. This is the main lever behind
+// cutting overall generation time: fewer searches means fewer multi-second
+// round-trips in the critical path.
 function estimateMaxSearchUses(brief: TripBriefInput): number {
-  const start = new Date(brief.start_date).getTime();
-  const end = new Date(brief.end_date).getTime();
-  const days =
-    Number.isFinite(start) && Number.isFinite(end) && end > start
-      ? Math.round((end - start) / 86_400_000) + 1
-      : 3; // malformed dates are caught elsewhere — this is just a search-budget estimate
   const lodgingSearches = brief.destinations.length * 2;
-  const itemSearches = days * 4;
-  return Math.min((lodgingSearches + itemSearches) * 3, 60);
+  return Math.min(lodgingSearches * 3, 20);
 }
 
 async function callModel(
@@ -203,12 +190,9 @@ function generateItinerary(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
-  cachedVenueFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<Itinerary> {
-  return withOneRetry(() =>
-    callModel(client, brief, buildPrompt(brief, cachedLodgingFacts, cachedVenueFacts), onUsage)
-  );
+  return withOneRetry(() => callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage));
 }
 
 /** Handles a pushback/follow-up request: re-sends the previously generated
@@ -298,11 +282,8 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     if (job.refinement) {
       itinerary = await generateRefinement(client, job.brief, job.refinement, onUsage);
     } else {
-      const [cachedLodgingFacts, cachedVenueFacts] = await Promise.all([
-        loadCachedLodgingFacts(redis, job.brief.destinations),
-        loadCachedVenueFacts(redis, job.brief.destinations),
-      ]);
-      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, cachedVenueFacts, onUsage);
+      const cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
+      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, onUsage);
     }
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
@@ -311,7 +292,6 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     job.status = "done";
     job.result = itinerary;
     await cacheLodgingFacts(redis, job.brief, itinerary);
-    await cacheVenueFacts(redis, job.brief, itinerary);
   } catch (e) {
     console.error(`[worker] job ${id} failed:`, e);
     job.status = "error";
