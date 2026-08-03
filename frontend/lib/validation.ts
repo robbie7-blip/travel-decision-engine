@@ -89,12 +89,20 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     transport_preference = b.transport_preference as TripBriefInput["transport_preference"];
   }
 
-  let arrival_note: string | undefined;
-  if (b.arrival_note !== undefined && b.arrival_note !== null) {
-    if (typeof b.arrival_note !== "string") {
-      throw new ValidationError("arrival_note must be a string.");
+  let arrival_date: string | undefined;
+  if (b.arrival_date !== undefined && b.arrival_date !== null) {
+    if (typeof b.arrival_date !== "string") {
+      throw new ValidationError("arrival_date must be a string.");
     }
-    arrival_note = b.arrival_note.trim() || undefined;
+    arrival_date = b.arrival_date.trim() || undefined;
+  }
+
+  let arrival_time: string | undefined;
+  if (b.arrival_time !== undefined && b.arrival_time !== null) {
+    if (typeof b.arrival_time !== "string") {
+      throw new ValidationError("arrival_time must be a string.");
+    }
+    arrival_time = b.arrival_time.trim() || undefined;
   }
 
   return {
@@ -116,6 +124,7 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     accommodation_location,
     needs_flight,
     transport_preference,
-    arrival_note,
+    arrival_date,
+    arrival_time,
   };
 }

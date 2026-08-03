@@ -62,8 +62,10 @@ export interface Dictionary {
     // Shown only when flights/trains are already booked separately — lets
     // the traveler state their real arrival timing so the engine doesn't
     // presume day 1 must be a light "just landed" day.
-    arrivalNote: string;
-    arrivalNotePlaceholder: string;
+    arrivalDate: string;
+    arrivalDatePlaceholder: string;
+    arrivalTime: string;
+    arrivalTimePlaceholder: string;
     // How the traveler wants to get around locally (see transport_preference
     // on TripBriefInput) — always shown, optional, defaults to no preference.
     transportPreference: string;
@@ -275,8 +277,10 @@ const en: Dictionary = {
     accommodationLocation: "Where are you staying? (optional)",
     accommodationLocationPlaceholder: "e.g. Hotel Ibis, near Gare du Nord - helps plan routes and timing",
     skipFlightLabel: "I already have a flight/train booked - skip transport suggestions and cost",
-    arrivalNote: "When do you actually arrive? (optional)",
-    arrivalNotePlaceholder: "e.g. Aug 10, landing around 8pm",
+    arrivalDate: "Arrival date (optional)",
+    arrivalDatePlaceholder: "Select your arrival date",
+    arrivalTime: "Arrival time (optional)",
+    arrivalTimePlaceholder: "e.g. 8pm, or 'evening'",
     transportPreference: "Preferred way to get around (optional)",
     transportNoPreference: "No preference",
     transportPublicTransit: "Public transit (metro/bus/train)",
@@ -471,8 +475,10 @@ const bg: Dictionary = {
     accommodationLocation: "Къде отсядаш? (по избор)",
     accommodationLocationPlaceholder: "напр. хотел Ibis, до Gare du Nord - помага за маршрути и време",
     skipFlightLabel: "Вече имам резервиран полет/влак - пропусни предложенията и цената за транспорт",
-    arrivalNote: "Кога всъщност пристигаш? (по избор)",
-    arrivalNotePlaceholder: "напр. 10 август, кацане около 20:00",
+    arrivalDate: "Дата на пристигане (по избор)",
+    arrivalDatePlaceholder: "Избери дата на пристигане",
+    arrivalTime: "Час на пристигане (по избор)",
+    arrivalTimePlaceholder: "напр. 20:00, или 'вечерта'",
     transportPreference: "Предпочитан начин на придвижване (по избор)",
     transportNoPreference: "Без предпочитание",
     transportPublicTransit: "Градски транспорт (метро/автобус/влак)",

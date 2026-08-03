@@ -47,10 +47,13 @@ export interface TripBriefInput {
   // means no preference stated; the engine picks whatever's sensible.
   transport_preference?: "public_transit" | "taxi_rideshare" | "walking";
   // Only meaningful when needs_flight is false — the traveler's actual
-  // arrival date/time as free text (e.g. "Aug 10, landing around 8pm"), so
-  // the engine doesn't presume day 1 must be a light "just landed" day when
-  // it has no real booking info to base that on.
-  arrival_note?: string;
+  // arrival date (YYYY-MM-DD) and, optionally, a free-text time (e.g.
+  // "20:00" or "evening"), so the engine doesn't presume day 1 must be a
+  // light "just landed" day when it has no real booking info to base that
+  // on. arrival_time alone (no arrival_date) is treated as referring to the
+  // trip's start_date.
+  arrival_date?: string;
+  arrival_time?: string;
 }
 
 // Mirrors the JSON schema in engine.py's SYSTEM_PROMPT — the output contract.

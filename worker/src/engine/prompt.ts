@@ -178,9 +178,12 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
           `arrival or departure transport line items and exclude that cost entirely from ` +
           `budget_feasibility, even though an origin is given above.`
       );
-      if (brief.arrival_note?.trim()) {
+      const arrivalParts = [brief.arrival_date?.trim(), brief.arrival_time?.trim() && `around ${brief.arrival_time.trim()}`].filter(
+        Boolean
+      );
+      if (arrivalParts.length > 0) {
         lines.push(
-          `Traveler's actual arrival: ${brief.arrival_note.trim()} — sequence day 1 around this ` +
+          `Traveler's actual arrival: ${arrivalParts.join(", ")} — sequence day 1 around this ` +
             `real arrival timing rather than presuming it must be a light "just landed" day. Only ` +
             `make day 1 lighter if this arrival info itself indicates a late or tiring arrival.`
         );

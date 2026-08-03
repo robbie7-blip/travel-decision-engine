@@ -1,25 +1,19 @@
 "use client";
 
-// A single combined start/end date picker — click once to set the start,
-// click again to set the end, instead of two separate native <input
-// type="date"> fields that don't visually relate to each other. No date
-// library: date math stays in local Date objects (safe for calendar grid
-// generation) and is only ever serialized back to "YYYY-MM-DD" via manual
-// zero-padded formatting, never toISOString() (which would shift the date
-// across a UTC boundary).
+// A single-date picker sharing the exact calendar look of DateRangePicker
+// (see lib/dateGrid.ts for the shared grid math) — used where only one date
+// is meaningful (e.g. an arrival date) rather than a start/end range.
 
 import { useEffect, useRef, useState } from "react";
 import { inputStyle } from "./ui";
 import { formatIsoDate, getMonthWeeks, parseIsoDate, sameDay, startOfDay } from "@/lib/dateGrid";
 import type { Language } from "@/lib/types";
 
-interface DateRangePickerProps {
-  startDate: string;
-  endDate: string;
-  onChange: (startDate: string, endDate: string) => void;
+interface SingleDatePickerProps {
+  date: string;
+  onChange: (date: string) => void;
   language: Language;
   placeholder: string;
-  toLabel: string;
 }
 
 const LOCALE_BY_LANGUAGE: Record<Language, string> = {
@@ -27,15 +21,12 @@ const LOCALE_BY_LANGUAGE: Record<Language, string> = {
   bg: "bg-BG",
 };
 
-export function DateRangePicker({ startDate, endDate, onChange, language, placeholder, toLabel }: DateRangePickerProps) {
+export function SingleDatePicker({ date, onChange, language, placeholder }: SingleDatePickerProps) {
   const [open, setOpen] = useState(false);
-  const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const start = parseIsoDate(startDate);
-  const end = parseIsoDate(endDate);
-
-  const [viewDate, setViewDate] = useState(() => start ?? new Date());
+  const selected = parseIsoDate(date);
+  const [viewDate, setViewDate] = useState(() => selected ?? new Date());
   const locale = LOCALE_BY_LANGUAGE[language];
 
   useEffect(() => {
@@ -50,28 +41,8 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
   }, [open]);
 
   function handleDayClick(day: Date) {
-    const iso = formatIsoDate(day);
-    if (!start || (start && end)) {
-      // Nothing selected yet, or a full range already picked — this click
-      // starts a fresh selection.
-      onChange(iso, "");
-      return;
-    }
-    // A start is set but no end yet — this click completes the range,
-    // swapping the order if the traveler clicked an earlier date second.
-    if (day < start) {
-      onChange(iso, formatIsoDate(start));
-    } else {
-      onChange(formatIsoDate(start), iso);
-    }
+    onChange(formatIsoDate(day));
     setOpen(false);
-  }
-
-  function isInPreviewRange(day: Date): boolean {
-    if (!start || end || !hoverDate) return false;
-    const lo = start < hoverDate ? start : hoverDate;
-    const hi = start < hoverDate ? hoverDate : start;
-    return day >= lo && day <= hi;
   }
 
   const monthLabel = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(viewDate);
@@ -83,12 +54,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
   });
 
   const displayFormatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
-  const displayText =
-    start && end
-      ? `${displayFormatter.format(start)} → ${displayFormatter.format(end)}`
-      : start
-        ? `${displayFormatter.format(start)} → ?`
-        : placeholder;
+  const displayText = selected ? displayFormatter.format(selected) : placeholder;
 
   const today = startOfDay(new Date());
   const weeks = getMonthWeeks(viewDate.getFullYear(), viewDate.getMonth());
@@ -103,7 +69,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
           ...inputStyle,
           textAlign: "left",
           cursor: "pointer",
-          color: start ? "var(--ink)" : "var(--ink-dim)",
+          color: selected ? "var(--ink)" : "var(--ink-dim)",
         }}
       >
         {displayText}
@@ -158,28 +124,24 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
             <div key={wi} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
               {week.map((day, di) => {
                 if (!day) return <div key={di} />;
-                const isStart = start && sameDay(day, start);
-                const isEnd = end && sameDay(day, end);
-                const inRange = start && end && day > start && day < end;
+                const isSelected = selected && sameDay(day, selected);
                 const isToday = sameDay(day, today);
-                const preview = isInPreviewRange(day) && !isStart;
 
                 return (
                   <button
                     key={di}
                     type="button"
                     onClick={() => handleDayClick(day)}
-                    onMouseEnter={() => setHoverDate(day)}
                     className="font-mono"
                     style={{
-                      border: isToday && !isStart && !isEnd ? "1px solid var(--line)" : "none",
+                      border: isToday && !isSelected ? "1px solid var(--line)" : "none",
                       borderRadius: 6,
                       margin: 1,
                       padding: "7px 0",
                       fontSize: 12,
                       cursor: "pointer",
-                      background: isStart || isEnd ? "var(--accent-green)" : inRange || preview ? "var(--bg-panel-raised)" : "transparent",
-                      color: isStart || isEnd ? "var(--bg-panel)" : "var(--ink)",
+                      background: isSelected ? "var(--accent-green)" : "transparent",
+                      color: isSelected ? "var(--bg-panel)" : "var(--ink)",
                     }}
                   >
                     {day.getDate()}
@@ -188,12 +150,6 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
               })}
             </div>
           ))}
-
-          {start && !end && (
-            <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10 }}>
-              {toLabel}
-            </div>
-          )}
         </div>
       )}
     </div>
