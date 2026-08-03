@@ -177,6 +177,7 @@ export interface Dictionary {
     planAnother: string;
     notFound: string;
     loading: string;
+    didYouKnow: string; // label above the rotating city-fact shown on the loading screen
   };
   // Bookmarks a browser has visited (see lib/recentTrips.ts) — no accounts,
   // purely a localStorage list of previously generated /trip/[jobId] links.
@@ -373,6 +374,7 @@ const en: Dictionary = {
     planAnother: "Plan your own trip",
     notFound: "This trip link has expired or doesn't exist.",
     loading: "Loading your trip…",
+    didYouKnow: "Did you know?",
   },
   recentTrips: {
     heading: "Your recent trips",
@@ -571,6 +573,7 @@ const bg: Dictionary = {
     planAnother: "Планирайте свое пътуване",
     notFound: "Тази връзка е изтекла или не съществува.",
     loading: "Зареждане на пътуването…",
+    didYouKnow: "Знаете ли, че?",
   },
   recentTrips: {
     heading: "Скорошни пътувания",

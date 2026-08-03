@@ -46,8 +46,10 @@ export function TripView({ jobId }: { jobId: string }) {
     setJobStatus(null);
     setCurrentJobId(jobId);
 
-    pollJob(jobId, (status) => {
-      if (!cancelled) setJobStatus(status);
+    pollJob(jobId, (status, brief) => {
+      if (cancelled) return;
+      setJobStatus(status);
+      setLastBrief(brief);
     })
       .then(({ itinerary, brief }) => {
         if (cancelled) return;
@@ -173,7 +175,9 @@ export function TripView({ jobId }: { jobId: string }) {
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          {!result && !loadError && <LoadingScreen message={statusMessage ?? t.trip.loading} />}
+          {!result && !loadError && (
+            <LoadingScreen message={statusMessage ?? t.trip.loading} destinations={lastBrief?.destinations} t={t} />
+          )}
           {loadError && (
             <div className="font-mono" style={{ fontSize: 14, color: "var(--infeasible)" }}>
               {loadError}{" "}
