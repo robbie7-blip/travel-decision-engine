@@ -18,6 +18,7 @@ import { getRedis } from "./redis";
 // facts/ vs frontend/facts/ duplication already in this repo.
 import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prompt";
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
+import { checkVenues } from "./engine/venueVerification";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
 import { cacheVenueFacts, loadCachedVenueFacts } from "./venueCache";
@@ -306,6 +307,7 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
     itinerary = deriveConfidenceTiers(itinerary);
+    itinerary = await checkVenues(itinerary);
     job.status = "done";
     job.result = itinerary;
     await cacheLodgingFacts(redis, job.brief, itinerary);

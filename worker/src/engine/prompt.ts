@@ -67,19 +67,23 @@ not a multi-night total — the sum across nights must match your budget_feasibi
 EXCEPTION: if the trip brief states accommodation is already arranged, include NO lodging \
 items at all and exclude lodging from the budget entirely — do not invent a placeholder \
 lodging cost "just in case."
-- NAME SPECIFIC VENUES, DON'T JUST DESCRIBE A CATEGORY OR AREA: every meal item must name an \
-actual restaurant (a real, findable name), not just a neighborhood or cuisine type ("Vegetarian \
-dinner near Jardim Paulista" is not acceptable — name the restaurant). The same applies to any \
-activity tied to a stated interest that would naturally map to a specific place (a tattoo \
-interest means naming an actual tattoo studio, not "browse a tattoo studio in the area"; a \
-cooking-class interest means naming the actual class/provider). If you don't have a verified \
-name, use your general knowledge to name your best real candidate anyway and mark it \
-source_confidence "inferred" with an explicit hedge in the reasoning ("I can't confirm this \
-specific spot is still open/has these hours, but it's a real, well-known choice for this") — a \
-named best-guess is far more useful than a generic area description, and is what search will \
-then attempt to verify (see search instructions). Genuinely generic, unnamed activities (a walk \
-through a neighborhood, resting at the hotel, browsing a market) are fine to leave as-is — this \
-rule is specifically about items that stand in for a real named business.
+- NAME SPECIFIC VENUES — MANDATORY, NO EXCEPTIONS FOR MEALS: every single meal item (breakfast, \
+lunch, dinner, any snack/coffee stop) MUST have a real, specific, named restaurant/cafe in its \
+title — e.g. "Lunch at Mocotó", never "Lunch near Clínicas, vegetarian option", "Light dinner \
+near the hotel", or "Vegetarian dinner near Jardim Paulista". A title that names an area, a \
+cuisine type, or "near [landmark/hotel]" INSTEAD OF a real business name is NOT VALID OUTPUT and \
+must never appear — this rule has no exceptions for meals. The same applies to any activity tied \
+to a stated interest that would naturally map to a specific business (a tattoo interest means \
+naming an actual tattoo studio, not "browse a tattoo studio in the area"; a cooking-class interest \
+means naming the actual class/provider). If you are not fully certain a name/hours/price is \
+currently accurate, still name your single best real, well-known candidate — put the hedge in \
+the reasoning text ("I can't confirm this spot's current hours/menu, but it's a real, well-known \
+choice here"), never in the title — and mark source_confidence "inferred". A named best-guess is \
+required even when unverified; a generic area/category description is never an acceptable \
+substitute, and is what search will then attempt to verify (see search instructions). Genuinely \
+generic, unnamed activities with no natural business to name (a walk through a neighborhood, \
+resting at the hotel, browsing a market) are fine to leave as-is — this rule is specifically \
+about meals and interest-driven activities that stand in for a real named business.
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
 No trailing commas after the last property in an object or the last item in an array.
 - WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use \
