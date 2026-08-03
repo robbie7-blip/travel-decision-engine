@@ -96,26 +96,40 @@ async function geocodeRaw(query: string): Promise<GeoPoint | null> {
   }
 }
 
-/** Geocodes an item's location string, memoized per unique string within one
- * checkVenues call (many items share the same destination city). Falls back
- * to the text after the last comma — usually the city, per the "location"
- * schema instruction requiring it be included — when the full string (often
- * "Neighborhood, City") doesn't resolve on its own. Returns null (skip the
- * geo cross-check for this item) rather than throwing, if both fail — a
- * geocoding hiccup should never block generation. */
-function geocode(query: string, cache: Map<string, Promise<GeoPoint | null>>): Promise<GeoPoint | null> {
-  const cached = cache.get(query);
+/** The "City" part of a "Neighborhood, City" location string (or the whole
+ * string if there's no comma) — per the "location" schema instruction
+ * requiring the destination city always be included. Used both as the
+ * primary geocoding query AND as the cache key, so every item in the same
+ * city (regardless of which neighborhood each names) shares one geocode
+ * lookup instead of one per distinct location string — the difference
+ * between one network round-trip per destination city and one per
+ * neighborhood, which matters since this sits in the generation critical
+ * path. */
+function cityPart(location: string): string {
+  const commaIndex = location.lastIndexOf(",");
+  return commaIndex === -1 ? location.trim() : location.slice(commaIndex + 1).trim();
+}
+
+/** Geocodes an item's location, memoized per city within one checkVenues
+ * call. Tries the extracted city name first (the common, fast-resolving
+ * case) and only falls back to the full raw string — a second sequential
+ * fetch — if that fails, since a neighborhood name is rarely more
+ * geocodable than the city it's in. Returns null (skip the geo cross-check
+ * for this item) rather than throwing if both fail — a geocoding hiccup
+ * should never block generation. */
+function geocode(location: string, cache: Map<string, Promise<GeoPoint | null>>): Promise<GeoPoint | null> {
+  const key = cityPart(location);
+  const cached = cache.get(key);
   if (cached) return cached;
 
   const promise = (async () => {
-    const direct = await geocodeRaw(query);
+    const direct = await geocodeRaw(key);
     if (direct) return direct;
-    const commaIndex = query.lastIndexOf(",");
-    if (commaIndex === -1) return null;
-    return geocodeRaw(query.slice(commaIndex + 1).trim());
+    if (key === location.trim()) return null; // nothing left to try
+    return geocodeRaw(location);
   })();
 
-  cache.set(query, promise);
+  cache.set(key, promise);
   return promise;
 }
 

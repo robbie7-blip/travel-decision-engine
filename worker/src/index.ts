@@ -99,6 +99,31 @@ terms rather than just repeating the local unit rate.
 After any searches, output ONLY the final JSON matching the schema. Do not write any other text \
 before, between, or after — no acknowledgment of the search, no commentary.`;
 
+// Used instead of SEARCH_INSTRUCTIONS — and with no web_search tool declared
+// at all — whenever every destination already has a cached, recently
+// search-verified lodging price (see lodgingCache.ts). Not just "tell the
+// model not to search": the tool itself is omitted from the request, so
+// there's no possibility of the model spending a search round-trip on it
+// regardless of how well it follows the instruction. This is the main lever
+// for repeat/common-destination generations, which otherwise pay the same
+// search latency every single time even though lodging prices barely change
+// hour to hour.
+const NO_SEARCH_INSTRUCTIONS = `No web_search tool is available for this generation. Every destination's lodging \
+price has already been verified via a recent live search — see the "already verified" notes provided below for \
+each destination. Reuse those exact figures and source_urls/source_agreement values for that destination's lodging \
+item(s), set source_confidence to "grounded", and do not attempt to search.
+
+Do not search for meals, activities, or transport either — a separate, much faster automated step verifies named \
+meal/activity venues (real business, open/closed status, rating, price tier) right after you finish. Still name a \
+real, specific venue per the NAME SPECIFIC VENUES rule, give your best hedged price estimate, and set \
+source_confidence to "inferred" and source_urls to an empty array for those.
+
+CURRENCY: if a cached lodging figure needs conversion, or you need to estimate any other price, convert to EUR \
+yourself — never write a raw local-currency figure anywhere in the output.
+
+Output ONLY the final JSON matching the schema. Do not write any other text before, between, or after — no \
+commentary.`;
+
 function extractJson(text: string): string {
   let t = text.trim();
   if (t.startsWith("```")) {
@@ -131,23 +156,28 @@ async function callModel(
   client: Anthropic,
   brief: TripBriefInput,
   userPrompt: string,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage) => void,
+  skipSearch = false
 ): Promise<Itinerary> {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: [
       { type: "text", text: SYSTEM_PROMPT },
-      { type: "text", text: SEARCH_INSTRUCTIONS },
+      { type: "text", text: skipSearch ? NO_SEARCH_INSTRUCTIONS : SEARCH_INSTRUCTIONS },
     ],
     output_config: { effort: EFFORT },
-    tools: [
-      {
-        type: "web_search_20260209",
-        name: "web_search",
-        max_uses: estimateMaxSearchUses(brief),
-      },
-    ],
+    ...(skipSearch
+      ? {}
+      : {
+          tools: [
+            {
+              type: "web_search_20260209" as const,
+              name: "web_search",
+              max_uses: estimateMaxSearchUses(brief),
+            },
+          ],
+        }),
     messages: [{ role: "user", content: userPrompt }],
   });
 
@@ -194,7 +224,14 @@ function generateItinerary(
   cachedLodgingFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<Itinerary> {
-  return withOneRetry(() => callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage));
+  // Skip the web_search tool entirely — not just instruct around it — when
+  // every destination already has a cached, recently-verified lodging price,
+  // so a repeat/common-destination generation pays zero search latency
+  // rather than relying on the model choosing not to search.
+  const allLodgingCached = brief.destinations.every((d) => d in cachedLodgingFacts);
+  return withOneRetry(() =>
+    callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage, allLodgingCached)
+  );
 }
 
 /** Handles a pushback/follow-up request: re-sends the previously generated
