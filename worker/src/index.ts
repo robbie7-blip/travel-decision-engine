@@ -288,7 +288,7 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
     itinerary = deriveConfidenceTiers(itinerary);
-    itinerary = await checkVenues(itinerary);
+    itinerary = await checkVenues(itinerary, client, job.brief, MODEL);
     job.status = "done";
     job.result = itinerary;
     await cacheLodgingFacts(redis, job.brief, itinerary);
