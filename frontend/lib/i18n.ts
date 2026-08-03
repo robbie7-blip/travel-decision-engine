@@ -105,6 +105,11 @@ export interface Dictionary {
       heading: string;
       historicalNote: string;
     };
+    // Google Places verification on named-venue items (see worker/src/engine/
+    // venueVerification.ts) — "{count}" placeholder for googleRatingCount.
+    googleRatingCount: string;
+    closedTemporarily: string;
+    closedPermanently: string;
     // "{percent}% " is prepended by the component; this is just the word
     // after the number (e.g. "92% verified").
     trustScoreLabel: string;
@@ -290,6 +295,9 @@ const en: Dictionary = {
       heading: "Weather outlook",
       historicalNote: "Some of these dates are beyond real forecast range - showing typical weather for these dates based on the last few years, not a forecast.",
     },
+    googleRatingCount: "{count} reviews",
+    closedTemporarily: "Temporarily closed (Google)",
+    closedPermanently: "Permanently closed (Google)",
     trustScoreLabel: "verified",
     trustScoreDetail: "{grounded} of {total} line items are backed by a live search or a checked fact - the rest are honest, hedged guesses, not fabricated numbers.",
     downloadCalendar: "Add to calendar (.ics)",
@@ -473,6 +481,9 @@ const bg: Dictionary = {
       heading: "Прогноза за времето",
       historicalNote: "Част от тези дати са извън обхвата на реална прогноза - показваме типично време за тези дати въз основа на последните няколко години, не прогноза.",
     },
+    googleRatingCount: "{count} отзива",
+    closedTemporarily: "Временно затворено (Google)",
+    closedPermanently: "Трайно затворено (Google)",
     trustScoreLabel: "проверено",
     trustScoreDetail: "{grounded} от {total} елемента са базирани на търсене на живо или проверен факт - останалите са честни, хеджирани предположения, не измислени цифри.",
     downloadCalendar: "Добави в календар (.ics)",

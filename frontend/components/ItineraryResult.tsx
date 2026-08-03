@@ -9,7 +9,18 @@ import { downloadItineraryIcs } from "@/lib/exportIcs";
 import { formatMoney, type Currency, type FxRates } from "@/lib/currency";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
-import type { Itinerary, ItineraryItem } from "@/lib/types";
+import type { GooglePriceLevel, Itinerary, ItineraryItem } from "@/lib/types";
+
+// Google's price_level is a 0-4 tier, not a literal per-person figure — shown
+// as $ symbols rather than implying a precise amount Google doesn't actually
+// give us.
+const PRICE_LEVEL_SYMBOL: Record<GooglePriceLevel, string> = {
+  free: "",
+  inexpensive: "$",
+  moderate: "$$",
+  expensive: "$$$",
+  very_expensive: "$$$$",
+};
 
 /** >=80% grounded reuses the same teal as the "verified" tier dot; below
  * 50% reuses the infeasible red — thresholds chosen to match, not clash
@@ -349,6 +360,26 @@ export function ItineraryResult({
         </div>
       )}
 
+      {result._venue_warnings && result._venue_warnings.length > 0 && (
+        <div
+          className="font-mono"
+          style={{
+            border: "1px solid var(--unverified)",
+            borderRadius: 6,
+            padding: "12px 16px",
+            marginBottom: 24,
+            fontSize: 12,
+            color: "var(--unverified)",
+          }}
+        >
+          {result._venue_warnings.map((w, i) => (
+            <div key={i} style={{ marginBottom: 4 }}>
+              ⚠ {w}
+            </div>
+          ))}
+        </div>
+      )}
+
       {result.key_decisions && result.key_decisions.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <SectionLabel>{t.result.keyDecisions}</SectionLabel>
@@ -452,6 +483,25 @@ export function ItineraryResult({
                     <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
                       {item.location} · {item.time}
                     </div>
+                    {item.google_business_status && item.google_business_status !== "operational" ? (
+                      <div className="font-mono" style={{ fontSize: 11, color: "var(--infeasible)", marginTop: 4 }}>
+                        ⚠{" "}
+                        {item.google_business_status === "closed_permanently"
+                          ? t.result.closedPermanently
+                          : t.result.closedTemporarily}
+                      </div>
+                    ) : (
+                      item.google_rating != null && (
+                        <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
+                          ★ {item.google_rating.toFixed(1)}
+                          {item.google_rating_count != null &&
+                            ` (${t.result.googleRatingCount.replace("{count}", String(item.google_rating_count))})`}
+                          {item.google_price_level && item.google_price_level !== "free" && (
+                            <> · {PRICE_LEVEL_SYMBOL[item.google_price_level]}</>
+                          )}
+                        </div>
+                      )
+                    )}
                     <div style={{ fontSize: 13, marginTop: 4, color: "var(--ink-soft)" }}>{item.reasoning}</div>
                     <button
                       type="button"

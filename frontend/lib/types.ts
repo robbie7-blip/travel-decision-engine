@@ -88,7 +88,19 @@ export interface ItineraryItem {
   // the model, on the same "verify structurally, don't trust the self-report"
   // principle as the budget-integrity check itself.
   confidence_tier?: ConfidenceTier;
+  // Populated by checkVenues (worker/src/engine/venueVerification.ts) via a
+  // real Google Places lookup — never self-reported by the model, same
+  // "verify structurally" principle. Absent when GOOGLE_PLACES_API_KEY isn't
+  // configured, the item isn't a named-venue meal/activity, or the lookup
+  // found no confident match.
+  google_rating?: number;
+  google_rating_count?: number;
+  google_price_level?: GooglePriceLevel;
+  google_business_status?: GoogleBusinessStatus;
 }
+
+export type GooglePriceLevel = "free" | "inexpensive" | "moderate" | "expensive" | "very_expensive";
+export type GoogleBusinessStatus = "operational" | "closed_temporarily" | "closed_permanently";
 
 // "fact_grounded" is for items grounded in the curated facts/*.json base
 // (source_confidence: "grounded", no live search — most non-lodging items)
@@ -120,6 +132,11 @@ export interface Itinerary {
   days: ItineraryDay[];
   things_to_skip: SkipItem[];
   _budget_integrity_warnings?: string[];
+  // Populated by checkVenues — flags a named venue Google Places reports as
+  // permanently closed, or rated below the app's quality bar (see MIN_RATING
+  // in worker/src/engine/venueVerification.ts). Empty/absent when the
+  // Places API isn't configured or every checked venue passed.
+  _venue_warnings?: string[];
   // Only present when this itinerary is the result of a pushback/follow-up
   // refinement request (see buildRefinementPrompt in engine/prompt.ts) — the
   // model's direct answer to the traveler's question, shown above the
