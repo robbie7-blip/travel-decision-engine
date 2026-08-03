@@ -92,6 +92,26 @@ function mostCommon(values: WeatherCondition[]): WeatherCondition {
   return best;
 }
 
+// A plain plurality vote over weathercodes can pick a precipitation
+// condition (rain/snow/thunderstorm) as the "most common" even when it's a
+// minority of the sampled years — e.g. 2 of 5 years had a light-drizzle code
+// and the other 3 split evenly across clear/partly-cloudy/cloudy, so drizzle
+// "wins" with only 2 votes. That produced a real, confirmed contradiction: a
+// rain icon shown next to "Avg rain: 0mm", since the averaged precipitation
+// across all 5 years (including the 3 dry ones) rounds down to nothing. A
+// precipitation condition is only trusted here when the averaged mm actually
+// backs it up — otherwise the icon falls back to the plurality among the
+// non-precipitation years, which is what the traveler should actually expect.
+const PRECIP_CONDITIONS = new Set<WeatherCondition>(["rain", "snow", "thunderstorm"]);
+const MIN_AVG_PRECIP_FOR_ICON_MM = 1;
+
+function pickHistoricalCondition(conditions: WeatherCondition[], avgPrecipMm: number | null): WeatherCondition {
+  const mode = mostCommon(conditions);
+  if (!PRECIP_CONDITIONS.has(mode) || (avgPrecipMm ?? 0) >= MIN_AVG_PRECIP_FOR_ICON_MM) return mode;
+  const nonPrecip = conditions.filter((c) => !PRECIP_CONDITIONS.has(c));
+  return nonPrecip.length > 0 ? mostCommon(nonPrecip) : "cloudy";
+}
+
 async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string): Promise<DayWeather[]> {
   const yearOffsets = Array.from({ length: ARCHIVE_YEARS }, (_, i) => i + 1);
   const perYear = await Promise.all(
@@ -133,6 +153,7 @@ async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string
     const conditions = validYears.map((y) => conditionFromWmoCode(y.weathercode[i]));
 
     const avg = (nums: number[]) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0);
+    const avgPrecipMm = precips.length ? Math.round(avg(precips)) : null;
 
     return {
       date,
@@ -140,8 +161,8 @@ async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string
       tempMaxC: Math.round(avg(maxes)),
       tempMinC: Math.round(avg(mins)),
       precipitationChance: null,
-      precipitationMm: precips.length ? Math.round(avg(precips)) : null,
-      condition: mostCommon(conditions),
+      precipitationMm: avgPrecipMm,
+      condition: pickHistoricalCondition(conditions, avgPrecipMm),
     };
   });
 }
