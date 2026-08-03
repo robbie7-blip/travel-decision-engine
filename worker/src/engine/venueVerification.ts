@@ -1,20 +1,23 @@
-// Real Google Places lookup for named-venue items (meals, and paid
-// activities that stand in for a specific business — see the "NAME SPECIFIC
-// VENUES" rule in prompt.ts) — the one thing the model's own web_search tool
-// can't reliably give us: an actual Google rating, open/closed status, and
-// price tier. Entirely optional: no-ops (returns the itinerary unchanged) if
+// Real Google Places lookup for named-venue items (meals, and any activity
+// whose title names a specific business — see the "NAME SPECIFIC VENUES"
+// rule in prompt.ts) — the one thing the model's own web_search tool can't
+// reliably give us: an actual Google rating, open/closed status, and price
+// tier. Entirely optional: no-ops (returns the itinerary unchanged) if
 // GOOGLE_PLACES_API_KEY isn't set, so a missing key never breaks generation.
 //
-// A venue that fails verification (permanently closed, or rated below
-// MIN_RATING) gets ONE targeted replacement attempt — a small, tool-free
-// follow-up call asking for a single alternative, then re-verified the same
-// way — rather than just a warning label next to a pick that shouldn't have
-// been shown at all. If the replacement also fails (or no client/brief is
-// available), the item is removed from the itinerary entirely instead of
-// ever presenting an unreliable venue as the plan. This is deliberately not
-// a full itinerary regeneration: only the specific failing item gets a
-// small, cheap follow-up call, kept fast by running all items' checks (and
-// any replacement attempts) in parallel.
+// Hard rule (non-negotiable): if a title names a specific business, that
+// business must be confirmed to exist and get a real Maps link, full stop.
+// "Places found nothing" and "Places matched something, but it doesn't look
+// like the same business" are both treated as failures, exactly like
+// "permanently closed" or "rated below the bar" — there is no silent
+// "leave it unverified" path. A failing venue gets ONE targeted replacement
+// attempt (a small, tool-free follow-up call asking for a single real
+// alternative, then re-verified the same way); if that also fails, the item
+// is removed from the itinerary entirely rather than ever showing a
+// business that couldn't be confirmed. This is deliberately not a full
+// itinerary regeneration: only the specific failing item gets a small,
+// cheap follow-up call, kept fast by running all items' checks (and any
+// replacement attempts) in parallel.
 
 import type Anthropic from "@anthropic-ai/sdk";
 import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem, TripBriefInput } from "../types";
@@ -65,15 +68,26 @@ function namesLikelyMatch(venueName: string, placeName: string): boolean {
   return placeWords.some((w) => venueWords.has(w));
 }
 
-/** Strips a leading "Lunch at "/"Dinner at "/etc. prefix so both the search
- * query and the name-match check target just the venue's proper name, not
- * the whole item title. Falls back to the full title if no such prefix is
- * present (e.g. an activity title that isn't phrased that way). */
-function extractVenueName(title: string): string {
-  const match = /^(?:breakfast|brunch|lunch|dinner|snack|coffee|tattoo session|visit|tour)\s+(?:at|@)\s+(.+)$/i.exec(
-    title.trim()
-  );
-  return match ? match[1] : title;
+/** Pulls the venue's proper name out of a title phrased as "... at X" or
+ * "... @ X" (the last such occurrence, so "Tattoo studio visit at Vodka
+ * Tattoo" correctly yields "Vodka Tattoo") — deliberately general rather
+ * than an enumerated prefix list (breakfast/lunch/tattoo session/etc.),
+ * since that list missed real cases like "Tattoo studio visit at X" or any
+ * other activity phrasing that doesn't start with one of the listed words.
+ * Returns null (not a fallback to the full title) when no "at X" pattern is
+ * found — that absence is exactly the signal isNamedVenueItem uses to tell
+ * a genuinely generic title (a walk, a park visit) apart from one that
+ * names a business and must be verified. */
+function extractVenueName(title: string): string | null {
+  const atRegex = /\bat\b/gi;
+  let lastIndex = -1;
+  let match: RegExpExecArray | null;
+  while ((match = atRegex.exec(title)) !== null) {
+    lastIndex = match.index;
+  }
+  if (lastIndex === -1) return null;
+  const rest = title.slice(lastIndex + 2).trim();
+  return rest.length > 0 ? rest : null;
 }
 
 function mapPriceLevel(level?: string): GooglePriceLevel | undefined {
@@ -134,13 +148,14 @@ async function lookupPlace(apiKey: string, query: string): Promise<PlacesApiPlac
   }
 }
 
-/** Only meals and paid activities are expected to name a real venue (see the
- * prompt rule this mirrors) — free activities (a walk, browsing a market)
- * are deliberately left generic, so looking them up would just attach a
- * random top search result to something that was never meant to name a
- * business in the first place. */
-function isNamedVenueItem(item: { type: string; cost_estimate_eur: number }): boolean {
-  return item.type === "meal" || (item.type === "activity" && item.cost_estimate_eur > 0);
+/** A "named venue" is any meal or activity whose title actually names a
+ * business (extractVenueName found an "at X" pattern) — NOT based on
+ * whether it costs money. A free activity can still name a real business
+ * (e.g. "Tattoo studio visit at Vodka Tattoo", a no-charge browse) and must
+ * be verified exactly like a paid one; a genuinely generic title (a walk, a
+ * park visit) has no "at X" pattern at all and is correctly left alone. */
+function isNamedVenueItem(item: { type: string; title: string }): boolean {
+  return (item.type === "meal" || item.type === "activity") && extractVenueName(item.title) !== null;
 }
 
 function extractJsonLoose(text: string): string {
@@ -227,28 +242,38 @@ export async function checkVenues(
 
   await Promise.all(
     targets.map(async (item) => {
-      const venueName = extractVenueName(item.title);
+      // Safe: item is only in targets because isNamedVenueItem already
+      // confirmed extractVenueName(item.title) is non-null.
+      const venueName = extractVenueName(item.title)!;
       const place = await lookupPlace(apiKey, `${venueName}, ${item.location}`);
-      if (!place) return; // no confident lookup — leave the item as-is, unverified
+      const placeName = place?.displayName?.text;
+      const matched = place && placeName && namesLikelyMatch(venueName, placeName);
 
-      // Skip entirely rather than trust a Text Search result that doesn't
-      // actually look like the venue we asked about — a wrong match is
-      // worse to act on than nothing, especially for a "closed" flag, which
-      // actively damages trust if wrong.
-      const placeName = place.displayName?.text;
-      if (!placeName || !namesLikelyMatch(venueName, placeName)) return;
+      // Hard rule: a named venue must be confirmed to exist, full stop.
+      // "Nothing found" and "found something, but it doesn't look like the
+      // same business" are both failures here, exactly like "closed" or
+      // "rated too low" below — there is no silent "leave it unverified"
+      // outcome. A wrong match is also worse to act on than none, so it's
+      // never applied to the item even when found.
+      let reason: string | null = null;
+      if (!place) {
+        reason = "no matching business could be confirmed on Google Places";
+      } else if (!matched) {
+        reason = "the closest Google Places match doesn't look like the same business";
+      } else {
+        applyPlaceData(item, place);
+        if (item.google_business_status === "closed_permanently") {
+          reason = "it appears permanently closed on Google";
+        } else if (place.rating != null && place.rating < MIN_RATING) {
+          reason = `its Google rating is ${place.rating.toFixed(1)}, below this app's ${MIN_RATING} bar`;
+        }
+      }
 
-      applyPlaceData(item, place);
-      if (passesBar(place)) return; // good venue, nothing more to do
-
-      const reason =
-        item.google_business_status === "closed_permanently"
-          ? "it appears permanently closed on Google"
-          : `its Google rating is ${place.rating?.toFixed(1)}, below this app's ${MIN_RATING} bar`;
+      if (!reason) return; // confirmed real, open, and well-rated — done
 
       const suggestion = client && brief && model ? await suggestReplacement(client, model, item, brief, reason) : null;
-      if (suggestion) {
-        const newVenueName = extractVenueName(suggestion.title);
+      const newVenueName = suggestion ? extractVenueName(suggestion.title) : null;
+      if (suggestion && newVenueName) {
         const newPlace = await lookupPlace(apiKey, `${newVenueName}, ${item.location}`);
         const newPlaceName = newPlace?.displayName?.text;
         const newMatches = newPlace && newPlaceName && namesLikelyMatch(newVenueName, newPlaceName);
@@ -263,7 +288,7 @@ export async function checkVenues(
       }
 
       // No client/brief available, or the replacement itself didn't pan
-      // out — remove rather than ever show a venue that failed the bar.
+      // out — remove rather than ever show an unconfirmed or failing venue.
       toRemove.add(item);
       warnings.push(
         `Removed "${item.title}" from the itinerary — ${reason}, and no solid automatic replacement was ` +
