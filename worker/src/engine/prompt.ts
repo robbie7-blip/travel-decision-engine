@@ -50,23 +50,25 @@ say so explicitly in trip_summary and in a key_decisions entry — do not just s
 comply with the literal wording of each constraint while ignoring that they conflict.
 - BUDGET FEASIBILITY CHECK IS MANDATORY AND MUST BE CONSISTENT: before generating the \
 itinerary, independently estimate a realistic MINIMUM total cost for this trip — \
-including lodging for every night, even if you have no verified lodging data (use \
-general knowledge and hedge it explicitly, e.g. "a bare-minimum hostel is realistically \
+including accommodation for every night, even if you have no verified accommodation data \
+(use general knowledge and hedge it explicitly, e.g. "a bare-minimum hostel is realistically \
 at least roughly €X/night, unverified") — UNLESS the trip brief states accommodation is \
-already arranged, in which case exclude lodging from this estimate entirely (see the \
-LODGING LINE ITEMS rule below). Compare that minimum to the stated budget. You MUST \
+already arranged, in which case exclude accommodation from this estimate entirely (see the \
+ACCOMMODATION LINE ITEMS rule below). Compare that minimum to the stated budget. You MUST \
 include a "budget_feasibility" object as specified below, and you MUST NOT silently \
-reduce or omit a major cost category (especially lodging, when it applies) just to make \
-the numbers appear to fit — if lodging is excluded from the daily items despite being \
-needed, budget_feasibility must say so explicitly and explain why the budget is \
+reduce or omit a major cost category (especially accommodation, when it applies) just to \
+make the numbers appear to fit — if accommodation is excluded from the daily items despite \
+being needed, budget_feasibility must say so explicitly and explain why the budget is \
 infeasible as stated.
-- LODGING LINE ITEMS: include exactly one "lodging" item for EACH night of the stay, \
-even if it's the same place every night (do not collapse a multi-night stay into a \
-single check-in item). Each lodging item's cost_estimate_eur is that ONE night's cost, \
-not a multi-night total — the sum across nights must match your budget_feasibility math. \
-EXCEPTION: if the trip brief states accommodation is already arranged, include NO lodging \
-items at all and exclude lodging from the budget entirely — do not invent a placeholder \
-lodging cost "just in case."
+- ACCOMMODATION LINE ITEMS: include exactly one item with type "lodging" for EACH night of \
+the stay, even if it's the same place every night (do not collapse a multi-night stay into a \
+single check-in item) — "lodging" is only the internal JSON type key; in every human-readable \
+field (trip_summary, key_decisions, item titles, reasoning) always call it "accommodation," \
+never "lodging." Each accommodation item's cost_estimate_eur is that ONE night's cost, not a \
+multi-night total — the sum across nights must match your budget_feasibility math. EXCEPTION: \
+if the trip brief states accommodation is already arranged, include NO accommodation items at \
+all and exclude accommodation from the budget entirely — do not invent a placeholder \
+accommodation cost "just in case."
 - NAME SPECIFIC VENUES — MANDATORY, NO EXCEPTIONS FOR MEALS: every single meal item (breakfast, \
 lunch, dinner, any snack/coffee stop) MUST have a real, specific, named restaurant/cafe in its \
 title — e.g. "Lunch at Mocotó", never "Lunch near Clínicas, vegetarian option", "Light dinner \
@@ -105,7 +107,7 @@ Schema:
   "budget_feasibility": {
     "feasible": true or false,
     "min_realistic_total_eur": 0,
-    "reasoning": "explain your minimum estimate and whether/why the stated budget is or isn't realistic, noting explicitly if any cost category (e.g. lodging) had to be excluded or reduced to fit"
+    "reasoning": "explain your minimum estimate and whether/why the stated budget is or isn't realistic, noting explicitly if any cost category (e.g. accommodation) had to be excluded or reduced to fit"
   },
   "trip_summary": "one confident, appealing sentence describing the trip itself (destinations, what it's built around, the vibe) — never mention data verification, confidence, or hedging here, that's conveyed separately by the per-item confidence indicators and trust score, and leading with it undermines trust rather than building it. Only exception: if the budget is genuinely infeasible, still say so plainly here, since that's actionable for the traveler",
   "key_decisions": [
@@ -211,7 +213,7 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
   if (!brief.needs_lodging) {
     lines.push(
       `Accommodation: already arranged separately (e.g. a business trip) — do NOT include any ` +
-        `lodging line items and exclude lodging entirely from budget_feasibility.`
+        `accommodation line items and exclude accommodation entirely from budget_feasibility.`
     );
     if (brief.accommodation_location?.trim()) {
       lines.push(
@@ -323,8 +325,8 @@ originally, with any changes applied (or unchanged, if no change is warranted). 
 this pushback actually affects — leave every other item (including its cost, reasoning, \
 source_urls, and confidence signals) exactly as it was. Do not re-run searches for things you \
 aren't changing.
-3. Still enforce all the same rules as before: budget integrity, one lodging item per night, \
-grounding discipline, hedge language for unverified data.
+3. Still enforce all the same rules as before: budget integrity, one accommodation item per \
+night, grounding discipline, hedge language for unverified data.
 
 Output ONLY valid JSON matching the schema, now including a top-level "pushback_response" string \
 field alongside the existing fields. No prose outside the JSON.`;

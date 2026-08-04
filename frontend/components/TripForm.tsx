@@ -36,6 +36,15 @@ export interface TripFormState {
   // doesn't need to also clear whatever was typed.
   compareEnabled: boolean;
   compareDestinations: string;
+  // Optional per-destination date override for the comparison side — real
+  // direct-flight availability often differs by route (e.g. one destination
+  // only has direct flights Tue-Fri, another Wed-Sat), so forcing identical
+  // dates on both sides of a comparison can silently make one side price in
+  // a connecting flight or a date range that isn't actually the best option.
+  // Defaults to the same dates as the primary trip when left off.
+  compareUseDifferentDates: boolean;
+  compareStartDate: string;
+  compareEndDate: string;
 }
 
 export const DEFAULT_FORM_STATE: TripFormState = {
@@ -61,7 +70,21 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   arrival_time: "",
   compareEnabled: false,
   compareDestinations: "",
+  compareUseDifferentDates: false,
+  compareStartDate: "",
+  compareEndDate: "",
 };
+
+/** The comparison side's own dates, when the traveler opted into different
+ * dates and actually filled both in — null means "use the same dates as the
+ * primary trip," the existing default behavior. */
+export function compareDateOverride(form: TripFormState): { start_date: string; end_date: string } | null {
+  if (!form.compareUseDifferentDates) return null;
+  const start_date = form.compareStartDate.trim();
+  const end_date = form.compareEndDate.trim();
+  if (!start_date || !end_date) return null;
+  return { start_date, end_date };
+}
 
 export function splitList(value: string): string[] {
   return value
@@ -152,6 +175,35 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                 placeholder={t.form.compareDestinationsPlaceholder}
               />
             </Field>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginTop: 8 }}>
+              <input
+                type="checkbox"
+                checked={value.compareUseDifferentDates}
+                onChange={(e) => update("compareUseDifferentDates", e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "var(--grounded)", flexShrink: 0 }}
+              />
+              <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+                {t.form.compareDifferentDatesLabel}
+              </span>
+            </label>
+            {value.compareUseDifferentDates && (
+              <div style={{ marginTop: 12 }}>
+                <div
+                  className="font-mono"
+                  style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
+                >
+                  {t.form.compareDates}
+                </div>
+                <DateRangePicker
+                  startDate={value.compareStartDate}
+                  endDate={value.compareEndDate}
+                  onChange={(start, end) => onChange({ ...value, compareStartDate: start, compareEndDate: end })}
+                  language={value.language}
+                  placeholder={t.form.compareDatesPlaceholder}
+                  toLabel={t.form.datesPickEnd}
+                />
+              </div>
+            )}
           </div>
         )}
         <div style={{ gridColumn: "1 / -1" }}>

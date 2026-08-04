@@ -38,14 +38,14 @@ export function checkBudgetIntegrity(itinerary: Itinerary, brief: TripBriefInput
   const warnings: string[] = [];
   if (brief.needs_lodging && nights > 0 && lodgingItems.length === 0) {
     warnings.push(
-      `Itinerary spans ${nights} night(s) but has NO lodging line items at all — ` +
+      `Itinerary spans ${nights} night(s) but has NO accommodation line items at all — ` +
         `the budget total is almost certainly missing a major cost, regardless ` +
         `of what budget_feasibility below claims.`
     );
   } else if (nights > 0 && lodgingItems.length > 0 && lodgingItems.length < nights) {
     warnings.push(
-      `Itinerary spans ${nights} nights but only ${lodgingItems.length} lodging ` +
-        `line item(s) appear — likely undercounting total lodging cost.`
+      `Itinerary spans ${nights} nights but only ${lodgingItems.length} accommodation ` +
+        `line item(s) appear — likely undercounting total accommodation cost.`
     );
   }
 
@@ -53,7 +53,7 @@ export function checkBudgetIntegrity(itinerary: Itinerary, brief: TripBriefInput
   if (selfReport?.feasible === true && warnings.length > 0) {
     warnings.push(
       "MISMATCH: model self-reported budget as FEASIBLE, but the itinerary " +
-        "structurally excludes a full lodging cost. Treat 'feasible: true' with " +
+        "structurally excludes a full accommodation cost. Treat 'feasible: true' with " +
         "suspicion — this is the exact inconsistency this check exists to catch."
     );
   }

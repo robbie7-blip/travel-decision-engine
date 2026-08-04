@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DEFAULT_FORM_STATE, splitList, TripForm, toTripBriefInput, type TripFormState } from "@/components/TripForm";
+import {
+  compareDateOverride,
+  DEFAULT_FORM_STATE,
+  splitList,
+  TripForm,
+  toTripBriefInput,
+  type TripFormState,
+} from "@/components/TripForm";
 import { CurrencySwitcher, useCurrency } from "@/components/CurrencySwitcher";
 import { RecentTrips } from "@/components/RecentTrips";
 import { TrustFooter } from "@/components/TrustFooter";
@@ -77,10 +84,17 @@ export default function Home() {
       const compareDestinations = form.compareEnabled ? form.compareDestinations.trim() : "";
       if (compareDestinations) {
         // Same trip (dates/budget/party/pace/etc.) — only the destination
-        // differs — so both jobs are queued from the same brief with just
-        // that field swapped, same as any other generation (same rate
-        // limit, same spend cap, just twice).
-        const compareBrief = { ...brief, destinations: splitList(compareDestinations) };
+        // differs, and optionally the dates too — so both jobs are queued
+        // from the same brief with just those fields swapped, same as any
+        // other generation (same rate limit, same spend cap, just twice).
+        // Different dates matter in practice: direct-flight availability
+        // often differs by route, so forcing identical dates on both sides
+        // can silently price in a worse routing on one side.
+        const compareBrief = {
+          ...brief,
+          destinations: splitList(compareDestinations),
+          ...compareDateOverride(form),
+        };
         const [jobIdA, jobIdB] = await Promise.all([createGenerateJob(brief), createGenerateJob(compareBrief)]);
         router.push(`/compare?a=${jobIdA}&b=${jobIdB}`);
         return;

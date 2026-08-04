@@ -493,6 +493,17 @@ export function ItineraryResult({
                         {t.result.viewOnGoogleMaps} ↗
                       </a>
                     )}
+                    {item.flight_search_url && (
+                      <a
+                        href={item.flight_search_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono"
+                        style={{ fontSize: 11, color: "var(--grounded)", textDecoration: "underline", marginTop: 4, display: "inline-block" }}
+                      >
+                        {t.result.checkFlightPrices} ↗
+                      </a>
+                    )}
                     <div style={{ fontSize: 13, marginTop: 4, color: "var(--ink-soft)" }}>{item.reasoning}</div>
                     <button
                       type="button"

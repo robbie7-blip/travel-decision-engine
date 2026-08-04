@@ -114,6 +114,14 @@ export interface ItineraryItem {
   // place Google Places matched (or doesn't appear at all, rather than
   // linking somewhere that might not be the right result).
   google_maps_url?: string;
+  // Populated by attachFlightSearchLinks (worker/src/engine/flightLinks.ts)
+  // for arrival/departure transport items that are actual flights — a
+  // Google Flights deep link for that exact route/date, built deterministically
+  // from the trip brief rather than depending on whether the model's own
+  // search happened to surface a usable source_url. Not a live-priced quote
+  // (Google Flights runs its own fresh search when opened), but a real,
+  // always-present place to check today's actual price.
+  flight_search_url?: string;
 }
 
 export type GooglePriceLevel = "free" | "inexpensive" | "moderate" | "expensive" | "very_expensive";
