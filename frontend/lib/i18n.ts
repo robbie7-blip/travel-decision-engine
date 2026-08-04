@@ -53,6 +53,11 @@ export interface Dictionary {
     compareToggleLabel: string;
     compareDestinations: string;
     compareDestinationsPlaceholder: string;
+    // Shown only when compareEnabled — lets the comparison side use its own
+    // date range instead of forcing identical dates on both destinations.
+    compareDifferentDatesLabel: string;
+    compareDates: string;
+    compareDatesPlaceholder: string;
     origin: string;
     originPlaceholder: string;
     skipLodgingLabel: string;
@@ -129,6 +134,10 @@ export interface Dictionary {
     closedTemporarily: string;
     closedPermanently: string;
     viewOnGoogleMaps: string;
+    // Google Flights deep link on flight items (see worker/src/engine/
+    // flightLinks.ts) — always present when there's a real flight leg to
+    // check, not dependent on whether the model's own search found a URL.
+    checkFlightPrices: string;
     // "{percent}% " is prepended by the component; this is just the word
     // after the number (e.g. "92% verified").
     trustScoreLabel: string;
@@ -269,9 +278,12 @@ const en: Dictionary = {
   form: {
     destinations: "Destinations (comma-separated)",
     destinationsPlaceholder: "Brussels, Bruges",
-    compareToggleLabel: "Compare with another destination (same dates, budget, and preferences)",
+    compareToggleLabel: "Compare with another destination (same budget and preferences)",
     compareDestinations: "Compare against",
     compareDestinationsPlaceholder: "e.g. Athens",
+    compareDifferentDatesLabel: "Use different dates for this destination (e.g. direct flights only run certain days)",
+    compareDates: "Dates for the comparison destination",
+    compareDatesPlaceholder: "Select start and end dates",
     origin: "Traveling from (optional)",
     originPlaceholder: "e.g. London - used to estimate real arrival/departure transport cost",
     skipLodgingLabel: "I already have accommodation sorted (e.g. business trip) - skip accommodation suggestions",
@@ -330,6 +342,7 @@ const en: Dictionary = {
     closedTemporarily: "Temporarily closed (Google)",
     closedPermanently: "Permanently closed (Google)",
     viewOnGoogleMaps: "View on Google Maps",
+    checkFlightPrices: "Check flight prices",
     trustScoreLabel: "verified",
     trustScoreDetail: "{grounded} of {total} line items are backed by a live search or a checked fact - the rest are honest, hedged guesses, not fabricated numbers.",
     downloadCalendar: "Add to calendar (.ics)",
@@ -473,9 +486,12 @@ const bg: Dictionary = {
   form: {
     destinations: "Дестинации (разделени със запетая)",
     destinationsPlaceholder: "Брюксел, Брюж",
-    compareToggleLabel: "Сравни с друга дестинация (същите дати, бюджет и предпочитания)",
+    compareToggleLabel: "Сравни с друга дестинация (същия бюджет и предпочитания)",
     compareDestinations: "Сравни със",
     compareDestinationsPlaceholder: "напр. Атина",
+    compareDifferentDatesLabel: "Използвай различни дати за тази дестинация (напр. директни полети само в определени дни)",
+    compareDates: "Дати за сравняваната дестинация",
+    compareDatesPlaceholder: "Изберете начална и крайна дата",
     origin: "Заминаване от (по избор)",
     originPlaceholder:
       "напр. Лондон - използва се за оценка на реалната цена на транспорта при пристигане/заминаване",
@@ -535,6 +551,7 @@ const bg: Dictionary = {
     closedTemporarily: "Временно затворено (Google)",
     closedPermanently: "Трайно затворено (Google)",
     viewOnGoogleMaps: "Виж в Google Maps",
+    checkFlightPrices: "Провери цени на полети",
     trustScoreLabel: "проверено",
     trustScoreDetail: "{grounded} от {total} елемента са базирани на търсене на живо или проверен факт - останалите са честни, хеджирани предположения, не измислени цифри.",
     downloadCalendar: "Добави в календар (.ics)",
