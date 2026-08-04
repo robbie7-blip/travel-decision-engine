@@ -200,10 +200,10 @@ interface ItineraryResultProps {
   result: Itinerary;
   jobId: string;
   t: Dictionary;
-  // Omitted entirely on the /compare page (see app/compare/page.tsx) —
-  // pushback there would mean juggling two independently-refinable job ids
-  // in one query string, which isn't worth it for a first version of
-  // side-by-side comparison. The pushback section just doesn't render.
+  // Optional so callers without a job to refine (there are none left, but
+  // keeping it optional costs nothing) can skip pushback entirely — it just
+  // doesn't render. CompareView.tsx wires this up per column, each with its
+  // own independent refine handler.
   onRefine?: (question: string) => void;
   refining?: boolean;
   refiningLabel?: string;

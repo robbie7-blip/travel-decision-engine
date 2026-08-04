@@ -56,13 +56,12 @@ const EFFORT = "low";
 // confidence rather than "verified" — an honest, already-supported tier —
 // rather than paying for a second round-trip just to upgrade that label.
 const SEARCH_INSTRUCTIONS = `You have a web_search tool available. Use it ONLY for lodging price \
-research — do NOT use it for meals or activities, even ones that name a specific venue: a \
-separate, much faster automated step verifies those (real business, open/closed status, rating, \
-price tier) right after you finish, so spending search budget on them here only adds latency \
-without adding trust. Do not search for transit/transport items either — those stay hedged \
-estimates unless already covered by the provided facts.
+research and, when relevant (see FLIGHTS below), one round-trip flight/train price — do NOT use \
+it for meals or activities, even ones that name a specific venue: a separate, much faster \
+automated step verifies those (real business, open/closed status, rating, price tier) right after \
+you finish, so spending search budget on them here only adds latency without adding trust.
 
-LODGING (the only category to search):
+LODGING:
 For each destination, perform ONE search for its lodging price range — do not perform a second \
 search for the same destination, even to cross-check; speed matters more here than a second \
 opinion on a number that's already grounded once.
@@ -72,6 +71,17 @@ source_agreement unset (null) — this is a single-source grounding, not a cross
 - If the search returns nothing usable for a destination, fall back to the existing hedged, \
 inferred estimate — do not invent a false source. Set source_urls to an empty array and \
 source_agreement to null.
+
+FLIGHTS — only if a "Traveling from" origin is given AND transport is not already booked \
+separately: perform ONE search for a real, current round-trip price on that specific route (name \
+the obvious carrier if there is one, e.g. a budget/charter airline that's well known to operate \
+that route — this is usually findable, not a shot in the dark). Use the result for the arrival \
+transport item's cost_estimate_eur (the return-leg item stays free/zero-cost with a note that it's \
+already covered, same as before), mark source_confidence "grounded", set source_urls to that URL, \
+leave source_agreement unset (null). If the search returns nothing usable, fall back to a hedged, \
+inferred estimate from general knowledge of typical fares for that route — do not invent a false \
+source. Do not search for any other transit/transport item (local taxis, metro, etc.) — those stay \
+hedged estimates unless already covered by the provided facts.
 
 MEALS AND ACTIVITIES — DO NOT SEARCH: still name a real, specific venue per the NAME SPECIFIC \
 VENUES rule, and still give your best hedged price estimate from general knowledge, but set \
@@ -137,19 +147,27 @@ function extractJson(text: string): string {
 
 class ModelOutputError extends Error {}
 
+// True exactly when the itinerary will contain a real flight/train item to
+// price — an origin was given AND the traveler hasn't already booked it
+// separately (needs_flight defaults to true; only an explicit false turns
+// it off, same convention as needs_lodging elsewhere in this file).
+function needsFlightSearch(brief: TripBriefInput): boolean {
+  return Boolean(brief.origin?.trim()) && brief.needs_flight !== false;
+}
+
 // Each real search costs more than 1 "use" here — the tool's dynamic
 // filtering makes an internal code_execution call that eats into the same
 // budget, so too low a count can be exhausted before a real query completes,
 // causing a silent, unlogged fallback to an ungrounded estimate (empirically
-// confirmed via a live test job). Only budgets for lodging's single search
-// per destination now (see SEARCH_INSTRUCTIONS) — meals/activities are
-// deliberately not searched by the model at all, so there's no per-day item
-// budget to account for. This is the main lever behind cutting overall
-// generation time: fewer searches means fewer multi-second round-trips in
-// the critical path.
+// confirmed via a live test job). Budgets for lodging's single search per
+// destination plus, when relevant, one flight search (see
+// SEARCH_INSTRUCTIONS) — meals/activities are deliberately not searched by
+// the model at all, so there's no per-day item budget to account for. This
+// is the main lever behind cutting overall generation time: fewer searches
+// means fewer multi-second round-trips in the critical path.
 function estimateMaxSearchUses(brief: TripBriefInput): number {
-  const lodgingSearches = brief.destinations.length;
-  return Math.min(lodgingSearches * 3, 12);
+  const searches = brief.destinations.length + (needsFlightSearch(brief) ? 1 : 0);
+  return Math.min(searches * 3, 15);
 }
 
 async function callModel(
@@ -225,12 +243,15 @@ function generateItinerary(
   onUsage?: (usage: ModelUsage) => void
 ): Promise<Itinerary> {
   // Skip the web_search tool entirely — not just instruct around it — when
-  // every destination already has a cached, recently-verified lodging price,
-  // so a repeat/common-destination generation pays zero search latency
-  // rather than relying on the model choosing not to search.
+  // every destination already has a cached, recently-verified lodging price
+  // AND there's no flight leg to price, so a repeat/common-destination
+  // generation pays zero search latency rather than relying on the model
+  // choosing not to search. A flight search always keeps the tool available,
+  // even with fully-cached lodging, since flight prices aren't cached.
   const allLodgingCached = brief.destinations.every((d) => d in cachedLodgingFacts);
+  const skipSearch = allLodgingCached && !needsFlightSearch(brief);
   return withOneRetry(() =>
-    callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage, allLodgingCached)
+    callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage, skipSearch)
   );
 }
 
@@ -353,21 +374,53 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
   console.log(`[worker] finished ${id}: ${job.status}${costUsd > 0 ? ` (~$${costUsd.toFixed(4)})` : ""}`);
 }
 
+// How many jobs this single worker process handles at once. Jobs are
+// almost entirely I/O wait (Anthropic, Google Places, Open-Meteo network
+// calls), not CPU, so a handful of them genuinely run concurrently in one
+// Node process rather than fighting over the event loop. This is the fix
+// for a real, confirmed bug: comparison mode creates two jobs at once, but
+// with a single consumer they were processed strictly one after another —
+// the second column's loading screen didn't even start its own generation
+// until the first column's had entirely finished — turning what should be
+// two ~1-minute generations running side by side into one that's additive
+// (2+ minutes before the second column showed anything).
+const WORKER_CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 4);
+
+/** One consumer's loop: block on the queue, process a job, repeat. Uses its
+ * own dedicated Redis connection (via redis.duplicate()) purely for the
+ * blocking BRPOP call — a blocking command occupies its whole connection
+ * until it returns, so sharing one connection across concurrent consumers
+ * (or with any other command) would serialize everything behind whichever
+ * BRPOP is currently waiting, defeating the entire point of running several
+ * consumers. All the actual job work (reads/writes/etc.) goes through the
+ * one shared non-blocking `sharedRedis` connection instead, which is safe
+ * to use concurrently since none of those calls block. */
+async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthropic): Promise<void> {
+  const queueConn = sharedRedis.duplicate();
+  try {
+    for (;;) {
+      const popped = await queueConn.brpop(JOBS_QUEUE_KEY, 0); // blocks until a job arrives
+      if (!popped) continue;
+      const [, id] = popped;
+      await processJob(sharedRedis, client, id).catch((e) => {
+        console.error(`[worker ${consumerId}] unhandled error processing ${id}:`, e);
+      });
+    }
+  } finally {
+    queueConn.disconnect();
+  }
+}
+
 async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
   const client = new Anthropic({ apiKey });
   const redis = getRedis();
 
-  console.log("[worker] started, waiting for jobs on", JOBS_QUEUE_KEY);
-  for (;;) {
-    const popped = await redis.brpop(JOBS_QUEUE_KEY, 0); // blocks until a job arrives
-    if (!popped) continue;
-    const [, id] = popped;
-    await processJob(redis, client, id).catch((e) => {
-      console.error(`[worker] unhandled error processing ${id}:`, e);
-    });
-  }
+  console.log(`[worker] started, ${WORKER_CONCURRENCY} concurrent consumer(s) waiting on`, JOBS_QUEUE_KEY);
+  await Promise.all(
+    Array.from({ length: WORKER_CONCURRENCY }, (_, i) => runConsumer(i, redis, client))
+  );
 }
 
 main().catch((e) => {

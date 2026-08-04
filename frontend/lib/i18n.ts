@@ -337,9 +337,15 @@ const en: Dictionary = {
     confidenceLevel: { high: "high", medium: "medium", low: "low" },
     vs: "vs",
     day: "Day",
+    // "inferred" deliberately has no inline label (unlike single_source):
+    // most non-lodging items are inferred by design (see SEARCH_INSTRUCTIONS
+    // in worker/src/index.ts — meals/activities aren't price-searched), so
+    // an "(unverified)" tag next to nearly every price read as the app
+    // doubting itself on every line, undermining trust rather than earning
+    // it. The confidence dot and the on-demand "How do we know this?" detail
+    // still convey it honestly — just not shouted inline by default.
     inlineTierLabel: {
       single_source: "single source",
-      inferred: "unverified",
     },
     tierExplainer: {
       verified: "Two independent searches were checked against each other and roughly agreed — this number reflects what was actually found, not a guess.",
@@ -538,7 +544,6 @@ const bg: Dictionary = {
     day: "Ден",
     inlineTierLabel: {
       single_source: "един източник",
-      inferred: "непотвърдено",
     },
     tierExplainer: {
       verified: "Две независими търсения бяха сравнени едно с друго и приблизително съвпаднаха - тази цифра отразява какво реално беше намерено, не предположение.",
