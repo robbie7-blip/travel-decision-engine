@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
 import { useJobStatusMessage } from "./useJobStatusMessage";
 import { LoadingScreen } from "./LoadingScreen";
 import { Stamp } from "./ui";
-import { ApiError, pollJob } from "@/lib/api";
+import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { formatMoney } from "@/lib/currency";
-import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
+import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS, type Dictionary } from "@/lib/i18n";
 import type { Job } from "@/lib/jobs";
 import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
 
@@ -23,12 +23,25 @@ interface ColumnState {
 
 const EMPTY_COLUMN: ColumnState = { jobStatus: null, loadError: "", result: null, brief: null };
 
-/** Polls one side of the comparison — same pollJob used everywhere else,
- * just called twice (once per column) rather than once. */
-function usePolledJob(jobId: string | null): ColumnState {
+/** Polls one side of the comparison and gives it its own pushback/refine
+ * handler — the same refineItinerary used on the single-trip page, just
+ * instantiated per column instead of assumed to be a single job. On a
+ * successful refine, swaps that column's job id into the URL's "a"/"b"
+ * query param (via router.replace, not push — this is an in-place revision
+ * of an existing column, not new navigation) so the comparison stays a
+ * shareable link pointing at the latest version of each side. */
+function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictionary) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [state, setState] = useState<ColumnState>(EMPTY_COLUMN);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(jobId);
+  const [lastQuestion, setLastQuestion] = useState<string | undefined>(undefined);
+  const [refining, setRefining] = useState(false);
+  const [refineJobStatus, setRefineJobStatus] = useState<Job["status"] | null>(null);
+  const [refineError, setRefineError] = useState("");
 
   useEffect(() => {
+    setCurrentJobId(jobId);
     if (!jobId) return;
     let cancelled = false;
     setState(EMPTY_COLUMN);
@@ -50,7 +63,32 @@ function usePolledJob(jobId: string | null): ColumnState {
     };
   }, [jobId]);
 
-  return state;
+  async function handleRefine(question: string) {
+    if (!state.result || !state.brief) return;
+    setRefining(true);
+    setRefineJobStatus(null);
+    setRefineError("");
+    try {
+      const { jobId: newJobId, itinerary, brief } = await refineItinerary(
+        state.brief,
+        state.result,
+        question,
+        setRefineJobStatus
+      );
+      setState({ jobStatus: "done", loadError: "", result: itinerary, brief });
+      setLastQuestion(question);
+      setCurrentJobId(newJobId);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set(paramKey, newJobId);
+      router.replace(`/compare?${params.toString()}`);
+    } catch (e) {
+      setRefineError(e instanceof ApiError ? e.message : t.genericError);
+    } finally {
+      setRefining(false);
+    }
+  }
+
+  return { ...state, currentJobId, handleRefine, refining, refineJobStatus, refineError, lastQuestion };
 }
 
 function totalCost(itinerary: Itinerary): number {
@@ -87,13 +125,15 @@ export function CompareView() {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
   }
 
-  const columnA = usePolledJob(jobIdA);
-  const columnB = usePolledJob(jobIdB);
+  const columnA = useCompareColumn(jobIdA, "a", t);
+  const columnB = useCompareColumn(jobIdB, "b", t);
   const bothDone = Boolean(columnA.result && columnB.result);
   // Hooks can't be called inside the columns.map() below, so both columns'
   // rotating status messages are computed here up front instead.
   const statusMessageA = useJobStatusMessage(columnA.jobStatus, t);
   const statusMessageB = useJobStatusMessage(columnB.jobStatus, t);
+  const refiningMessageA = useJobStatusMessage(columnA.refineJobStatus, t);
+  const refiningMessageB = useJobStatusMessage(columnB.refineJobStatus, t);
 
   const header = (
     <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)" }}>
@@ -163,9 +203,9 @@ export function CompareView() {
     );
   }
 
-  const columns: Array<{ jobId: string; state: ColumnState; statusMessage?: string }> = [
-    { jobId: jobIdA, state: columnA, statusMessage: statusMessageA },
-    { jobId: jobIdB, state: columnB, statusMessage: statusMessageB },
+  const columns = [
+    { jobId: jobIdA, col: columnA, statusMessage: statusMessageA, refiningMessage: refiningMessageA },
+    { jobId: jobIdB, col: columnB, statusMessage: statusMessageB, refiningMessage: refiningMessageB },
   ];
 
   return (
@@ -220,26 +260,31 @@ export function CompareView() {
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 32 }}>
-            {columns.map(({ jobId, state, statusMessage }, i) => (
+            {columns.map(({ jobId, col, statusMessage, refiningMessage }, i) => (
               <div key={i} style={{ minWidth: 0 }}>
-                {!state.result && !state.loadError && (
-                  <LoadingScreen message={statusMessage ?? t.trip.loading} destinations={state.brief?.destinations} t={t} />
+                {!col.result && !col.loadError && (
+                  <LoadingScreen message={statusMessage ?? t.trip.loading} destinations={col.brief?.destinations} t={t} />
                 )}
-                {state.loadError && (
+                {col.loadError && (
                   <div className="font-mono" style={{ fontSize: 14, color: "var(--infeasible)" }}>
-                    {state.loadError}
+                    {col.loadError}
                   </div>
                 )}
-                {state.result && (
+                {col.result && (
                   <ItineraryResult
-                    result={state.result}
-                    jobId={jobId}
+                    result={col.result}
+                    jobId={col.currentJobId ?? jobId}
                     t={t}
+                    onRefine={col.handleRefine}
+                    refining={col.refining}
+                    refiningLabel={refiningMessage}
+                    refineError={col.refineError}
+                    lastQuestion={col.lastQuestion}
                     currency={currency}
                     rates={rates}
-                    destinations={state.brief?.destinations}
-                    startDate={state.brief?.start_date}
-                    endDate={state.brief?.end_date}
+                    destinations={col.brief?.destinations}
+                    startDate={col.brief?.start_date}
+                    endDate={col.brief?.end_date}
                   />
                 )}
               </div>
