@@ -42,6 +42,18 @@ export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:trip-questions",
 };
 
+// Magic-link requests cost nothing per-call in Anthropic terms, but an
+// unbounded stream would spam a stranger's inbox (anyone can type any email
+// in) and burn through the transactional-email provider's quota. Keyed by
+// IP below, same as the other limiters — deliberately not also keyed by the
+// target email, since that would need its own separate check to avoid
+// leaking "this email has requested N links" as a side channel.
+export const AUTH_RATE_LIMIT: RateLimitConfig = {
+  perHour: Number(process.env.AUTH_RATE_LIMIT_PER_HOUR ?? 5),
+  perDay: Number(process.env.AUTH_RATE_LIMIT_PER_DAY ?? 15),
+  prefix: "ratelimit:auth",
+};
+
 export interface RateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;

@@ -179,6 +179,13 @@ export default function Home() {
                 >
                   {t.tripQA.navLink}
                 </a>
+                <a
+                  href="/pricing"
+                  className="font-mono"
+                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+                >
+                  {t.account.navLink}
+                </a>
               </div>
               <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
