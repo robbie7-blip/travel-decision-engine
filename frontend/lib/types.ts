@@ -156,7 +156,6 @@ export interface Itinerary {
   key_decisions: KeyDecision[];
   days: ItineraryDay[];
   things_to_skip: SkipItem[];
-  _budget_integrity_warnings?: string[];
   // Only present when this itinerary is the result of a pushback/follow-up
   // refinement request (see buildRefinementPrompt in engine/prompt.ts) — the
   // model's direct answer to the traveler's question, shown above the
