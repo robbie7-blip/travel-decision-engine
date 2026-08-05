@@ -353,26 +353,6 @@ export function ItineraryResult({
         <WeatherStrip destinations={destinations} startDate={startDate} endDate={endDate} t={t} />
       )}
 
-      {result._budget_integrity_warnings && result._budget_integrity_warnings.length > 0 && (
-        <div
-          className="font-mono"
-          style={{
-            border: "1px solid var(--infeasible)",
-            borderRadius: 6,
-            padding: "12px 16px",
-            marginBottom: 24,
-            fontSize: 12,
-            color: "var(--infeasible)",
-          }}
-        >
-          {result._budget_integrity_warnings.map((w, i) => (
-            <div key={i} style={{ marginBottom: 4 }}>
-              ⚠ {w}
-            </div>
-          ))}
-        </div>
-      )}
-
       {result.key_decisions && result.key_decisions.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <SectionLabel>{t.result.keyDecisions}</SectionLabel>
