@@ -26,6 +26,20 @@ import type { Itinerary, ItineraryItem, TripBriefInput } from "../types";
 
 const AMADEUS_BASE_URL = process.env.AMADEUS_BASE_URL ?? "https://test.api.amadeus.com";
 
+// Amadeus's test/sandbox environment is known to be slow, and none of the
+// fetches below had a timeout — confirmed to be exactly what pushed real
+// generation time toward 2 minutes (the same regression this file's own
+// intro comment already documents once happening with the model's own
+// flight search, see worker/src/index.ts). Every call here is optional by
+// design (the whole module no-ops on any failure), so a slow provider
+// should fail fast into that same fallback rather than stalling the entire
+// job. These are generous relative to a normal Amadeus response (well under
+// 1-2s) but cap the worst case: token+IATA+search timing out back-to-back
+// is ~18s, not minutes.
+const TOKEN_TIMEOUT_MS = 5_000;
+const IATA_TIMEOUT_MS = 5_000;
+const SEARCH_TIMEOUT_MS = 8_000;
+
 interface CachedToken {
   token: string;
   expiresAt: number; // epoch ms
@@ -52,6 +66,7 @@ async function getAccessToken(apiKey: string, apiSecret: string): Promise<string
         client_id: apiKey,
         client_secret: apiSecret,
       }),
+      signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { access_token?: string; expires_in?: number };
@@ -71,7 +86,10 @@ async function resolveIataCode(token: string, cityName: string): Promise<string 
     const url =
       `${AMADEUS_BASE_URL}/v1/reference-data/locations?subType=CITY,AIRPORT&keyword=` +
       encodeURIComponent(cityName);
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(IATA_TIMEOUT_MS),
+    });
     if (!res.ok) {
       iataCache.set(key, null);
       return null;
@@ -110,6 +128,7 @@ async function searchCheapestFare(
     });
     const res = await fetch(`${AMADEUS_BASE_URL}/v2/shopping/flight-offers?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { data?: FlightOffer[] };
