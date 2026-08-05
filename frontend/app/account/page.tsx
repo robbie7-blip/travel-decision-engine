@@ -164,6 +164,13 @@ export default function AccountPage() {
                     {t.account.upgradeCta}
                   </a>
                 )}
+                <a
+                  href="/account/visited"
+                  className="font-mono"
+                  style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 4, textDecoration: "underline" }}
+                >
+                  {t.visited.navLink}
+                </a>
                 <button
                   onClick={signOut}
                   className="font-mono"

@@ -277,6 +277,23 @@ export interface Dictionary {
     invalidLink: string;
     genericError: string;
   };
+  // The Been-style visited-countries tracker (lib/visited.ts) — a real
+  // account is required (see app/api/visited), unlike RecentTrips which is
+  // fine local-only.
+  visited: {
+    navLink: string; // link from /account to /account/visited
+    pageHeading: string;
+    pageSubheading: string;
+    statsCountries: string; // "{count}" placeholder
+    statsPercent: string; // "{percent}" placeholder
+    statsContinents: string; // "{count}" / "{total}" placeholders
+    signInPrompt: string;
+    badges: Record<
+      "first_stamp" | "explorer" | "globetrotter" | "continent_hopper" | "all_continents" | "half_the_world",
+      string
+    >;
+    backToAccount: string;
+  };
   destinations: {
     pageTitle: string;
     pageDescription: string; // "{count}" placeholder for the city count
@@ -521,6 +538,24 @@ const en: Dictionary = {
     notSignedIn: "Not signed in.",
     invalidLink: "That sign-in link is invalid or has expired — request a new one below.",
     genericError: "Something went wrong. Try again.",
+  },
+  visited: {
+    navLink: "Places you've been →",
+    pageHeading: "Places you've been",
+    pageSubheading: "Mark the countries you've actually visited. Tap a country to toggle it.",
+    statsCountries: "{count} countries visited",
+    statsPercent: "{percent}% of the world",
+    statsContinents: "{count} of {total} continents",
+    signInPrompt: "Sign in on the account page to start tracking your visited countries.",
+    badges: {
+      first_stamp: "First stamp",
+      explorer: "Explorer (10 countries)",
+      globetrotter: "Globetrotter (25 countries)",
+      continent_hopper: "Continent hopper (3 continents)",
+      all_continents: "All continents",
+      half_the_world: "Half the world",
+    },
+    backToAccount: "← Back to account",
   },
   destinations: {
     pageTitle: "Destination guides",
@@ -770,6 +805,24 @@ const bg: Dictionary = {
     notSignedIn: "Не сте влезли.",
     invalidLink: "Този линк за вход е невалиден или е изтекъл - заявете нов по-долу.",
     genericError: "Нещо се обърка. Опитайте отново.",
+  },
+  visited: {
+    navLink: "Места, които сте посетили →",
+    pageHeading: "Места, които сте посетили",
+    pageSubheading: "Отбележете държавите, които наистина сте посетили. Докоснете държава, за да превключите.",
+    statsCountries: "{count} посетени държави",
+    statsPercent: "{percent}% от света",
+    statsContinents: "{count} от {total} континента",
+    signInPrompt: "Влезте в акаунта си, за да следите посетените държави.",
+    badges: {
+      first_stamp: "Първи печат",
+      explorer: "Изследовател (10 държави)",
+      globetrotter: "Пътешественик (25 държави)",
+      continent_hopper: "Между континентите (3 континента)",
+      all_continents: "Всички континенти",
+      half_the_world: "Половината свят",
+    },
+    backToAccount: "← Обратно към акаунта",
   },
   destinations: {
     pageTitle: "Пътеводители по дестинации",
