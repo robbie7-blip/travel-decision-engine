@@ -180,9 +180,23 @@ async function callModel(
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: MAX_TOKENS,
+    // cache_control on this last system block caches SYSTEM_PROMPT (~3K
+    // tokens, well above Sonnet 5's 1024-token minimum) together with
+    // whichever instructions variant follows it (and the web_search tool
+    // definition too, per the render order tools -> system -> messages) — a
+    // single breakpoint covers the whole shared prefix. This text is
+    // byte-identical across every job with the same skipSearch value, and
+    // in particular a refine call almost always follows its own generate
+    // call within the same session, seconds to minutes later — precisely
+    // the repeat-prefix pattern caching is for. Reads cost ~0.1x the base
+    // input rate vs. paying full price for the same ~3K tokens every call.
     system: [
       { type: "text", text: SYSTEM_PROMPT },
-      { type: "text", text: skipSearch ? NO_SEARCH_INSTRUCTIONS : SEARCH_INSTRUCTIONS },
+      {
+        type: "text",
+        text: skipSearch ? NO_SEARCH_INSTRUCTIONS : SEARCH_INSTRUCTIONS,
+        cache_control: { type: "ephemeral" },
+      },
     ],
     output_config: { effort: EFFORT },
     ...(skipSearch
