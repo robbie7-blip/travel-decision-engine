@@ -10,6 +10,15 @@
 // answer with no search and no large JSON schema to fill doesn't have that
 // problem, so it's simpler and faster to just call Anthropic directly here
 // and return within one request.
+//
+// Streamed, not a single blocking JSON response: a non-streamed reply feels
+// noticeably slower than ChatGPT/Gemini even when the actual generation
+// time is similar, because nothing appears until the entire answer is
+// done — streaming shows the first words almost immediately, which is most
+// of what "feels instant" actually comes from. The response body is plain
+// UTF-8 text chunks (not the Anthropic SDK's own SSE wire format) so the
+// client can read it with a bare fetch + ReadableStream reader, no SDK
+// bundled into client-side code.
 
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
@@ -24,6 +33,16 @@ export const runtime = "nodejs";
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 500;
+
+// Anthropic's backend occasionally returns a transient 529 "overloaded"
+// error — confirmed happening in practice. One immediate retry (no
+// artificial delay) resolves most of these, since a retry often lands on a
+// different, non-overloaded backend. If both attempts fail, or any other
+// error occurs, the traveler gets a short, friendly line instead of the
+// raw provider error — never leak "Model provider error: 529 {...}" into
+// the UI, that's both ugly and actively undermines trust in the product.
+const MAX_MODEL_ATTEMPTS = 2;
+const FALLBACK_REPLY = "Give me a second and try asking again, I'm a little overloaded right now.";
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable travel assistant helping with practical trip \
 questions: what to pack, whether an area is safe at night, whether to bring insect repellent or a \
@@ -133,48 +152,65 @@ export async function POST(request: NextRequest) {
   }
 
   const client = new Anthropic({ apiKey });
+  const encoder = new TextEncoder();
+  const modelParams = {
+    model: MODEL,
+    max_tokens: MAX_TOKENS,
+    system: [
+      { type: "text" as const, text: SYSTEM_PROMPT },
+      { type: "text" as const, text: contextBlock(body.context, language) },
+    ],
+    messages: trimmedMessages.map((m) => ({ role: m.role, content: m.content })),
+  };
 
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: [
-        { type: "text", text: SYSTEM_PROMPT },
-        { type: "text", text: contextBlock(body.context, language) },
-      ],
-      messages: trimmedMessages.map((m) => ({ role: m.role, content: m.content })),
-    });
+  const readable = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let sentAnyText = false;
 
-    // Billed whether or not the reply below turns out empty, same principle
-    // as the worker's onUsage in callModel — record it right away.
-    await recordSpend(redis, estimateCostUsd(response.usage));
+      for (let attempt = 1; attempt <= MAX_MODEL_ATTEMPTS; attempt++) {
+        try {
+          const stream = client.messages.stream(modelParams);
+          stream.on("text", (delta) => {
+            sentAnyText = true;
+            controller.enqueue(encoder.encode(delta));
+          });
 
-    const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-    const reply = textBlocks
-      .map((b) => b.text)
-      .join("\n")
-      .trim();
+          const finalMessage = await stream.finalMessage();
+          // Billed whether or not any text actually streamed, same principle
+          // as the worker's onUsage in callModel — record it right away.
+          await recordSpend(redis, estimateCostUsd(finalMessage.usage));
 
-    if (!reply) {
-      return NextResponse.json(
-        { detail: "The assistant didn't return a reply. Try rephrasing your question." },
-        { status: 502 }
-      );
-    }
+          if (!sentAnyText) {
+            // A well-formed response with no text content is rare but not
+            // impossible — same fallback as a hard failure, since an empty
+            // reply is just as unhelpful to the traveler either way.
+            controller.enqueue(encoder.encode(FALLBACK_REPLY));
+          }
+          controller.close();
+          return;
+        } catch (e) {
+          console.error(`[trip-questions] model attempt ${attempt} failed:`, e);
+          if (sentAnyText) {
+            // Partial text already reached the client — retrying now would
+            // just glue a second, unrelated attempt onto a half-finished
+            // answer, which reads far worse than just stopping here.
+            controller.close();
+            return;
+          }
+          if (attempt >= MAX_MODEL_ATTEMPTS) {
+            controller.enqueue(encoder.encode(FALLBACK_REPLY));
+            controller.close();
+            return;
+          }
+          // Otherwise loop straight into the next attempt — no delay, since
+          // the point is to still feel instant even when the first attempt
+          // hits a transient overload.
+        }
+      }
+    },
+  });
 
-    return NextResponse.json({ reply });
-  } catch (e) {
-    console.error("[trip-questions] model call failed:", e);
-    const detail =
-      e instanceof Anthropic.AuthenticationError
-        ? "Server is misconfigured (invalid API key)."
-        : e instanceof Anthropic.RateLimitError
-          ? "Rate limited by the model provider. Try again shortly."
-          : e instanceof Anthropic.APIConnectionError
-            ? "Could not reach the model provider. Try again shortly."
-            : e instanceof Anthropic.APIError
-              ? `Model provider error: ${e.message}`
-              : "Unexpected error answering your question.";
-    return NextResponse.json({ detail }, { status: 500 });
-  }
+  return new Response(readable, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
