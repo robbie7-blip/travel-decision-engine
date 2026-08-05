@@ -218,6 +218,23 @@ export interface Dictionary {
     missingJobs: string; // shown if the page is loaded without both ?a=/?b= ids
     planAnother: string;
   };
+  // General trip Q&A (packing, safety, local customs) — see components/
+  // TripQA.tsx, embedded on a generated itinerary's result page and also
+  // standalone at /ask (see app/ask/page.tsx) for someone who hasn't
+  // generated anything here at all.
+  tripQA: {
+    navLink: string; // homepage header link to /ask
+    pageHeading: string;
+    pageSubheading: string;
+    sectionHeading: string; // heading when embedded on a generated itinerary
+    placeholder: string;
+    send: string;
+    sending: string;
+    thinking: string; // shown while waiting for a reply, in the message thread
+    disclaimer: string;
+    genericError: string;
+    tooLong: string;
+  };
   destinations: {
     pageTitle: string;
     pageDescription: string; // "{count}" placeholder for the city count
@@ -415,6 +432,21 @@ const en: Dictionary = {
     totalCost: "Est. total cost",
     missingJobs: "This comparison link is missing one or both trips.",
     planAnother: "Plan a new comparison",
+  },
+  tripQA: {
+    navLink: "Have a trip question?",
+    pageHeading: "Ask about a trip",
+    pageSubheading:
+      "Packing, safety, local customs, whatever you're wondering about - ask anything, whether you planned the trip here or somewhere else.",
+    sectionHeading: "Have a question about this trip?",
+    placeholder: "What should I pack? Is it safe at night? Ask anything...",
+    send: "Ask",
+    sending: "Asking...",
+    thinking: "Thinking...",
+    disclaimer:
+      "General travel guidance, not a live search - for anything time-sensitive (safety advisories, entry rules), treat it as a starting point, not the final word.",
+    genericError: "Something went wrong answering that. Try again.",
+    tooLong: "That message is a bit long - try trimming it.",
   },
   destinations: {
     pageTitle: "Destination guides",
@@ -617,6 +649,21 @@ const bg: Dictionary = {
     totalCost: "Прибл. обща цена",
     missingJobs: "На тази връзка за сравнение липсва едно или и двете пътувания.",
     planAnother: "Планирай ново сравнение",
+  },
+  tripQA: {
+    navLink: "Имате въпрос за пътуване?",
+    pageHeading: "Попитай за пътуване",
+    pageSubheading:
+      "Багаж, безопасност, местни обичаи, каквото ви интересува - попитайте за всичко, независимо дали пътуването е планирано тук или другаде.",
+    sectionHeading: "Имате въпрос за това пътуване?",
+    placeholder: "Какво да си взема? Безопасно ли е вечер? Питайте каквото поискате...",
+    send: "Питай",
+    sending: "Изпращане...",
+    thinking: "Мисля...",
+    disclaimer:
+      "Общи насоки за пътуване, не търсене на живо - за всичко спешно (предупреждения за безопасност, изисквания за влизане), приемете го като отправна точка, не последна дума.",
+    genericError: "Нещо се обърка при отговора. Опитайте отново.",
+    tooLong: "Съобщението е малко дълго - опитайте да го съкратите.",
   },
   destinations: {
     pageTitle: "Пътеводители по дестинации",

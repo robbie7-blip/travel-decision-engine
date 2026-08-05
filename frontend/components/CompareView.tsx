@@ -285,6 +285,9 @@ export function CompareView() {
                     destinations={col.brief?.destinations}
                     startDate={col.brief?.start_date}
                     endDate={col.brief?.end_date}
+                    partyComposition={col.brief?.party_composition}
+                    interests={col.brief?.interests}
+                    language={language}
                   />
                 )}
               </div>

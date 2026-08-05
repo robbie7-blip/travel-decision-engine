@@ -172,6 +172,13 @@ export default function Home() {
                 >
                   {t.showcase.navLabel}
                 </a>
+                <a
+                  href="/ask"
+                  className="font-mono"
+                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+                >
+                  {t.tripQA.navLink}
+                </a>
               </div>
               <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

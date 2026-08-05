@@ -32,6 +32,16 @@ export const FEEDBACK_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:feedback",
 };
 
+// /api/trip-questions costs real Anthropic money too, but far less per call
+// than /api/generate (no web_search, a short reply, no large schema to
+// fill) — a more generous limit reflects that real per-call cost, not a
+// looser attitude toward abuse.
+export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
+  perHour: Number(process.env.TRIP_QUESTIONS_RATE_LIMIT_PER_HOUR ?? 20),
+  perDay: Number(process.env.TRIP_QUESTIONS_RATE_LIMIT_PER_DAY ?? 60),
+  prefix: "ratelimit:trip-questions",
+};
+
 export interface RateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;
