@@ -16,6 +16,8 @@ import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent } from "@/lib/analytics";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getUserRecord, getQuotaStatus, consumeQuota, isPaidStatus } from "@/lib/account";
+import { getVisitedCodes } from "@/lib/visited";
+import { getCountry } from "@/lib/countries";
 import { TEST_MODE_HEADER } from "@/lib/testMode";
 import type { TripBriefInput } from "@/lib/types";
 
@@ -111,6 +113,24 @@ export async function POST(request: NextRequest) {
           }
         );
       }
+    }
+  }
+
+  // Soft personalization signal (see the visited_countries comment in
+  // lib/types.ts) — resolved from the traveler's own trusted account
+  // record, never from client input (parseTripBrief's allowlist already
+  // dropped anything the client tried to pass under this key). A failure
+  // here should never block generation, so it's swallowed the same way
+  // recordEvent below is.
+  if (email) {
+    try {
+      const codes = await getVisitedCodes(redis, email);
+      const names = codes.map((code) => getCountry(code)?.name).filter((name): name is string => Boolean(name));
+      if (names.length > 0) {
+        brief = { ...brief, visited_countries: names };
+      }
+    } catch {
+      // Personalization is optional — never breaks generation.
     }
   }
 

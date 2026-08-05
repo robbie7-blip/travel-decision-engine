@@ -54,6 +54,17 @@ export interface TripBriefInput {
   // trip's start_date.
   arrival_date?: string;
   arrival_time?: string;
+  // Country NAMES (not ISO codes — resolved from lib/countries.ts before
+  // this ever reaches the worker, which has no country lookup of its own),
+  // from the signed-in traveler's visited-countries tracker (see
+  // lib/visited.ts). Set server-side in app/api/generate/route.ts from
+  // their own account, NEVER from client input — parseTripBrief's explicit
+  // allowlist already drops anything a client tried to pass under this key
+  // before this field is populated. Absent/empty for anonymous travelers
+  // (nothing to look up) — purely a soft personalization signal for the
+  // model's tone/framing (see tripBriefToPromptBlock in prompt.ts), never
+  // something that should override an explicit constraint or the budget.
+  visited_countries?: string[];
 }
 
 // Mirrors the JSON schema in engine.py's SYSTEM_PROMPT — the output contract.

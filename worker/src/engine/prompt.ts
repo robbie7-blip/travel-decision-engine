@@ -267,6 +267,28 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
   if (brief.hard_no.length) {
     lines.push(`Hard constraints (must not violate): ${brief.hard_no.join(", ")}`);
   }
+  if (brief.visited_countries?.length) {
+    // Soft personalization only — deliberately NOT a rule the model must
+    // apply everywhere (unlike hard_no/dietary_constraints above): this is
+    // real signal (the traveler's own tracked travel history), but the
+    // model itself has to make the actual judgment call, since there's no
+    // reliable programmatic way here to know whether any of *today's*
+    // destinations fall in one of these countries (destinations are
+    // free-text city/place names, not ISO codes) — that cross-referencing
+    // is exactly the kind of thing the model's own geography knowledge
+    // handles better than a brittle city-to-country lookup table would.
+    lines.push(
+      `Traveler's travel history (for tone/calibration only, never to override an explicit ` +
+        `constraint or the budget): they have previously visited ${brief.visited_countries.join(", ")}. ` +
+        `If today's destination(s) fall in a country they've already been to, feel free to note ` +
+        `it's a return trip and skip over-explaining first-timer basics there unless their stated ` +
+        `interests suggest otherwise. More generally, use the breadth of this history to gauge how ` +
+        `experienced a traveler they are and calibrate how much travel-logistics hand-holding ` +
+        `(e.g. "remember your passport", explaining how airport security works) actually belongs in ` +
+        `this itinerary — but don't force a mention of their history into every line just because ` +
+        `you have it.`
+    );
+  }
   return lines.join("\n");
 }
 
