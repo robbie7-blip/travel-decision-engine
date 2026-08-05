@@ -139,6 +139,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         border: "1px solid var(--line)",
         borderRadius: 8,
         padding: 24,
+        boxShadow: "var(--shadow-panel)",
       }}
     >
       <div className="trip-form-grid">

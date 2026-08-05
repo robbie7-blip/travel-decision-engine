@@ -240,6 +240,11 @@ export interface Dictionary {
     thinking: string; // shown while waiting for the first word of a reply
     genericError: string;
     tooLong: string;
+    // Clickable starter questions shown only before the first message —
+    // fills what was otherwise a lot of empty space under the input box on
+    // a fresh /ask visit, and doubles as a hint at the kind of question
+    // this is for (packing/safety/customs, not itinerary planning).
+    examplePrompts: string[];
   };
   destinations: {
     pageTitle: string;
@@ -451,6 +456,12 @@ const en: Dictionary = {
     thinking: "Thinking...",
     genericError: "Something went wrong answering that. Try again.",
     tooLong: "That message is a bit long - try trimming it.",
+    examplePrompts: [
+      "What should I pack for Lisbon in October?",
+      "Is it safe to walk around at night in Mexico City?",
+      "What's a local custom I shouldn't accidentally break in Tokyo?",
+      "Do I need to tip in Berlin restaurants?",
+    ],
   },
   destinations: {
     pageTitle: "Destination guides",
@@ -666,6 +677,12 @@ const bg: Dictionary = {
     thinking: "Мисля...",
     genericError: "Нещо се обърка при отговора. Опитайте отново.",
     tooLong: "Съобщението е малко дълго - опитайте да го съкратите.",
+    examplePrompts: [
+      "Какво да си взема за Лисабон през октомври?",
+      "Безопасно ли е да се разхождам вечер в Мексико Сити?",
+      "Кой местен обичай да внимавам да не наруша в Токио?",
+      "Трябва ли да оставям бакшиш в ресторантите в Берлин?",
+    ],
   },
   destinations: {
     pageTitle: "Пътеводители по дестинации",

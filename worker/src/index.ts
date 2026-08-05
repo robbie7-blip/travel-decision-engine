@@ -20,6 +20,7 @@ import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prom
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { checkVenues } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
+import { attachFlightPrices } from "./engine/flightPricing";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
 import {
@@ -179,9 +180,23 @@ async function callModel(
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: MAX_TOKENS,
+    // cache_control on this last system block caches SYSTEM_PROMPT (~3K
+    // tokens, well above Sonnet 5's 1024-token minimum) together with
+    // whichever instructions variant follows it (and the web_search tool
+    // definition too, per the render order tools -> system -> messages) — a
+    // single breakpoint covers the whole shared prefix. This text is
+    // byte-identical across every job with the same skipSearch value, and
+    // in particular a refine call almost always follows its own generate
+    // call within the same session, seconds to minutes later — precisely
+    // the repeat-prefix pattern caching is for. Reads cost ~0.1x the base
+    // input rate vs. paying full price for the same ~3K tokens every call.
     system: [
       { type: "text", text: SYSTEM_PROMPT },
-      { type: "text", text: skipSearch ? NO_SEARCH_INSTRUCTIONS : SEARCH_INSTRUCTIONS },
+      {
+        type: "text",
+        text: skipSearch ? NO_SEARCH_INSTRUCTIONS : SEARCH_INSTRUCTIONS,
+        cache_control: { type: "ephemeral" },
+      },
     ],
     output_config: { effort: EFFORT },
     ...(skipSearch
@@ -344,9 +359,14 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     }
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
-    itinerary = deriveConfidenceTiers(itinerary);
-    itinerary = await checkVenues(itinerary);
+    // attachFlightSearchLinks must run before attachFlightPrices — the
+    // price lookup reuses the same link as its source_urls value once a
+    // real fare is found. checkVenues and attachFlightPrices are otherwise
+    // independent (venues vs. flights), so they run concurrently rather
+    // than adding their latency on top of each other.
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
+    [itinerary] = await Promise.all([checkVenues(itinerary), attachFlightPrices(itinerary, job.brief)]);
+    itinerary = deriveConfidenceTiers(itinerary);
     job.status = "done";
     job.result = itinerary;
     await cacheLodgingFacts(redis, job.brief, itinerary);

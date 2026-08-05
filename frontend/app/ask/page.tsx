@@ -91,7 +91,15 @@ export default function AskPage() {
           <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 24px", lineHeight: 1.5 }}>
             {t.tripQA.pageSubheading}
           </p>
-          <div style={{ background: "var(--bg-panel)", border: "1px solid var(--line)", borderRadius: 8, padding: 20 }}>
+          <div
+            style={{
+              background: "var(--bg-panel)",
+              border: "1px solid var(--line)",
+              borderRadius: 8,
+              padding: 20,
+              boxShadow: "var(--shadow-panel)",
+            }}
+          >
             <TripQA language={language} t={t} />
           </div>
         </div>

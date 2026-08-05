@@ -94,8 +94,37 @@ export function TripQA({ context, language, t }: TripQAProps) {
     }
   }
 
+  function useExample(prompt: string) {
+    if (sending) return;
+    setDraft(prompt);
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {messages.length === 0 && t.tripQA.examplePrompts.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {t.tripQA.examplePrompts.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => useExample(prompt)}
+              className="font-mono hover-card"
+              style={{
+                border: "1px solid var(--line)",
+                background: "var(--bg-panel-raised)",
+                color: "var(--ink-soft)",
+                borderRadius: 999,
+                padding: "6px 14px",
+                fontSize: 12,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      )}
       {messages.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 420, overflowY: "auto" }}>
           {messages.map((m, i) => {

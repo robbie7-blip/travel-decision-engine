@@ -385,7 +385,19 @@ npm run dev
    own service (set Root Directory to `worker`), with `ANTHROPIC_API_KEY`
    and `REDIS_URL` (the standard connection string from step 1) as env
    vars. Start command: `npm start`. This needs to run as an always-on
-   process, not a serverless function.
+   process, not a serverless function. Two more env vars here are optional
+   but recommended, both free self-service signups, both no-op safely if
+   left unset (generation still works, just skips that check):
+   - `GOOGLE_PLACES_API_KEY` — real rating/open-closed/Maps-link
+     verification for named meal/activity venues (see
+     `engine/venueVerification.ts`).
+   - `AMADEUS_API_KEY` / `AMADEUS_API_SECRET` — a real, live-checked flight
+     price for the arrival flight item, replacing the model's own guessed
+     fare (see `engine/flightPricing.ts`). Sign up free at
+     [developers.amadeus.com](https://developers.amadeus.com), create an
+     app, and use its "API Key" / "API Secret". Without these, a flight item
+     just shows a "check the real price" link with no number — genuinely
+     fine, just less immediately informative than a real quoted fare.
 
 Cost note: the fixed infra (Vercel + Upstash + a small Railway instance) is
 on the order of $20-30/month at low volume — the real cost driver is

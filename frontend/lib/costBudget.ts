@@ -58,18 +58,32 @@ export function alertKey(day: string = dayKey()): string {
   return `spend:alerted:${day}`;
 }
 
+// Cache write/read multipliers on the base input rate, per Anthropic's
+// published prompt-caching pricing — a 5-minute-TTL write costs 1.25x the
+// base input rate, a cache read costs 0.1x. The worker's system prompt now
+// carries a `cache_control: { type: "ephemeral" }` breakpoint (see
+// callModel in index.ts), so real jobs report nonzero cache_creation/
+// cache_read token counts and this needs to be priced, not just
+// input_tokens/output_tokens — undercounting it here would let real spend
+// drift above DAILY_BUDGET_USD without the cap ever tripping.
+const CACHE_WRITE_MULTIPLIER = 1.25;
+const CACHE_READ_MULTIPLIER = 0.1;
+
 export interface ModelUsage {
   input_tokens: number;
   output_tokens: number;
+  cache_creation_input_tokens?: number | null;
+  cache_read_input_tokens?: number | null;
 }
 
-/** Estimated USD cost of one model call from its reported token usage.
- * Cache read/write tokens aren't priced by these two rates, but these
- * generation calls don't use prompt caching, so plain input/output pricing
- * is the whole story. */
+/** Estimated USD cost of one model call from its reported token usage,
+ * including cache write/read tokens (see multipliers above) alongside
+ * plain input/output pricing. */
 export function estimateCostUsd(usage: ModelUsage): number {
   return (
     (usage.input_tokens / 1_000_000) * INPUT_COST_PER_MTOK_USD +
-    (usage.output_tokens / 1_000_000) * OUTPUT_COST_PER_MTOK_USD
+    (usage.output_tokens / 1_000_000) * OUTPUT_COST_PER_MTOK_USD +
+    ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) * INPUT_COST_PER_MTOK_USD * CACHE_WRITE_MULTIPLIER +
+    ((usage.cache_read_input_tokens ?? 0) / 1_000_000) * INPUT_COST_PER_MTOK_USD * CACHE_READ_MULTIPLIER
   );
 }
