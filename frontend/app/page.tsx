@@ -32,6 +32,11 @@ export default function Home() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [demo, setDemo] = useState<DemoTrip | null>(null);
+  // Mobile-only: collapses the 6 nav links behind a single toggle instead
+  // of letting them wrap onto 2-3 rows (see .nav-menu-toggle/.nav-links-row
+  // in globals.css) — irrelevant above that breakpoint, where CSS keeps
+  // the links row always visible regardless of this state.
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
 
   const t = TRANSLATIONS[form.language];
 
@@ -150,7 +155,25 @@ export default function Home() {
               className="header-nav-row"
               style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}
             >
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20 }}>
+              <button
+                type="button"
+                onClick={() => setNavMenuOpen((open) => !open)}
+                className="nav-menu-toggle font-mono"
+                aria-expanded={navMenuOpen}
+                style={{
+                  border: "1px solid var(--line)",
+                  borderRadius: 999,
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  letterSpacing: "0.04em",
+                  background: "transparent",
+                  color: "var(--ink-soft)",
+                  cursor: "pointer",
+                }}
+              >
+                {navMenuOpen ? t.navMenuClose : t.navMenuOpen} {navMenuOpen ? "✕" : "☰"}
+              </button>
+              <div className={navMenuOpen ? "nav-links-row nav-links-row--open" : "nav-links-row"} style={{ alignItems: "center", gap: 20 }}>
                 <a
                   href="#how-it-works"
                   className="font-mono"
@@ -260,7 +283,7 @@ export default function Home() {
           )}
           <div
             id="confidence-legend"
-            className="font-mono"
+            className="font-mono scroll-row-mobile"
             style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap" }}
           >
             {(
