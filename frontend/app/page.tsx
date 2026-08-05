@@ -180,6 +180,13 @@ export default function Home() {
                   {t.tripQA.navLink}
                 </a>
                 <a
+                  href="/account/visited"
+                  className="font-mono"
+                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+                >
+                  {t.visited.homeNavLink}
+                </a>
+                <a
                   href="/pricing"
                   className="font-mono"
                   style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}

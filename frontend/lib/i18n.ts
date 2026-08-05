@@ -282,17 +282,36 @@ export interface Dictionary {
   // fine local-only.
   visited: {
     navLink: string; // link from /account to /account/visited
+    homeNavLink: string; // link from the homepage header
     pageHeading: string;
     pageSubheading: string;
     statsCountries: string; // "{count}" placeholder
     statsPercent: string; // "{percent}" placeholder
     statsContinents: string; // "{count}" / "{total}" placeholders
     signInPrompt: string;
+    signInButton: string;
+    signInSent: string;
     badges: Record<
       "first_stamp" | "explorer" | "globetrotter" | "continent_hopper" | "all_continents" | "half_the_world",
       string
     >;
     backToAccount: string;
+    shareHeading: string;
+    shareBlurb: string;
+    getShareLinkButton: string;
+    copyLinkButton: string;
+    linkCopied: string;
+    compareInputLabel: string;
+    compareInputPlaceholder: string;
+    compareButton: string;
+  };
+  compareStats: {
+    heading: string;
+    yourStats: string;
+    friendStats: string;
+    missingLink: string;
+    invalidLink: string;
+    getYourLink: string;
   };
   destinations: {
     pageTitle: string;
@@ -541,12 +560,15 @@ const en: Dictionary = {
   },
   visited: {
     navLink: "Places you've been →",
+    homeNavLink: "Places you've been",
     pageHeading: "Places you've been",
     pageSubheading: "Mark the countries you've actually visited. Tap a country to toggle it.",
     statsCountries: "{count} countries visited",
     statsPercent: "{percent}% of the world",
     statsContinents: "{count} of {total} continents",
-    signInPrompt: "Sign in on the account page to start tracking your visited countries.",
+    signInPrompt: "Sign in with an email to start tracking your visited countries — no password needed.",
+    signInButton: "Email me a sign-in link",
+    signInSent: "Check your email for a sign-in link.",
     badges: {
       first_stamp: "First stamp",
       explorer: "Explorer (10 countries)",
@@ -556,6 +578,22 @@ const en: Dictionary = {
       half_the_world: "Half the world",
     },
     backToAccount: "← Back to account",
+    shareHeading: "Compare with a friend",
+    shareBlurb: "Get a link to your stats, and compare it side by side with anyone who sends you theirs.",
+    getShareLinkButton: "Get my share link",
+    copyLinkButton: "Copy",
+    linkCopied: "Copied!",
+    compareInputLabel: "Paste a friend's share link",
+    compareInputPlaceholder: "https://.../compare-stats?a=...",
+    compareButton: "Compare",
+  },
+  compareStats: {
+    heading: "Travel stats, compared",
+    yourStats: "Yours",
+    friendStats: "Theirs",
+    missingLink: "Get your own share link from the visited-places page to start a comparison.",
+    invalidLink: "One of these share links isn't valid.",
+    getYourLink: "Get your share link →",
   },
   destinations: {
     pageTitle: "Destination guides",
@@ -808,12 +846,15 @@ const bg: Dictionary = {
   },
   visited: {
     navLink: "Места, които сте посетили →",
+    homeNavLink: "Места, които сте посетили",
     pageHeading: "Места, които сте посетили",
     pageSubheading: "Отбележете държавите, които наистина сте посетили. Докоснете държава, за да превключите.",
     statsCountries: "{count} посетени държави",
     statsPercent: "{percent}% от света",
     statsContinents: "{count} от {total} континента",
-    signInPrompt: "Влезте в акаунта си, за да следите посетените държави.",
+    signInPrompt: "Влезте с имейл, за да следите посетените държави - без парола.",
+    signInButton: "Изпрати ми линк за вход",
+    signInSent: "Проверете имейла си за линк за вход.",
     badges: {
       first_stamp: "Първи печат",
       explorer: "Изследовател (10 държави)",
@@ -823,6 +864,22 @@ const bg: Dictionary = {
       half_the_world: "Половината свят",
     },
     backToAccount: "← Обратно към акаунта",
+    shareHeading: "Сравнете с приятел",
+    shareBlurb: "Получете линк към вашата статистика и я сравнете с всеки, който ви изпрати своята.",
+    getShareLinkButton: "Вземи моя линк",
+    copyLinkButton: "Копирай",
+    linkCopied: "Копирано!",
+    compareInputLabel: "Поставете линк на приятел",
+    compareInputPlaceholder: "https://.../compare-stats?a=...",
+    compareButton: "Сравни",
+  },
+  compareStats: {
+    heading: "Сравнение на статистиката",
+    yourStats: "Вашата",
+    friendStats: "Тяхната",
+    missingLink: "Вземете своя линк от страницата за посетени места, за да започнете сравнение.",
+    invalidLink: "Един от тези линкове не е валиден.",
+    getYourLink: "Вземи своя линк →",
   },
   destinations: {
     pageTitle: "Пътеводители по дестинации",
