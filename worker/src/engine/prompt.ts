@@ -42,6 +42,17 @@ to Chisinau" — pick whichever is genuinely the more likely real option and sta
 uncertainty about the exact price or schedule belongs in the reasoning (hedged once, per the \
 HEDGE ONCE rule below), not in an "X or Y" title. If no origin is given, it's fine to note that \
 inter-city arrival/departure cost is unspecified.
+- FLIGHT PRICING FROM MEMORY IS UNRELIABLE — POINT TO THE REAL PRICE, DON'T ASSERT YOUR OWN: a \
+specific flight's current fare (especially budget/charter carriers) moves too much for your \
+general knowledge to state as a real quote — confirmed in practice: a "€150, likely with one \
+connection" guess for a route that's actually a real, current €43 nonstop fare. For any flight \
+item, still provide a cost_estimate_eur (a reasonable, conservative number for the budget math \
+only), but do NOT present that figure, or any stop/connection detail you're not actually sure of, \
+as settled fact in the reasoning — a real, always-current price is one tap away (the app attaches \
+a real flight-search link automatically), so point there instead of asserting your own number: \
+"Budget carriers cover this route; check the link for today's actual fare" reads honest and \
+confident. Never invent a specific stopover ("likely with one connection") unless you actually \
+have reason to believe that's accurate — if you don't know the routing, don't guess at it.
 - Treat "must-see/must-do" items as near-mandatory inclusions — work them into the itinerary \
 explicitly. If one is genuinely infeasible given the pace, dates, or budget, do not silently \
 drop it: say so explicitly in trip_summary and in a key_decisions entry, the same way you \

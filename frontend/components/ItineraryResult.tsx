@@ -444,13 +444,29 @@ export function ItineraryResult({
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
                       <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
-                        {item.cost_estimate_eur === 0
-                          ? t.result.free
-                          : `${formatMoney(item.cost_estimate_eur, currency, rates)}${
-                              t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]
-                                ? ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`
-                                : ""
-                            }`}
+                        {item.flight_search_url && item.cost_estimate_eur > 0 ? (
+                          // A flight's own guessed fare has repeatedly turned out badly wrong
+                          // in practice (a model estimate is not a live price check) — rather
+                          // than show a number that might flatly contradict the real, current
+                          // price one tap away, point straight at the real price instead of
+                          // asserting our own.
+                          <a
+                            href={item.flight_search_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "var(--grounded)", textDecoration: "underline" }}
+                          >
+                            {t.result.checkFlightPrices} ↗
+                          </a>
+                        ) : item.cost_estimate_eur === 0 ? (
+                          t.result.free
+                        ) : (
+                          `${formatMoney(item.cost_estimate_eur, currency, rates)}${
+                            t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]
+                              ? ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`
+                              : ""
+                          }`
+                        )}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
@@ -486,7 +502,11 @@ export function ItineraryResult({
                         {t.result.viewOnGoogleMaps} ↗
                       </a>
                     )}
-                    {item.flight_search_url && (
+                    {/* Non-zero-cost flight items already fold this same link into the price
+                        slot above instead of showing a guessed figure — this only covers the
+                        free/already-covered return leg, which still deserves a real link even
+                        though there's no separate price to second-guess there. */}
+                    {item.flight_search_url && item.cost_estimate_eur === 0 && (
                       <a
                         href={item.flight_search_url}
                         target="_blank"
