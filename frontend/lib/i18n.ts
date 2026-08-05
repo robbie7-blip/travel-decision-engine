@@ -137,6 +137,9 @@ export interface Dictionary {
     // Google Flights deep link on flight items (see worker/src/engine/
     // flightLinks.ts) — always present when there's a real flight leg to
     // check, not dependent on whether the model's own search found a URL.
+    // Doubles as the price display itself for any non-zero-cost flight item
+    // (see ItineraryResult.tsx) — the model's own guessed fare has turned
+    // out badly wrong often enough that it's no longer shown as a number.
     checkFlightPrices: string;
     // "{percent}% " is prepended by the component; this is just the word
     // after the number (e.g. "92% verified").
