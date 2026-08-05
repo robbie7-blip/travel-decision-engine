@@ -6,6 +6,15 @@
   --bg-panel: #fffdf8;
   --bg-panel-raised: #f1e7d2;
   --line: #e3d5b3;
+  /* A stronger border for form controls specifically — --line alone reads
+     as barely-there against --bg-panel-raised (the two are close enough in
+     lightness that inputs looked flush with their panel instead of like
+     inputs). Kept separate from --line so ordinary card/divider borders
+     elsewhere are untouched. */
+  --line-strong: #cbb98c;
+  /* Soft lift for panels/cards that otherwise sit flat against --bg (a thin
+     --line border alone doesn't read as "raised" on a warm cream page). */
+  --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
   --grounded: #1f6f8a;
   --unverified: #c97f1e;
   --infeasible: #b8452f;

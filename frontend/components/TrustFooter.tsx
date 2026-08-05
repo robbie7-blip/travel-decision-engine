@@ -21,9 +21,26 @@ export function TrustFooter({ t }: { t: Dictionary }) {
         <p style={{ color: "var(--ink-dim)", fontSize: 14, lineHeight: 1.6, maxWidth: 620, margin: "0 0 24px" }}>
           {t.trustFooter.intro}
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: 12,
+          }}
+        >
           {TIERS.map((tier) => (
-            <div key={tier} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div
+              key={tier}
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "flex-start",
+                background: "var(--bg-panel)",
+                border: "1px solid var(--line)",
+                borderRadius: 8,
+                padding: "14px 16px",
+              }}
+            >
               <div style={{ marginTop: 2 }}>
                 <ConfidenceDot tier={tier} />
               </div>

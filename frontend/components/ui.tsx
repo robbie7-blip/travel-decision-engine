@@ -89,10 +89,15 @@ export function SectionLabel({ children }: { children: ReactNode }) {
 export const inputStyle: CSSProperties = {
   width: "100%",
   background: "var(--bg-panel-raised)",
-  border: "1px solid var(--line)",
+  border: "1px solid var(--line-strong)",
   borderRadius: 8,
   padding: "10px 13px",
   color: "var(--ink)",
   fontSize: 14,
   boxSizing: "border-box",
+  // A recessed inset shadow gives the field real depth against the panel
+  // it sits on — before this, --bg-panel-raised and --bg-panel were close
+  // enough in lightness that a 1px --line border alone barely registered,
+  // so every field read as flush with the panel instead of as an input.
+  boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
 };
