@@ -40,6 +40,25 @@ const TOKEN_TIMEOUT_MS = 5_000;
 const IATA_TIMEOUT_MS = 5_000;
 const SEARCH_TIMEOUT_MS = 8_000;
 
+// Every failure here is already silently swallowed by design (the whole
+// module no-ops back to the link-only fallback), which is the right
+// behavior for the job — but silent means invisible in the worker's own
+// logs too, so a real outage or a timeout creeping back up would look
+// identical to "nobody has Amadeus keys configured." This logs loudly
+// enough to spot in `railway logs`/etc. without throwing or slowing
+// anything down. Distinguishes a timeout (the specific failure mode this
+// module was just fixed for) from any other fetch error, since a timeout
+// recurring is the signal that TOKEN_TIMEOUT_MS/IATA_TIMEOUT_MS/
+// SEARCH_TIMEOUT_MS need revisiting, whereas some other error is more
+// likely an Amadeus outage or a bad response shape.
+function logFailure(step: string, e: unknown): void {
+  const timedOut = e instanceof Error && e.name === "TimeoutError";
+  console.warn(
+    `[flightPricing] ${step} ${timedOut ? "timed out" : "failed"} — falling back to link-only display.` +
+      (timedOut ? "" : ` (${e instanceof Error ? e.message : String(e)})`)
+  );
+}
+
 interface CachedToken {
   token: string;
   expiresAt: number; // epoch ms
@@ -68,12 +87,16 @@ async function getAccessToken(apiKey: string, apiSecret: string): Promise<string
       }),
       signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[flightPricing] token request rejected: HTTP ${res.status}`);
+      return null;
+    }
     const data = (await res.json()) as { access_token?: string; expires_in?: number };
     if (!data.access_token) return null;
     cachedToken = { token: data.access_token, expiresAt: Date.now() + (data.expires_in ?? 1800) * 1000 };
     return cachedToken.token;
-  } catch {
+  } catch (e) {
+    logFailure("token request", e);
     return null;
   }
 }
@@ -91,6 +114,7 @@ async function resolveIataCode(token: string, cityName: string): Promise<string 
       signal: AbortSignal.timeout(IATA_TIMEOUT_MS),
     });
     if (!res.ok) {
+      console.warn(`[flightPricing] IATA lookup for "${cityName}" rejected: HTTP ${res.status}`);
       iataCache.set(key, null);
       return null;
     }
@@ -98,7 +122,8 @@ async function resolveIataCode(token: string, cityName: string): Promise<string 
     const code = data.data?.[0]?.iataCode ?? null;
     iataCache.set(key, code);
     return code;
-  } catch {
+  } catch (e) {
+    logFailure(`IATA lookup for "${cityName}"`, e);
     iataCache.set(key, null);
     return null;
   }
@@ -130,13 +155,17 @@ async function searchCheapestFare(
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[flightPricing] fare search rejected: HTTP ${res.status}`);
+      return null;
+    }
     const data = (await res.json()) as { data?: FlightOffer[] };
     const prices = (data.data ?? [])
       .map((offer) => Number(offer.price?.total))
       .filter((n) => Number.isFinite(n) && n > 0);
     return prices.length > 0 ? Math.min(...prices) : null;
-  } catch {
+  } catch (e) {
+    logFailure("fare search", e);
     return null;
   }
 }
