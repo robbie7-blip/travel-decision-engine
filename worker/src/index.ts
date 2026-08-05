@@ -254,14 +254,20 @@ function generateItinerary(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage) => void,
+  forceSkipSearch = false
 ): Promise<Itinerary> {
   // Skip the web_search tool entirely — not just instruct around it — when
   // every destination already has a cached, recently-verified lodging price
   // (lodging is the only thing ever searched now), so a repeat/common-
   // destination generation pays zero search latency rather than relying on
-  // the model choosing not to search.
-  const skipSearch = brief.destinations.every((d) => d in cachedLodgingFacts);
+  // the model choosing not to search. forceSkipSearch (set for test-mode
+  // jobs — see the Job.testMode comment in jobs.ts) always takes this path
+  // regardless of cache state: the web_search round-trip is the single
+  // biggest latency/cost source per generation, so the owner's own test
+  // generations skip it unconditionally rather than depending on a cache
+  // hit that may not exist yet for whatever destination they're testing.
+  const skipSearch = forceSkipSearch || brief.destinations.every((d) => d in cachedLodgingFacts);
   return withOneRetry(() =>
     callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage, skipSearch)
   );
@@ -355,7 +361,7 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
       itinerary = await generateRefinement(client, job.brief, job.refinement, onUsage);
     } else {
       const cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
-      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, onUsage);
+      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode);
     }
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);

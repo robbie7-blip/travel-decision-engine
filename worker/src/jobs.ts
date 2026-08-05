@@ -28,6 +28,14 @@ export interface Job {
   error?: string;
   createdAt: number;
   updatedAt: number;
+  // Set by /api/generate when the request carried the owner's test-mode
+  // key (see lib/testMode.ts + app/admin/test-mode) — the worker forces
+  // skipSearch on regardless of lodging-cache state, since the web_search
+  // round-trip is the single biggest latency/cost source per generation
+  // (see generateItinerary in worker/src/index.ts). Not a cost-free
+  // generation (it's still a real, smaller Claude call) — just the
+  // cheapest and fastest real path, for the site owner's own testing.
+  testMode?: boolean;
 }
 
 export const JOBS_QUEUE_KEY = "jobs:queue";

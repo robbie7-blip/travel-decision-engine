@@ -105,6 +105,18 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     arrival_time = b.arrival_time.trim() || undefined;
   }
 
+  // Pass-through only — this endpoint never trusts a client-supplied value
+  // for anything cost/security-sensitive, and this field is neither: it's a
+  // soft prompt-tone signal (see the comment on TripBriefInput in types.ts).
+  // /api/generate overwrites it right after parsing with a fresh lookup
+  // from the caller's own account anyway; the pass-through here exists so
+  // /api/refine — which re-validates the client's *echoed* brief from a
+  // previous /api/generate response rather than looking anything up itself —
+  // doesn't silently lose personalization on every follow-up question.
+  // Capped at 50 (nobody has visited more real countries than exist) purely
+  // so a malformed/huge array can't bloat the prompt.
+  const visitedCountries = cleanList(b.visited_countries, "visited_countries").slice(0, 50);
+
   return {
     destinations,
     origin,
@@ -126,5 +138,6 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     transport_preference,
     arrival_date,
     arrival_time,
+    ...(visitedCountries.length > 0 ? { visited_countries: visitedCountries } : {}),
   };
 }

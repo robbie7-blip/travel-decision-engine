@@ -405,6 +405,55 @@ Anthropic API usage, which scales per generation (~$0.07 without search,
 ~$0.32-0.47 with the current lodging-only search scope, measured) rather
 than being a fixed monthly number.
 
+## Accounts + subscriptions (optional)
+
+Entirely optional, same philosophy as `GOOGLE_PLACES_API_KEY`/
+`AMADEUS_API_KEY` above: unset env vars just mean the sign-in/subscribe
+buttons 500 with a clear message instead of breaking anonymous generation.
+
+**What this adds:** an email-only "account" (magic link, no password) that
+swaps a visitor off the anonymous per-IP trial limit (`ratelimit.ts`) and
+onto a per-email monthly generation quota (`lib/account.ts`) — free and paid
+tiers get their own cap (`NEXT_PUBLIC_FREE_MONTHLY_GENERATIONS` /
+`NEXT_PUBLIC_PAID_MONTHLY_GENERATIONS`, both in `.env.local.example`). Paid
+status comes from a real Stripe subscription; there's no separate
+signup step — the first successful magic-link click or completed checkout
+creates the Redis-backed user record.
+
+**How identity and billing connect:** the traveler types an email on
+`/pricing` before checking out; that becomes the Stripe customer's email.
+The `checkout.session.completed` webhook writes a `user:<email>` record in
+Redis. Separately, `/account` lets anyone request a magic link to *that
+same* email — clicking it issues a signed session cookie (`lib/session.ts`,
+no server-side session store). Whichever the traveler does first, the two
+meet at the shared email key once both have happened. Stripe is the only
+source of truth for `paid` vs `free` — the webhook is the one thing allowed
+to write a subscription status.
+
+**Setup:**
+1. **Stripe** — [dashboard.stripe.com](https://dashboard.stripe.com). Create
+   a recurring Price under Product catalog for `STRIPE_PRICE_ID`, grab a
+   secret key for `STRIPE_SECRET_KEY`, then add a webhook endpoint at
+   `{your-site}/api/stripe/webhook` listening for `checkout.session.completed`,
+   `customer.subscription.updated`, and `customer.subscription.deleted` —
+   its signing secret is `STRIPE_WEBHOOK_SECRET`.
+2. **Resend** — [resend.com](https://resend.com), free tier. Create an API
+   key (`RESEND_API_KEY`) and verify a sending domain for `EMAIL_FROM`
+   (their shared onboarding domain works for testing).
+3. **`SESSION_SECRET`** — any long random string (`openssl rand -base64 32`).
+   Signs the session cookie; rotating it just logs everyone out.
+4. All four (plus the two `NEXT_PUBLIC_*` quota vars) go on the **Vercel**
+   frontend project — none of this touches the worker.
+
+### Testing without burning budget/rate limits
+
+Visit `/admin/test-mode` (same `ADMIN_PASSWORD`-gated area as `/admin/feedback`)
+and paste `ADMIN_PASSWORD` in once. Every generation from that browser
+afterward skips the daily spend cap, all rate limits/quotas, AND the
+web_search step entirely — still a real (smaller, cheaper) Claude call, not
+a mocked $0 one, but the fastest and cheapest real path there is. Doesn't
+affect any other visitor.
+
 ## Troubleshooting
 
 Real issues hit while setting this up, in the order you're likely to hit them.

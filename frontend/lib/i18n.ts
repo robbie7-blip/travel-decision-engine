@@ -246,6 +246,54 @@ export interface Dictionary {
     // this is for (packing/safety/customs, not itinerary planning).
     examplePrompts: string[];
   };
+  // Pricing + account/sign-in — a signed-in visitor trades the anonymous
+  // per-IP trial limit for a per-email monthly quota (see account.ts);
+  // these two pages are the only UI for that. Kept as one section since
+  // they share almost all their copy (plan names, quota wording).
+  account: {
+    navLink: string; // homepage header link to /pricing
+    pricingHeading: string;
+    pricingSubheading: string;
+    freePlanName: string;
+    freePlanBlurb: string; // "{count}" placeholder for FREE_MONTHLY_GENERATIONS
+    paidPlanName: string;
+    paidPlanBlurb: string; // "{count}" placeholder for PAID_MONTHLY_GENERATIONS
+    paidPlanPrice: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    emailMismatchNote: string; // must match whatever email you later sign in with
+    subscribeButton: string;
+    subscribing: string;
+    signInButton: string;
+    signInSent: string;
+    accountHeading: string;
+    signedInAs: string; // "{email}" placeholder
+    currentPlan: string; // "{plan}" placeholder
+    quotaUsed: string; // "{used}" / "{limit}" placeholders
+    renewsOn: string; // "{date}" placeholder
+    upgradeCta: string;
+    signOutButton: string;
+    notSignedIn: string;
+    invalidLink: string;
+    genericError: string;
+  };
+  // The Been-style visited-countries tracker (lib/visited.ts) — a real
+  // account is required (see app/api/visited), unlike RecentTrips which is
+  // fine local-only.
+  visited: {
+    navLink: string; // link from /account to /account/visited
+    pageHeading: string;
+    pageSubheading: string;
+    statsCountries: string; // "{count}" placeholder
+    statsPercent: string; // "{percent}" placeholder
+    statsContinents: string; // "{count}" / "{total}" placeholders
+    signInPrompt: string;
+    badges: Record<
+      "first_stamp" | "explorer" | "globetrotter" | "continent_hopper" | "all_continents" | "half_the_world",
+      string
+    >;
+    backToAccount: string;
+  };
   destinations: {
     pageTitle: string;
     pageDescription: string; // "{count}" placeholder for the city count
@@ -462,6 +510,52 @@ const en: Dictionary = {
       "What's a local custom I shouldn't accidentally break in Tokyo?",
       "Do I need to tip in Berlin restaurants?",
     ],
+  },
+  account: {
+    navLink: "Pricing",
+    pricingHeading: "Plans",
+    pricingSubheading:
+      "Every visitor can try decide without an account. Sign in with an email to track your plan across visits, or subscribe for more generations a month.",
+    freePlanName: "Free",
+    freePlanBlurb: "{count} generations a month, signed in with just an email — no card needed.",
+    paidPlanName: "Pro",
+    paidPlanBlurb: "{count} generations a month, plus you're directly supporting the real API costs behind every trip.",
+    paidPlanPrice: "€9/month",
+    emailLabel: "EMAIL",
+    emailPlaceholder: "you@example.com",
+    emailMismatchNote: "Use the same email here that you'll sign in with below — that's how your plan gets linked to your account.",
+    subscribeButton: "Subscribe",
+    subscribing: "Starting checkout...",
+    signInButton: "Email me a sign-in link",
+    signInSent: "Check your email for a sign-in link.",
+    accountHeading: "Your account",
+    signedInAs: "Signed in as {email}",
+    currentPlan: "Plan: {plan}",
+    quotaUsed: "{used} of {limit} generations used this month",
+    renewsOn: "Renews {date}",
+    upgradeCta: "Upgrade to Pro →",
+    signOutButton: "Sign out",
+    notSignedIn: "Not signed in.",
+    invalidLink: "That sign-in link is invalid or has expired — request a new one below.",
+    genericError: "Something went wrong. Try again.",
+  },
+  visited: {
+    navLink: "Places you've been →",
+    pageHeading: "Places you've been",
+    pageSubheading: "Mark the countries you've actually visited. Tap a country to toggle it.",
+    statsCountries: "{count} countries visited",
+    statsPercent: "{percent}% of the world",
+    statsContinents: "{count} of {total} continents",
+    signInPrompt: "Sign in on the account page to start tracking your visited countries.",
+    badges: {
+      first_stamp: "First stamp",
+      explorer: "Explorer (10 countries)",
+      globetrotter: "Globetrotter (25 countries)",
+      continent_hopper: "Continent hopper (3 continents)",
+      all_continents: "All continents",
+      half_the_world: "Half the world",
+    },
+    backToAccount: "← Back to account",
   },
   destinations: {
     pageTitle: "Destination guides",
@@ -683,6 +777,52 @@ const bg: Dictionary = {
       "Кой местен обичай да внимавам да не наруша в Токио?",
       "Трябва ли да оставям бакшиш в ресторантите в Берлин?",
     ],
+  },
+  account: {
+    navLink: "Цени",
+    pricingHeading: "Планове",
+    pricingSubheading:
+      "Всеки посетител може да пробва decide без акаунт. Влезте с имейл, за да следите плана си между посещенията, или се абонирайте за повече генерации на месец.",
+    freePlanName: "Безплатен",
+    freePlanBlurb: "{count} генерации на месец, само с имейл - без карта.",
+    paidPlanName: "Pro",
+    paidPlanBlurb: "{count} генерации на месец, плюс директно подпомагате реалните разходи зад всяко пътуване.",
+    paidPlanPrice: "9€/месец",
+    emailLabel: "ИМЕЙЛ",
+    emailPlaceholder: "you@example.com",
+    emailMismatchNote: "Използвайте същия имейл, с който ще влезете по-долу - така планът ви се свързва с акаунта ви.",
+    subscribeButton: "Абонирай се",
+    subscribing: "Стартиране на плащане...",
+    signInButton: "Изпрати ми линк за вход",
+    signInSent: "Проверете имейла си за линк за вход.",
+    accountHeading: "Вашият акаунт",
+    signedInAs: "Влезли сте като {email}",
+    currentPlan: "План: {plan}",
+    quotaUsed: "{used} от {limit} генерации използвани този месец",
+    renewsOn: "Подновява се на {date}",
+    upgradeCta: "Надградете до Pro →",
+    signOutButton: "Изход",
+    notSignedIn: "Не сте влезли.",
+    invalidLink: "Този линк за вход е невалиден или е изтекъл - заявете нов по-долу.",
+    genericError: "Нещо се обърка. Опитайте отново.",
+  },
+  visited: {
+    navLink: "Места, които сте посетили →",
+    pageHeading: "Места, които сте посетили",
+    pageSubheading: "Отбележете държавите, които наистина сте посетили. Докоснете държава, за да превключите.",
+    statsCountries: "{count} посетени държави",
+    statsPercent: "{percent}% от света",
+    statsContinents: "{count} от {total} континента",
+    signInPrompt: "Влезте в акаунта си, за да следите посетените държави.",
+    badges: {
+      first_stamp: "Първи печат",
+      explorer: "Изследовател (10 държави)",
+      globetrotter: "Пътешественик (25 държави)",
+      continent_hopper: "Между континентите (3 континента)",
+      all_continents: "Всички континенти",
+      half_the_world: "Половината свят",
+    },
+    backToAccount: "← Обратно към акаунта",
   },
   destinations: {
     pageTitle: "Пътеводители по дестинации",
