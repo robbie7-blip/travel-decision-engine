@@ -56,11 +56,27 @@ const EFFORT = "low";
 // improvement over an inferred guess, and is reported as "single_source"
 // confidence rather than "verified" — an honest, already-supported tier —
 // rather than paying for a second round-trip just to upgrade that label.
+//
+// Flights are deliberately NOT searched (tried it, reverted it): it added a
+// full extra search round-trip back onto every generation with an origin —
+// confirmed pushing real generation time toward 2 minutes — and worse, the
+// number it found was actually wrong in practice: a live test showed the
+// model reporting a confident "single_source" EUR240 round-trip fare while
+// the real Google Flights price for that exact route/dates, one line below
+// it via the deterministic link attachFlightSearchLinks always attaches
+// (see engine/flightLinks.ts), was EUR43 — a self-contradicting itinerary,
+// and a worse outcome than just being honest that it's a ballpark. Dynamic
+// airline pricing isn't something a single web_search reliably nails down
+// the way a lodging price range is; the real Google Flights link is the
+// actual verification mechanism for flights, the same relationship Google
+// Maps links already have with venues. Flight cost_estimate_eur is back to
+// a plain hedged, inferred estimate, same as any other transport item.
 const SEARCH_INSTRUCTIONS = `You have a web_search tool available. Use it ONLY for lodging price \
-research and, when relevant (see FLIGHTS below), one round-trip flight/train price — do NOT use \
-it for meals or activities, even ones that name a specific venue: a separate, much faster \
-automated step verifies those (real business, open/closed status, rating, price tier) right after \
-you finish, so spending search budget on them here only adds latency without adding trust.
+research — do NOT use it for meals, activities, or transport (including flights/trains), even ones \
+that name a specific venue or carrier: a separate, much faster automated step verifies named \
+venues (real business, open/closed status, rating, price tier) right after you finish, and flight \
+items get a real, clickable Google Flights link attached automatically — so spending search budget \
+on either here only adds latency without adding trust.
 
 LODGING:
 For each destination, perform ONE search for its lodging price range — do not perform a second \
@@ -73,22 +89,13 @@ source_agreement unset (null) — this is a single-source grounding, not a cross
 inferred estimate — do not invent a false source. Set source_urls to an empty array and \
 source_agreement to null.
 
-FLIGHTS — only if a "Traveling from" origin is given AND transport is not already booked \
-separately: perform ONE search for a real, current round-trip price on that specific route (name \
-the obvious carrier if there is one, e.g. a budget/charter airline that's well known to operate \
-that route — this is usually findable, not a shot in the dark). Use the result for the arrival \
-transport item's cost_estimate_eur (the return-leg item stays free/zero-cost with a note that it's \
-already covered, same as before), mark source_confidence "grounded", set source_urls to that URL, \
-leave source_agreement unset (null). If the search returns nothing usable, fall back to a hedged, \
-inferred estimate from general knowledge of typical fares for that route — do not invent a false \
-source. Do not search for any other transit/transport item (local taxis, metro, etc.) — those stay \
-hedged estimates unless already covered by the provided facts.
-
-MEALS AND ACTIVITIES — DO NOT SEARCH: still name a real, specific venue per the NAME SPECIFIC \
-VENUES rule, and still give your best hedged price estimate from general knowledge, but set \
-source_confidence to "inferred" and source_urls to an empty array for these — the automated \
-Places check afterward is what actually confirms the venue is real, open, and well-rated, and \
-does it far faster than a per-item search would here.
+MEALS, ACTIVITIES, AND TRANSPORT (including flights) — DO NOT SEARCH: still name a real, specific \
+venue per the NAME SPECIFIC VENUES rule for meals/activities, and still give your best hedged \
+price estimate from general knowledge for all of these (a typical current fare/price range for the \
+route or category is fine — you don't need to know today's exact number), but set \
+source_confidence to "inferred" and source_urls to an empty array — the automated Places check and \
+the attached Google Flights link are what actually let the traveler verify these, and do it far \
+faster and more reliably than a per-item search would here.
 
 CRITICAL: never adjust a "grounded" lodging number to fit the budget: whatever cost_estimate_eur \
 you write for a "grounded" lodging item MUST fall within (or match, for a single price) what its \
@@ -148,27 +155,18 @@ function extractJson(text: string): string {
 
 class ModelOutputError extends Error {}
 
-// True exactly when the itinerary will contain a real flight/train item to
-// price — an origin was given AND the traveler hasn't already booked it
-// separately (needs_flight defaults to true; only an explicit false turns
-// it off, same convention as needs_lodging elsewhere in this file).
-function needsFlightSearch(brief: TripBriefInput): boolean {
-  return Boolean(brief.origin?.trim()) && brief.needs_flight !== false;
-}
-
 // Each real search costs more than 1 "use" here — the tool's dynamic
 // filtering makes an internal code_execution call that eats into the same
 // budget, so too low a count can be exhausted before a real query completes,
 // causing a silent, unlogged fallback to an ungrounded estimate (empirically
-// confirmed via a live test job). Budgets for lodging's single search per
-// destination plus, when relevant, one flight search (see
-// SEARCH_INSTRUCTIONS) — meals/activities are deliberately not searched by
-// the model at all, so there's no per-day item budget to account for. This
-// is the main lever behind cutting overall generation time: fewer searches
+// confirmed via a live test job). Only budgets for lodging's single search
+// per destination now — meals, activities, and transport (including
+// flights) are deliberately not searched by the model at all (see
+// SEARCH_INSTRUCTIONS), so there's no other budget to account for. This is
+// the main lever behind cutting overall generation time: fewer searches
 // means fewer multi-second round-trips in the critical path.
 function estimateMaxSearchUses(brief: TripBriefInput): number {
-  const searches = brief.destinations.length + (needsFlightSearch(brief) ? 1 : 0);
-  return Math.min(searches * 3, 15);
+  return Math.min(brief.destinations.length * 3, 12);
 }
 
 async function callModel(
@@ -245,12 +243,10 @@ function generateItinerary(
 ): Promise<Itinerary> {
   // Skip the web_search tool entirely — not just instruct around it — when
   // every destination already has a cached, recently-verified lodging price
-  // AND there's no flight leg to price, so a repeat/common-destination
-  // generation pays zero search latency rather than relying on the model
-  // choosing not to search. A flight search always keeps the tool available,
-  // even with fully-cached lodging, since flight prices aren't cached.
-  const allLodgingCached = brief.destinations.every((d) => d in cachedLodgingFacts);
-  const skipSearch = allLodgingCached && !needsFlightSearch(brief);
+  // (lodging is the only thing ever searched now), so a repeat/common-
+  // destination generation pays zero search latency rather than relying on
+  // the model choosing not to search.
+  const skipSearch = brief.destinations.every((d) => d in cachedLodgingFacts);
   return withOneRetry(() =>
     callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage, skipSearch)
   );
