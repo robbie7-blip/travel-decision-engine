@@ -21,6 +21,11 @@ export interface Dictionary {
   tagline: string;
   howItWorks: string;
   browseDestinations: string;
+  // Mobile-only nav toggle (see .nav-menu-toggle in globals.css) — collapses
+  // the 6 header links behind a single "Menu" button instead of letting
+  // them wrap onto 2-3 rows.
+  navMenuOpen: string;
+  navMenuClose: string;
   // Two sentences, rendered on separate lines (see page.tsx) — same reason
   // as subheadLine1/2: natural wrap doesn't reliably break at the sentence
   // boundary once the translation's line lengths differ from English's.
@@ -337,6 +342,8 @@ const en: Dictionary = {
   tagline: "Your travel, decided.",
   howItWorks: "How it works",
   browseDestinations: "Destination guides",
+  navMenuOpen: "Menu",
+  navMenuClose: "Close",
   headlineLine1: "It doesn’t list options.",
   headlineLine2: "It decides for you.",
   subheadLine1: "Every line carries its own confidence - a verified fact, a single source, or an honest guess.",
@@ -629,6 +636,8 @@ const bg: Dictionary = {
   tagline: "Твоето пътуване, измислено.",
   howItWorks: "Как работи",
   browseDestinations: "Пътеводители",
+  navMenuOpen: "Меню",
+  navMenuClose: "Затвори",
   headlineLine1: "Без опции.",
   headlineLine2: "Решава вместо теб.",
   subheadLine1: "Всеки ред носи собствена увереност - факт, единствен източник или предположение.",

@@ -125,6 +125,16 @@ button {
   }
 }
 
+/* Default (desktop) state: a normal inline flex row. The mobile media query
+   below overrides this to display:none — same specificity, so the later,
+   condition-gated rule wins whenever it actually matches, no !important
+   needed. Deliberately NOT set inline in page.tsx, since an inline style
+   would out-rank this override on mobile regardless of the media query. */
+.nav-links-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
 /* When the header nav (how it works / destinations / language) wraps below
    the logo lockup on narrow screens, give it its own clearly separated row
    instead of sitting right under the tagline with barely any gap. */
@@ -141,6 +151,64 @@ button {
      width, which separates them on its own — the vertical rule between
      them would just float oddly at the start of a wrapped line instead. */
   .nav-divider {
+    display: none;
+  }
+
+  /* Six nav links (How it works / Destination guides / Real examples /
+     Ask a Local / Places you've been / Pricing) wrapping onto 2-3 rows was
+     confirmed to read as "stuffed" on mobile vs. a reference like Booking's
+     app, which shows none of this inline at all — collapsed into a single
+     tappable "Menu" toggle instead (see .nav-menu-toggle below), same
+     information, one row instead of several. Desktop is untouched: this
+     rule only fires under the breakpoint, and .nav-menu-toggle stays
+     display:none above it (see the non-media rule) so there's nothing to
+     toggle on desktop in the first place. */
+  .nav-links-row {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 14px !important;
+    width: 100%;
+    padding-top: 14px;
+  }
+
+  .nav-links-row--open {
+    display: flex;
+  }
+
+  .nav-menu-toggle {
+    display: inline-flex !important;
+  }
+}
+
+/* Hidden on desktop — only meaningful once the rule above turns it on
+   under the mobile breakpoint. */
+.nav-menu-toggle {
+  display: none;
+}
+
+/* Confidence-legend pills and the recent-trips chip list both used to wrap
+   onto 2-3 rows on mobile (5 legend pills, one row per saved trip) — same
+   "stuffed" complaint as the nav above, but these are secondary/
+   informational rather than navigation, so a single horizontally
+   scrollable row (Booking's own card carousels use the same pattern) fits
+   better than a collapsible menu: the content stays one tap away via a
+   swipe, no extra toggle needed for something this lightweight. */
+@media (max-width: 700px) {
+  .scroll-row-mobile {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Fades the row's right edge so it visually reads as "more to scroll"
+       rather than looking like it was cut off mid-pill. */
+    mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+  }
+
+  .scroll-row-mobile > * {
+    flex-shrink: 0;
+  }
+
+  .scroll-row-mobile::-webkit-scrollbar {
     display: none;
   }
 }

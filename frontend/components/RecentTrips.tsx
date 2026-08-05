@@ -26,7 +26,7 @@ export function RecentTrips({ t }: { t: Dictionary }) {
   return (
     <div style={{ marginTop: 22 }}>
       <SectionLabel>{t.recentTrips.heading}</SectionLabel>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+      <div className="scroll-row-mobile" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
         {trips.map((trip) => (
           <div
             key={trip.jobId}
