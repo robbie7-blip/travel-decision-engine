@@ -20,6 +20,7 @@ import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prom
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { checkVenues } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
+import { attachFlightPrices } from "./engine/flightPricing";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
 import {
@@ -344,9 +345,14 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     }
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
-    itinerary = deriveConfidenceTiers(itinerary);
-    itinerary = await checkVenues(itinerary);
+    // attachFlightSearchLinks must run before attachFlightPrices — the
+    // price lookup reuses the same link as its source_urls value once a
+    // real fare is found. checkVenues and attachFlightPrices are otherwise
+    // independent (venues vs. flights), so they run concurrently rather
+    // than adding their latency on top of each other.
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
+    [itinerary] = await Promise.all([checkVenues(itinerary), attachFlightPrices(itinerary, job.brief)]);
+    itinerary = deriveConfidenceTiers(itinerary);
     job.status = "done";
     job.result = itinerary;
     await cacheLodgingFacts(redis, job.brief, itinerary);

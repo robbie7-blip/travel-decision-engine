@@ -444,12 +444,15 @@ export function ItineraryResult({
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
                       <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
-                        {item.flight_search_url && item.cost_estimate_eur > 0 ? (
+                        {item.flight_search_url && item.cost_estimate_eur > 0 && item.source_confidence !== "grounded" ? (
                           // A flight's own guessed fare has repeatedly turned out badly wrong
                           // in practice (a model estimate is not a live price check) — rather
                           // than show a number that might flatly contradict the real, current
                           // price one tap away, point straight at the real price instead of
-                          // asserting our own.
+                          // asserting our own. Only applies when NOT grounded — attachFlightPrices
+                          // (worker/src/engine/flightPricing.ts) replaces this guess with a real,
+                          // live-checked fare and marks it "grounded" when it succeeds, in which
+                          // case the real number is shown below like any other grounded price.
                           <a
                             href={item.flight_search_url}
                             target="_blank"
@@ -502,11 +505,13 @@ export function ItineraryResult({
                         {t.result.viewOnGoogleMaps} ↗
                       </a>
                     )}
-                    {/* Non-zero-cost flight items already fold this same link into the price
-                        slot above instead of showing a guessed figure — this only covers the
-                        free/already-covered return leg, which still deserves a real link even
-                        though there's no separate price to second-guess there. */}
-                    {item.flight_search_url && item.cost_estimate_eur === 0 && (
+                    {/* Non-grounded, non-zero-cost flight items already fold this same link
+                        into the price slot above instead of showing a guessed figure. This
+                        separate line covers the other two cases: the free/already-covered
+                        return leg (still deserves a real link even with no price to
+                        second-guess), and a grounded, live-checked fare (the real number is
+                        shown above, but the link is still worth keeping for a second look). */}
+                    {item.flight_search_url && (item.cost_estimate_eur === 0 || item.source_confidence === "grounded") && (
                       <a
                         href={item.flight_search_url}
                         target="_blank"
