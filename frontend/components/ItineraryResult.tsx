@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { ConfidenceDot, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
+import { TripQA } from "./TripQA";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
 import { formatMoney, type Currency, type FxRates } from "@/lib/currency";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
-import type { GooglePriceLevel, Itinerary, ItineraryItem } from "@/lib/types";
+import type { GooglePriceLevel, Itinerary, ItineraryItem, Language } from "@/lib/types";
 
 // Google's price_level is a 0-4 tier, not a literal per-person figure — shown
 // as $ symbols rather than implying a precise amount Google doesn't actually
@@ -214,10 +215,19 @@ interface ItineraryResultProps {
   currency?: Currency;
   rates?: FxRates | null;
   // Drives the weather outlook strip — omitted (strip just doesn't render)
-  // if the caller doesn't have the brief handy for some reason.
+  // if the caller doesn't have the brief handy for some reason. destinations/
+  // startDate/endDate/partyComposition/interests double as the trip context
+  // handed to the embedded <TripQA> box further down, so its answers are
+  // tailored to this actual trip rather than generic.
   destinations?: string[];
   startDate?: string;
   endDate?: string;
+  partyComposition?: string;
+  interests?: string[];
+  // Also just for the embedded <TripQA> box, so it answers in the same
+  // language as the rest of the page rather than always defaulting to
+  // English.
+  language?: Language;
 }
 
 export function ItineraryResult({
@@ -234,6 +244,9 @@ export function ItineraryResult({
   destinations,
   startDate,
   endDate,
+  partyComposition,
+  interests,
+  language = "en",
 }: ItineraryResultProps) {
   const [question, setQuestion] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -614,6 +627,15 @@ export function ItineraryResult({
         )}
       </div>
       )}
+
+      <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
+        <SectionLabel>{t.tripQA.sectionHeading}</SectionLabel>
+        <TripQA
+          context={{ destinations, start_date: startDate, end_date: endDate, party_composition: partyComposition, interests }}
+          language={language}
+          t={t}
+        />
+      </div>
     </div>
   );
 }

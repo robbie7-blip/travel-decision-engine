@@ -373,7 +373,14 @@ npm run dev
    connection string (for the worker).
 2. **Vercel** (frontend) — add `UPSTASH_REDIS_REST_URL` and
    `UPSTASH_REDIS_REST_TOKEN` alongside the existing env vars. `maxDuration`
-   no longer matters here — the route just enqueues and returns.
+   no longer matters for `/api/generate` — the route just enqueues and
+   returns. `ANTHROPIC_API_KEY` is also required here again: unlike
+   itinerary generation, `/api/trip-questions` (the general trip Q&A
+   feature — packing, safety, that kind of question — see
+   `components/TripQA.tsx`) calls Anthropic directly from this app rather
+   than through the worker's job queue, since it has no web_search tool and
+   no large JSON schema to fill, so it comfortably finishes within one
+   request without needing the queue's no-timeout escape hatch.
 3. **Railway** (or Fly.io/Render) for the worker — deploy `worker/` as its
    own service (set Root Directory to `worker`), with `ANTHROPIC_API_KEY`
    and `REDIS_URL` (the standard connection string from step 1) as env
