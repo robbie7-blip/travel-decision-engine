@@ -445,6 +445,15 @@ to write a subscription status.
 4. All four (plus the two `NEXT_PUBLIC_*` quota vars) go on the **Vercel**
    frontend project — none of this touches the worker.
 
+### Testing without burning budget/rate limits
+
+Visit `/admin/test-mode` (same `ADMIN_PASSWORD`-gated area as `/admin/feedback`)
+and paste `ADMIN_PASSWORD` in once. Every generation from that browser
+afterward skips the daily spend cap, all rate limits/quotas, AND the
+web_search step entirely — still a real (smaller, cheaper) Claude call, not
+a mocked $0 one, but the fastest and cheapest real path there is. Doesn't
+affect any other visitor.
+
 ## Troubleshooting
 
 Real issues hit while setting this up, in the order you're likely to hit them.

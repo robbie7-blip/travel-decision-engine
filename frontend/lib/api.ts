@@ -1,6 +1,7 @@
 import type { Itinerary, TripBriefInput } from "./types";
 import type { Job } from "./jobs";
 import type { FeedbackEntry } from "./feedback";
+import { getTestModeKey, TEST_MODE_HEADER } from "./testMode";
 
 export class ApiError extends Error {}
 
@@ -64,9 +65,13 @@ export async function pollJob(
  * away and lets that page own polling, so the result has a shareable,
  * bookmarkable URL from the moment generation starts. */
 export async function createGenerateJob(brief: TripBriefInput): Promise<string> {
+  const testModeKey = getTestModeKey();
   const createResponse = await fetch("/api/generate", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(testModeKey ? { [TEST_MODE_HEADER]: testModeKey } : {}),
+    },
     body: JSON.stringify(brief),
   });
 
