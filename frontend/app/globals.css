@@ -1,4 +1,39 @@
 :root {
+  /* ============================================================
+     COLOR SYSTEM — exactly 6 brand colors, chosen from and anchored to
+     logo-icon.svg's own palette, plus the ink/bg neutrals below. Every
+     other --variable in this file is an ALIAS onto one of these six,
+     reused by MEANING rather than introduced fresh — the app should
+     never need a 7th hue. If something needs to stand out, reuse one
+     of these six more deliberately (or more sparingly); don't reach
+     for a new color.
+
+       1. TEAL   brand / trust / primary interactive. Matches
+          logo-icon.svg's line color exactly, so the wordmark and every
+          "verified" / primary-button / focus moment in the UI reads as
+          one identity with the mark next to it — not a UI blue that
+          happens to sit near a differently-colored logo.
+       2. CORAL  action / energy. The logo's dot color. Reserved for
+          moments that want attention: the headline, the primary CTA,
+          hover/focus feedback. Deliberately NOT reused as generic
+          decoration, so it still reads as "look here" when it appears.
+       3. GOLD   secondary accent, paired with coral in the one
+          signature gradient (the headline). Also the "sources
+          disagree" confidence tier.
+       4. PURPLE narrow and deliberate: the "single source" confidence
+          tier ONLY. Not reused decoratively elsewhere — the one time
+          it shows up, it means something specific instead of just
+          being another color in the mix.
+       5. GREEN  success / feasible / upgrade.
+       6. RED    error / infeasible ONLY.
+     ============================================================ */
+  --brand-teal: #1f6f8a;
+  --brand-coral: #d9643f;
+  --brand-gold: #e8a23f;
+  --brand-purple: #7d5ba6;
+  --brand-green: #3f7a4a;
+  --brand-red: #b8452f;
+
   --ink: #2b241c;
   --ink-soft: #4a4136;
   --ink-dim: #8a7d68;
@@ -8,48 +43,46 @@
   --line: #e3d5b3;
   --line-strong: #cbb98c;
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
-  /* Reuses --color-teal/--color-purple below instead of a separate
-     near-duplicate hue — previously --grounded (a muted blue-teal) and
-     --color-teal (a vivid cyan) were two slightly-off versions of the same
-     idea; unifying them onto one electric cyan makes the confidence-tier
-     system and the rest of the palette read as a single deliberate
-     identity instead of two systems that almost match. */
-  --grounded: #06b6d4;
-  /* logo-icon.svg's vertical line is a static gradient anchored at this
-     exact hex (its "midLine" stop) — it doesn't read any CSS variable, so
-     when --grounded above got bumped to a brighter cyan for the confidence
-     tier system, the "decide" wordmark (which used to just reuse
-     --grounded) silently drifted out of sync with the mark it sits next
-     to. This is that same old value, kept as its own variable so the
-     wordmark can stay pinned to the actual logo color independent of
-     whatever --grounded's tier-color duties need going forward. */
-  --logo-teal: #1f6f8a;
-  --unverified: #f59e0b;
-  --infeasible: #ef4444;
-  --feasible: #06b6d4;
-  /* Deliberately lighter/brighter than --color-purple below — this only
-     ever sits as text/dot color against the light cream background, never
-     under white button text, so it can afford to be the more electric
-     purple-500 rather than the deeper purple-600 the buttons need for
-     contrast. */
-  --tier-single-source: #a855f7;
-  /* Deliberately left muted, not boosted with the rest — this tier means
-     "lowest-confidence guess" and a punchy color here would fight that
-     meaning, making an inferred line look as trustworthy as a verified one. */
+
+  /* Confidence-tier colors — aliases onto the six above, not separate
+     hues, so the tier system and the rest of the UI draw from the same
+     palette instead of running two color systems side by side. */
+  --grounded: var(--brand-teal);
+  --feasible: var(--brand-teal);
+  --unverified: var(--brand-gold);
+  --infeasible: var(--brand-red);
+  --tier-single-source: var(--brand-purple);
+  /* Deliberately its own literal value, not an alias — this tier means
+     "lowest-confidence guess," and a punchy brand color here would fight
+     that meaning by making an inferred line look as trustworthy as a
+     verified one. */
   --tier-inferred: #a89a82;
-  --accent-1: #f97316;
-  --accent-2: #fbbf24;
-  --accent-green: #22c55e;
-  --accent-green-light: #86efac;
+
+  /* logo-icon.svg is a static asset that can't read this file's
+     variables — --brand-teal above IS that exact hex already, this just
+     names that fact so the wordmark (which reads --logo-teal) can never
+     drift from the mark next to it, independent of whatever else
+     --brand-teal ends up meaning. */
+  --logo-teal: var(--brand-teal);
+
+  --accent-1: var(--brand-coral);
+  --accent-2: var(--brand-gold);
+  --accent-green: var(--brand-green);
+  --accent-green-light: #6fae6c;
+
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  /* New vibrant colors for visual interest */
-  --color-blue: #0066ff;
-  /* purple-600, not the lighter purple-500 used by --tier-single-source —
-     this one sits under white button/badge text via .btn-primary's
-     gradient, and purple-500 dips below AA contrast there. */
-  --color-purple: #9333ea;
-  --color-teal: #06b6d4;
-  --color-coral: #ff5555;
+
+  /* Decorative slot names kept from an earlier pass so component files
+     didn't need touching for this consolidation — each is an alias onto
+     one of the six brand colors above, picked so the three "How It
+     Works" step icons (blue slot / purple slot / teal slot) stay
+     visually distinct from each other. --color-teal is retired outright
+     (not aliased) because pointing it at --brand-teal would have made
+     it collide with --color-blue — see page.tsx's step-3 icon, which
+     now reads var(--accent-2) [gold] directly instead. */
+  --color-blue: var(--brand-teal);
+  --color-purple: var(--brand-purple);
+  --color-coral: var(--brand-coral);
 }
 
 * {
@@ -100,23 +133,30 @@ button {
   color: transparent;
 }
 
+/* Solid coral, not a gradient — coral is the "action" color (see the
+   COLOR SYSTEM block above), and the primary CTA is precisely the one
+   place that should want attention without competing with the teal used
+   everywhere else for trust/confidence dots. A gradient here previously
+   ran teal into purple, which both muddied the button's own color and
+   spent purple's one deliberate meaning (the single-source tier) on
+   plain decoration. */
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-blue), var(--color-purple));
+  background: var(--color-coral);
   color: white;
   border: none;
   border-radius: 8px;
   padding: 14px 32px;
   font-weight: 700;
   font-size: 16px;
-  box-shadow: 0 8px 24px rgba(0, 102, 255, 0.4), 0 0 0 0 rgba(0, 102, 255, 0.3);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-coral) 40%, transparent);
   transition: all 0.3s ease;
   cursor: pointer;
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(0, 102, 255, 0.55), 0 0 20px rgba(147, 51, 234, 0.4);
-  background: linear-gradient(135deg, #0052cc, #6d28d9);
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--color-coral) 55%, transparent);
+  background: color-mix(in srgb, var(--color-coral) 85%, black);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -140,15 +180,18 @@ button {
   padding: 12px 16px !important;
   font-size: 15px !important;
   transition: all 0.2s ease !important;
-  background: linear-gradient(to right, rgba(0, 102, 255, 0.02), white) !important;
+  background: linear-gradient(to right, color-mix(in srgb, var(--color-blue) 2%, white), white) !important;
 }
 
+/* Focus uses coral (the action color), not purple — purple is reserved
+   for the single-source confidence tier specifically (see the COLOR
+   SYSTEM block at the top of this file). */
 .trip-form-grid input:focus,
 .trip-form-grid select:focus,
 .trip-form-grid textarea:focus {
   outline: none !important;
-  border-color: var(--color-purple) !important;
-  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1) !important;
+  border-color: var(--color-coral) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-coral) 15%, transparent) !important;
 }
 
 .trip-form-grid input::placeholder {
@@ -309,12 +352,14 @@ div[style*="padding: 32px 24px"] {
   position: relative;
 }
 
-/* How It Works section - colored background */
+/* How It Works section - colored background. Teal + coral, the two
+   colors that already anchor the rest of the page (brand/trust and
+   action), instead of a third hue introduced just for this section. */
 div[id="how-it-works"] {
-  background: linear-gradient(135deg, rgba(0, 102, 255, 0.06), rgba(147, 51, 234, 0.06));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blue) 6%, transparent), color-mix(in srgb, var(--color-coral) 6%, transparent));
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid rgba(0, 102, 255, 0.1);
+  border: 1px solid color-mix(in srgb, var(--color-blue) 10%, transparent);
 }
 
 /* Step cards - enhanced styling with colored backgrounds */
@@ -322,32 +367,35 @@ div[style*="display: grid"] > div {
   background: white;
   border-radius: 12px;
   padding: 20px;
-  border: 1px solid rgba(0, 102, 255, 0.15);
+  border: 1px solid color-mix(in srgb, var(--color-blue) 15%, transparent);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
 
-/* Step 1 - Blue */
+/* Step 1 - teal (brand/primary) */
 div[style*="display: grid"] > div[data-step="0"] {
-  background: linear-gradient(135deg, rgba(0, 102, 255, 0.08), rgba(0, 102, 255, 0.03));
-  border-color: rgba(0, 102, 255, 0.2) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blue) 8%, transparent), color-mix(in srgb, var(--color-blue) 3%, transparent));
+  border-color: color-mix(in srgb, var(--color-blue) 20%, transparent) !important;
 }
 
-/* Step 2 - Purple */
+/* Step 2 - purple (this is the one deliberate decorative use of the
+   single-source tier's purple outside the tier system itself — three
+   steps need three distinct colors, and reusing an existing brand color
+   here still beats introducing a 7th hue). */
 div[style*="display: grid"] > div[data-step="1"] {
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.08), rgba(147, 51, 234, 0.03));
-  border-color: rgba(147, 51, 234, 0.2) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-purple) 8%, transparent), color-mix(in srgb, var(--color-purple) 3%, transparent));
+  border-color: color-mix(in srgb, var(--color-purple) 20%, transparent) !important;
 }
 
-/* Step 3 - Teal */
+/* Step 3 - gold (secondary accent) */
 div[style*="display: grid"] > div[data-step="2"] {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(6, 182, 212, 0.03));
-  border-color: rgba(6, 182, 212, 0.2) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-2) 8%, transparent), color-mix(in srgb, var(--accent-2) 3%, transparent));
+  border-color: color-mix(in srgb, var(--accent-2) 20%, transparent) !important;
 }
 
 div[style*="display: grid"] > div:hover {
   border-color: var(--color-blue) !important;
-  box-shadow: 0 12px 32px rgba(0, 102, 255, 0.2);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--color-blue) 20%, transparent);
   transform: translateY(-4px);
 }
 
@@ -388,24 +436,24 @@ span[data-tier]:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
-/* Demo link - styled button */
+/* Demo link - styled button, teal (trust/brand), not teal-into-purple */
 a[style*="color: var(--grounded)"] {
   transition: all 0.2s ease;
   padding: 10px 16px;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(0, 102, 255, 0.15), rgba(147, 51, 234, 0.1));
+  background: color-mix(in srgb, var(--color-blue) 12%, transparent);
   color: var(--color-blue) !important;
   border: 1.5px solid var(--color-blue);
   text-decoration: none !important;
   display: inline-block;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 102, 255, 0.15);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-blue) 15%, transparent);
 }
 
 a[style*="color: var(--grounded)"]:hover {
-  background: linear-gradient(135deg, var(--color-blue), var(--color-purple));
+  background: var(--color-blue);
   color: white !important;
-  box-shadow: 0 6px 20px rgba(0, 102, 255, 0.35);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-blue) 35%, transparent);
   transform: translateY(-2px);
 }
 
@@ -435,6 +483,10 @@ a {
   border-left: 1px solid var(--line-strong);
 }
 
+/* Coral, the action color — not teal-into-purple. This is interaction
+   feedback (hover), the same job coral does on the primary button and
+   form focus states, so hovering a nav link reads as the same kind of
+   moment instead of introducing its own gradient. */
 .nav-link::after {
   content: "";
   position: absolute;
@@ -442,14 +494,14 @@ a {
   right: 14px;
   bottom: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--color-blue), var(--color-purple));
+  background: var(--color-coral);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.25s ease;
 }
 
 .nav-link:hover {
-  color: var(--color-blue) !important;
+  color: var(--color-coral) !important;
 }
 
 .nav-link:hover::after {
@@ -469,32 +521,32 @@ a {
   }
 }
 
-/* Language (EN/BG) segmented toggle - swap the flat green fill for the
-   blue/purple accent used everywhere else, with a hover state on the
-   inactive option so the control doesn't feel dead. Covers both the
-   client-side <button> version (SiteHeader) and the server-rendered <a>
-   version (destinations/showcase pages, which switch language via a
-   ?lang= URL param instead of client state). */
+/* Language (EN/BG) segmented toggle - solid teal (brand/primary), not a
+   teal-into-purple gradient, with a hover state on the inactive option
+   so the control doesn't feel dead. Covers both the client-side
+   <button> version (SiteHeader) and the server-rendered <a> version
+   (destinations/showcase pages, which switch language via a ?lang= URL
+   param instead of client state). */
 .lang-toggle button[data-active="true"],
 .lang-toggle a[data-active="true"] {
-  background: linear-gradient(135deg, var(--color-blue), var(--color-purple)) !important;
+  background: var(--color-blue) !important;
   color: white !important;
 }
 
 .lang-toggle button[data-active="false"]:hover,
 .lang-toggle a[data-active="false"]:hover {
-  background: rgba(0, 102, 255, 0.1) !important;
+  background: color-mix(in srgb, var(--color-blue) 10%, transparent) !important;
   color: var(--color-blue) !important;
 }
 
 .lang-toggle {
-  border-color: rgba(0, 102, 255, 0.25) !important;
+  border-color: color-mix(in srgb, var(--color-blue) 25%, transparent) !important;
 }
 
 /* Currency <select> - flat gray border felt out of place next to the
    brighter nav/lang controls beside it. */
 .currency-select {
-  border-color: rgba(0, 102, 255, 0.3) !important;
+  border-color: color-mix(in srgb, var(--color-blue) 30%, transparent) !important;
   color: var(--ink-soft) !important;
   transition: all 0.2s ease;
 }
@@ -530,7 +582,7 @@ div[id="how-it-works"] h2::after {
   transform: translateX(-50%);
   width: 60px;
   height: 3px;
-  background: linear-gradient(90deg, var(--color-blue), var(--color-purple), var(--color-teal));
+  background: linear-gradient(90deg, var(--color-blue), var(--color-coral));
   border-radius: 2px;
 }
 
@@ -552,14 +604,14 @@ div[style*="padding: 36px 24px"]::before {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--color-blue), var(--color-purple), var(--color-teal));
+  background: linear-gradient(90deg, var(--color-blue), var(--color-coral));
 }
 
 /* Decorative background elements */
 .trip-form-grid {
-  background: linear-gradient(135deg, white, rgba(0, 102, 255, 0.01));
+  background: linear-gradient(135deg, white, color-mix(in srgb, var(--color-blue) 1%, transparent));
   padding: 32px;
   border-radius: 16px;
-  border: 2px solid rgba(0, 102, 255, 0.25);
-  box-shadow: 0 8px 24px rgba(0, 102, 255, 0.12), 0 0 0 1px rgba(0, 102, 255, 0.05);
+  border: 2px solid color-mix(in srgb, var(--color-blue) 25%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-blue) 12%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-blue) 5%, transparent);
 }

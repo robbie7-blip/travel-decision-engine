@@ -223,7 +223,7 @@ export default function Home() {
                 body: t.howItWorksSteps.step1Body,
                 icon: (
                   <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
-                    <circle cx="40" cy="40" r="35" fill="rgba(0, 102, 255, 0.1)" stroke="var(--color-blue)" strokeWidth="2"/>
+                    <circle cx="40" cy="40" r="35" fill="rgba(31, 111, 138, 0.1)" stroke="var(--color-blue)" strokeWidth="2"/>
                     {/* y-offset tuned to 17.5 (not 20) so the drawn glyph
                         (y 8-37 pre-translate) centers on the circle's true
                         midpoint (y=40) instead of sitting a few px low —
@@ -243,7 +243,7 @@ export default function Home() {
                 body: t.howItWorksSteps.step2Body,
                 icon: (
                   <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
-                    <circle cx="40" cy="40" r="35" fill="rgba(147, 51, 234, 0.1)" stroke="var(--color-purple)" strokeWidth="2"/>
+                    <circle cx="40" cy="40" r="35" fill="rgba(125, 91, 166, 0.1)" stroke="var(--color-purple)" strokeWidth="2"/>
                     {/* y-offset tuned to 19 (not 15) — see step 1's comment
                         above; this glyph's own bounds (y 5-37 pre-translate)
                         center a few px high of the circle's midpoint at the
@@ -263,17 +263,17 @@ export default function Home() {
                 body: t.howItWorksSteps.step3Body,
                 icon: (
                   <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
-                    <circle cx="40" cy="40" r="35" fill="rgba(6, 182, 212, 0.1)" stroke="var(--color-teal)" strokeWidth="2"/>
+                    <circle cx="40" cy="40" r="35" fill="rgba(232, 162, 63, 0.1)" stroke="var(--accent-2)" strokeWidth="2"/>
                     {/* y-offset tuned to 20 (not 15) — see step 1's comment
                         above; this glyph's bounds (y 5-35 pre-translate)
                         center a few px high of the circle's midpoint at the
                         untuned offset. */}
                     <g transform="translate(15, 20)">
-                      <rect x="5" y="10" width="40" height="25" fill="none" stroke="var(--color-teal)" strokeWidth="2" rx="2"/>
-                      <path d="M 15 10 L 20 5 L 25 10" fill="none" stroke="var(--color-teal)" strokeWidth="2" strokeLinecap="round"/>
-                      <path d="M 35 10 L 40 5 L 45 10" fill="none" stroke="var(--color-teal)" strokeWidth="2" strokeLinecap="round"/>
-                      <line x1="10" y1="25" x2="40" y2="25" stroke="var(--color-teal)" strokeWidth="1.5" opacity="0.5"/>
-                      <line x1="10" y1="30" x2="35" y2="30" stroke="var(--color-teal)" strokeWidth="1.5" opacity="0.5"/>
+                      <rect x="5" y="10" width="40" height="25" fill="none" stroke="var(--accent-2)" strokeWidth="2" rx="2"/>
+                      <path d="M 15 10 L 20 5 L 25 10" fill="none" stroke="var(--accent-2)" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M 35 10 L 40 5 L 45 10" fill="none" stroke="var(--accent-2)" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="10" y1="25" x2="40" y2="25" stroke="var(--accent-2)" strokeWidth="1.5" opacity="0.5"/>
+                      <line x1="10" y1="30" x2="35" y2="30" stroke="var(--accent-2)" strokeWidth="1.5" opacity="0.5"/>
                     </g>
                   </svg>
                 )
@@ -323,7 +323,7 @@ export default function Home() {
           }}
           viewBox="0 0 250 250"
         >
-          <circle cx="125" cy="125" r="100" fill="none" stroke="var(--color-teal)" strokeWidth="2" />
+          <circle cx="125" cy="125" r="100" fill="none" stroke="var(--accent-2)" strokeWidth="2" />
           <circle cx="125" cy="125" r="70" fill="none" stroke="var(--color-purple)" strokeWidth="2" />
           <circle cx="125" cy="125" r="40" fill="none" stroke="var(--color-blue)" strokeWidth="2" />
           <path d="M 125 25 L 225 125 L 125 225 L 25 125 Z" fill="none" stroke="var(--color-coral)" strokeWidth="1.5" opacity="0.5" />
