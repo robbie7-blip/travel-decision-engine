@@ -199,69 +199,6 @@ export default function VisitedPage() {
             {t.visited.pageSubheading}
           </p>
 
-          {!signedIn && (
-            <div
-              style={{
-                background: "var(--bg-panel)",
-                border: "1px solid var(--line)",
-                borderRadius: 8,
-                padding: 20,
-                boxShadow: "var(--shadow-panel)",
-                marginBottom: 28,
-              }}
-            >
-              <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
-                {t.visited.signInPrompt}
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input
-                  type="email"
-                  value={signInEmail}
-                  onChange={(e) => setSignInEmail(e.target.value)}
-                  placeholder={t.account.emailPlaceholder}
-                  style={{
-                    flex: 1,
-                    minWidth: 200,
-                    background: "var(--bg-panel-raised)",
-                    border: "1px solid var(--line-strong)",
-                    borderRadius: 8,
-                    padding: "10px 13px",
-                    color: "var(--ink)",
-                    fontSize: 14,
-                    boxSizing: "border-box",
-                    boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
-                  }}
-                />
-                <button
-                  onClick={requestSignIn}
-                  disabled={signInSending || !signInEmail.trim()}
-                  className="font-mono btn-primary"
-                  style={{
-                    padding: "10px 16px",
-                    fontWeight: 700,
-                    fontSize: 12,
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                    cursor: signInSending || !signInEmail.trim() ? "default" : "pointer",
-                    flexShrink: 0,
-                  }}
-                >
-                  {t.visited.signInButton}
-                </button>
-              </div>
-              {signInMessage && (
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
-                  {signInMessage}
-                </div>
-              )}
-              {signInError && (
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
-                  {signInError}
-                </div>
-              )}
-            </div>
-          )}
-
           <div
                 style={{
                   background: "var(--bg-panel)",
@@ -491,6 +428,72 @@ export default function VisitedPage() {
                   </div>
                 </div>
               ))}
+
+              {/* Sync is an optional upgrade, not a requirement to use any of
+               * the above — kept at the bottom, out of the way, rather than
+               * gating the page like a login wall. */}
+              {!signedIn && (
+                <div
+                  style={{
+                    background: "var(--bg-panel)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 8,
+                    padding: 20,
+                    boxShadow: "var(--shadow-panel)",
+                    marginTop: 12,
+                  }}
+                >
+                  <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
+                    {t.visited.signInPrompt}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <input
+                      type="email"
+                      value={signInEmail}
+                      onChange={(e) => setSignInEmail(e.target.value)}
+                      placeholder={t.account.emailPlaceholder}
+                      style={{
+                        flex: 1,
+                        minWidth: 200,
+                        background: "var(--bg-panel-raised)",
+                        border: "1px solid var(--line-strong)",
+                        borderRadius: 8,
+                        padding: "10px 13px",
+                        color: "var(--ink)",
+                        fontSize: 14,
+                        boxSizing: "border-box",
+                        boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
+                      }}
+                    />
+                    <button
+                      onClick={requestSignIn}
+                      disabled={signInSending || !signInEmail.trim()}
+                      className="font-mono btn-primary"
+                      style={{
+                        padding: "10px 16px",
+                        fontWeight: 700,
+                        fontSize: 12,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                        cursor: signInSending || !signInEmail.trim() ? "default" : "pointer",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {t.visited.signInButton}
+                    </button>
+                  </div>
+                  {signInMessage && (
+                    <div className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
+                      {signInMessage}
+                    </div>
+                  )}
+                  {signInError && (
+                    <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
+                      {signInError}
+                    </div>
+                  )}
+                </div>
+              )}
         </div>
       </div>
     </div>

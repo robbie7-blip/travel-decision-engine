@@ -16,6 +16,7 @@
 // all — rendered in a visibly muted, non-interactive style rather than
 // silently doing nothing on click.
 
+import { useEffect, useRef, useState } from "react";
 import WorldMap, { regions, type CountryContext, type ISOCode } from "react-svg-worldmap";
 import { getCountry } from "@/lib/countries";
 
@@ -29,6 +30,30 @@ interface VisitedMapProps {
 }
 
 export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, notVisitedLabel, untrackedLabel }: VisitedMapProps) {
+  // The library's own size="responsive" mode measures its width via a
+  // ResizeObserver + window.innerWidth fallback that, on real mobile
+  // Safari, was observed rendering the map at a stale/oversized width
+  // (roughly desktop-sized) that overflowed this card and bled across the
+  // rest of the page uncontrolled — the SVG itself scales its content to
+  // fit whatever pixel width it's given, so a wrong width there means a
+  // wrong-sized map, not a clipped one. Measuring our own wrapper directly
+  // and passing that as an explicit number sidesteps the library's
+  // internal sizing entirely — we always tell it exactly how wide it's
+  // allowed to be, no guessing on its end.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [mapWidth, setMapWidth] = useState(0);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setMapWidth(Math.floor(width));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Every region the map itself knows how to draw, each flagged 1/0 by
   // whether it's in this traveler's visited set — data doesn't need to
   // (and shouldn't) enumerate lib/countries.ts separately, since the map
@@ -46,10 +71,25 @@ export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, 
   }
 
   return (
-    <div style={{ background: "var(--bg-panel)", border: "1px solid var(--line)", borderRadius: 8, padding: 12, boxShadow: "var(--shadow-panel)" }}>
+    <div
+      ref={wrapperRef}
+      style={{
+        background: "var(--bg-panel)",
+        border: "1px solid var(--line)",
+        borderRadius: 8,
+        padding: 12,
+        boxShadow: "var(--shadow-panel)",
+        overflow: "hidden", // belt-and-suspenders: never let map content escape this card, whatever width it ends up computing
+      }}
+    >
+      {/* Nothing to size against yet on the very first paint — rendering at
+       * mapWidth=0 would ask the library for a 0px map. Skipping the first
+       * frame is invisible (the ResizeObserver callback fires within the
+       * same paint cycle) and avoids ever showing a wrongly-sized map. */}
+      {mapWidth > 0 && (
       <WorldMap
         data={data}
-        size="responsive"
+        size={mapWidth}
         richInteraction
         borderColor="var(--line-strong)"
         backgroundColor="transparent"
@@ -91,6 +131,7 @@ export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, 
           onToggle(code);
         }}
       />
+      )}
     </div>
   );
 }
