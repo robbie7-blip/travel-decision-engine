@@ -8,23 +8,37 @@
   --line: #e3d5b3;
   --line-strong: #cbb98c;
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
-  --grounded: #0891b2;
-  --unverified: #d97706;
-  --infeasible: #dc2626;
-  --feasible: #0891b2;
-  --tier-single-source: #9333ea;
+  /* Reuses --color-teal/--color-purple below instead of a separate
+     near-duplicate hue — previously --grounded (a muted blue-teal) and
+     --color-teal (a vivid cyan) were two slightly-off versions of the same
+     idea; unifying them onto one electric cyan makes the confidence-tier
+     system and the rest of the palette read as a single deliberate
+     identity instead of two systems that almost match. */
+  --grounded: #06b6d4;
+  --unverified: #f59e0b;
+  --infeasible: #ef4444;
+  --feasible: #06b6d4;
+  /* Deliberately lighter/brighter than --color-purple below — this only
+     ever sits as text/dot color against the light cream background, never
+     under white button text, so it can afford to be the more electric
+     purple-500 rather than the deeper purple-600 the buttons need for
+     contrast. */
+  --tier-single-source: #a855f7;
   /* Deliberately left muted, not boosted with the rest — this tier means
      "lowest-confidence guess" and a punchy color here would fight that
      meaning, making an inferred line look as trustworthy as a verified one. */
   --tier-inferred: #a89a82;
-  --accent-1: #ea580c;
-  --accent-2: #f59e0b;
-  --accent-green: #16a34a;
-  --accent-green-light: #4ade80;
+  --accent-1: #f97316;
+  --accent-2: #fbbf24;
+  --accent-green: #22c55e;
+  --accent-green-light: #86efac;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   /* New vibrant colors for visual interest */
   --color-blue: #0066ff;
-  --color-purple: #7c3aed;
+  /* purple-600, not the lighter purple-500 used by --tier-single-source —
+     this one sits under white button/badge text via .btn-primary's
+     gradient, and purple-500 dips below AA contrast there. */
+  --color-purple: #9333ea;
   --color-teal: #06b6d4;
   --color-coral: #ff5555;
 }
@@ -92,7 +106,7 @@ button {
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(0, 102, 255, 0.55), 0 0 20px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 102, 255, 0.55), 0 0 20px rgba(147, 51, 234, 0.4);
   background: linear-gradient(135deg, #0052cc, #6d28d9);
 }
 
@@ -125,7 +139,7 @@ button {
 .trip-form-grid textarea:focus {
   outline: none !important;
   border-color: var(--color-purple) !important;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1) !important;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1) !important;
 }
 
 .trip-form-grid input::placeholder {
@@ -278,7 +292,7 @@ div[style*="padding: 32px 24px"] {
 
 /* How It Works section - colored background */
 div[id="how-it-works"] {
-  background: linear-gradient(135deg, rgba(0, 102, 255, 0.06), rgba(124, 58, 237, 0.06));
+  background: linear-gradient(135deg, rgba(0, 102, 255, 0.06), rgba(147, 51, 234, 0.06));
   border-radius: 16px;
   padding: 24px;
   border: 1px solid rgba(0, 102, 255, 0.1);
@@ -289,7 +303,7 @@ div[style*="display: grid"] > div {
   background: white;
   border-radius: 12px;
   padding: 20px;
-  border: 1px solid rgba(0, 102, 204, 0.15);
+  border: 1px solid rgba(0, 102, 255, 0.15);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
@@ -302,8 +316,8 @@ div[style*="display: grid"] > div[data-step="0"] {
 
 /* Step 2 - Purple */
 div[style*="display: grid"] > div[data-step="1"] {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.03));
-  border-color: rgba(124, 58, 237, 0.2) !important;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.08), rgba(147, 51, 234, 0.03));
+  border-color: rgba(147, 51, 234, 0.2) !important;
 }
 
 /* Step 3 - Teal */
@@ -318,19 +332,41 @@ div[style*="display: grid"] > div:hover {
   transform: translateY(-4px);
 }
 
-/* Confidence pills - better styling */
-span[style*="border: 1px solid var(--line)"] {
+/* Confidence legend pills - each one now colored by its own tier instead
+   of a uniform blue border, so the legend itself previews the palette
+   used throughout the app (verified/fact-grounded cyan, single-source
+   purple, conflicting amber, inferred neutral) rather than looking like
+   one generic chip style repeated five times. */
+span[data-tier] {
   transition: all 0.2s ease;
   background: white;
-  border-color: var(--color-blue) !important;
   border-width: 1.5px !important;
 }
 
-span[style*="border: 1px solid var(--line)"]:hover {
-  border-color: var(--color-purple) !important;
-  background-color: rgba(124, 58, 237, 0.12) !important;
+span[data-tier="verified"],
+span[data-tier="fact_grounded"] {
+  border-color: var(--grounded) !important;
+  background: color-mix(in srgb, var(--grounded) 10%, white) !important;
+}
+
+span[data-tier="single_source"] {
+  border-color: var(--tier-single-source) !important;
+  background: color-mix(in srgb, var(--tier-single-source) 10%, white) !important;
+}
+
+span[data-tier="conflicting"] {
+  border-color: var(--unverified) !important;
+  background: color-mix(in srgb, var(--unverified) 10%, white) !important;
+}
+
+span[data-tier="inferred"] {
+  border-color: var(--tier-inferred) !important;
+  background: color-mix(in srgb, var(--tier-inferred) 10%, white) !important;
+}
+
+span[data-tier]:hover {
   transform: scale(1.08);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 /* Demo link - styled button */
@@ -338,7 +374,7 @@ a[style*="color: var(--grounded)"] {
   transition: all 0.2s ease;
   padding: 10px 16px;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(0, 102, 255, 0.15), rgba(124, 58, 237, 0.1));
+  background: linear-gradient(135deg, rgba(0, 102, 255, 0.15), rgba(147, 51, 234, 0.1));
   color: var(--color-blue) !important;
   border: 1.5px solid var(--color-blue);
   text-decoration: none !important;

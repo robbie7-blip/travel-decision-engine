@@ -186,6 +186,7 @@ export default function Home() {
             ).map((tier) => (
               <span
                 key={tier}
+                data-tier={tier}
                 style={{
                   color: "var(--ink-dim)",
                   display: "flex",
@@ -222,7 +223,7 @@ export default function Home() {
                 body: t.howItWorksSteps.step1Body,
                 icon: (
                   <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
-                    <circle cx="40" cy="40" r="35" fill="rgba(0, 102, 204, 0.1)" stroke="var(--color-blue)" strokeWidth="2"/>
+                    <circle cx="40" cy="40" r="35" fill="rgba(0, 102, 255, 0.1)" stroke="var(--color-blue)" strokeWidth="2"/>
                     <g transform="translate(20, 20)">
                       <rect x="8" y="8" width="24" height="24" fill="none" stroke="var(--color-blue)" strokeWidth="2" rx="2"/>
                       <circle cx="20" cy="20" r="3" fill="var(--color-blue)"/>
@@ -237,7 +238,7 @@ export default function Home() {
                 body: t.howItWorksSteps.step2Body,
                 icon: (
                   <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
-                    <circle cx="40" cy="40" r="35" fill="rgba(124, 58, 237, 0.1)" stroke="var(--color-purple)" strokeWidth="2"/>
+                    <circle cx="40" cy="40" r="35" fill="rgba(147, 51, 234, 0.1)" stroke="var(--color-purple)" strokeWidth="2"/>
                     <g transform="translate(15, 15)">
                       <path d="M 25 5 L 35 15 L 25 25 L 15 15 Z" fill="var(--color-purple)" opacity="0.3" stroke="var(--color-purple)" strokeWidth="2"/>
                       <circle cx="25" cy="15" r="3" fill="var(--color-purple)"/>
