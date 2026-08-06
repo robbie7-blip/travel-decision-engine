@@ -152,7 +152,7 @@ export default function Home() {
             <br />
             {t.headlineLine2}
           </h1>
-          <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 620, margin: 0 }}>
+          <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 820, margin: 0 }}>
             {t.subheadLine1}
             <br />
             {t.subheadLine2}
