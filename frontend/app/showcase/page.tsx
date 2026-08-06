@@ -112,31 +112,33 @@ export default async function ShowcasePage({
             <NavMenu t={t} language={language} />
             <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
           <div
-            className="font-mono"
+            className="font-mono lang-toggle"
             style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
           >
             <a
               href="/showcase"
+              data-active={language === "en"}
               style={{
                 padding: "6px 12px",
                 fontSize: 11,
                 letterSpacing: "0.04em",
                 textDecoration: "none",
-                background: language === "en" ? "var(--accent-green)" : "transparent",
-                color: language === "en" ? "var(--bg-panel)" : "var(--ink-dim)",
+                background: "transparent",
+                color: "var(--ink-dim)",
               }}
             >
               EN
             </a>
             <a
               href="/showcase?lang=bg"
+              data-active={language === "bg"}
               style={{
                 padding: "6px 12px",
                 fontSize: 11,
                 letterSpacing: "0.04em",
                 textDecoration: "none",
-                background: language === "bg" ? "var(--accent-green)" : "transparent",
-                color: language === "bg" ? "var(--bg-panel)" : "var(--ink-dim)",
+                background: "transparent",
+                color: "var(--ink-dim)",
               }}
             >
               BG
