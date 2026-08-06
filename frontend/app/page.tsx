@@ -224,7 +224,12 @@ export default function Home() {
                 icon: (
                   <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
                     <circle cx="40" cy="40" r="35" fill="rgba(0, 102, 255, 0.1)" stroke="var(--color-blue)" strokeWidth="2"/>
-                    <g transform="translate(20, 20)">
+                    {/* y-offset tuned to 17.5 (not 20) so the drawn glyph
+                        (y 8-37 pre-translate) centers on the circle's true
+                        midpoint (y=40) instead of sitting a few px low —
+                        was visibly offset from steps 2/3 below, which sit a
+                        few px high with their own un-tuned offsets. */}
+                    <g transform="translate(20, 17.5)">
                       <rect x="8" y="8" width="24" height="24" fill="none" stroke="var(--color-blue)" strokeWidth="2" rx="2"/>
                       <circle cx="20" cy="20" r="3" fill="var(--color-blue)"/>
                       <line x1="8" y1="32" x2="32" y2="32" stroke="var(--color-blue)" strokeWidth="2"/>
@@ -239,7 +244,11 @@ export default function Home() {
                 icon: (
                   <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
                     <circle cx="40" cy="40" r="35" fill="rgba(147, 51, 234, 0.1)" stroke="var(--color-purple)" strokeWidth="2"/>
-                    <g transform="translate(15, 15)">
+                    {/* y-offset tuned to 19 (not 15) — see step 1's comment
+                        above; this glyph's own bounds (y 5-37 pre-translate)
+                        center a few px high of the circle's midpoint at the
+                        untuned offset. */}
+                    <g transform="translate(15, 19)">
                       <path d="M 25 5 L 35 15 L 25 25 L 15 15 Z" fill="var(--color-purple)" opacity="0.3" stroke="var(--color-purple)" strokeWidth="2"/>
                       <circle cx="25" cy="15" r="3" fill="var(--color-purple)"/>
                       <line x1="5" y1="35" x2="45" y2="35" stroke="var(--color-purple)" strokeWidth="2"/>
@@ -255,7 +264,11 @@ export default function Home() {
                 icon: (
                   <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
                     <circle cx="40" cy="40" r="35" fill="rgba(6, 182, 212, 0.1)" stroke="var(--color-teal)" strokeWidth="2"/>
-                    <g transform="translate(15, 15)">
+                    {/* y-offset tuned to 20 (not 15) — see step 1's comment
+                        above; this glyph's bounds (y 5-35 pre-translate)
+                        center a few px high of the circle's midpoint at the
+                        untuned offset. */}
+                    <g transform="translate(15, 20)">
                       <rect x="5" y="10" width="40" height="25" fill="none" stroke="var(--color-teal)" strokeWidth="2" rx="2"/>
                       <path d="M 15 10 L 20 5 L 25 10" fill="none" stroke="var(--color-teal)" strokeWidth="2" strokeLinecap="round"/>
                       <path d="M 35 10 L 40 5 L 45 10" fill="none" stroke="var(--color-teal)" strokeWidth="2" strokeLinecap="round"/>
