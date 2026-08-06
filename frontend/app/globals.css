@@ -133,30 +133,29 @@ button {
   color: transparent;
 }
 
-/* Solid coral, not a gradient — coral is the "action" color (see the
-   COLOR SYSTEM block above), and the primary CTA is precisely the one
-   place that should want attention without competing with the teal used
-   everywhere else for trust/confidence dots. A gradient here previously
-   ran teal into purple, which both muddied the button's own color and
-   spent purple's one deliberate meaning (the single-source tier) on
-   plain decoration. */
+/* Solid teal (brand/trust — see the COLOR SYSTEM block above), not
+   coral. Coral read too "warning-orange" for the main CTA in practice;
+   teal ties the button directly to the same trust color used for the
+   wordmark and the verified/feasible confidence tier, which fits a
+   "generate my itinerary" action better than the more attention-grabby
+   action color. */
 .btn-primary {
-  background: var(--color-coral);
+  background: var(--color-blue);
   color: white;
   border: none;
   border-radius: 8px;
   padding: 14px 32px;
   font-weight: 700;
   font-size: 16px;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-coral) 40%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-blue) 40%, transparent);
   transition: all 0.3s ease;
   cursor: pointer;
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 12px 36px color-mix(in srgb, var(--color-coral) 55%, transparent);
-  background: color-mix(in srgb, var(--color-coral) 85%, black);
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--color-blue) 55%, transparent);
+  background: color-mix(in srgb, var(--color-blue) 85%, black);
 }
 
 .btn-primary:active:not(:disabled) {

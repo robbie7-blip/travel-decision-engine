@@ -65,7 +65,15 @@ export function SiteHeader({
         borderBottom: `1px solid ${large ? "var(--line-strong)" : "var(--line)"}`,
       }}
     >
-      <div style={{ maxWidth: large ? 960 : maxWidth, margin: "0 auto" }}>
+      {/* 1400 (not 960) for the large variant specifically — its bigger
+          84px logo + 48px wordmark plus the extra currency-switcher
+          control need more room than the compact header's nav content
+          does before nav + currency + language toggle stop fitting on
+          one line (measured need: ~1297px). The homepage's own body
+          content below stays at its own narrower 960, same pattern as
+          every other page's header being wider than that page's content
+          column — see ask/page.tsx's SiteHeader call. */}
+      <div style={{ maxWidth: large ? 1400 : maxWidth, margin: "0 auto" }}>
         <div
           style={{
             display: "flex",
