@@ -48,7 +48,7 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
           <a
             key={link.href}
             href={link.href}
-            className="font-mono"
+            className="font-mono nav-link"
             style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
           >
             {link.label}

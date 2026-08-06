@@ -356,6 +356,65 @@ a {
   transition: all 0.2s ease;
 }
 
+/* Header nav links - underline-slide-in on hover instead of a flat
+   color-only change, so the nav reads as intentional rather than default
+   browser link styling. */
+.nav-link {
+  position: relative;
+  padding-bottom: 2px;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-blue), var(--color-purple));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+
+.nav-link:hover {
+  color: var(--color-blue) !important;
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* Language (EN/BG) segmented toggle - swap the flat green fill for the
+   blue/purple accent used everywhere else, with a hover state on the
+   inactive option so the control doesn't feel dead. */
+.lang-toggle button[data-active="true"] {
+  background: linear-gradient(135deg, var(--color-blue), var(--color-purple)) !important;
+  color: white !important;
+}
+
+.lang-toggle button[data-active="false"]:hover {
+  background: rgba(0, 102, 255, 0.1) !important;
+  color: var(--color-blue) !important;
+}
+
+.lang-toggle {
+  border-color: rgba(0, 102, 255, 0.25) !important;
+}
+
+/* Currency <select> - flat gray border felt out of place next to the
+   brighter nav/lang controls beside it. */
+.currency-select {
+  border-color: rgba(0, 102, 255, 0.3) !important;
+  color: var(--ink-soft) !important;
+  transition: all 0.2s ease;
+}
+
+.currency-select:hover {
+  border-color: var(--color-blue) !important;
+  color: var(--color-blue) !important;
+}
+
 /* Improved button transitions */
 button {
   transition: all 0.15s ease;

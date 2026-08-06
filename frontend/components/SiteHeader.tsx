@@ -110,20 +110,22 @@ export function SiteHeader({
             <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {extraControls}
-              <div className="font-mono" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
+              <div className="font-mono lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
                 {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
                   <button
                     key={lang}
                     type="button"
                     onClick={() => onLanguageChange(lang)}
+                    data-active={language === lang}
                     style={{
                       border: "none",
                       padding: "6px 12px",
                       fontSize: 11,
                       letterSpacing: "0.04em",
                       cursor: "pointer",
-                      background: language === lang ? "var(--accent-green)" : "transparent",
-                      color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
+                      background: "transparent",
+                      color: "var(--ink-dim)",
+                      transition: "all 0.2s ease",
                     }}
                   >
                     {lang.toUpperCase()}
