@@ -204,16 +204,16 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "28px 24px", borderBottom: "1px solid var(--line)" }}>
         <div id="how-it-works" style={{ maxWidth: 960, margin: "0 auto", scrollMarginTop: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, textAlign: "center", color: "var(--ink)" }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, textAlign: "center", color: "var(--ink)" }}>
             How It Works
           </h2>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 16,
+              gap: 20,
             }}
           >
             {[
@@ -221,7 +221,7 @@ export default function Home() {
                 title: t.howItWorksSteps.step1Title,
                 body: t.howItWorksSteps.step1Body,
                 icon: (
-                  <svg viewBox="0 0 80 80" style={{ width: 48, height: 48, marginBottom: 8 }}>
+                  <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
                     <circle cx="40" cy="40" r="35" fill="rgba(0, 102, 204, 0.1)" stroke="var(--color-blue)" strokeWidth="2"/>
                     <g transform="translate(20, 20)">
                       <rect x="8" y="8" width="24" height="24" fill="none" stroke="var(--color-blue)" strokeWidth="2" rx="2"/>
@@ -236,7 +236,7 @@ export default function Home() {
                 title: t.howItWorksSteps.step2Title,
                 body: t.howItWorksSteps.step2Body,
                 icon: (
-                  <svg viewBox="0 0 80 80" style={{ width: 48, height: 48, marginBottom: 8 }}>
+                  <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
                     <circle cx="40" cy="40" r="35" fill="rgba(124, 58, 237, 0.1)" stroke="var(--color-purple)" strokeWidth="2"/>
                     <g transform="translate(15, 15)">
                       <path d="M 25 5 L 35 15 L 25 25 L 15 15 Z" fill="var(--color-purple)" opacity="0.3" stroke="var(--color-purple)" strokeWidth="2"/>
@@ -252,7 +252,7 @@ export default function Home() {
                 title: t.howItWorksSteps.step3Title,
                 body: t.howItWorksSteps.step3Body,
                 icon: (
-                  <svg viewBox="0 0 80 80" style={{ width: 48, height: 48, marginBottom: 8 }}>
+                  <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
                     <circle cx="40" cy="40" r="35" fill="rgba(6, 182, 212, 0.1)" stroke="var(--color-teal)" strokeWidth="2"/>
                     <g transform="translate(15, 15)">
                       <rect x="5" y="10" width="40" height="25" fill="none" stroke="var(--color-teal)" strokeWidth="2" rx="2"/>
@@ -266,7 +266,7 @@ export default function Home() {
               },
             ].map((step, i) => (
               <div key={i}>
-                <div style={{ display: "flex", justifyContent: "center" }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
                   {step.icon}
                 </div>
                 <div
@@ -282,14 +282,13 @@ export default function Home() {
                     color: "var(--bg-panel)",
                     fontSize: 11,
                     fontWeight: 700,
-                    marginBottom: 6,
-                    margin: "0 auto 6px",
+                    margin: "0 auto 8px",
                   }}
                 >
                   {i + 1}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3, textAlign: "center" }}>{step.title}</div>
-                <div style={{ fontSize: 12, color: "var(--ink-dim)", lineHeight: 1.4, textAlign: "center" }}>{step.body}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, textAlign: "center" }}>{step.title}</div>
+                <div style={{ fontSize: 12.5, color: "var(--ink-dim)", lineHeight: 1.45, textAlign: "center" }}>{step.body}</div>
               </div>
             ))}
           </div>
