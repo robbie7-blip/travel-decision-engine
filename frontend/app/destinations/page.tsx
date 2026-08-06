@@ -43,9 +43,12 @@ export default async function DestinationsIndexPage({
   return (
     <div style={{ minHeight: "100%" }}>
       <div style={{ padding: "20px 24px", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+        {/* 1280, not this page's own 780px content width below — see the
+            comment on ask/page.tsx's SiteHeader call for why the header
+            stays pinned to the site-wide width regardless. */}
         <div
           style={{
-            maxWidth: 780,
+            maxWidth: 1280,
             margin: "0 auto",
             display: "flex",
             flexWrap: "wrap",

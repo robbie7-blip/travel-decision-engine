@@ -47,7 +47,11 @@ export function SiteHeader({
   variant = "compact",
   extraControls,
   contextLink,
-  maxWidth = 860,
+  // 1280 matches the header width every page now passes explicitly (see
+  // ask/page.tsx's SiteHeader call for the full reasoning) — CompareStatsView
+  // is the one remaining caller that relies on this default rather than
+  // passing its own maxWidth, so it needs to move in step with the rest.
+  maxWidth = 1280,
 }: SiteHeaderProps) {
   const large = variant === "large";
   const langSuffix = language === "bg" ? "?lang=bg" : "";
