@@ -12,6 +12,7 @@
 // it, it just isn't the ONLY way to navigate anymore.
 
 import type { ReactNode } from "react";
+import { AccountControl } from "./AccountControl";
 import { NavMenu } from "./NavMenu";
 import { LANGUAGE_NAMES } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
@@ -135,6 +136,7 @@ export function SiteHeader({
             <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {extraControls}
+              <AccountControl language={language} t={t} />
               <div className="font-mono lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
                 {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
                   <button

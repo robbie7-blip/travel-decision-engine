@@ -257,6 +257,8 @@ export interface Dictionary {
   // they share almost all their copy (plan names, quota wording).
   account: {
     navLink: string; // homepage header link to /pricing
+    headerSignIn: string; // short "Sign in" label for the global SiteHeader button
+    headerAccountLink: string; // short "Account" label for the same header slot once signed in
     pricingHeading: string;
     pricingSubheading: string;
     freePlanName: string;
@@ -581,6 +583,8 @@ const en: Dictionary = {
   },
   account: {
     navLink: "Pricing",
+    headerSignIn: "Sign in",
+    headerAccountLink: "Account",
     pricingHeading: "Plans",
     pricingSubheading:
       "Every visitor can try decide without an account. Sign in with an email to track your plan across visits, or subscribe for more generations a month.",
@@ -905,6 +909,8 @@ const bg: Dictionary = {
   },
   account: {
     navLink: "Цени",
+    headerSignIn: "Вход",
+    headerAccountLink: "Акаунт",
     pricingHeading: "Планове",
     pricingSubheading:
       "Всеки посетител може да пробва decide без акаунт. Влезте с имейл, за да следите плана си между посещенията, или се абонирайте за повече генерации на месец.",

@@ -10,6 +10,7 @@ import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
 import { computeTrustScore } from "@/lib/trustScore";
 import { SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
+import { AccountControl } from "@/components/AccountControl";
 import { Stamp } from "@/components/ui";
 import { NavMenu } from "@/components/NavMenu";
 import { TRANSLATIONS } from "@/lib/i18n";
@@ -113,6 +114,7 @@ export default async function ShowcasePage({
           <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
             <NavMenu t={t} language={language} />
             <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
+            <AccountControl language={language} t={t} />
           <div
             className="font-mono lang-toggle"
             style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}

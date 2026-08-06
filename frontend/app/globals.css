@@ -555,6 +555,39 @@ a {
   color: var(--color-blue) !important;
 }
 
+/* Global "Sign in" / "Account" header pill (AccountControl.tsx) — teal
+   while signed out (same brand/primary color as the rest of the header
+   controls), green once signed in (the "feasible/success" color, reused
+   here for "this is in a good state" rather than introducing a 7th hue). */
+.account-control {
+  color: var(--color-blue);
+  border-color: color-mix(in srgb, var(--color-blue) 30%, transparent) !important;
+  transition: all 0.2s ease;
+}
+
+.account-control:hover {
+  border-color: var(--color-blue) !important;
+  background: color-mix(in srgb, var(--color-blue) 10%, transparent);
+}
+
+.account-control[data-signed-in="true"] {
+  color: var(--accent-green);
+  border-color: color-mix(in srgb, var(--accent-green) 35%, transparent) !important;
+}
+
+.account-control[data-signed-in="true"]:hover {
+  border-color: var(--accent-green) !important;
+  background: color-mix(in srgb, var(--accent-green) 12%, transparent);
+}
+
+.account-control-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  flex-shrink: 0;
+}
+
 /* Improved button transitions */
 button {
   transition: all 0.15s ease;
