@@ -248,3 +248,50 @@ button {
     animation: none !important;
   }
 }
+
+/* SUBTLE ENHANCEMENTS */
+
+/* Smooth page load animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover effects on confidence pills */
+span[style*="border: 1px solid var(--line)"] {
+  transition: all 0.2s ease;
+}
+
+span[style*="border: 1px solid var(--line)"]:hover {
+  border-color: var(--grounded);
+  background-color: var(--bg-panel-raised);
+}
+
+/* Better link hover states */
+a {
+  transition: color 0.2s ease;
+}
+
+a[style*="color: var(--grounded)"]:hover {
+  opacity: 0.8;
+}
+
+/* Improved button transitions */
+button {
+  transition: all 0.15s ease;
+}
+
+/* Spacing improvements */
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+}
+
+p {
+  letter-spacing: 0.01em;
+}
