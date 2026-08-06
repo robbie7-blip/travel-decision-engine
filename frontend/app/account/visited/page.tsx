@@ -410,6 +410,53 @@ export default function VisitedPage() {
 
           {tab === "map" && (
             <>
+              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 16px", lineHeight: 1.5 }}>
+                {t.visited.mapSmallCountriesNote}
+              </p>
+
+              {CONTINENTS.map((continent) => (
+                <div key={continent} style={{ marginBottom: 28 }}>
+                  <div
+                    className="font-mono"
+                    style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 10 }}
+                  >
+                    {continent}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {COUNTRIES.filter((c) => c.continent === continent).map((c) => {
+                      const isVisited = codes.has(c.code);
+                      return (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => toggle(c.code)}
+                          className="font-mono"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            border: `1px solid ${isVisited ? "var(--accent-green)" : "var(--line)"}`,
+                            background: isVisited ? "var(--accent-green)" : "var(--bg-panel)",
+                            color: isVisited ? "var(--bg-panel)" : "var(--ink-soft)",
+                            borderRadius: 999,
+                            padding: "6px 12px",
+                            fontSize: 12,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span>{countryFlagEmoji(c.code)}</span>
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Below the full checklist, not competing with it for
+               * attention at the top of the tab — comparing with a friend
+               * is a nice-to-have on top of the tracker, not part of using
+               * it. */}
               <div
                 style={{
                   background: "var(--bg-panel)",
@@ -417,7 +464,7 @@ export default function VisitedPage() {
                   borderRadius: 8,
                   padding: 20,
                   boxShadow: "var(--shadow-panel)",
-                  marginBottom: 28,
+                  marginTop: 12,
                 }}
               >
                 <div className="font-mono" style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
@@ -524,49 +571,6 @@ export default function VisitedPage() {
                   </>
                 )}
               </div>
-
-              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 16px", lineHeight: 1.5 }}>
-                {t.visited.mapSmallCountriesNote}
-              </p>
-
-              {CONTINENTS.map((continent) => (
-                <div key={continent} style={{ marginBottom: 28 }}>
-                  <div
-                    className="font-mono"
-                    style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 10 }}
-                  >
-                    {continent}
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {COUNTRIES.filter((c) => c.continent === continent).map((c) => {
-                      const isVisited = codes.has(c.code);
-                      return (
-                        <button
-                          key={c.code}
-                          type="button"
-                          onClick={() => toggle(c.code)}
-                          className="font-mono"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            border: `1px solid ${isVisited ? "var(--accent-green)" : "var(--line)"}`,
-                            background: isVisited ? "var(--accent-green)" : "var(--bg-panel)",
-                            color: isVisited ? "var(--bg-panel)" : "var(--ink-soft)",
-                            borderRadius: 999,
-                            padding: "6px 12px",
-                            fontSize: 12,
-                            cursor: "pointer",
-                          }}
-                        >
-                          <span>{countryFlagEmoji(c.code)}</span>
-                          {c.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
             </>
           )}
 

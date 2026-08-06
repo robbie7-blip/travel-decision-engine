@@ -615,7 +615,7 @@ const en: Dictionary = {
     statsCountries: "{count} countries visited",
     statsPercent: "{percent}% of the world",
     statsContinents: "{count} of {total} continents",
-    signInPrompt: "Your list is saved on this device. Sign in with an email to sync it across devices too — no password needed.",
+    signInPrompt: "Sign in to sync this list across devices — no password needed.",
     signInButton: "Email me a sign-in link",
     signInSent: "Check your email for a sign-in link.",
     badges: {
@@ -939,7 +939,7 @@ const bg: Dictionary = {
     statsCountries: "{count} посетени държави",
     statsPercent: "{percent}% от света",
     statsContinents: "{count} от {total} континента",
-    signInPrompt: "Списъкът ви се пази на това устройство. Влезте с имейл, за да го синхронизирате и на други устройства - без парола.",
+    signInPrompt: "Влезте, за да синхронизирате списъка на други устройства - без парола.",
     signInButton: "Изпрати ми линк за вход",
     signInSent: "Проверете имейла си за линк за вход.",
     badges: {
