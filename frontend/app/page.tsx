@@ -118,7 +118,7 @@ export default function Home() {
         t={t}
         extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} />}
       />
-      <div style={{ padding: "32px 24px 36px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "16px 24px 36px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <h1
             className="font-display gradient-text"

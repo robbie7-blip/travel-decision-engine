@@ -54,7 +54,13 @@ export function SiteHeader({
   const linkStyle = { fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" } as const;
 
   return (
-    <div style={{ padding: large ? "28px 24px 36px" : "20px 24px", borderBottom: large ? undefined : "1px solid var(--line)" }}>
+    <div
+      style={{
+        padding: large ? "28px 24px 12px" : "20px 24px",
+        background: "var(--bg-panel-raised)",
+        borderBottom: `1px solid ${large ? "var(--line-strong)" : "var(--line)"}`,
+      }}
+    >
       <div style={{ maxWidth: large ? 960 : maxWidth, margin: "0 auto" }}>
         <div
           style={{

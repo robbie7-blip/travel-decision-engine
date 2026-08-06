@@ -126,7 +126,7 @@ export default async function DestinationPage({
         // none of our (fixed, curated) inputs actually contain it.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
-      <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "20px 24px", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         <div
           style={{
             maxWidth: 780,
