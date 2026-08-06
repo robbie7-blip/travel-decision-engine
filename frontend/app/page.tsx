@@ -118,8 +118,25 @@ export default function Home() {
         t={t}
         extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} />}
       />
-      <div style={{ padding: "16px 24px 36px", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto" }}>
+      <div style={{ padding: "16px 24px 36px", borderBottom: "1px solid var(--line)", position: "relative" }}>
+        {/* Decorative background elements */}
+        <svg
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: 200,
+            height: 200,
+            opacity: 0.08,
+            pointerEvents: "none",
+          }}
+          viewBox="0 0 200 200"
+        >
+          <circle cx="150" cy="50" r="60" fill="var(--color-blue)" />
+          <circle cx="100" cy="120" r="80" fill="var(--color-purple)" />
+        </svg>
+
+        <div style={{ maxWidth: 960, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <h1
             className="font-display gradient-text"
             style={{
@@ -158,8 +175,12 @@ export default function Home() {
           <div
             id="confidence-legend"
             className="font-mono scroll-row-mobile"
-            style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap" }}
+            style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap", alignItems: "center" }}
           >
+            <svg style={{ width: 20, height: 20, opacity: 0.5, marginRight: 4 }} viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="var(--color-blue)" strokeWidth="1.5" />
+              <path d="M 12 6 L 14 10 L 18 10 L 15 13 L 16 17 L 12 14 L 8 17 L 9 13 L 6 10 L 10 10 Z" fill="var(--color-blue)" opacity="0.4" />
+            </svg>
             {(
               ["verified", "fact_grounded", "single_source", "conflicting", "inferred"] as const
             ).map((tier) => (
@@ -172,6 +193,7 @@ export default function Home() {
                   border: "1px solid var(--line)",
                   borderRadius: 999,
                   padding: "5px 12px 5px 10px",
+                  transition: "all 0.2s ease",
                 }}
               >
                 <ConfidenceDot tier={tier} /> {t.tierLegend[tier]}
@@ -184,6 +206,9 @@ export default function Home() {
 
       <div style={{ padding: "32px 24px", borderBottom: "1px solid var(--line)" }}>
         <div id="how-it-works" style={{ maxWidth: 960, margin: "0 auto", scrollMarginTop: 24 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, textAlign: "center", color: "var(--ink)" }}>
+            {t.howItWorksTitle || "How It Works"}
+          </h2>
           <div
             style={{
               display: "grid",
@@ -192,11 +217,58 @@ export default function Home() {
             }}
           >
             {[
-              { title: t.howItWorksSteps.step1Title, body: t.howItWorksSteps.step1Body },
-              { title: t.howItWorksSteps.step2Title, body: t.howItWorksSteps.step2Body },
-              { title: t.howItWorksSteps.step3Title, body: t.howItWorksSteps.step3Body },
+              {
+                title: t.howItWorksSteps.step1Title,
+                body: t.howItWorksSteps.step1Body,
+                icon: (
+                  <svg viewBox="0 0 80 80" style={{ width: 60, height: 60, marginBottom: 16 }}>
+                    <circle cx="40" cy="40" r="35" fill="rgba(0, 102, 204, 0.1)" stroke="var(--color-blue)" strokeWidth="2"/>
+                    <g transform="translate(20, 20)">
+                      <rect x="8" y="8" width="24" height="24" fill="none" stroke="var(--color-blue)" strokeWidth="2" rx="2"/>
+                      <circle cx="20" cy="20" r="3" fill="var(--color-blue)"/>
+                      <line x1="8" y1="32" x2="32" y2="32" stroke="var(--color-blue)" strokeWidth="2"/>
+                      <line x1="8" y1="37" x2="32" y2="37" stroke="var(--color-blue)" strokeWidth="1.5" opacity="0.5"/>
+                    </g>
+                  </svg>
+                )
+              },
+              {
+                title: t.howItWorksSteps.step2Title,
+                body: t.howItWorksSteps.step2Body,
+                icon: (
+                  <svg viewBox="0 0 80 80" style={{ width: 60, height: 60, marginBottom: 16 }}>
+                    <circle cx="40" cy="40" r="35" fill="rgba(124, 58, 237, 0.1)" stroke="var(--color-purple)" strokeWidth="2"/>
+                    <g transform="translate(15, 15)">
+                      <path d="M 25 5 L 35 15 L 25 25 L 15 15 Z" fill="var(--color-purple)" opacity="0.3" stroke="var(--color-purple)" strokeWidth="2"/>
+                      <circle cx="25" cy="15" r="3" fill="var(--color-purple)"/>
+                      <line x1="5" y1="35" x2="45" y2="35" stroke="var(--color-purple)" strokeWidth="2"/>
+                      <circle cx="15" cy="35" r="2" fill="var(--color-purple)"/>
+                      <circle cx="35" cy="35" r="2" fill="var(--color-purple)"/>
+                    </g>
+                  </svg>
+                )
+              },
+              {
+                title: t.howItWorksSteps.step3Title,
+                body: t.howItWorksSteps.step3Body,
+                icon: (
+                  <svg viewBox="0 0 80 80" style={{ width: 60, height: 60, marginBottom: 16 }}>
+                    <circle cx="40" cy="40" r="35" fill="rgba(6, 182, 212, 0.1)" stroke="var(--color-teal)" strokeWidth="2"/>
+                    <g transform="translate(15, 15)">
+                      <rect x="5" y="10" width="40" height="25" fill="none" stroke="var(--color-teal)" strokeWidth="2" rx="2"/>
+                      <path d="M 15 10 L 20 5 L 25 10" fill="none" stroke="var(--color-teal)" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M 35 10 L 40 5 L 45 10" fill="none" stroke="var(--color-teal)" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="10" y1="25" x2="40" y2="25" stroke="var(--color-teal)" strokeWidth="1.5" opacity="0.5"/>
+                      <line x1="10" y1="30" x2="35" y2="30" stroke="var(--color-teal)" strokeWidth="1.5" opacity="0.5"/>
+                    </g>
+                  </svg>
+                )
+              },
             ].map((step, i) => (
               <div key={i}>
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  {step.icon}
+                </div>
                 <div
                   className="font-mono"
                   style={{
@@ -211,20 +283,40 @@ export default function Home() {
                     fontSize: 12,
                     fontWeight: 700,
                     marginBottom: 10,
+                    margin: "0 auto 10px",
                   }}
                 >
                   {i + 1}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{step.title}</div>
-                <div style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5 }}>{step.body}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4, textAlign: "center" }}>{step.title}</div>
+                <div style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5, textAlign: "center" }}>{step.body}</div>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div style={{ padding: "36px 24px", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto" }}>
+      <div style={{ padding: "36px 24px", borderBottom: "1px solid var(--line)", position: "relative" }}>
+        {/* Decorative background illustration */}
+        <svg
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            width: 250,
+            height: 250,
+            opacity: 0.06,
+            pointerEvents: "none",
+          }}
+          viewBox="0 0 250 250"
+        >
+          <circle cx="125" cy="125" r="100" fill="none" stroke="var(--color-teal)" strokeWidth="2" />
+          <circle cx="125" cy="125" r="70" fill="none" stroke="var(--color-purple)" strokeWidth="2" />
+          <circle cx="125" cy="125" r="40" fill="none" stroke="var(--color-blue)" strokeWidth="2" />
+          <path d="M 125 25 L 225 125 L 125 225 L 25 125 Z" fill="none" stroke="var(--color-coral)" strokeWidth="1.5" opacity="0.5" />
+        </svg>
+
+        <div style={{ maxWidth: 960, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <TripForm
             value={form}
             onChange={setForm}
