@@ -190,6 +190,16 @@ button {
     border-top: 1px solid var(--line);
   }
 
+  /* contextLink now renders as its own sibling next to the logo (see
+     SiteHeader.tsx) instead of as header-nav-row's first child, so it no
+     longer automatically gets that row's "full width, own line" mobile
+     treatment above — give it the same forced-own-line behavior directly
+     so it doesn't squeeze onto the logo's row on narrow screens. */
+  .header-context-link {
+    width: 100%;
+    margin-top: 6px;
+  }
+
   /* The links/controls groups already wrap onto separate lines at this
      width, which separates them on its own — the vertical rule between
      them would just float oddly at the start of a wrapped line instead. */

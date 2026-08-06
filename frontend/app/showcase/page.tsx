@@ -110,7 +110,7 @@ export default async function ShowcasePage({
               decide
             </span>
           </a>
-          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
+          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
             <NavMenu t={t} language={language} />
             <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
           <div

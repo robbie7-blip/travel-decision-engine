@@ -104,12 +104,25 @@ export function SiteHeader({
             </div>
           </a>
 
+          {/* contextLink sits here, next to the logo, rather than inside
+              header-nav-row below — it used to be the first child of that
+              row, which has marginLeft:auto and renders as one right-flush
+              block. Since contextLink's text length (or absence) varied
+              per page ("← Back to account" / "Your account →" / none),
+              that block's total width varied too, which shifted where
+              "How it works" started on every page even though the *right*
+              edge (language toggle) always lined up. Pulling contextLink
+              out means header-nav-row's content (nav + divider + language
+              toggle) is now identical on every page that renders it, so it
+              is pixel-identically positioned everywhere, not just
+              right-edge-aligned. */}
+          {contextLink && (
+            <a href={contextLink.href} className="font-mono header-context-link" style={linkStyle}>
+              {contextLink.label}
+            </a>
+          )}
+
           <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
-            {contextLink && (
-              <a href={contextLink.href} className="font-mono" style={linkStyle}>
-                {contextLink.label}
-              </a>
-            )}
             <NavMenu t={t} language={language} />
             <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

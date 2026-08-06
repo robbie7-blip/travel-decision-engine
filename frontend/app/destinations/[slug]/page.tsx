@@ -147,7 +147,7 @@ export default async function DestinationPage({
               decide
             </span>
           </a>
-          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
+          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
             <a
               href={`/destinations${langSuffix}`}
               className="font-mono"
