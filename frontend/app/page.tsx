@@ -127,7 +127,7 @@ export default function Home() {
             right: 0,
             width: 200,
             height: 200,
-            opacity: 0.08,
+            opacity: 0.13,
             pointerEvents: "none",
           }}
           viewBox="0 0 200 200"
@@ -265,7 +265,7 @@ export default function Home() {
                 )
               },
             ].map((step, i) => (
-              <div key={i}>
+              <div key={i} data-step={i}>
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
                   {step.icon}
                 </div>
@@ -304,7 +304,7 @@ export default function Home() {
             left: 0,
             width: 250,
             height: 250,
-            opacity: 0.06,
+            opacity: 0.12,
             pointerEvents: "none",
           }}
           viewBox="0 0 250 250"
