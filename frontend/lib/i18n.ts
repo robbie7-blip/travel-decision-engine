@@ -317,6 +317,40 @@ export interface Dictionary {
     mapNotVisited: string;
     mapUntracked: string;
     mapSmallCountriesNote: string;
+    // The Visualize tab row (components/Visited*.tsx) — Been-style
+    // alternate views of the same underlying visited list, switched via
+    // pill tabs alongside the default flat-map view.
+    visualize: {
+      tabMap: string;
+      tabGlobe: string;
+      tabZoomable: string;
+      tabFlags: string;
+      tabTimeline: string;
+      tabChronology: string;
+      tabPins: string;
+      flagsEmpty: string;
+      timelineEmpty: string;
+      timelineDateUnknown: string;
+      timelineSetDate: string;
+      chronologyUndated: string;
+      chronologyCountLabel: string; // "{count}" placeholder
+      pinsHeading: string;
+      pinsBlurb: string;
+      pinsEmpty: string;
+      pinsNeedVisitedCountry: string;
+      pinFormCountryLabel: string;
+      pinFormCountryPlaceholder: string;
+      pinFormLabelLabel: string;
+      pinFormLabelPlaceholder: string;
+      pinFormLatLabel: string;
+      pinFormLngLabel: string;
+      pinFormNoteLabel: string;
+      pinFormNotePlaceholder: string;
+      pinFormSubmit: string;
+      pinFormInvalid: string;
+      pinRemove: string;
+      zoomableHint: string;
+    };
   };
   compareStats: {
     heading: string;
@@ -606,6 +640,37 @@ const en: Dictionary = {
     mapUntracked: "not tracked",
     mapSmallCountriesNote:
       "A few very small countries (city-states, small islands) don't show up as their own shape on the map above — mark them here instead.",
+    visualize: {
+      tabMap: "Map",
+      tabGlobe: "Globe",
+      tabZoomable: "Zoomable",
+      tabFlags: "Flags",
+      tabTimeline: "Timeline",
+      tabChronology: "Chronology",
+      tabPins: "Map Pins",
+      flagsEmpty: "Mark a country visited and its flag shows up here.",
+      timelineEmpty: "Mark a country visited to start your timeline.",
+      timelineDateUnknown: "Date unknown",
+      timelineSetDate: "Set the date",
+      chronologyUndated: "Undated",
+      chronologyCountLabel: "{count} countries",
+      pinsHeading: "Pin exact places",
+      pinsBlurb: "Drop a pin on a specific city or spot within a country you've visited — shown on the globe below.",
+      pinsEmpty: "No pins yet. Add one below.",
+      pinsNeedVisitedCountry: "Mark at least one country visited first — a pin belongs to a country you've been to.",
+      pinFormCountryLabel: "Country",
+      pinFormCountryPlaceholder: "Choose a visited country",
+      pinFormLabelLabel: "Place name",
+      pinFormLabelPlaceholder: "e.g. Shibuya Crossing",
+      pinFormLatLabel: "Latitude",
+      pinFormLngLabel: "Longitude",
+      pinFormNoteLabel: "Note (optional)",
+      pinFormNotePlaceholder: "Anything worth remembering",
+      pinFormSubmit: "Add pin",
+      pinFormInvalid: "Pick a country and a place name, with valid latitude/longitude.",
+      pinRemove: "Remove",
+      zoomableHint: "Pinch or scroll to zoom, drag to pan.",
+    },
   },
   compareStats: {
     heading: "Travel stats, compared",
@@ -899,6 +964,37 @@ const bg: Dictionary = {
     mapUntracked: "не се проследява",
     mapSmallCountriesNote:
       "Няколко много малки държави (градове-държави, малки острови) не се показват като отделна форма на картата по-горе - отбележете ги тук.",
+    visualize: {
+      tabMap: "Карта",
+      tabGlobe: "Глобус",
+      tabZoomable: "Мащабиране",
+      tabFlags: "Флагове",
+      tabTimeline: "Хронология",
+      tabChronology: "По години",
+      tabPins: "Пинове",
+      flagsEmpty: "Отбележете държава като посетена и флагът ѝ ще се появи тук.",
+      timelineEmpty: "Отбележете държава като посетена, за да започнете хронологията си.",
+      timelineDateUnknown: "Неизвестна дата",
+      timelineSetDate: "Задай дата",
+      chronologyUndated: "Без дата",
+      chronologyCountLabel: "{count} държави",
+      pinsHeading: "Отбележете точни места",
+      pinsBlurb: "Поставете пин на конкретен град или място в държава, която сте посетили — показва се на глобуса по-долу.",
+      pinsEmpty: "Все още няма пинове. Добавете един по-долу.",
+      pinsNeedVisitedCountry: "Първо отбележете поне една посетена държава — пинът принадлежи на държава, в която сте били.",
+      pinFormCountryLabel: "Държава",
+      pinFormCountryPlaceholder: "Изберете посетена държава",
+      pinFormLabelLabel: "Име на мястото",
+      pinFormLabelPlaceholder: "напр. Шибуя",
+      pinFormLatLabel: "Ширина (lat)",
+      pinFormLngLabel: "Дължина (lng)",
+      pinFormNoteLabel: "Бележка (по избор)",
+      pinFormNotePlaceholder: "Нещо, което си струва да запомните",
+      pinFormSubmit: "Добави пин",
+      pinFormInvalid: "Изберете държава и име на мястото, с валидни ширина/дължина.",
+      pinRemove: "Премахни",
+      zoomableHint: "Приближете с прищипване или скролиране, преместете с плъзгане.",
+    },
   },
   compareStats: {
     heading: "Сравнение на статистиката",
