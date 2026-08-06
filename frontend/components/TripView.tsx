@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { AddToShowcaseButton } from "./AddToShowcaseButton";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
+import { SiteHeader } from "./SiteHeader";
 import { useJobStatusMessage } from "./useJobStatusMessage";
 import { LoadingScreen } from "./LoadingScreen";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
-import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
+import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
 import type { Job } from "@/lib/jobs";
 import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
@@ -116,62 +117,14 @@ export function TripView({ jobId }: { jobId: string }) {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)" }}>
-        <div
-          style={{
-            maxWidth: 960,
-            margin: "0 auto",
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 16,
-          }}
-        >
-          <a href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
-            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
-              decide
-            </span>
-          </a>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
-            <a
-              href="/"
-              className="font-mono"
-              style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-            >
-              {t.trip.planAnother} →
-            </a>
-            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
-              <div
-                className="font-mono"
-                style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
-              >
-                {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => setLanguage(lang)}
-                    style={{
-                      border: "none",
-                      padding: "6px 12px",
-                      fontSize: 11,
-                      letterSpacing: "0.04em",
-                      cursor: "pointer",
-                      background: language === lang ? "var(--accent-green)" : "transparent",
-                      color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
-                    }}
-                  >
-                    {lang.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SiteHeader
+        language={language}
+        onLanguageChange={setLanguage}
+        t={t}
+        maxWidth={960}
+        extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} />}
+        contextLink={{ href: "/", label: `${t.trip.planAnother} →` }}
+      />
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DestinationHero } from "@/components/DestinationHero";
+import { NavMenu } from "@/components/NavMenu";
 import {
   getDestinationPhoto,
   getLocalizedCityName,
@@ -143,7 +144,7 @@ export default async function DestinationPage({
               decide
             </span>
           </a>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginLeft: "auto" }}>
+          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
             <a
               href={`/destinations${langSuffix}`}
               className="font-mono"
@@ -151,6 +152,8 @@ export default async function DestinationPage({
             >
               {dt.backToAll}
             </a>
+            <NavMenu t={t} language={language} />
+            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
             <div
               className="font-mono"
               style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}

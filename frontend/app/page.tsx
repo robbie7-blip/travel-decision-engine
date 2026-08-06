@@ -12,10 +12,11 @@ import {
 } from "@/components/TripForm";
 import { CurrencySwitcher, useCurrency } from "@/components/CurrencySwitcher";
 import { RecentTrips } from "@/components/RecentTrips";
+import { SiteHeader } from "@/components/SiteHeader";
 import { TrustFooter } from "@/components/TrustFooter";
 import { ConfidenceDot } from "@/components/ui";
 import { ApiError, createGenerateJob } from "@/lib/api";
-import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
+import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
 type Status = "idle" | "loading" | "error";
@@ -32,11 +33,6 @@ export default function Home() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [demo, setDemo] = useState<DemoTrip | null>(null);
-  // Mobile-only: collapses the 6 nav links behind a single toggle instead
-  // of letting them wrap onto 2-3 rows (see .nav-menu-toggle/.nav-links-row
-  // in globals.css) — irrelevant above that breakpoint, where CSS keeps
-  // the links row always visible regardless of this state.
-  const [navMenuOpen, setNavMenuOpen] = useState(false);
 
   const t = TRANSLATIONS[form.language];
 
@@ -115,137 +111,15 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "28px 24px 36px", borderBottom: "1px solid var(--line)" }}>
+      <SiteHeader
+        variant="large"
+        language={form.language}
+        onLanguageChange={setLanguage}
+        t={t}
+        extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} />}
+      />
+      <div style={{ padding: "32px 24px 36px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: 16,
-              paddingBottom: 24,
-              marginBottom: 26,
-              borderBottom: "1px solid var(--line)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-icon.svg" alt="" width={84} height={84} style={{ flexShrink: 0 }} />
-              <div>
-                <div className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
-                  decide
-                </div>
-                <div
-                  className="font-mono"
-                  style={{
-                    fontSize: "clamp(10px, 2.6vw, 14px)",
-                    fontWeight: 500,
-                    letterSpacing: "0.06em",
-                    color: "var(--accent-1)",
-                    textTransform: "uppercase",
-                    whiteSpace: "nowrap",
-                    marginTop: 8,
-                  }}
-                >
-                  {t.tagline}
-                </div>
-              </div>
-            </div>
-            <div
-              className="header-nav-row"
-              style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}
-            >
-              <button
-                type="button"
-                onClick={() => setNavMenuOpen((open) => !open)}
-                className="nav-menu-toggle font-mono"
-                aria-expanded={navMenuOpen}
-                style={{
-                  border: "1px solid var(--line)",
-                  borderRadius: 999,
-                  padding: "6px 14px",
-                  fontSize: 12,
-                  letterSpacing: "0.04em",
-                  background: "transparent",
-                  color: "var(--ink-soft)",
-                  cursor: "pointer",
-                }}
-              >
-                {navMenuOpen ? t.navMenuClose : t.navMenuOpen} {navMenuOpen ? "✕" : "☰"}
-              </button>
-              <div className={navMenuOpen ? "nav-links-row nav-links-row--open" : "nav-links-row"} style={{ alignItems: "center", gap: 20 }}>
-                <a
-                  href="#how-it-works"
-                  className="font-mono"
-                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-                >
-                  {t.howItWorks}
-                </a>
-                <a
-                  href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
-                  className="font-mono"
-                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-                >
-                  {t.browseDestinations}
-                </a>
-                <a
-                  href={form.language === "bg" ? "/showcase?lang=bg" : "/showcase"}
-                  className="font-mono"
-                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-                >
-                  {t.showcase.navLabel}
-                </a>
-                <a
-                  href="/ask"
-                  className="font-mono"
-                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-                >
-                  {t.tripQA.navLink}
-                </a>
-                <a
-                  href="/account/visited"
-                  className="font-mono"
-                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-                >
-                  {t.visited.homeNavLink}
-                </a>
-                <a
-                  href="/pricing"
-                  className="font-mono"
-                  style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
-                >
-                  {t.account.navLink}
-                </a>
-              </div>
-              <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
-                <div
-                  className="font-mono"
-                  style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
-                >
-                  {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => setLanguage(lang)}
-                      style={{
-                        border: "none",
-                        padding: "6px 12px",
-                        fontSize: 11,
-                        letterSpacing: "0.04em",
-                        cursor: "pointer",
-                        background: form.language === lang ? "var(--accent-green)" : "transparent",
-                        color: form.language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
-                      }}
-                    >
-                      {lang.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
           <h1
             className="font-display gradient-text"
             style={{

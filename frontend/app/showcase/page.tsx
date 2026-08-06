@@ -11,6 +11,7 @@ import { loadJob } from "@/lib/loadJob";
 import { computeTrustScore } from "@/lib/trustScore";
 import { SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
 import { Stamp } from "@/components/ui";
+import { NavMenu } from "@/components/NavMenu";
 import { TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
@@ -107,9 +108,12 @@ export default async function ShowcasePage({
               decide
             </span>
           </a>
+          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
+            <NavMenu t={t} language={language} />
+            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
           <div
             className="font-mono"
-            style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden", marginLeft: "auto" }}
+            style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
           >
             <a
               href="/showcase"
@@ -137,6 +141,7 @@ export default async function ShowcasePage({
             >
               BG
             </a>
+          </div>
           </div>
         </div>
       </div>

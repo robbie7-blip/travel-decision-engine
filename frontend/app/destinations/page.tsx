@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DestinationHero } from "@/components/DestinationHero";
+import { NavMenu } from "@/components/NavMenu";
 import { getLocalizedCityName, listDestinations } from "@/lib/destinations";
 import { TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
@@ -31,7 +32,8 @@ export default async function DestinationsIndexPage({
 }) {
   const { lang } = await searchParams;
   const language = resolveLanguage(lang);
-  const dt = TRANSLATIONS[language].destinations;
+  const t = TRANSLATIONS[language];
+  const dt = t.destinations;
   const langSuffix = language === "bg" ? "?lang=bg" : "";
 
   const destinations = listDestinations()
@@ -58,9 +60,12 @@ export default async function DestinationsIndexPage({
               decide
             </span>
           </a>
+          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
+            <NavMenu t={t} language={language} />
+            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
           <div
             className="font-mono"
-            style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden", marginLeft: "auto" }}
+            style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
           >
             <a
               href="/destinations"
@@ -88,6 +93,7 @@ export default async function DestinationsIndexPage({
             >
               BG
             </a>
+          </div>
           </div>
         </div>
       </div>
