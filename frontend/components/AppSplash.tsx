@@ -45,7 +45,7 @@ export function AppSplash() {
       <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-icon.svg" alt="" width={76} height={76} />
-        <span className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
+        <span className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
           decide
         </span>
       </div>

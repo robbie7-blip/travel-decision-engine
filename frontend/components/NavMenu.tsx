@@ -43,13 +43,17 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
       >
         {menuOpen ? t.navMenuClose : t.navMenuOpen} {menuOpen ? "✕" : "☰"}
       </button>
-      <div className={menuOpen ? "nav-links-row nav-links-row--open" : "nav-links-row"} style={{ alignItems: "center", gap: 20 }}>
+      {/* gap is 0, not the old 20px — .nav-link below supplies its own
+          spacing via padding + a divider border, so this row reads as
+          distinct clickable items instead of one run of same-weight text
+          with just whitespace between words. */}
+      <div className={menuOpen ? "nav-links-row nav-links-row--open" : "nav-links-row"} style={{ alignItems: "center", gap: 0 }}>
         {links.map((link) => (
           <a
             key={link.href}
             href={link.href}
             className="font-mono nav-link"
-            style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+            style={{ fontSize: 12, letterSpacing: "0.04em", textDecoration: "none" }}
           >
             {link.label}
           </a>

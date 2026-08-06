@@ -77,7 +77,7 @@ export function SiteHeader({
             <div>
               <div
                 className="font-display"
-                style={{ fontSize: large ? 48 : 24, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}
+                style={{ fontSize: large ? 48 : 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}
               >
                 decide
               </div>

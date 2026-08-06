@@ -15,6 +15,15 @@
      system and the rest of the palette read as a single deliberate
      identity instead of two systems that almost match. */
   --grounded: #06b6d4;
+  /* logo-icon.svg's vertical line is a static gradient anchored at this
+     exact hex (its "midLine" stop) — it doesn't read any CSS variable, so
+     when --grounded above got bumped to a brighter cyan for the confidence
+     tier system, the "decide" wordmark (which used to just reuse
+     --grounded) silently drifted out of sync with the mark it sits next
+     to. This is that same old value, kept as its own variable so the
+     wordmark can stay pinned to the actual logo color independent of
+     whatever --grounded's tier-color duties need going forward. */
+  --logo-teal: #1f6f8a;
   --unverified: #f59e0b;
   --infeasible: #ef4444;
   --feasible: #06b6d4;
@@ -395,20 +404,33 @@ a {
   transition: all 0.2s ease;
 }
 
-/* Header nav links - underline-slide-in on hover instead of a flat
-   color-only change, so the nav reads as intentional rather than default
-   browser link styling. */
+/* Header nav links - previously all six (How it works / Destination
+   guides / Real examples / Ask a Local / Places you've been / Pricing)
+   sat at the same weight and color as ordinary body text with nothing but
+   a gap between them, so the row read as one run-on sentence rather than
+   a menu of distinct items — the hover underline alone didn't fix that
+   because it only kicks in per-item, after you've already had to parse
+   the resting-state wall of text. Bolder weight, darker resting color, a
+   divider between items, and padding that gives each one its own visual
+   "button-shaped" footprint all address the resting state instead of
+   only the hover state. */
 .nav-link {
   position: relative;
-  padding-bottom: 2px;
+  color: var(--ink);
+  font-weight: 600;
+  padding: 6px 14px;
+}
+
+.nav-link:not(:first-child) {
+  border-left: 1px solid var(--line-strong);
 }
 
 .nav-link::after {
   content: "";
   position: absolute;
-  left: 0;
-  bottom: -2px;
-  width: 100%;
+  left: 14px;
+  right: 14px;
+  bottom: 0;
   height: 2px;
   background: linear-gradient(90deg, var(--color-blue), var(--color-purple));
   transform: scaleX(0);
@@ -422,6 +444,19 @@ a {
 
 .nav-link:hover::after {
   transform: scaleX(1);
+}
+
+/* The stacked mobile menu (.nav-links-row--open, flex-direction: column)
+   already separates items onto their own rows, so the inline divider
+   would just float as a stray tick mark at the start of each line. */
+@media (max-width: 700px) {
+  .nav-link:not(:first-child) {
+    border-left: none;
+  }
+
+  .nav-link {
+    padding-left: 0;
+  }
 }
 
 /* Language (EN/BG) segmented toggle - swap the flat green fill for the
