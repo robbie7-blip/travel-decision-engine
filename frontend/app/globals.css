@@ -6,42 +6,24 @@
   --bg-panel: #fffdf8;
   --bg-panel-raised: #f1e7d2;
   --line: #e3d5b3;
-  /* A stronger border for form controls specifically — --line alone reads
-     as barely-there against --bg-panel-raised (the two are close enough in
-     lightness that inputs looked flush with their panel instead of like
-     inputs). Kept separate from --line so ordinary card/divider borders
-     elsewhere are untouched. */
   --line-strong: #cbb98c;
-  /* Soft lift for panels/cards that otherwise sit flat against --bg (a thin
-     --line border alone doesn't read as "raised" on a warm cream page). */
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
   --grounded: #1f6f8a;
   --unverified: #c97f1e;
   --infeasible: #b8452f;
   --feasible: #1f6f8a;
-  /* Confidence tiers (ItineraryItem.confidence_tier). "verified" reuses
-     --grounded and "conflicting" reuses --unverified deliberately — a
-     conflicting-sources item still deserves the same "treat with caution"
-     amber as an ungrounded guess used to convey alone. --tier-single-source
-     was a second blue (#3f7ea3) until --grounded became blue too (was
-     teal) — the two were nearly indistinguishable at a glance, which
-     defeats the point of a color-coded confidence system, so this is now
-     a muted violet instead: distinct from --grounded's blue, --unverified's
-     amber, and --tier-inferred's grey. */
   --tier-single-source: #7d5ba6;
   --tier-inferred: #a89a82;
-  /* Brand gradient accent (terracotta -> gold) — used for the headline,
-     CTA, and small brand touches only, never for a trust/confidence
-     signal, so it stays unambiguous from the grounded/unverified meaning. */
   --accent-1: #d9643f;
   --accent-2: #e8a23f;
-  /* Wordmark + "primary action" accent (the decide logo, the main CTA
-     button, active toggle states). Deliberately a different hue from
-     --grounded's blue so it never reads as a confidence/trust signal —
-     this is purely a brand/UI-state color. */
   --accent-green: #3f7a4a;
   --accent-green-light: #6fae6c;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* New vibrant colors for visual interest */
+  --color-blue: #0066cc;
+  --color-purple: #7c3aed;
+  --color-teal: #06b6d4;
+  --color-coral: #ff6b6b;
 }
 
 * {
@@ -93,17 +75,26 @@ button {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-green), var(--accent-green-light));
-  color: var(--bg-panel);
+  background: linear-gradient(135deg, var(--color-blue), var(--color-purple));
+  color: white;
   border: none;
-  border-radius: 999px;
-  box-shadow: 0 6px 20px -6px rgba(63, 122, 74, 0.45);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 8px;
+  padding: 14px 32px;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 8px 24px rgba(0, 102, 204, 0.35);
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 28px -6px rgba(63, 122, 74, 0.6);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px rgba(0, 102, 204, 0.5);
+  background: linear-gradient(135deg, #0052a3, #6d28d9);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .btn-primary:disabled {
@@ -111,6 +102,31 @@ button {
   color: var(--ink-dim);
   box-shadow: none;
   cursor: default;
+}
+
+/* FORM STYLING ENHANCEMENTS */
+.trip-form-grid input,
+.trip-form-grid select,
+.trip-form-grid textarea {
+  border: 2px solid var(--color-blue) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  font-size: 15px !important;
+  transition: all 0.2s ease !important;
+  background: white !important;
+}
+
+.trip-form-grid input:focus,
+.trip-form-grid select:focus,
+.trip-form-grid textarea:focus {
+  outline: none !important;
+  border-color: var(--color-purple) !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1) !important;
+}
+
+.trip-form-grid input::placeholder {
+  color: var(--ink-dim);
+  opacity: 0.7;
 }
 
 .trip-form-grid {
@@ -249,37 +265,70 @@ button {
   }
 }
 
-/* SUBTLE ENHANCEMENTS */
+/* VISUAL ENHANCEMENTS */
 
-/* Smooth page load animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Page sections with visual interest */
+div[style*="padding: 32px 24px"] {
+  position: relative;
 }
 
-/* Hover effects on confidence pills */
+/* How It Works section - colored background */
+div[id="how-it-works"] {
+  background: linear-gradient(135deg, rgba(0, 102, 204, 0.04), rgba(124, 58, 237, 0.04));
+  border-radius: 16px;
+  padding: 40px;
+}
+
+/* Step cards - enhanced styling */
+div[style*="display: grid"] > div {
+  background: white;
+  border-radius: 12px;
+  padding: 28px;
+  border: 1px solid rgba(0, 102, 204, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+div[style*="display: grid"] > div:hover {
+  border-color: var(--color-blue);
+  box-shadow: 0 12px 32px rgba(0, 102, 204, 0.15);
+  transform: translateY(-4px);
+}
+
+/* Confidence pills - better styling */
 span[style*="border: 1px solid var(--line)"] {
   transition: all 0.2s ease;
+  background: white;
+  border-color: var(--color-blue) !important;
 }
 
 span[style*="border: 1px solid var(--line)"]:hover {
-  border-color: var(--grounded);
-  background-color: var(--bg-panel-raised);
+  border-color: var(--color-purple) !important;
+  background-color: rgba(124, 58, 237, 0.08) !important;
+  transform: scale(1.05);
+}
+
+/* Demo link - styled button */
+a[style*="color: var(--grounded)"] {
+  transition: all 0.2s ease;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: rgba(0, 102, 204, 0.1);
+  color: var(--color-blue) !important;
+  border: 1px solid var(--color-blue);
+  text-decoration: none !important;
+  display: inline-block;
+  font-weight: 600;
+}
+
+a[style*="color: var(--grounded)"]:hover {
+  background: var(--color-blue);
+  color: white !important;
 }
 
 /* Better link hover states */
 a {
-  transition: color 0.2s ease;
-}
-
-a[style*="color: var(--grounded)"]:hover {
-  opacity: 0.8;
+  transition: all 0.2s ease;
 }
 
 /* Improved button transitions */
@@ -287,11 +336,38 @@ button {
   transition: all 0.15s ease;
 }
 
-/* Spacing improvements */
+/* Typography enhancements */
 h1, h2, h3 {
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  font-weight: 700;
 }
 
 p {
   letter-spacing: 0.01em;
+  line-height: 1.7;
+}
+
+/* Form container styling */
+div[style*="padding: 36px 24px"] {
+  background: linear-gradient(180deg, #f7f1e2, #f0e8d8);
+  position: relative;
+}
+
+div[style*="padding: 36px 24px"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-blue), var(--color-purple), var(--color-teal));
+}
+
+/* Decorative background elements */
+.trip-form-grid {
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  border: 2px solid rgba(0, 102, 204, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 102, 204, 0.08);
 }
