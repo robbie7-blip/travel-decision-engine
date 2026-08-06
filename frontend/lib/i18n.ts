@@ -309,6 +309,14 @@ export interface Dictionary {
     compareInputLabel: string;
     compareInputPlaceholder: string;
     compareButton: string;
+    // The interactive map (components/VisitedMap.tsx) — mapVisited/
+    // mapNotVisited/mapUntracked are the map's own hover-tooltip text,
+    // mapSmallCountriesNote explains why very small nations only appear in
+    // the checklist below, not as a clickable shape on the map itself.
+    mapVisited: string;
+    mapNotVisited: string;
+    mapUntracked: string;
+    mapSmallCountriesNote: string;
   };
   compareStats: {
     heading: string;
@@ -593,6 +601,11 @@ const en: Dictionary = {
     compareInputLabel: "Paste a friend's share link",
     compareInputPlaceholder: "https://.../compare-stats?a=...",
     compareButton: "Compare",
+    mapVisited: "Visited ✓",
+    mapNotVisited: "Tap to mark visited",
+    mapUntracked: "not tracked",
+    mapSmallCountriesNote:
+      "A few very small countries (city-states, small islands) don't show up as their own shape on the map above — mark them here instead.",
   },
   compareStats: {
     heading: "Travel stats, compared",
@@ -881,6 +894,11 @@ const bg: Dictionary = {
     compareInputLabel: "Поставете линк на приятел",
     compareInputPlaceholder: "https://.../compare-stats?a=...",
     compareButton: "Сравни",
+    mapVisited: "Посетено ✓",
+    mapNotVisited: "Докоснете, за да отбележите",
+    mapUntracked: "не се проследява",
+    mapSmallCountriesNote:
+      "Няколко много малки държави (градове-държави, малки острови) не се показват като отделна форма на картата по-горе - отбележете ги тук.",
   },
   compareStats: {
     heading: "Сравнение на статистиката",

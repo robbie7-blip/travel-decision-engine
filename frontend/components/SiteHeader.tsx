@@ -1,0 +1,133 @@
+"use client";
+
+// Single shared header for every page — was previously hand-duplicated
+// across 10+ files, each showing only ONE contextual link (e.g. "Plan
+// another trip →" on /trip/[id], "Places you've been →" on /account) with
+// no way to reach anywhere else without going back to the homepage first.
+// Confirmed confusing in practice: from most pages there was no path to
+// Destination guides, Ask a Local, or Pricing at all. Every page now gets
+// the full link set via the same mobile-collapsible menu the homepage
+// already uses (.nav-menu-toggle/.nav-links-row in globals.css) — a page
+// can still show its own extra context link (contextLink prop) alongside
+// it, it just isn't the ONLY way to navigate anymore.
+
+import type { ReactNode } from "react";
+import { NavMenu } from "./NavMenu";
+import { LANGUAGE_NAMES } from "@/lib/i18n";
+import type { Dictionary } from "@/lib/i18n";
+import type { Language } from "@/lib/types";
+
+interface SiteHeaderProps {
+  language: Language;
+  onLanguageChange: (lang: Language) => void;
+  t: Dictionary;
+  /** "large" is the homepage's own hero lockup (big logo + tagline,
+   * wrapped in its own bottom border); every other page uses the default
+   * compact treatment. */
+  variant?: "compact" | "large";
+  /** Extra control rendered next to the language switcher — currently
+   * only the homepage/trip pages' CurrencySwitcher. */
+  extraControls?: ReactNode;
+  /** An additional page-specific link shown alongside the full menu
+   * (e.g. "Plan another trip →" on a result page) — kept because it's
+   * often the single most relevant action on that page, not a
+   * replacement for real navigation. Pass the label pre-formatted with
+   * whatever arrow (or none) it should show — existing translation
+   * strings aren't consistent about embedding a trailing "→" vs. a
+   * leading "←" vs. neither, so this renders the label verbatim rather
+   * than guessing/appending one itself. */
+  contextLink?: { href: string; label: string };
+  maxWidth?: number;
+}
+
+export function SiteHeader({
+  language,
+  onLanguageChange,
+  t,
+  variant = "compact",
+  extraControls,
+  contextLink,
+  maxWidth = 860,
+}: SiteHeaderProps) {
+  const large = variant === "large";
+  const langSuffix = language === "bg" ? "?lang=bg" : "";
+  const linkStyle = { fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" } as const;
+
+  return (
+    <div style={{ padding: large ? "28px 24px 36px" : "20px 24px", borderBottom: large ? undefined : "1px solid var(--line)" }}>
+      <div style={{ maxWidth: large ? 960 : maxWidth, margin: "0 auto" }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: large ? 22 : 16,
+            ...(large ? { paddingBottom: 24, marginBottom: 26, borderBottom: "1px solid var(--line)" } : {}),
+          }}
+        >
+          <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: large ? 22 : 12, textDecoration: "none" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.svg" alt="" width={large ? 84 : 40} height={large ? 84 : 40} style={{ flexShrink: 0 }} />
+            <div>
+              <div
+                className="font-display"
+                style={{ fontSize: large ? 48 : 24, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}
+              >
+                decide
+              </div>
+              {large && (
+                <div
+                  className="font-mono"
+                  style={{
+                    fontSize: "clamp(10px, 2.6vw, 14px)",
+                    fontWeight: 500,
+                    letterSpacing: "0.06em",
+                    color: "var(--accent-1)",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    marginTop: 8,
+                  }}
+                >
+                  {t.tagline}
+                </div>
+              )}
+            </div>
+          </a>
+
+          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
+            {contextLink && (
+              <a href={contextLink.href} className="font-mono" style={linkStyle}>
+                {contextLink.label}
+              </a>
+            )}
+            <NavMenu t={t} language={language} />
+            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {extraControls}
+              <div className="font-mono" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
+                {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => onLanguageChange(lang)}
+                    style={{
+                      border: "none",
+                      padding: "6px 12px",
+                      fontSize: 11,
+                      letterSpacing: "0.04em",
+                      cursor: "pointer",
+                      background: language === lang ? "var(--accent-green)" : "transparent",
+                      color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
+                    }}
+                  >
+                    {lang.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

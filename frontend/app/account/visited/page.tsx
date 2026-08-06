@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LANGUAGE_NAMES, LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
+import { SiteHeader } from "@/components/SiteHeader";
+import { VisitedMap } from "@/components/VisitedMap";
+import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { COUNTRIES, countryFlagEmoji, CONTINENTS, type Continent } from "@/lib/countries";
 import type { Language } from "@/lib/types";
 
@@ -174,43 +176,12 @@ export default function VisitedPage() {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
-          <a href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
-            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
-              decide
-            </span>
-          </a>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
-            <a href="/account" className="font-mono" style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}>
-              {t.visited.backToAccount}
-            </a>
-            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
-            <div className="font-mono" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
-              {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => setLanguage(lang)}
-                  style={{
-                    border: "none",
-                    padding: "6px 12px",
-                    fontSize: 11,
-                    letterSpacing: "0.04em",
-                    cursor: "pointer",
-                    background: language === lang ? "var(--accent-green)" : "transparent",
-                    color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
-                  }}
-                >
-                  {lang.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      <SiteHeader
+        language={language}
+        onLanguageChange={setLanguage}
+        t={t}
+        contextLink={{ href: "/account", label: t.visited.backToAccount }}
+      />
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
@@ -344,6 +315,17 @@ export default function VisitedPage() {
                 )}
               </div>
 
+              <div style={{ marginBottom: 28 }}>
+                <VisitedMap
+                  visitedCodes={codes}
+                  onToggle={toggle}
+                  pendingCode={pending}
+                  visitedLabel={t.visited.mapVisited}
+                  notVisitedLabel={t.visited.mapNotVisited}
+                  untrackedLabel={t.visited.mapUntracked}
+                />
+              </div>
+
               <div
                 style={{
                   background: "var(--bg-panel)",
@@ -460,6 +442,10 @@ export default function VisitedPage() {
                   </>
                 )}
               </div>
+
+              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 16px", lineHeight: 1.5 }}>
+                {t.visited.mapSmallCountriesNote}
+              </p>
 
               {CONTINENTS.map((continent) => (
                 <div key={continent} style={{ marginBottom: 28 }}>
