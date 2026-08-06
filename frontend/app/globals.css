@@ -40,7 +40,7 @@ body {
 
 body {
   min-height: 100vh;
-  background: var(--bg);
+  background: linear-gradient(180deg, #f7f1e2 0%, #f2eff0 100%);
 }
 
 input:focus,
