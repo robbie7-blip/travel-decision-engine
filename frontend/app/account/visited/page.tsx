@@ -1,26 +1,67 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VisitedMap } from "@/components/VisitedMap";
+import { VisitedFlags } from "@/components/VisitedFlags";
+import { VisitedTimeline } from "@/components/VisitedTimeline";
+import { VisitedChronology } from "@/components/VisitedChronology";
+import { VisitedZoomableMap } from "@/components/VisitedZoomableMap";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { COUNTRIES, countryFlagEmoji, CONTINENTS } from "@/lib/countries";
 import { computeVisitedStats } from "@/lib/visited";
-import { readLocalVisitedCodes, writeLocalVisitedCodes, peekLocalShareToken, getOrCreateLocalShareToken } from "@/lib/localVisited";
+import {
+  readLocalVisitedEntries,
+  writeLocalVisitedEntries,
+  peekLocalShareToken,
+  getOrCreateLocalShareToken,
+  type VisitedEntry,
+  type VisitedPin,
+} from "@/lib/localVisited";
 import type { Language } from "@/lib/types";
 
+// The globe renders to a WebGL canvas via three.js, which touches
+// `document`/`window` at construction time — fatal during SSR. Both of
+// these load it (VisitedPinsPanel embeds a VisitedGlobe internally), so
+// both are loaded client-only, with a plain placeholder while the chunk
+// downloads instead of nothing.
+const VisitedGlobe = dynamic(() => import("@/components/VisitedGlobe").then((m) => m.VisitedGlobe), {
+  ssr: false,
+  loading: () => <GlobeLoadingPlaceholder />,
+});
+const VisitedPinsPanel = dynamic(() => import("@/components/VisitedPinsPanel").then((m) => m.VisitedPinsPanel), {
+  ssr: false,
+  loading: () => <GlobeLoadingPlaceholder />,
+});
+
+function GlobeLoadingPlaceholder() {
+  return (
+    <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-dim)", fontSize: 13 }}>
+      <div className="font-mono">···</div>
+    </div>
+  );
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type Tab = "map" | "globe" | "zoomable" | "flags" | "timeline" | "chronology" | "pins";
 
 /** The Been-style visited-countries tracker. Local-storage-first, same as
  * the Been app itself — marking a country visited needs no account, it
  * just needs to persist on this device (lib/localVisited.ts). Signing in
  * (handled inline, not a redirect to /account and back) is an optional
  * upgrade that syncs the same list to /api/visited so it also follows you
- * to another device — never a requirement to use the feature at all. */
+ * to another device — never a requirement to use the feature at all.
+ *
+ * Also the home of the "Visualize" tab row — Been-style alternate views
+ * (Globe, Zoomable, Flags, Timeline, Chronology, Map Pins) of the exact
+ * same underlying entries, not separate data. */
 export default function VisitedPage() {
   const [language, setLanguageState] = useState<Language>("en");
   const [signedIn, setSignedIn] = useState(false);
-  const [codes, setCodes] = useState<Set<string>>(new Set());
+  const [entries, setEntries] = useState<Record<string, VisitedEntry>>({});
+  const [tab, setTab] = useState<Tab>("map");
 
   const [signInEmail, setSignInEmail] = useState("");
   const [signInSending, setSignInSending] = useState(false);
@@ -38,28 +79,30 @@ export default function VisitedPage() {
 
     // This device's list renders immediately — no network wait, since it's
     // the source of truth for anyone who never signs in. Checking for a
-    // signed-in account is a background upgrade: if one exists, its list is
-    // merged in (union of both, so neither device loses anything) and any
-    // code that was only local gets uploaded so the account catches up.
-    const local = readLocalVisitedCodes();
-    setCodes(new Set(local));
+    // signed-in account is a background upgrade: if one exists, its
+    // entries win on any code both sides know (an existing account is
+    // treated as the more authoritative copy once attached), and anything
+    // local-only gets uploaded so the account catches up.
+    const local = readLocalVisitedEntries();
+    const localByCode = Object.fromEntries(local.map((e) => [e.code, e]));
+    setEntries(localByCode);
 
     fetch("/api/visited")
       .then(async (r) => {
         if (!r.ok) return; // 401 not signed in, 500 misconfigured — either way, stay in local-only mode
         const data = await r.json();
-        const serverCodes: string[] = data.codes ?? [];
-        const serverSet = new Set(serverCodes);
-        const merged = new Set([...local, ...serverCodes]);
-        setCodes(merged);
-        writeLocalVisitedCodes([...merged]);
+        const serverEntries: VisitedEntry[] = data.entries ?? [];
+        const serverByCode = Object.fromEntries(serverEntries.map((e) => [e.code, e]));
+        const merged = { ...localByCode, ...serverByCode };
+        setEntries(merged);
+        writeLocalVisitedEntries(Object.values(merged));
         setSignedIn(true);
-        for (const code of local) {
-          if (!serverSet.has(code)) {
+        for (const [code, entry] of Object.entries(localByCode)) {
+          if (!(code in serverByCode)) {
             fetch("/api/visited", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ code, visited: true }),
+              body: JSON.stringify({ code, visited: true, visitedAt: entry.visitedAt, pins: entry.pins }),
             }).catch(() => {});
           }
         }
@@ -68,6 +111,9 @@ export default function VisitedPage() {
   }, []);
 
   const t = TRANSLATIONS[language];
+  const v = t.visited.visualize;
+  const codes = useMemo(() => new Set(Object.keys(entries)), [entries]);
+  const entryList = useMemo(() => Object.values(entries), [entries]);
   const stats = useMemo(() => computeVisitedStats([...codes]), [codes]);
 
   function setLanguage(next: Language) {
@@ -75,32 +121,57 @@ export default function VisitedPage() {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
   }
 
-  function toggle(code: string) {
-    const nowVisited = !codes.has(code);
-    const next = new Set(codes);
-    if (nowVisited) next.add(code);
-    else next.delete(code);
-    setCodes(next);
-    writeLocalVisitedCodes([...next]);
+  /** Every mutation below funnels through here: update state, persist
+   * locally, and best-effort sync (account or anonymous share snapshot) —
+   * one place for that fan-out instead of repeating it per action. */
+  function applyEntries(next: Record<string, VisitedEntry>, changedCode: string) {
+    setEntries(next);
+    writeLocalVisitedEntries(Object.values(next));
 
+    const changed = next[changedCode];
     if (signedIn) {
-      // Best-effort background sync — local storage already has the
-      // durable copy for this device, so a failed request here just means
-      // the account catches up next time this succeeds, not a lost toggle.
       fetch("/api/visited", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, visited: nowVisited }),
+        body: JSON.stringify({
+          code: changedCode,
+          visited: Boolean(changed),
+          visitedAt: changed?.visitedAt,
+          pins: changed?.pins,
+        }),
       }).catch(() => {});
     } else if (peekLocalShareToken()) {
-      // A share link for this device already exists — keep its snapshot
-      // current so anyone who has it sees this toggle too.
       fetch("/api/visited/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: peekLocalShareToken(), codes: [...next] }),
+        body: JSON.stringify({ token: peekLocalShareToken(), codes: Object.keys(next) }),
       }).catch(() => {});
     }
+  }
+
+  function toggle(code: string) {
+    const next = { ...entries };
+    if (next[code]) delete next[code];
+    else next[code] = { code };
+    applyEntries(next, code);
+  }
+
+  function setVisitedDate(code: string, visitedAt: string) {
+    if (!entries[code]) return;
+    applyEntries({ ...entries, [code]: { ...entries[code], visitedAt } }, code);
+  }
+
+  function addPin(code: string, pin: Omit<VisitedPin, "id">) {
+    const existing = entries[code];
+    if (!existing) return;
+    const withId: VisitedPin = { ...pin, id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}` };
+    applyEntries({ ...entries, [code]: { ...existing, pins: [...(existing.pins ?? []), withId] } }, code);
+  }
+
+  function removePin(code: string, pinId: string) {
+    const existing = entries[code];
+    if (!existing) return;
+    applyEntries({ ...entries, [code]: { ...existing, pins: (existing.pins ?? []).filter((p) => p.id !== pinId) } }, code);
   }
 
   async function requestSignIn() {
@@ -181,6 +252,16 @@ export default function VisitedPage() {
     window.location.href = `/compare-stats?a=${myToken}&b=${friendToken}`;
   }
 
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "map", label: v.tabMap },
+    { id: "globe", label: v.tabGlobe },
+    { id: "zoomable", label: v.tabZoomable },
+    { id: "flags", label: v.tabFlags },
+    { id: "timeline", label: v.tabTimeline },
+    { id: "chronology", label: v.tabChronology },
+    { id: "pins", label: v.tabPins },
+  ];
+
   return (
     <div style={{ minHeight: "100%" }}>
       <SiteHeader
@@ -195,80 +276,140 @@ export default function VisitedPage() {
           <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
             {t.visited.pageHeading}
           </h1>
-          <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 24px", lineHeight: 1.5 }}>
-            {t.visited.pageSubheading}
-          </p>
+          <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 24px", lineHeight: 1.5 }}>{t.visited.pageSubheading}</p>
 
           <div
+            style={{
+              background: "var(--bg-panel)",
+              border: "1px solid var(--line)",
+              borderRadius: 8,
+              padding: 20,
+              boxShadow: "var(--shadow-panel)",
+              marginBottom: 28,
+            }}
+          >
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginBottom: stats.earnedBadgeIds.length > 0 ? 16 : 0 }}>
+              <div>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                  {stats.countriesVisited}
+                </div>
+                <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                  {t.visited.statsCountries.replace("{count}", String(stats.countriesVisited))}
+                </div>
+              </div>
+              <div>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                  {stats.percentOfWorld}%
+                </div>
+                <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                  {t.visited.statsPercent.replace("{percent}", String(stats.percentOfWorld))}
+                </div>
+              </div>
+              <div>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                  {stats.continentsVisited.length}/{stats.continentsTotal}
+                </div>
+                <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                  {t.visited.statsContinents
+                    .replace("{count}", String(stats.continentsVisited.length))
+                    .replace("{total}", String(stats.continentsTotal))}
+                </div>
+              </div>
+            </div>
+            {stats.earnedBadgeIds.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {stats.earnedBadgeIds.map((id) => (
+                  <span
+                    key={id}
+                    className="font-mono"
+                    style={{
+                      fontSize: 11,
+                      border: "1px solid var(--accent-green)",
+                      color: "var(--accent-green)",
+                      borderRadius: 999,
+                      padding: "4px 12px",
+                    }}
+                  >
+                    🏅 {t.visited.badges[id as keyof typeof t.visited.badges] ?? id}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Visualize tab row — same underlying entries, different view. */}
+          <div className="font-mono scroll-row-mobile" style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+            {TABS.map((tabDef) => (
+              <button
+                key={tabDef.id}
+                type="button"
+                onClick={() => setTab(tabDef.id)}
                 style={{
-                  background: "var(--bg-panel)",
-                  border: "1px solid var(--line)",
-                  borderRadius: 8,
-                  padding: 20,
-                  boxShadow: "var(--shadow-panel)",
-                  marginBottom: 28,
+                  padding: "8px 14px",
+                  fontSize: 12,
+                  letterSpacing: "0.02em",
+                  borderRadius: 999,
+                  border: `1px solid ${tab === tabDef.id ? "var(--accent-green)" : "var(--line)"}`,
+                  background: tab === tabDef.id ? "var(--accent-green)" : "var(--bg-panel)",
+                  color: tab === tabDef.id ? "var(--bg-panel)" : "var(--ink-soft)",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
                 }}
               >
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginBottom: stats.earnedBadgeIds.length > 0 ? 16 : 0 }}>
-                  <div>
-                    <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
-                      {stats.countriesVisited}
-                    </div>
-                    <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
-                      {t.visited.statsCountries.replace("{count}", String(stats.countriesVisited))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
-                      {stats.percentOfWorld}%
-                    </div>
-                    <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
-                      {t.visited.statsPercent.replace("{percent}", String(stats.percentOfWorld))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
-                      {stats.continentsVisited.length}/{stats.continentsTotal}
-                    </div>
-                    <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
-                      {t.visited.statsContinents
-                        .replace("{count}", String(stats.continentsVisited.length))
-                        .replace("{total}", String(stats.continentsTotal))}
-                    </div>
-                  </div>
-                </div>
-                {stats.earnedBadgeIds.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {stats.earnedBadgeIds.map((id) => (
-                      <span
-                        key={id}
-                        className="font-mono"
-                        style={{
-                          fontSize: 11,
-                          border: "1px solid var(--accent-green)",
-                          color: "var(--accent-green)",
-                          borderRadius: 999,
-                          padding: "4px 12px",
-                        }}
-                      >
-                        🏅 {t.visited.badges[id as keyof typeof t.visited.badges] ?? id}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+                {tabDef.label}
+              </button>
+            ))}
+          </div>
 
-              <div style={{ marginBottom: 28 }}>
-                <VisitedMap
-                  visitedCodes={codes}
-                  onToggle={toggle}
-                  pendingCode={null}
-                  visitedLabel={t.visited.mapVisited}
-                  notVisitedLabel={t.visited.mapNotVisited}
-                  untrackedLabel={t.visited.mapUntracked}
-                />
-              </div>
+          <div style={{ marginBottom: 28 }}>
+            {tab === "map" && (
+              <VisitedMap
+                visitedCodes={codes}
+                onToggle={toggle}
+                pendingCode={null}
+                visitedLabel={t.visited.mapVisited}
+                notVisitedLabel={t.visited.mapNotVisited}
+                untrackedLabel={t.visited.mapUntracked}
+              />
+            )}
+            {tab === "globe" && (
+              <VisitedGlobe
+                visitedCodes={codes}
+                onToggleCountry={toggle}
+                visitedLabel={t.visited.mapVisited}
+                notVisitedLabel={t.visited.mapNotVisited}
+                untrackedLabel={t.visited.mapUntracked}
+              />
+            )}
+            {tab === "zoomable" && (
+              <VisitedZoomableMap
+                visitedCodes={codes}
+                onToggle={toggle}
+                visitedLabel={t.visited.mapVisited}
+                notVisitedLabel={t.visited.mapNotVisited}
+                untrackedLabel={t.visited.mapUntracked}
+                hint={v.zoomableHint}
+              />
+            )}
+            {tab === "flags" && <VisitedFlags codes={[...codes]} onToggle={toggle} emptyLabel={v.flagsEmpty} />}
+            {tab === "timeline" && (
+              <VisitedTimeline
+                entries={entryList}
+                onSetDate={setVisitedDate}
+                emptyLabel={v.timelineEmpty}
+                dateUnknownLabel={v.timelineDateUnknown}
+                setDateLabel={v.timelineSetDate}
+                locale={language === "bg" ? "bg-BG" : "en-US"}
+              />
+            )}
+            {tab === "chronology" && (
+              <VisitedChronology entries={entryList} undatedLabel={v.chronologyUndated} countLabel={v.chronologyCountLabel} />
+            )}
+            {tab === "pins" && <VisitedPinsPanel entries={entryList} onAddPin={addPin} onRemovePin={removePin} t={t.visited} />}
+          </div>
 
+          {tab === "map" && (
+            <>
               <div
                 style={{
                   background: "var(--bg-panel)",
@@ -282,9 +423,7 @@ export default function VisitedPage() {
                 <div className="font-mono" style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
                   {t.visited.shareHeading}
                 </div>
-                <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: "0 0 14px", lineHeight: 1.5 }}>
-                  {t.visited.shareBlurb}
-                </p>
+                <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: "0 0 14px", lineHeight: 1.5 }}>{t.visited.shareBlurb}</p>
 
                 {!shareUrl ? (
                   <button
@@ -428,72 +567,74 @@ export default function VisitedPage() {
                   </div>
                 </div>
               ))}
+            </>
+          )}
 
-              {/* Sync is an optional upgrade, not a requirement to use any of
-               * the above — kept at the bottom, out of the way, rather than
-               * gating the page like a login wall. */}
-              {!signedIn && (
-                <div
+          {/* Sync is an optional upgrade, not a requirement to use any of
+           * the above — kept at the bottom, out of the way, rather than
+           * gating the page like a login wall. */}
+          {!signedIn && (
+            <div
+              style={{
+                background: "var(--bg-panel)",
+                border: "1px solid var(--line)",
+                borderRadius: 8,
+                padding: 20,
+                boxShadow: "var(--shadow-panel)",
+                marginTop: 12,
+              }}
+            >
+              <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
+                {t.visited.signInPrompt}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input
+                  type="email"
+                  value={signInEmail}
+                  onChange={(e) => setSignInEmail(e.target.value)}
+                  placeholder={t.account.emailPlaceholder}
                   style={{
-                    background: "var(--bg-panel)",
-                    border: "1px solid var(--line)",
+                    flex: 1,
+                    minWidth: 200,
+                    background: "var(--bg-panel-raised)",
+                    border: "1px solid var(--line-strong)",
                     borderRadius: 8,
-                    padding: 20,
-                    boxShadow: "var(--shadow-panel)",
-                    marginTop: 12,
+                    padding: "10px 13px",
+                    color: "var(--ink)",
+                    fontSize: 14,
+                    boxSizing: "border-box",
+                    boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
+                  }}
+                />
+                <button
+                  onClick={requestSignIn}
+                  disabled={signInSending || !signInEmail.trim()}
+                  className="font-mono btn-primary"
+                  style={{
+                    padding: "10px 16px",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    cursor: signInSending || !signInEmail.trim() ? "default" : "pointer",
+                    flexShrink: 0,
                   }}
                 >
-                  <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
-                    {t.visited.signInPrompt}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <input
-                      type="email"
-                      value={signInEmail}
-                      onChange={(e) => setSignInEmail(e.target.value)}
-                      placeholder={t.account.emailPlaceholder}
-                      style={{
-                        flex: 1,
-                        minWidth: 200,
-                        background: "var(--bg-panel-raised)",
-                        border: "1px solid var(--line-strong)",
-                        borderRadius: 8,
-                        padding: "10px 13px",
-                        color: "var(--ink)",
-                        fontSize: 14,
-                        boxSizing: "border-box",
-                        boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
-                      }}
-                    />
-                    <button
-                      onClick={requestSignIn}
-                      disabled={signInSending || !signInEmail.trim()}
-                      className="font-mono btn-primary"
-                      style={{
-                        padding: "10px 16px",
-                        fontWeight: 700,
-                        fontSize: 12,
-                        letterSpacing: "0.04em",
-                        textTransform: "uppercase",
-                        cursor: signInSending || !signInEmail.trim() ? "default" : "pointer",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {t.visited.signInButton}
-                    </button>
-                  </div>
-                  {signInMessage && (
-                    <div className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
-                      {signInMessage}
-                    </div>
-                  )}
-                  {signInError && (
-                    <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
-                      {signInError}
-                    </div>
-                  )}
+                  {t.visited.signInButton}
+                </button>
+              </div>
+              {signInMessage && (
+                <div className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
+                  {signInMessage}
                 </div>
               )}
+              {signInError && (
+                <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
+                  {signInError}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

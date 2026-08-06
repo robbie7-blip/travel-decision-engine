@@ -27,9 +27,17 @@ interface VisitedMapProps {
   visitedLabel: string;
   notVisitedLabel: string;
   untrackedLabel: string;
+  /** Skips the ResizeObserver-measured sizing below and renders at this
+   * exact pixel size instead — for VisitedZoomableMap, whose pan/zoom
+   * wrapper sizes ITSELF to its content, which would otherwise deadlock
+   * against this component sizing itself to ITS wrapper (both sides
+   * waiting on the other, collapsing to ~0px). A fixed intrinsic size also
+   * just makes more sense inside a pinch-zoom canvas — you're expected to
+   * zoom into it, not have it pre-shrunk to fit the viewport. */
+  fixedSize?: number;
 }
 
-export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, notVisitedLabel, untrackedLabel }: VisitedMapProps) {
+export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, notVisitedLabel, untrackedLabel, fixedSize }: VisitedMapProps) {
   // The library's own size="responsive" mode measures its width via a
   // ResizeObserver + window.innerWidth fallback that, on real mobile
   // Safari, was observed rendering the map at a stale/oversized width
@@ -41,18 +49,21 @@ export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, 
   // internal sizing entirely — we always tell it exactly how wide it's
   // allowed to be, no guessing on its end.
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [mapWidth, setMapWidth] = useState(0);
+  const [measuredWidth, setMeasuredWidth] = useState(0);
 
   useEffect(() => {
+    if (fixedSize) return; // no need to observe anything — the size is given, not measured
     const el = wrapperRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width;
-      if (width) setMapWidth(Math.floor(width));
+      if (width) setMeasuredWidth(Math.floor(width));
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [fixedSize]);
+
+  const mapWidth = fixedSize ?? measuredWidth;
 
   // Every region the map itself knows how to draw, each flagged 1/0 by
   // whether it's in this traveler's visited set — data doesn't need to

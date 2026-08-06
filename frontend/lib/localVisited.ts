@@ -5,29 +5,68 @@
 // (see lib/visited.ts + app/api/visited) for syncing that same list across
 // devices, not a requirement to use the feature in the first place.
 
-const CODES_KEY = "decide:visited-codes";
-const SHARE_TOKEN_KEY = "decide:visited-share-token";
-
-export function readLocalVisitedCodes(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(CODES_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((c): c is string => typeof c === "string") : [];
-  } catch {
-    // Corrupt or inaccessible storage — treat as empty rather than crash the page.
-    return [];
-  }
+export interface VisitedPin {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  note?: string;
 }
 
-export function writeLocalVisitedCodes(codes: string[]): void {
+export interface VisitedEntry {
+  code: string;
+  visitedAt?: string; // ISO date, e.g. "2024-07-03" — optional
+  pins?: VisitedPin[];
+}
+
+const ENTRIES_KEY = "decide:visited-entries";
+// Pre-dates/pins format: a bare array of ISO codes. Still read (and
+// migrated) below so nobody who used the tracker before this format
+// changed loses their list.
+const LEGACY_CODES_KEY = "decide:visited-codes";
+const SHARE_TOKEN_KEY = "decide:visited-share-token";
+
+function isValidEntry(value: unknown): value is VisitedEntry {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { code?: unknown }).code === "string"
+  );
+}
+
+export function readLocalVisitedEntries(): VisitedEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(ENTRIES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.filter(isValidEntry);
+      return [];
+    }
+    const legacy = window.localStorage.getItem(LEGACY_CODES_KEY);
+    if (legacy) {
+      const codes = JSON.parse(legacy);
+      if (Array.isArray(codes)) {
+        const migrated: VisitedEntry[] = codes
+          .filter((c): c is string => typeof c === "string")
+          .map((code) => ({ code }));
+        writeLocalVisitedEntries(migrated);
+        return migrated;
+      }
+    }
+  } catch {
+    // Corrupt or inaccessible storage — treat as empty rather than crash the page.
+  }
+  return [];
+}
+
+export function writeLocalVisitedEntries(entries: VisitedEntry[]): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CODES_KEY, JSON.stringify(codes));
+    window.localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
   } catch {
     // Storage can fail (private browsing, quota) — the in-memory state
-    // still reflects the toggle for this render, it just won't persist.
+    // still reflects the change for this render, it just won't persist.
   }
 }
 

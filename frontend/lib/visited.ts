@@ -1,38 +1,93 @@
 // Redis-backed side of the visited-countries tracker — used only for the
 // optional signed-in sync path (see app/api/visited); the primary,
-// no-account-required path stores the same codes client-side (see
-// lib/localVisited.ts). Same "no new database" approach as account.ts:
-// stored as a plain Redis SET of ISO country codes per email, existing the
-// moment someone signs in and toggles their first country.
+// no-account-required path stores the same data client-side (see
+// lib/localVisited.ts). Same "no new database" approach as account.ts.
+//
+// Stored as a Redis HASH `visited:<email>`, one field per country code,
+// value a JSON blob of that country's metadata (visit date, pins) — richer
+// than the original plain SET of codes, needed once a visit could carry an
+// optional date and named pins (the Visualize views: Timeline, Chronology,
+// Map Pins). This app has no real users yet (added the same day as this
+// change), so there's no legacy-format migration to carry here — unlike
+// lib/localVisited.ts, which does need one for whatever's already sitting
+// in someone's browser.
 //
 // computeVisitedStats/groupCountriesByContinent below are pure functions
-// with no Redis dependency — imported directly by the client-side page too,
-// so the exact same stats math runs whether the list came from local
-// storage or from here.
+// with no Redis dependency, working off a plain code list — imported
+// directly by the client-side page too, so the exact same stats math runs
+// whether the codes came from local storage or from here.
 
 import type { Redis } from "@upstash/redis";
 import { COUNTRIES, CONTINENTS, TOTAL_COUNTRIES, getCountry, type Continent } from "./countries";
+
+export interface VisitedPin {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  note?: string;
+}
+
+export interface VisitedEntry {
+  code: string;
+  visitedAt?: string; // ISO date, e.g. "2024-07-03" — optional, a visit doesn't need one
+  pins?: VisitedPin[];
+}
+
+interface StoredMeta {
+  visitedAt?: string;
+  pins?: VisitedPin[];
+}
 
 function visitedKey(email: string): string {
   return `visited:${email.toLowerCase().trim()}`;
 }
 
-export async function getVisitedCodes(redis: Redis, email: string): Promise<string[]> {
-  const members = await redis.smembers(visitedKey(email));
+function parseMeta(raw: unknown): StoredMeta {
+  if (typeof raw !== "string") return {};
+  try {
+    const parsed = JSON.parse(raw) as StoredMeta;
+    return {
+      visitedAt: typeof parsed.visitedAt === "string" ? parsed.visitedAt : undefined,
+      pins: Array.isArray(parsed.pins) ? parsed.pins : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+export async function getVisitedEntries(redis: Redis, email: string): Promise<VisitedEntry[]> {
+  const raw = (await redis.hgetall<Record<string, string>>(visitedKey(email))) ?? {};
   // Silently drop any stored code that's no longer in COUNTRIES (e.g. a
   // future edit to countries.ts renames/removes one) rather than letting a
   // stale code skew stats or crash getCountry() lookups downstream.
-  return members.filter((code) => getCountry(code) !== undefined);
+  return Object.entries(raw)
+    .filter(([code]) => getCountry(code) !== undefined)
+    .map(([code, value]) => ({ code, ...parseMeta(value) }));
 }
 
-export async function setVisited(redis: Redis, email: string, code: string, visited: boolean): Promise<void> {
+/** Convenience wrapper for the (more common) callers that only need the
+ * code list, not full entries — e.g. /api/generate's soft-personalization
+ * lookup, which only cares which countries, never when or which pins. */
+export async function getVisitedCodes(redis: Redis, email: string): Promise<string[]> {
+  return (await getVisitedEntries(redis, email)).map((e) => e.code);
+}
+
+export async function setVisitedEntry(
+  redis: Redis,
+  email: string,
+  code: string,
+  visited: boolean,
+  meta?: { visitedAt?: string; pins?: VisitedPin[] }
+): Promise<void> {
   const upper = code.toUpperCase();
-  if (!getCountry(upper)) return; // silently ignore an unknown code rather than polluting the set
+  if (!getCountry(upper)) return; // silently ignore an unknown code rather than polluting the hash
   const key = visitedKey(email);
   if (visited) {
-    await redis.sadd(key, upper);
+    const stored: StoredMeta = { visitedAt: meta?.visitedAt, pins: meta?.pins };
+    await redis.hset(key, { [upper]: JSON.stringify(stored) });
   } else {
-    await redis.srem(key, upper);
+    await redis.hdel(key, upper);
   }
 }
 
