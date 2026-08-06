@@ -1,9 +1,14 @@
-// Redis-backed visited-countries tracker — same "no new database" approach
-// as account.ts. Stored as a plain Redis SET of ISO country codes per
-// email; there's no separate "account" concept here beyond the email
-// itself, so a visited list exists the moment someone signs in and toggles
-// their first country, same as user:<email> in account.ts only starts
-// existing once something writes to it.
+// Redis-backed side of the visited-countries tracker — used only for the
+// optional signed-in sync path (see app/api/visited); the primary,
+// no-account-required path stores the same codes client-side (see
+// lib/localVisited.ts). Same "no new database" approach as account.ts:
+// stored as a plain Redis SET of ISO country codes per email, existing the
+// moment someone signs in and toggles their first country.
+//
+// computeVisitedStats/groupCountriesByContinent below are pure functions
+// with no Redis dependency — imported directly by the client-side page too,
+// so the exact same stats math runs whether the list came from local
+// storage or from here.
 
 import type { Redis } from "@upstash/redis";
 import { COUNTRIES, CONTINENTS, TOTAL_COUNTRIES, getCountry, type Continent } from "./countries";

@@ -1,9 +1,9 @@
-// Signed-in visitor's visited-countries list + stats. Requires the same
-// session cookie as /api/account — there's no anonymous/local-only mode
-// here (unlike, say, RecentTrips, which is fine being local-only since it
-// has no cross-device value; a visited list is exactly the kind of thing
-// someone expects to follow them across devices, which is what an account
-// is for).
+// Optional cross-device sync for the visited-countries tracker. The tracker
+// itself is local-storage-first and needs no account at all (see
+// lib/localVisited.ts + app/account/visited/page.tsx) — this route is only
+// hit when someone chooses to sign in so their list follows them to another
+// device too. Session-gated the same as /api/account since it's account
+// state once someone opts in.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";

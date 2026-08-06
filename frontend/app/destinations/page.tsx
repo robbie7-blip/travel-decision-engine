@@ -42,7 +42,7 @@ export default async function DestinationsIndexPage({
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "20px 24px", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         <div
           style={{
             maxWidth: 780,

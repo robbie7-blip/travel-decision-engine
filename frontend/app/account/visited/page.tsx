@@ -1,36 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VisitedMap } from "@/components/VisitedMap";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
-import { COUNTRIES, countryFlagEmoji, CONTINENTS, type Continent } from "@/lib/countries";
+import { COUNTRIES, countryFlagEmoji, CONTINENTS } from "@/lib/countries";
+import { computeVisitedStats } from "@/lib/visited";
+import { readLocalVisitedCodes, writeLocalVisitedCodes, peekLocalShareToken, getOrCreateLocalShareToken } from "@/lib/localVisited";
 import type { Language } from "@/lib/types";
-
-interface VisitedStats {
-  countriesVisited: number;
-  totalCountries: number;
-  percentOfWorld: number;
-  continentsVisited: Continent[];
-  continentsTotal: number;
-  earnedBadgeIds: string[];
-}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** The Been-style visited-countries tracker. Requires a signed-in account
- * (see /api/visited) — there's no anonymous/local-only mode, since a
- * visited list is exactly the kind of thing someone expects to follow them
- * across devices. Handles sign-in inline (rather than sending someone away
- * to /account and back) — this page IS the primary entry point for the
- * feature, not something reached only after already being signed in for
- * some other reason. */
+/** The Been-style visited-countries tracker. Local-storage-first, same as
+ * the Been app itself — marking a country visited needs no account, it
+ * just needs to persist on this device (lib/localVisited.ts). Signing in
+ * (handled inline, not a redirect to /account and back) is an optional
+ * upgrade that syncs the same list to /api/visited so it also follows you
+ * to another device — never a requirement to use the feature at all. */
 export default function VisitedPage() {
   const [language, setLanguageState] = useState<Language>("en");
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
   const [codes, setCodes] = useState<Set<string>>(new Set());
-  const [stats, setStats] = useState<VisitedStats | null>(null);
-  const [pending, setPending] = useState<string | null>(null);
 
   const [signInEmail, setSignInEmail] = useState("");
   const [signInSending, setSignInSending] = useState(false);
@@ -46,62 +36,70 @@ export default function VisitedPage() {
     const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (saved === "en" || saved === "bg") setLanguageState(saved);
 
+    // This device's list renders immediately — no network wait, since it's
+    // the source of truth for anyone who never signs in. Checking for a
+    // signed-in account is a background upgrade: if one exists, its list is
+    // merged in (union of both, so neither device loses anything) and any
+    // code that was only local gets uploaded so the account catches up.
+    const local = readLocalVisitedCodes();
+    setCodes(new Set(local));
+
     fetch("/api/visited")
       .then(async (r) => {
-        // Any non-2xx (401 not signed in, 500 misconfigured, etc.) falls
-        // back to the same "not signed in" state — there's no separate UI
-        // for "signed in but something went wrong," and defaulting to the
-        // sign-in prompt is safer than silently rendering nothing.
-        if (!r.ok) {
-          setSignedIn(false);
-          return;
-        }
+        if (!r.ok) return; // 401 not signed in, 500 misconfigured — either way, stay in local-only mode
         const data = await r.json();
+        const serverCodes: string[] = data.codes ?? [];
+        const serverSet = new Set(serverCodes);
+        const merged = new Set([...local, ...serverCodes]);
+        setCodes(merged);
+        writeLocalVisitedCodes([...merged]);
         setSignedIn(true);
-        setCodes(new Set<string>(data.codes ?? []));
-        setStats(data.stats ?? null);
+        for (const code of local) {
+          if (!serverSet.has(code)) {
+            fetch("/api/visited", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code, visited: true }),
+            }).catch(() => {});
+          }
+        }
       })
-      .catch(() => setSignedIn(false));
+      .catch(() => {});
   }, []);
 
   const t = TRANSLATIONS[language];
+  const stats = useMemo(() => computeVisitedStats([...codes]), [codes]);
 
   function setLanguage(next: Language) {
     setLanguageState(next);
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
   }
 
-  async function toggle(code: string) {
-    if (pending) return;
-    const nextVisited = !codes.has(code);
-    setPending(code);
-    // Optimistic update — reverted below if the request fails.
-    setCodes((prev) => {
-      const next = new Set(prev);
-      if (nextVisited) next.add(code);
-      else next.delete(code);
-      return next;
-    });
-    try {
-      const res = await fetch("/api/visited", {
+  function toggle(code: string) {
+    const nowVisited = !codes.has(code);
+    const next = new Set(codes);
+    if (nowVisited) next.add(code);
+    else next.delete(code);
+    setCodes(next);
+    writeLocalVisitedCodes([...next]);
+
+    if (signedIn) {
+      // Best-effort background sync — local storage already has the
+      // durable copy for this device, so a failed request here just means
+      // the account catches up next time this succeeds, not a lost toggle.
+      fetch("/api/visited", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, visited: nextVisited }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setCodes(new Set<string>(data.codes ?? []));
-      setStats(data.stats ?? null);
-    } catch {
-      // Revert the optimistic toggle on failure.
-      setCodes((prev) => {
-        const next = new Set(prev);
-        if (nextVisited) next.delete(code);
-        else next.add(code);
-        return next;
-      });
-    } finally {
-      setPending(null);
+        body: JSON.stringify({ code, visited: nowVisited }),
+      }).catch(() => {});
+    } else if (peekLocalShareToken()) {
+      // A share link for this device already exists — keep its snapshot
+      // current so anyone who has it sees this toggle too.
+      fetch("/api/visited/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: peekLocalShareToken(), codes: [...next] }),
+      }).catch(() => {});
     }
   }
 
@@ -132,7 +130,16 @@ export default function VisitedPage() {
   async function getShareLink() {
     setShareLoading(true);
     try {
-      const res = await fetch("/api/visited/share");
+      // Signed in: the account's server-issued token, no body needed.
+      // Not signed in: this device's own token (minted on first use here),
+      // with the current list uploaded as its snapshot.
+      const res = signedIn
+        ? await fetch("/api/visited/share")
+        : await fetch("/api/visited/share", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: getOrCreateLocalShareToken(), codes: [...codes] }),
+          });
       const data = await res.json().catch(() => null);
       if (res.ok && typeof data?.url === "string") {
         setShareUrl(data.url);
@@ -192,7 +199,7 @@ export default function VisitedPage() {
             {t.visited.pageSubheading}
           </p>
 
-          {signedIn === false && (
+          {!signedIn && (
             <div
               style={{
                 background: "var(--bg-panel)",
@@ -200,6 +207,7 @@ export default function VisitedPage() {
                 borderRadius: 8,
                 padding: 20,
                 boxShadow: "var(--shadow-panel)",
+                marginBottom: 28,
               }}
             >
               <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
@@ -254,9 +262,7 @@ export default function VisitedPage() {
             </div>
           )}
 
-          {signedIn && stats && (
-            <>
-              <div
+          <div
                 style={{
                   background: "var(--bg-panel)",
                   border: "1px solid var(--line)",
@@ -319,7 +325,7 @@ export default function VisitedPage() {
                 <VisitedMap
                   visitedCodes={codes}
                   onToggle={toggle}
-                  pendingCode={pending}
+                  pendingCode={null}
                   visitedLabel={t.visited.mapVisited}
                   notVisitedLabel={t.visited.mapNotVisited}
                   untrackedLabel={t.visited.mapUntracked}
@@ -463,7 +469,6 @@ export default function VisitedPage() {
                           key={c.code}
                           type="button"
                           onClick={() => toggle(c.code)}
-                          disabled={pending === c.code}
                           className="font-mono"
                           style={{
                             display: "flex",
@@ -475,8 +480,7 @@ export default function VisitedPage() {
                             borderRadius: 999,
                             padding: "6px 12px",
                             fontSize: 12,
-                            cursor: pending === c.code ? "default" : "pointer",
-                            opacity: pending === c.code ? 0.6 : 1,
+                            cursor: "pointer",
                           }}
                         >
                           <span>{countryFlagEmoji(c.code)}</span>
@@ -487,8 +491,6 @@ export default function VisitedPage() {
                   </div>
                 </div>
               ))}
-            </>
-          )}
         </div>
       </div>
     </div>
