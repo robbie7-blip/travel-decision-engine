@@ -204,9 +204,9 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ padding: "28px 24px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--line)" }}>
         <div id="how-it-works" style={{ maxWidth: 960, margin: "0 auto", scrollMarginTop: 24 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, textAlign: "center", color: "var(--ink)" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--ink)" }}>
             How It Works
           </h2>
           <div

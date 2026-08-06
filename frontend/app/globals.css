@@ -276,7 +276,7 @@ div[style*="padding: 32px 24px"] {
 div[id="how-it-works"] {
   background: linear-gradient(135deg, rgba(0, 102, 204, 0.04), rgba(124, 58, 237, 0.04));
   border-radius: 16px;
-  padding: 40px;
+  padding: 24px;
 }
 
 /* Step cards - enhanced styling */
