@@ -15,7 +15,7 @@ export function TrustFooter({ t }: { t: Dictionary }) {
   return (
     <div style={{ padding: "40px 24px", background: "var(--bg-panel-raised)", borderTop: "1px solid var(--line)" }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        <h2 className="font-display" style={{ fontSize: 22, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
+        <h2 className="font-display" style={{ fontSize: 22, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
           {t.trustFooter.heading}
         </h2>
         <p style={{ color: "var(--ink-dim)", fontSize: 14, lineHeight: 1.6, maxWidth: 620, margin: "0 0 24px" }}>

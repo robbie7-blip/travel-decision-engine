@@ -114,7 +114,7 @@ export default async function DestinationsIndexPage({
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <h1
             className="font-display"
-            style={{ fontWeight: 600, fontSize: "clamp(28px, 4.5vw, 38px)", lineHeight: 1.2, margin: "0 0 14px", color: "var(--ink)" }}
+            style={{ fontWeight: 600, fontSize: "clamp(28px, 4.5vw, 38px)", lineHeight: 1.2, margin: "0 0 14px", color: "var(--brand-teal)" }}
           >
             {dt.pageTitle}
           </h1>

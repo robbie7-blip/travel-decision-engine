@@ -47,7 +47,7 @@ export default function AskPage() {
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
+          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.tripQA.pageHeading}
           </h1>
           <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 24px", lineHeight: 1.5 }}>

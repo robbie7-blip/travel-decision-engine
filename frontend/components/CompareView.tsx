@@ -173,7 +173,7 @@ export function CompareView() {
       {header}
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 24px", color: "var(--ink)" }}>
+          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 24px", color: "var(--brand-teal)" }}>
             {t.compare.heading}
           </h1>
 
