@@ -9,7 +9,7 @@ import { VisitedTimeline } from "@/components/VisitedTimeline";
 import { VisitedChronology } from "@/components/VisitedChronology";
 import { VisitedZoomableMap } from "@/components/VisitedZoomableMap";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
-import { COUNTRIES, countryFlagEmoji, CONTINENTS } from "@/lib/countries";
+import { COUNTRIES, countryFlagEmoji, CONTINENTS, getCountryName, getContinentName } from "@/lib/countries";
 import { computeVisitedStats } from "@/lib/visited";
 import {
   readLocalVisitedEntries,
@@ -370,6 +370,7 @@ export default function VisitedPage() {
                 visitedLabel={t.visited.mapVisited}
                 notVisitedLabel={t.visited.mapNotVisited}
                 untrackedLabel={t.visited.mapUntracked}
+                language={language}
               />
             )}
             {tab === "globe" && (
@@ -379,6 +380,7 @@ export default function VisitedPage() {
                 visitedLabel={t.visited.mapVisited}
                 notVisitedLabel={t.visited.mapNotVisited}
                 untrackedLabel={t.visited.mapUntracked}
+                language={language}
               />
             )}
             {tab === "zoomable" && (
@@ -388,10 +390,11 @@ export default function VisitedPage() {
                 visitedLabel={t.visited.mapVisited}
                 notVisitedLabel={t.visited.mapNotVisited}
                 untrackedLabel={t.visited.mapUntracked}
+                language={language}
                 hint={v.zoomableHint}
               />
             )}
-            {tab === "flags" && <VisitedFlags codes={[...codes]} onToggle={toggle} emptyLabel={v.flagsEmpty} />}
+            {tab === "flags" && <VisitedFlags codes={[...codes]} onToggle={toggle} emptyLabel={v.flagsEmpty} language={language} />}
             {tab === "timeline" && (
               <VisitedTimeline
                 entries={entryList}
@@ -400,12 +403,20 @@ export default function VisitedPage() {
                 dateUnknownLabel={v.timelineDateUnknown}
                 setDateLabel={v.timelineSetDate}
                 locale={language === "bg" ? "bg-BG" : "en-US"}
+                language={language}
               />
             )}
             {tab === "chronology" && (
-              <VisitedChronology entries={entryList} undatedLabel={v.chronologyUndated} countLabel={v.chronologyCountLabel} />
+              <VisitedChronology
+                entries={entryList}
+                undatedLabel={v.chronologyUndated}
+                countLabel={v.chronologyCountLabel}
+                language={language}
+              />
             )}
-            {tab === "pins" && <VisitedPinsPanel entries={entryList} onAddPin={addPin} onRemovePin={removePin} t={t.visited} />}
+            {tab === "pins" && (
+              <VisitedPinsPanel entries={entryList} onAddPin={addPin} onRemovePin={removePin} t={t.visited} language={language} />
+            )}
           </div>
 
           {tab === "map" && (
@@ -420,7 +431,7 @@ export default function VisitedPage() {
                     className="font-mono"
                     style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 10 }}
                   >
-                    {continent}
+                    {getContinentName(continent, language)}
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {COUNTRIES.filter((c) => c.continent === continent).map((c) => {
@@ -445,7 +456,7 @@ export default function VisitedPage() {
                           }}
                         >
                           <span>{countryFlagEmoji(c.code)}</span>
-                          {c.name}
+                          {getCountryName(c.code, language)}
                         </button>
                       );
                     })}

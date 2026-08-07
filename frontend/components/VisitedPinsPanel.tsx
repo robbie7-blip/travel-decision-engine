@@ -9,23 +9,25 @@
 
 import { useState, type CSSProperties } from "react";
 import { VisitedGlobe, type GlobePin } from "./VisitedGlobe";
-import { COUNTRIES, countryFlagEmoji, getCountry } from "@/lib/countries";
+import { COUNTRIES, countryFlagEmoji, getCountry, getCountryName } from "@/lib/countries";
 import type { VisitedEntry, VisitedPin } from "@/lib/localVisited";
 import type { Dictionary } from "@/lib/i18n";
+import type { Language } from "@/lib/types";
 
 interface VisitedPinsPanelProps {
   entries: VisitedEntry[];
   onAddPin: (code: string, pin: Omit<VisitedPin, "id">) => void;
   onRemovePin: (code: string, pinId: string) => void;
   t: Dictionary["visited"];
+  language: Language;
 }
 
-export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t }: VisitedPinsPanelProps) {
+export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t, language }: VisitedPinsPanelProps) {
   const v = t.visualize;
   const visitedEntries = entries.filter((e) => getCountry(e.code) !== undefined);
-  const visitedCountries = COUNTRIES.filter((c) => visitedEntries.some((e) => e.code === c.code)).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const visitedCountries = COUNTRIES.filter((c) => visitedEntries.some((e) => e.code === c.code))
+    .map((c) => ({ ...c, displayName: getCountryName(c.code, language) }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, language));
 
   const [country, setCountry] = useState("");
   const [label, setLabel] = useState("");
@@ -85,6 +87,7 @@ export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t }: VisitedP
         visitedLabel={t.mapVisited}
         notVisitedLabel={t.mapNotVisited}
         untrackedLabel={t.mapUntracked}
+        language={language}
         pins={allPins}
         onGlobeClick={handleGlobeClick}
       />
@@ -109,7 +112,7 @@ export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t }: VisitedP
             <option value="">{v.pinFormCountryPlaceholder}</option>
             {visitedCountries.map((c) => (
               <option key={c.code} value={c.code}>
-                {countryFlagEmoji(c.code)} {c.name}
+                {countryFlagEmoji(c.code)} {c.displayName}
               </option>
             ))}
           </select>
@@ -180,7 +183,7 @@ export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t }: VisitedP
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>{pin.label}</div>
                   <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
-                    {c?.name} · {pin.lat.toFixed(2)}, {pin.lng.toFixed(2)}
+                    {c ? getCountryName(c.code, language) : ""} · {pin.lat.toFixed(2)}, {pin.lng.toFixed(2)}
                     {pin.note ? ` · ${pin.note}` : ""}
                   </div>
                 </div>

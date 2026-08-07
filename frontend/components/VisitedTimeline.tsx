@@ -7,8 +7,9 @@
 // about HOW MANY per year.
 
 import { useState } from "react";
-import { countryFlagEmoji, getCountry } from "@/lib/countries";
+import { countryFlagEmoji, getCountry, getCountryName } from "@/lib/countries";
 import type { VisitedEntry } from "@/lib/localVisited";
+import type { Language } from "@/lib/types";
 
 interface VisitedTimelineProps {
   entries: VisitedEntry[];
@@ -16,7 +17,8 @@ interface VisitedTimelineProps {
   emptyLabel: string;
   dateUnknownLabel: string;
   setDateLabel: string;
-  locale: string;
+  locale: string; // e.g. "en-US"/"bg-BG", passed straight to toLocaleDateString for date formatting
+  language: Language; // the app's own Language value, for country name lookup
 }
 
 function formatDate(iso: string, locale: string): string {
@@ -27,7 +29,7 @@ function formatDate(iso: string, locale: string): string {
   }
 }
 
-export function VisitedTimeline({ entries, onSetDate, emptyLabel, dateUnknownLabel, setDateLabel, locale }: VisitedTimelineProps) {
+export function VisitedTimeline({ entries, onSetDate, emptyLabel, dateUnknownLabel, setDateLabel, locale, language }: VisitedTimelineProps) {
   const [editingCode, setEditingCode] = useState<string | null>(null);
 
   const withCountry = entries
@@ -60,7 +62,7 @@ export function VisitedTimeline({ entries, onSetDate, emptyLabel, dateUnknownLab
           <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0 }}>{countryFlagEmoji(entry.code)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="font-display" style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>
-              {country.name}
+              {getCountryName(country.code, language)}
             </div>
             {editingCode === entry.code ? (
               <input
