@@ -141,7 +141,7 @@ export function CompareView() {
       language={language}
       onLanguageChange={setLanguage}
       t={t}
-      maxWidth={1400}
+      maxWidth={1450}
       extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
       contextLink={{ href: "/", label: `${t.compare.planAnother} →` }}
     />

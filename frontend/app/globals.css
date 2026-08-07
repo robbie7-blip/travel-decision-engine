@@ -282,6 +282,15 @@ button {
   display: none;
 }
 
+/* /why-decide's two-column "generic chatbot vs decide" comparison rows —
+   side by side on desktop, stacked on mobile where two ~150px-wide columns
+   would otherwise squeeze both cells' text down to nearly unreadable. */
+@media (max-width: 600px) {
+  .why-decide-columns {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Confidence-legend pills and the recent-trips chip list both used to wrap
    onto 2-3 rows on mobile (5 legend pills, one row per saved trip) — same
    "stuffed" complaint as the nav above, but these are secondary/

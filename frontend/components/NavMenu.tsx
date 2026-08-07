@@ -15,6 +15,7 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
   const langSuffix = language === "bg" ? "?lang=bg" : "";
 
   const links = [
+    { href: `/why-decide${langSuffix}`, label: t.whyDecide.navLink },
     { href: "/#how-it-works", label: t.howItWorks },
     { href: `/destinations${langSuffix}`, label: t.browseDestinations },
     { href: `/showcase${langSuffix}`, label: t.showcase.navLabel },

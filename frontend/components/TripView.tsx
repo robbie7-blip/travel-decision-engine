@@ -117,7 +117,7 @@ export function TripView({ jobId }: { jobId: string }) {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      {/* 1280, not this page's own 960px content width below — matches the
+      {/* 1450, not this page's own 960px content width below — matches the
           header width used site-wide (see ask/page.tsx's SiteHeader call);
           this page's contextLink + full nav + lang toggle needed more than
           960 to avoid wrapping. */}
@@ -125,7 +125,7 @@ export function TripView({ jobId }: { jobId: string }) {
         language={language}
         onLanguageChange={setLanguage}
         t={t}
-        maxWidth={1280}
+        maxWidth={1450}
         extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
         contextLink={{ href: "/", label: `${t.trip.planAnother} →` }}
       />

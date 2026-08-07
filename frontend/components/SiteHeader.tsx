@@ -48,11 +48,11 @@ export function SiteHeader({
   variant = "compact",
   extraControls,
   contextLink,
-  // 1280 matches the header width every page now passes explicitly (see
+  // 1450 matches the header width every page now passes explicitly (see
   // ask/page.tsx's SiteHeader call for the full reasoning) — CompareStatsView
   // is the one remaining caller that relies on this default rather than
   // passing its own maxWidth, so it needs to move in step with the rest.
-  maxWidth = 1280,
+  maxWidth = 1450,
 }: SiteHeaderProps) {
   const large = variant === "large";
   const langSuffix = language === "bg" ? "?lang=bg" : "";
@@ -66,15 +66,16 @@ export function SiteHeader({
         borderBottom: `1px solid ${large ? "var(--line-strong)" : "var(--line)"}`,
       }}
     >
-      {/* 1400 (not 960) for the large variant specifically — its bigger
+      {/* 1550 (not 960) for the large variant specifically — its bigger
           84px logo + 48px wordmark plus the extra currency-switcher
           control need more room than the compact header's nav content
           does before nav + currency + language toggle stop fitting on
-          one line (measured need: ~1297px). The homepage's own body
-          content below stays at its own narrower 960, same pattern as
-          every other page's header being wider than that page's content
-          column — see ask/page.tsx's SiteHeader call. */}
-      <div style={{ maxWidth: large ? 1400 : maxWidth, margin: "0 auto" }}>
+          one line (measured need: ~1498px, after the 7-link nav +
+          AccountControl addition). The homepage's own body content below
+          stays at its own narrower 960, same pattern as every other
+          page's header being wider than that page's content column —
+          see ask/page.tsx's SiteHeader call. */}
+      <div style={{ maxWidth: large ? 1550 : maxWidth, margin: "0 auto" }}>
         <div
           style={{
             display: "flex",

@@ -227,6 +227,25 @@ export interface Dictionary {
     viewTrip: string;
     daysLabel: string; // "{count}" placeholder, e.g. "9 days"
   };
+  // The /why-decide comparison page — confident, specific claims about what
+  // decide actually does differently from a general-purpose chatbot,
+  // grounded in real product behavior (confidence tiers, live price checks,
+  // budget feasibility) rather than just asserting it's "better."
+  whyDecide: {
+    navLink: string;
+    pageTitle: string;
+    headline: string;
+    subhead: string;
+    columnHeadingGeneric: string; // e.g. "A GENERIC AI CHATBOT"
+    columnHeadingDecide: string; // e.g. "DECIDE"
+    rows: {
+      title: string;
+      generic: string;
+      decide: string;
+    }[];
+    ctaHeading: string;
+    ctaButton: string;
+  };
   // The /compare page — two full generations, same trip, different
   // destination, shown side by side.
   compare: {
@@ -568,6 +587,44 @@ const en: Dictionary = {
     viewTrip: "View full itinerary →",
     daysLabel: "{count} days",
   },
+  whyDecide: {
+    navLink: "Why decide?",
+    pageTitle: "Why decide?",
+    headline: "It's not a chatbot. It's a decision.",
+    subhead:
+      "Ask a generic AI chatbot to plan a trip and you get a list to go research yourself. Ask decide and you get an answer - checked, labeled, and ready to book.",
+    columnHeadingGeneric: "A GENERIC AI CHATBOT",
+    columnHeadingDecide: "DECIDE",
+    rows: [
+      {
+        title: "Real prices, not a guess",
+        generic: "States a number that sounds plausible, pulled from training data that's already out of date.",
+        decide: "Checks live prices before it tells you anything. If it can't verify something, it says so instead of guessing.",
+      },
+      {
+        title: "One answer, not a wall of options",
+        generic: "Hands you five hotels and a shrug - you still have to pick one and check if it's actually good.",
+        decide: "Picks one. That's the entire point of the product.",
+      },
+      {
+        title: "Confidence you can actually see",
+        generic: "Sounds equally sure about everything, whether it checked or made it up.",
+        decide: "Every line is labeled: verified, single-source, or an honest guess. Never hidden, never overstated.",
+      },
+      {
+        title: "Built for one job",
+        generic: "A general-purpose chat window that happens to know some travel facts.",
+        decide: "Built from the ground up to do exactly one thing: plan your trip.",
+      },
+      {
+        title: "Budget math that's actually checked",
+        generic: "Adds up numbers it invented five messages ago.",
+        decide: "Flags it plainly - feasible or over budget - against real, checked costs.",
+      },
+    ],
+    ctaHeading: "Stop chatting about your trip. Start deciding it.",
+    ctaButton: "Plan my trip",
+  },
   compare: {
     heading: "Which one actually works better?",
     totalCost: "Est. total cost",
@@ -896,6 +953,44 @@ const bg: Dictionary = {
     emptyState: "Все още няма примери тук - провери отново скоро.",
     viewTrip: "Виж целия план →",
     daysLabel: "{count} дни",
+  },
+  whyDecide: {
+    navLink: "Защо decide?",
+    pageTitle: "Защо decide?",
+    headline: "Не е чатбот. Е решение.",
+    subhead:
+      "Питаш обикновен AI чатбот да планира пътуване и получаваш списък за проучване. Питаш decide и получаваш отговор - проверен, обозначен и готов за резервация.",
+    columnHeadingGeneric: "ОБИКНОВЕН AI ЧАТБОТ",
+    columnHeadingDecide: "DECIDE",
+    rows: [
+      {
+        title: "Истински цени, не догадка",
+        generic: "Дава число, което звучи правдоподобно, взето от вече остарели данни.",
+        decide: "Проверява цени на живо, преди да каже каквото и да е. Ако не може да провери нещо, казва го открито, вместо да гадае.",
+      },
+      {
+        title: "Един отговор, не купчина опции",
+        generic: "Дава ти пет хотела и свиване на рамене - пак трябва сам да избереш и провериш дали е добър.",
+        decide: "Избира един. Това е целият смисъл на продукта.",
+      },
+      {
+        title: "Увереност, която виждаш",
+        generic: "Звучи еднакво уверено за всичко, независимо дали е проверил или си го е измислил.",
+        decide: "Всеки ред е обозначен: потвърдено, единичен източник или честно предположение. Никога скрито, никога преувеличено.",
+      },
+      {
+        title: "Създаден за една задача",
+        generic: "Общ чат прозорец, който случайно знае някои факти за пътувания.",
+        decide: "Създаден от нулата да прави точно едно нещо: да планира твоето пътуване.",
+      },
+      {
+        title: "Бюджетна математика, която наистина е проверена",
+        generic: "Сумира числа, които си е измислил преди пет съобщения.",
+        decide: "Ясно отбелязва - постижимо или над бюджета - спрямо реални, проверени разходи.",
+      },
+    ],
+    ctaHeading: "Спри да обсъждаш пътуването си. Започни да го решаваш.",
+    ctaButton: "Планирай пътуването ми",
   },
   compare: {
     heading: "Кое всъщност е по-добрият избор?",

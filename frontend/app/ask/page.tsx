@@ -30,18 +30,18 @@ export default function AskPage() {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      {/* Header intentionally wider (1280) than this page's own 720px
+      {/* Header intentionally wider (1450) than this page's own 720px
           content column below — see globals.css .nav-link comment history:
           720 was too narrow to fit the full nav without wrapping, which is
           what made this page's header look different from wider pages
-          (destinations, showcase, trip). 1280 matches the header width used
+          (destinations, showcase, trip). 1450 matches the header width used
           site-wide now, independent of how narrow any given page's own
           reading column is. */}
       <SiteHeader
         language={language}
         onLanguageChange={setLanguage}
         t={t}
-        maxWidth={1280}
+        maxWidth={1450}
         contextLink={{ href: "/", label: `${t.trip.planAnother} →` }}
       />
 

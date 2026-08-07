@@ -99,10 +99,10 @@ export default async function ShowcasePage({
   return (
     <div style={{ minHeight: "100%" }}>
       <div style={{ padding: "20px 24px", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
-        {/* 1280, not this page's own 960px content width below — see the
+        {/* 1450, not this page's own 960px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why. */}
         <div
-          style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}
+          style={{ maxWidth: 1450, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}
         >
           <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}

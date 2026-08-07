@@ -282,7 +282,7 @@ export default function VisitedPage() {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      {/* Explicit 1280 (was implicitly using SiteHeader's 860 default) so
+      {/* Explicit 1450 (was implicitly using SiteHeader's 860 default) so
           this matches the rest of the site's header width exactly instead
           of by coincidence — see the comment on ask/page.tsx's SiteHeader
           call for why headers don't need to match their own page's
@@ -291,7 +291,7 @@ export default function VisitedPage() {
         language={language}
         onLanguageChange={setLanguage}
         t={t}
-        maxWidth={1280}
+        maxWidth={1450}
         contextLink={{ href: "/account", label: t.visited.backToAccount }}
       />
 
