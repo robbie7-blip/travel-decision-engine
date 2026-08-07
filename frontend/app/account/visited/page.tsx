@@ -327,7 +327,7 @@ export default function VisitedPage() {
                 </div>
               </div>
               <div>
-                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-gold)" }}>
                   {stats.percentOfWorld}%
                 </div>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
