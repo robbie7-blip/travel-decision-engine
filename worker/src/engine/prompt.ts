@@ -106,6 +106,16 @@ substitute, and is what search will then attempt to verify (see search instructi
 generic, unnamed activities with no natural business to name (a walk through a neighborhood, \
 resting at the hotel, browsing a market) are fine to leave as-is — this rule is specifically \
 about meals and interest-driven activities that stand in for a real named business.
+- LANGUAGE-INDEPENDENT FIELDS — is_flight AND venue_name: titles follow the response language \
+(see above), so nothing downstream can detect "is this a flight" or "does this name a venue" by \
+matching English words in the title. Two schema fields carry that as structured data instead, \
+regardless of what language the title is written in:
+  - "is_flight": true only for a transport item that's an actual flight leg; false for every \
+  other transport item (train, taxi, bus, ferry, walking, anything else).
+  - "venue_name": the real business's proper name exactly as it appears in the title (e.g. \
+  "Mocotó", "Vodka Tattoo") for any meal or activity item that names a specific venue per the \
+  rule above; null for items that don't name one (a walk, resting at the hotel, a transport or \
+  lodging item).
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
 No trailing commas after the last property in an object or the last item in an array.
 - WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use \
@@ -152,6 +162,8 @@ Schema:
           "time": "morning|afternoon|evening or HH:MM",
           "type": "transport|lodging|activity|meal",
           "title": "...",
+          "is_flight": true or false — only true for type=transport items that are an actual flight leg, see LANGUAGE-INDEPENDENT FIELDS above,
+          "venue_name": "exact proper name of the specific business this item names, or null — see LANGUAGE-INDEPENDENT FIELDS above",
           "location": "neighborhood/area AND the destination city, e.g. 'Kato Paphos, Paphos' not just 'Kato Paphos' — always name the actual city, never just a neighborhood, landmark, or venue name alone, so the venue can be looked up unambiguously",
           "cost_estimate_eur": 0,
           "reasoning": "why this, why now",

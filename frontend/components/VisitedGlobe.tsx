@@ -27,7 +27,8 @@ import Globe, { type GlobeMethods } from "react-globe.gl";
 import * as THREE from "three";
 import { WORLD_COUNTRY_FEATURES, type CountryFeature } from "@/lib/worldGeo";
 import { CANVAS_COLORS } from "@/lib/theme";
-import { getCountry } from "@/lib/countries";
+import { getCountry, getCountryName } from "@/lib/countries";
+import type { Language } from "@/lib/types";
 
 export interface GlobePin {
   id: string;
@@ -44,6 +45,7 @@ interface VisitedGlobeProps {
   visitedLabel: string;
   notVisitedLabel: string;
   untrackedLabel: string;
+  language: Language;
   pins?: GlobePin[];
   /** Pins mode: clicking the globe surface reports the coordinates back,
    * so the "add a pin" form can be prefilled instead of requiring someone
@@ -61,6 +63,7 @@ export function VisitedGlobe({
   visitedLabel,
   notVisitedLabel,
   untrackedLabel,
+  language,
   pins,
   onGlobeClick,
 }: VisitedGlobeProps) {
@@ -106,8 +109,13 @@ export function VisitedGlobe({
           polygonLabel={(feat: object) => {
             const f = feat as CountryFeature;
             const code = f.properties.I.toUpperCase();
-            if (!isTracked(code)) return `${f.properties.N} — ${untrackedLabel}`;
-            return `${f.properties.N} — ${visitedCodes.has(code) ? visitedLabel : notVisitedLabel}`;
+            // f.properties.N is the topology's own (English) name — use our
+            // localized name for tracked countries so the globe's tooltip
+            // doesn't revert to English mid-Bulgarian-UI (same fix as the
+            // flat map's tooltipTextFunction in VisitedMap.tsx).
+            const name = isTracked(code) ? getCountryName(code, language) : f.properties.N;
+            if (!isTracked(code)) return `${name} — ${untrackedLabel}`;
+            return `${name} — ${visitedCodes.has(code) ? visitedLabel : notVisitedLabel}`;
           }}
           onPolygonClick={(feat: object) => {
             const f = feat as CountryFeature;

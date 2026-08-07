@@ -20,6 +20,8 @@ interface DateRangePickerProps {
   language: Language;
   placeholder: string;
   toLabel: string;
+  prevMonthLabel: string;
+  nextMonthLabel: string;
 }
 
 const LOCALE_BY_LANGUAGE: Record<Language, string> = {
@@ -27,7 +29,7 @@ const LOCALE_BY_LANGUAGE: Record<Language, string> = {
   bg: "bg-BG",
 };
 
-export function DateRangePicker({ startDate, endDate, onChange, language, placeholder, toLabel }: DateRangePickerProps) {
+export function DateRangePicker({ startDate, endDate, onChange, language, placeholder, toLabel, prevMonthLabel, nextMonthLabel }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -128,7 +130,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
             <button
               type="button"
               onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-              aria-label="Previous month"
+              aria-label={prevMonthLabel}
               style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "var(--ink-soft)", padding: 4 }}
             >
               ←
@@ -139,7 +141,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
             <button
               type="button"
               onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-              aria-label="Next month"
+              aria-label={nextMonthLabel}
               style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "var(--ink-soft)", padding: 4 }}
             >
               →

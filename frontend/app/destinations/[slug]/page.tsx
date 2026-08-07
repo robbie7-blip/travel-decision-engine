@@ -42,6 +42,11 @@ export async function generateMetadata({
   const displayCity = getLocalizedCityName(slug, language, destination.city);
   const title = t.metaDetailTitle.replace("{city}", displayCity);
   const description = t.metaDetailDescription.replace("{city}", displayCity);
+  // The OG image itself (opengraph-image.tsx in this folder) stays
+  // English-only regardless of language here — Next's file-convention
+  // image routes don't receive searchParams at all, so there's no ?lang=
+  // value to forward to it. See that file's header for the confirmed
+  // Next.js limitation.
   return {
     title,
     description,

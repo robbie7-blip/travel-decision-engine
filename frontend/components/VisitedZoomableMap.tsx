@@ -23,6 +23,7 @@
 
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { VisitedMap } from "./VisitedMap";
+import type { Language } from "@/lib/types";
 
 interface VisitedZoomableMapProps {
   visitedCodes: Set<string>;
@@ -30,10 +31,11 @@ interface VisitedZoomableMapProps {
   visitedLabel: string;
   notVisitedLabel: string;
   untrackedLabel: string;
+  language: Language;
   hint: string;
 }
 
-export function VisitedZoomableMap({ visitedCodes, onToggle, visitedLabel, notVisitedLabel, untrackedLabel, hint }: VisitedZoomableMapProps) {
+export function VisitedZoomableMap({ visitedCodes, onToggle, visitedLabel, notVisitedLabel, untrackedLabel, language, hint }: VisitedZoomableMapProps) {
   return (
     <div>
       <div
@@ -53,6 +55,7 @@ export function VisitedZoomableMap({ visitedCodes, onToggle, visitedLabel, notVi
               visitedLabel={visitedLabel}
               notVisitedLabel={notVisitedLabel}
               untrackedLabel={untrackedLabel}
+              language={language}
               fixedSize={700}
             />
           </TransformComponent>

@@ -116,7 +116,7 @@ export default function Home() {
         language={form.language}
         onLanguageChange={setLanguage}
         t={t}
-        extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} />}
+        extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
       />
       <div style={{ padding: "16px 24px 36px", borderBottom: "1px solid var(--line)", position: "relative" }}>
         {/* Decorative background elements */}

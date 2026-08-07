@@ -15,6 +15,14 @@
 // airport codes. This isn't a live-priced quote (Google Flights runs its
 // own fresh search when the link is opened), it's a real, clickable place
 // to verify the route/date actually exists and see today's price.
+//
+// Detection relies on item.is_flight (a structured field the model sets
+// directly per prompt.ts's LANGUAGE-INDEPENDENT FIELDS instruction), NOT on
+// matching the word "flight" in the title — titles follow the trip's
+// response language, so a Bulgarian trip's title reads "Полет от София
+// до..." and an English-word regex would silently never match, meaning no
+// Bulgarian trip would ever get this link. Confirmed bug, not hypothetical:
+// this used to be exactly that regex and it broke every non-English trip.
 
 import type { Itinerary, ItineraryItem, TripBriefInput } from "../types";
 
@@ -23,19 +31,8 @@ function googleFlightsUrl(origin: string, destination: string, date: string): st
   return `https://www.google.com/travel/flights?q=${encodeURIComponent(query)}`;
 }
 
-// The system prompt has the model consistently title arrival/departure
-// transport items "Flight X to Y" (or "Train X to Y" etc. for other modes)
-// — matching on the word "flight" is a simple, low-false-positive way to
-// tell an actual flight leg apart from a local transfer ("Taxi from hotel
-// to airport"), which shouldn't get a flight-search link. The `type ===
-// "transport"` gate below rules out the word appearing incidentally in an
-// unrelated meal/activity title.
-function isFlightTitle(title: string): boolean {
-  return /\bflight\b/i.test(title);
-}
-
 function attachIfFlight(item: ItineraryItem, origin: string, destination: string, date: string): void {
-  if (item.type === "transport" && isFlightTitle(item.title) && !item.flight_search_url) {
+  if (item.type === "transport" && item.is_flight === true && !item.flight_search_url) {
     item.flight_search_url = googleFlightsUrl(origin, destination, date);
   }
 }

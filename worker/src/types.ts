@@ -89,6 +89,14 @@ export interface ItineraryItem {
   time: string;
   type: ItemType;
   title: string;
+  // Structured, language-independent signals the model sets directly —
+  // titles follow the trip's response language (see prompt.ts's Response
+  // language instruction), so flightLinks.ts/venueVerification.ts can't
+  // reliably detect "is this a flight" / "does this name a venue" by
+  // regex-matching English words in a title that might be in Bulgarian.
+  // Optional because older cached itineraries predate these fields.
+  is_flight?: boolean;
+  venue_name?: string | null;
   location: string;
   cost_estimate_eur: number;
   reasoning: string;

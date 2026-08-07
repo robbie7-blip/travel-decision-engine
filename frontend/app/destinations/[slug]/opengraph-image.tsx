@@ -3,12 +3,21 @@
 // photo, no city name), even for cities that now have a real photo. Mirrors
 // the pattern and branding of trip/[jobId]/opengraph-image.tsx: same
 // bundled Fraunces weight, same mark, same 1200x630 size.
+//
+// English-only, not a locale gap that's fixable here: Next's
+// opengraph-image.tsx file convention only ever passes `params` to this
+// function, never `searchParams` — confirmed by trying it (a ?lang=bg
+// request still throws "Cannot destructure property 'lang' of undefined"
+// inside this function). See https://github.com/vercel/next.js/discussions/56314.
+// A real per-locale OG image would need a custom Route Handler instead of
+// this file convention, reading request.nextUrl.searchParams directly.
 
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getDestinationPhoto, getLocalizedCityName, loadDestination } from "@/lib/destinations";
 import { DESTINATION_INTROS } from "@/lib/destinationIntros";
+import { TRANSLATIONS } from "@/lib/i18n";
 
 export const runtime = "nodejs";
 export const alt = "A decide destination guide";
@@ -76,9 +85,10 @@ function truncateAtWord(text: string, maxLength: number): string {
 
 export default async function DestinationOgImage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const t = TRANSLATIONS.en.destinations;
   const destination = loadDestination(slug);
   const city = destination ? getLocalizedCityName(slug, "en", destination.city) : slug;
-  const rawIntro = DESTINATION_INTROS.en[slug] ?? "What decide already knows before it even runs a live search.";
+  const rawIntro = DESTINATION_INTROS.en[slug] ?? t.introDisclaimer.replace("{city}", city);
   const intro = truncateAtWord(rawIntro, MAX_INTRO_LENGTH);
 
   const photo = getDestinationPhoto(slug);
@@ -155,7 +165,7 @@ export default async function DestinationOgImage({ params }: { params: Promise<{
                 color: "rgba(255,253,248,0.8)",
               }}
             >
-              DESTINATION GUIDE
+              {t.eyebrow}
             </div>
             <div style={{ display: "flex", fontSize: 68, fontWeight: 600, color: "#fffdf8", lineHeight: 1.1 }}>{city}</div>
             <div style={{ display: "flex", fontSize: 24, color: "rgba(255,253,248,0.88)", lineHeight: 1.4, maxWidth: 980 }}>
