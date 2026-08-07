@@ -21,6 +21,10 @@ export interface Dictionary {
   tagline: string;
   howItWorks: string;
   browseDestinations: string;
+  // Screen-reader-only label on the currency <select> (components/
+  // CurrencySwitcher.tsx) — the currency codes themselves (EUR, USD...)
+  // are intentionally left untranslated (ISO codes, not prose).
+  currencyLabel: string;
   // Mobile-only nav toggle (see .nav-menu-toggle in globals.css) — collapses
   // the 6 header links behind a single "Menu" button instead of letting
   // them wrap onto 2-3 rows.
@@ -90,6 +94,11 @@ export interface Dictionary {
     // Shown under the calendar once a start date is picked but no end date
     // yet, prompting the second click.
     datesPickEnd: string;
+    // Screen-reader-only labels on DateRangePicker/SingleDatePicker's month
+    // arrows (see those files) — not visible text, but real content for a
+    // screen-reader user, so still needs both languages like everything else.
+    calendarPrevMonth: string;
+    calendarNextMonth: string;
     partySize: string;
     partySizePlaceholder: string;
     partyDescription: string;
@@ -384,6 +393,7 @@ const en: Dictionary = {
   tagline: "Your travel, decided.",
   howItWorks: "How it works",
   browseDestinations: "Destination guides",
+  currencyLabel: "Currency",
   navMenuOpen: "Menu",
   navMenuClose: "Close",
   headlineLine1: "It doesn’t list options.",
@@ -446,6 +456,8 @@ const en: Dictionary = {
     dates: "Dates",
     datesPlaceholder: "Select start and end dates",
     datesPickEnd: "Now pick the end date",
+    calendarPrevMonth: "Previous month",
+    calendarNextMonth: "Next month",
     partySize: "Party size",
     partySizePlaceholder: "2",
     partyDescription: "Party description",
@@ -714,6 +726,7 @@ const bg: Dictionary = {
   tagline: "Твоето пътуване, измислено.",
   howItWorks: "Как работи",
   browseDestinations: "Пътеводители",
+  currencyLabel: "Валута",
   navMenuOpen: "Меню",
   navMenuClose: "Затвори",
   headlineLine1: "Без опции.",
@@ -777,6 +790,8 @@ const bg: Dictionary = {
     dates: "Дати",
     datesPlaceholder: "Избери начална и крайна дата",
     datesPickEnd: "Сега избери крайната дата",
+    calendarPrevMonth: "Предишен месец",
+    calendarNextMonth: "Следващ месец",
     partySize: "Брой пътуващи",
     partySizePlaceholder: "2",
     partyDescription: "Описание на групата",

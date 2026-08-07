@@ -202,6 +202,8 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                   language={value.language}
                   placeholder={t.form.compareDatesPlaceholder}
                   toLabel={t.form.datesPickEnd}
+                  prevMonthLabel={t.form.calendarPrevMonth}
+                  nextMonthLabel={t.form.calendarNextMonth}
                 />
               </div>
             )}
@@ -249,6 +251,8 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                 onChange={(date) => update("arrival_date", date)}
                 language={value.language}
                 placeholder={t.form.arrivalDatePlaceholder}
+                prevMonthLabel={t.form.calendarPrevMonth}
+                nextMonthLabel={t.form.calendarNextMonth}
               />
             </div>
             <Field label={t.form.arrivalTime}>
@@ -306,6 +310,8 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             language={value.language}
             placeholder={t.form.datesPlaceholder}
             toLabel={t.form.datesPickEnd}
+            prevMonthLabel={t.form.calendarPrevMonth}
+            nextMonthLabel={t.form.calendarNextMonth}
           />
         </div>
         <Field label={t.form.partySize}>

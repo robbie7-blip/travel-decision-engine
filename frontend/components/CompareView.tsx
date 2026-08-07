@@ -56,7 +56,7 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
       })
       .catch((e) => {
         if (cancelled) return;
-        setState((prev) => ({ ...prev, loadError: e instanceof ApiError ? e.message : "Something went wrong." }));
+        setState((prev) => ({ ...prev, loadError: e instanceof ApiError ? e.message : t.genericError }));
       });
 
     return () => {
@@ -142,7 +142,7 @@ export function CompareView() {
       onLanguageChange={setLanguage}
       t={t}
       maxWidth={1400}
-      extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} />}
+      extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
       contextLink={{ href: "/", label: `${t.compare.planAnother} →` }}
     />
   );

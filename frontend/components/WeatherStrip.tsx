@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SectionLabel } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
 import type { DestinationWeather, WeatherCondition } from "@/lib/weather";
+import type { Language } from "@/lib/types";
 
 function WeatherIcon({ condition }: { condition: WeatherCondition }) {
   const common = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -84,20 +85,36 @@ function useWeather(destinations: string[], startDate: string, endDate: string):
   return weather;
 }
 
-const WEEKDAY_FORMATTER = new Intl.DateTimeFormat("en", { weekday: "short", day: "numeric", month: "short" });
+// Bug fixed: this used to be a single module-level formatter hardcoded to
+// "en" regardless of the app's selected language — every forecast day
+// label ("Mon, 12 Aug") showed English weekday/month abbreviations even
+// when the rest of the page was in Bulgarian. Same LOCALE_BY_LANGUAGE
+// pattern as DateRangePicker/SingleDatePicker, keyed per-language so the
+// formatter itself follows the site's language choice.
+const LOCALE_BY_LANGUAGE: Record<Language, string> = {
+  en: "en-GB",
+  bg: "bg-BG",
+};
 
 export function WeatherStrip({
   destinations,
   startDate,
   endDate,
   t,
+  language = "en",
 }: {
   destinations: string[];
   startDate: string;
   endDate: string;
   t: Dictionary;
+  language?: Language;
 }) {
   const weather = useWeather(destinations, startDate, endDate);
+  const weekdayFormatter = new Intl.DateTimeFormat(LOCALE_BY_LANGUAGE[language], {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 
   if (!weather || Object.keys(weather).length === 0) return null;
 
@@ -133,7 +150,7 @@ export function WeatherStrip({
                 }}
               >
                 <div className="font-mono" style={{ fontSize: 10, color: "var(--ink-dim)", marginBottom: 4 }}>
-                  {WEEKDAY_FORMATTER.format(new Date(`${day.date}T12:00:00Z`))}
+                  {weekdayFormatter.format(new Date(`${day.date}T12:00:00Z`))}
                 </div>
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
                   <WeatherIcon condition={day.condition} />
