@@ -278,7 +278,7 @@ export function ItineraryResult({
           fontSize: 22,
           lineHeight: 1.4,
           margin: "0 0 20px",
-          color: "var(--ink)",
+          color: "var(--brand-teal)",
         }}
       >
         {result.trip_summary}
