@@ -45,6 +45,19 @@ function GlobeLoadingPlaceholder() {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// A distinct brand color per badge instead of one uniform green for every
+// milestone — same wider-use-of-the-existing-palette idea as TABS' colors
+// below. Falls back to --accent-green for any future badge id that isn't
+// listed here yet, so a new badge never renders with an undefined color.
+const BADGE_COLORS: Record<string, string> = {
+  first_stamp: "var(--brand-coral)",
+  explorer: "var(--brand-teal)",
+  globetrotter: "var(--brand-purple)",
+  continent_hopper: "var(--brand-gold)",
+  all_continents: "var(--brand-green)",
+  half_the_world: "var(--brand-red)",
+};
+
 type Tab = "map" | "globe" | "zoomable" | "flags" | "timeline" | "chronology" | "pins";
 
 /** The Been-style visited-countries tracker. Local-storage-first, same as
@@ -252,14 +265,19 @@ export default function VisitedPage() {
     window.location.href = `/compare-stats?a=${myToken}&b=${friendToken}`;
   }
 
-  const TABS: { id: Tab; label: string }[] = [
-    { id: "map", label: v.tabMap },
-    { id: "globe", label: v.tabGlobe },
-    { id: "zoomable", label: v.tabZoomable },
-    { id: "flags", label: v.tabFlags },
-    { id: "timeline", label: v.tabTimeline },
-    { id: "chronology", label: v.tabChronology },
-    { id: "pins", label: v.tabPins },
+  // A distinct brand color per tab (Been-app-style playful tab row, per the
+  // original inspiration for this whole visualize feature) rather than one
+  // uniform green for every active state — cycles through the same 6 brand
+  // colors already used for the logo/confidence tiers elsewhere, so it's a
+  // wider use of the existing palette, not a new one invented just for this.
+  const TABS: { id: Tab; label: string; color: string }[] = [
+    { id: "map", label: v.tabMap, color: "var(--brand-teal)" },
+    { id: "globe", label: v.tabGlobe, color: "var(--brand-coral)" },
+    { id: "zoomable", label: v.tabZoomable, color: "var(--brand-gold)" },
+    { id: "flags", label: v.tabFlags, color: "var(--brand-purple)" },
+    { id: "timeline", label: v.tabTimeline, color: "var(--brand-green)" },
+    { id: "chronology", label: v.tabChronology, color: "var(--brand-red)" },
+    { id: "pins", label: v.tabPins, color: "var(--brand-teal)" },
   ];
 
   return (
@@ -279,7 +297,12 @@ export default function VisitedPage() {
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
+          {/* Page H1 uses the brand teal (same color as the "decide"
+           * wordmark in SiteHeader) as a consistent signature accent across
+           * every page's title — body copy/labels below stay --ink-dim/
+           * --ink for readability, color is deliberately scoped to just
+           * the heading. */}
+          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.visited.pageHeading}
           </h1>
           <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 24px", lineHeight: 1.5 }}>{t.visited.pageSubheading}</p>
@@ -296,7 +319,7 @@ export default function VisitedPage() {
           >
             <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginBottom: stats.earnedBadgeIds.length > 0 ? 16 : 0 }}>
               <div>
-                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-teal)" }}>
                   {stats.countriesVisited}
                 </div>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
@@ -304,7 +327,7 @@ export default function VisitedPage() {
                 </div>
               </div>
               <div>
-                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-gold)" }}>
                   {stats.percentOfWorld}%
                 </div>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
@@ -312,7 +335,7 @@ export default function VisitedPage() {
                 </div>
               </div>
               <div>
-                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-purple)" }}>
                   {stats.continentsVisited.length}/{stats.continentsTotal}
                 </div>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
@@ -330,8 +353,8 @@ export default function VisitedPage() {
                     className="font-mono"
                     style={{
                       fontSize: 11,
-                      border: "1px solid var(--accent-green)",
-                      color: "var(--accent-green)",
+                      border: `1px solid ${BADGE_COLORS[id] ?? "var(--accent-green)"}`,
+                      color: BADGE_COLORS[id] ?? "var(--accent-green)",
                       borderRadius: 999,
                       padding: "4px 12px",
                     }}
@@ -355,11 +378,12 @@ export default function VisitedPage() {
                   fontSize: 12,
                   letterSpacing: "0.02em",
                   borderRadius: 999,
-                  border: `1px solid ${tab === tabDef.id ? "var(--accent-green)" : "var(--line)"}`,
-                  background: tab === tabDef.id ? "var(--accent-green)" : "var(--bg-panel)",
+                  border: `1px solid ${tab === tabDef.id ? tabDef.color : "var(--line)"}`,
+                  background: tab === tabDef.id ? tabDef.color : "var(--bg-panel)",
                   color: tab === tabDef.id ? "var(--bg-panel)" : "var(--ink-soft)",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
+                  transition: "background 0.15s ease, border-color 0.15s ease",
                 }}
               >
                 {tabDef.label}
