@@ -86,7 +86,18 @@ function isValidMessage(m: unknown): m is TripQAMessage {
   if (role !== "user" && role !== "assistant") return false;
   if (typeof content !== "string") return false;
   const trimmed = content.trim();
-  return trimmed.length > 0 && trimmed.length <= MAX_TRIP_QA_MESSAGE_LENGTH;
+  if (trimmed.length === 0) return false;
+  // The length cap only ever guarded against an unreasonably long typed
+  // *question* (see MAX_TRIP_QA_MESSAGE_LENGTH's own comment) — it was
+  // never meant to apply to the assistant's own replies. At MAX_TOKENS=500
+  // a normal reply routinely runs past 800 characters, so applying this
+  // cap to both roles meant a single longer-than-usual answer would get
+  // stored client-side, resent as history on the next turn, and reject
+  // the *entire* conversation (including a brand new, perfectly valid
+  // user message) purely because of something the model itself wrote
+  // earlier — not anything the user did wrong.
+  if (role === "user" && trimmed.length > MAX_TRIP_QA_MESSAGE_LENGTH) return false;
+  return true;
 }
 
 export async function POST(request: NextRequest) {

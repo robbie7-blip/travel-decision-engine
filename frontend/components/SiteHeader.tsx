@@ -12,6 +12,7 @@
 // it, it just isn't the ONLY way to navigate anymore.
 
 import type { ReactNode } from "react";
+import { AccountControl } from "./AccountControl";
 import { NavMenu } from "./NavMenu";
 import { LANGUAGE_NAMES } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
@@ -47,7 +48,11 @@ export function SiteHeader({
   variant = "compact",
   extraControls,
   contextLink,
-  maxWidth = 860,
+  // 1280 matches the header width every page now passes explicitly (see
+  // ask/page.tsx's SiteHeader call for the full reasoning) — CompareStatsView
+  // is the one remaining caller that relies on this default rather than
+  // passing its own maxWidth, so it needs to move in step with the rest.
+  maxWidth = 1280,
 }: SiteHeaderProps) {
   const large = variant === "large";
   const langSuffix = language === "bg" ? "?lang=bg" : "";
@@ -61,7 +66,15 @@ export function SiteHeader({
         borderBottom: `1px solid ${large ? "var(--line-strong)" : "var(--line)"}`,
       }}
     >
-      <div style={{ maxWidth: large ? 960 : maxWidth, margin: "0 auto" }}>
+      {/* 1400 (not 960) for the large variant specifically — its bigger
+          84px logo + 48px wordmark plus the extra currency-switcher
+          control need more room than the compact header's nav content
+          does before nav + currency + language toggle stop fitting on
+          one line (measured need: ~1297px). The homepage's own body
+          content below stays at its own narrower 960, same pattern as
+          every other page's header being wider than that page's content
+          column — see ask/page.tsx's SiteHeader call. */}
+      <div style={{ maxWidth: large ? 1400 : maxWidth, margin: "0 auto" }}>
         <div
           style={{
             display: "flex",
@@ -77,7 +90,7 @@ export function SiteHeader({
             <div>
               <div
                 className="font-display"
-                style={{ fontSize: large ? 48 : 24, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}
+                style={{ fontSize: large ? 48 : 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}
               >
                 decide
               </div>
@@ -100,30 +113,46 @@ export function SiteHeader({
             </div>
           </a>
 
+          {/* contextLink sits here, next to the logo, rather than inside
+              header-nav-row below — it used to be the first child of that
+              row, which has marginLeft:auto and renders as one right-flush
+              block. Since contextLink's text length (or absence) varied
+              per page ("← Back to account" / "Your account →" / none),
+              that block's total width varied too, which shifted where
+              "How it works" started on every page even though the *right*
+              edge (language toggle) always lined up. Pulling contextLink
+              out means header-nav-row's content (nav + divider + language
+              toggle) is now identical on every page that renders it, so it
+              is pixel-identically positioned everywhere, not just
+              right-edge-aligned. */}
+          {contextLink && (
+            <a href={contextLink.href} className="font-mono header-context-link" style={linkStyle}>
+              {contextLink.label}
+            </a>
+          )}
+
           <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
-            {contextLink && (
-              <a href={contextLink.href} className="font-mono" style={linkStyle}>
-                {contextLink.label}
-              </a>
-            )}
             <NavMenu t={t} language={language} />
             <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {extraControls}
-              <div className="font-mono" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
+              <AccountControl language={language} t={t} />
+              <div className="font-mono lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
                 {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
                   <button
                     key={lang}
                     type="button"
                     onClick={() => onLanguageChange(lang)}
+                    data-active={language === lang}
                     style={{
                       border: "none",
                       padding: "6px 12px",
                       fontSize: 11,
                       letterSpacing: "0.04em",
                       cursor: "pointer",
-                      background: language === lang ? "var(--accent-green)" : "transparent",
-                      color: language === lang ? "var(--bg-panel)" : "var(--ink-dim)",
+                      background: "transparent",
+                      color: "var(--ink-dim)",
+                      transition: "all 0.2s ease",
                     }}
                   >
                     {lang.toUpperCase()}

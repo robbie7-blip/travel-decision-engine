@@ -159,7 +159,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
           {weeks.map((week, wi) => (
             <div key={wi} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
               {week.map((day, di) => {
-                if (!day) return <div key={di} />;
+                if (!day) return null;
                 const isStart = start && sameDay(day, start);
                 const isEnd = end && sameDay(day, end);
                 const inRange = start && end && day > start && day < end;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AccountControl } from "@/components/AccountControl";
 import { DestinationHero } from "@/components/DestinationHero";
 import { NavMenu } from "@/components/NavMenu";
 import {
@@ -132,9 +133,12 @@ export default async function DestinationPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <div style={{ padding: "20px 24px", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+        {/* 1280, not this page's own 780px content width below — see the
+            comment on ask/page.tsx's SiteHeader call for why the header
+            stays pinned to the site-wide width regardless. */}
         <div
           style={{
-            maxWidth: 780,
+            maxWidth: 1280,
             margin: "0 auto",
             display: "flex",
             flexWrap: "wrap",
@@ -145,11 +149,11 @@ export default async function DestinationPage({
           <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
-            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--grounded)" }}>
+            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
               decide
             </span>
           </a>
-          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginLeft: "auto" }}>
+          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
             <a
               href={`/destinations${langSuffix}`}
               className="font-mono"
@@ -159,32 +163,35 @@ export default async function DestinationPage({
             </a>
             <NavMenu t={t} language={language} />
             <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
+            <AccountControl language={language} t={t} />
             <div
-              className="font-mono"
+              className="font-mono lang-toggle"
               style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
             >
               <a
                 href={`/destinations/${slug}`}
+                data-active={language === "en"}
                 style={{
                   padding: "6px 12px",
                   fontSize: 11,
                   letterSpacing: "0.04em",
                   textDecoration: "none",
-                  background: language === "en" ? "var(--accent-green)" : "transparent",
-                  color: language === "en" ? "var(--bg-panel)" : "var(--ink-dim)",
+                  background: "transparent",
+                  color: "var(--ink-dim)",
                 }}
               >
                 EN
               </a>
               <a
                 href={`/destinations/${slug}?lang=bg`}
+                data-active={language === "bg"}
                 style={{
                   padding: "6px 12px",
                   fontSize: 11,
                   letterSpacing: "0.04em",
                   textDecoration: "none",
-                  background: language === "bg" ? "var(--accent-green)" : "transparent",
-                  color: language === "bg" ? "var(--bg-panel)" : "var(--ink-dim)",
+                  background: "transparent",
+                  color: "var(--ink-dim)",
                 }}
               >
                 BG

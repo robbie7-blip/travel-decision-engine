@@ -34,14 +34,19 @@ export function Stamp({ ok, color, children }: { ok: boolean; color?: string; ch
       className="font-mono"
       style={{
         display: "inline-block",
+        background: resolved,
         border: `2px solid ${resolved}`,
-        color: resolved,
+        color: "white",
         fontWeight: 700,
         letterSpacing: "0.08em",
         padding: "6px 14px",
         borderRadius: 6,
         transform: "rotate(-2deg)",
         fontSize: 13,
+        // resolved is a var(--x) reference (or occasionally a literal from
+        // trustScoreColor), never a bare hex — color-mix lets the shadow
+        // pick up its alpha without string-concatenating onto a var().
+        boxShadow: `0 4px 14px -2px color-mix(in srgb, ${resolved} 45%, transparent)`,
       }}
     >
       {children}

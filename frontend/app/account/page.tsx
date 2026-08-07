@@ -86,11 +86,14 @@ export default function AccountPage() {
 
   return (
     <div style={{ minHeight: "100%" }}>
+      {/* Header stays 1280 (matching the rest of the site) even though this
+          page's own content column below is narrower — see the comment on
+          ask/page.tsx's SiteHeader call for why. */}
       <SiteHeader
         language={language}
         onLanguageChange={setLanguage}
         t={t}
-        maxWidth={720}
+        maxWidth={1280}
         contextLink={{ href: "/pricing", label: `${t.account.pricingHeading} →` }}
       />
 

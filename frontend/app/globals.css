@@ -1,4 +1,39 @@
 :root {
+  /* ============================================================
+     COLOR SYSTEM — exactly 6 brand colors, chosen from and anchored to
+     logo-icon.svg's own palette, plus the ink/bg neutrals below. Every
+     other --variable in this file is an ALIAS onto one of these six,
+     reused by MEANING rather than introduced fresh — the app should
+     never need a 7th hue. If something needs to stand out, reuse one
+     of these six more deliberately (or more sparingly); don't reach
+     for a new color.
+
+       1. TEAL   brand / trust / primary interactive. Matches
+          logo-icon.svg's line color exactly, so the wordmark and every
+          "verified" / primary-button / focus moment in the UI reads as
+          one identity with the mark next to it — not a UI blue that
+          happens to sit near a differently-colored logo.
+       2. CORAL  action / energy. The logo's dot color. Reserved for
+          moments that want attention: the headline, the primary CTA,
+          hover/focus feedback. Deliberately NOT reused as generic
+          decoration, so it still reads as "look here" when it appears.
+       3. GOLD   secondary accent, paired with coral in the one
+          signature gradient (the headline). Also the "sources
+          disagree" confidence tier.
+       4. PURPLE narrow and deliberate: the "single source" confidence
+          tier ONLY. Not reused decoratively elsewhere — the one time
+          it shows up, it means something specific instead of just
+          being another color in the mix.
+       5. GREEN  success / feasible / upgrade.
+       6. RED    error / infeasible ONLY.
+     ============================================================ */
+  --brand-teal: #1f6f8a;
+  --brand-coral: #d9643f;
+  --brand-gold: #e8a23f;
+  --brand-purple: #7d5ba6;
+  --brand-green: #3f7a4a;
+  --brand-red: #b8452f;
+
   --ink: #2b241c;
   --ink-soft: #4a4136;
   --ink-dim: #8a7d68;
@@ -6,42 +41,48 @@
   --bg-panel: #fffdf8;
   --bg-panel-raised: #f1e7d2;
   --line: #e3d5b3;
-  /* A stronger border for form controls specifically — --line alone reads
-     as barely-there against --bg-panel-raised (the two are close enough in
-     lightness that inputs looked flush with their panel instead of like
-     inputs). Kept separate from --line so ordinary card/divider borders
-     elsewhere are untouched. */
   --line-strong: #cbb98c;
-  /* Soft lift for panels/cards that otherwise sit flat against --bg (a thin
-     --line border alone doesn't read as "raised" on a warm cream page). */
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
-  --grounded: #1f6f8a;
-  --unverified: #c97f1e;
-  --infeasible: #b8452f;
-  --feasible: #1f6f8a;
-  /* Confidence tiers (ItineraryItem.confidence_tier). "verified" reuses
-     --grounded and "conflicting" reuses --unverified deliberately — a
-     conflicting-sources item still deserves the same "treat with caution"
-     amber as an ungrounded guess used to convey alone. --tier-single-source
-     was a second blue (#3f7ea3) until --grounded became blue too (was
-     teal) — the two were nearly indistinguishable at a glance, which
-     defeats the point of a color-coded confidence system, so this is now
-     a muted violet instead: distinct from --grounded's blue, --unverified's
-     amber, and --tier-inferred's grey. */
-  --tier-single-source: #7d5ba6;
+
+  /* Confidence-tier colors — aliases onto the six above, not separate
+     hues, so the tier system and the rest of the UI draw from the same
+     palette instead of running two color systems side by side. */
+  --grounded: var(--brand-teal);
+  --feasible: var(--brand-teal);
+  --unverified: var(--brand-gold);
+  --infeasible: var(--brand-red);
+  --tier-single-source: var(--brand-purple);
+  /* Deliberately its own literal value, not an alias — this tier means
+     "lowest-confidence guess," and a punchy brand color here would fight
+     that meaning by making an inferred line look as trustworthy as a
+     verified one. */
   --tier-inferred: #a89a82;
-  /* Brand gradient accent (terracotta -> gold) — used for the headline,
-     CTA, and small brand touches only, never for a trust/confidence
-     signal, so it stays unambiguous from the grounded/unverified meaning. */
-  --accent-1: #d9643f;
-  --accent-2: #e8a23f;
-  /* Wordmark + "primary action" accent (the decide logo, the main CTA
-     button, active toggle states). Deliberately a different hue from
-     --grounded's blue so it never reads as a confidence/trust signal —
-     this is purely a brand/UI-state color. */
-  --accent-green: #3f7a4a;
+
+  /* logo-icon.svg is a static asset that can't read this file's
+     variables — --brand-teal above IS that exact hex already, this just
+     names that fact so the wordmark (which reads --logo-teal) can never
+     drift from the mark next to it, independent of whatever else
+     --brand-teal ends up meaning. */
+  --logo-teal: var(--brand-teal);
+
+  --accent-1: var(--brand-coral);
+  --accent-2: var(--brand-gold);
+  --accent-green: var(--brand-green);
   --accent-green-light: #6fae6c;
+
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Decorative slot names kept from an earlier pass so component files
+     didn't need touching for this consolidation — each is an alias onto
+     one of the six brand colors above, picked so the three "How It
+     Works" step icons (blue slot / purple slot / teal slot) stay
+     visually distinct from each other. --color-teal is retired outright
+     (not aliased) because pointing it at --brand-teal would have made
+     it collide with --color-blue — see page.tsx's step-3 icon, which
+     now reads var(--accent-2) [gold] directly instead. */
+  --color-blue: var(--brand-teal);
+  --color-purple: var(--brand-purple);
+  --color-coral: var(--brand-coral);
 }
 
 * {
@@ -58,7 +99,7 @@ body {
 
 body {
   min-height: 100vh;
-  background: var(--bg);
+  background: linear-gradient(180deg, #f7f1e2 0%, #f2eff0 100%);
 }
 
 input:focus,
@@ -92,18 +133,33 @@ button {
   color: transparent;
 }
 
+/* Solid teal (brand/trust — see the COLOR SYSTEM block above), not
+   coral. Coral read too "warning-orange" for the main CTA in practice;
+   teal ties the button directly to the same trust color used for the
+   wordmark and the verified/feasible confidence tier, which fits a
+   "generate my itinerary" action better than the more attention-grabby
+   action color. */
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-green), var(--accent-green-light));
-  color: var(--bg-panel);
+  background: var(--color-blue);
+  color: white;
   border: none;
-  border-radius: 999px;
-  box-shadow: 0 6px 20px -6px rgba(63, 122, 74, 0.45);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 8px;
+  padding: 14px 32px;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-blue) 40%, transparent);
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 28px -6px rgba(63, 122, 74, 0.6);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--color-blue) 55%, transparent);
+  background: color-mix(in srgb, var(--color-blue) 85%, black);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .btn-primary:disabled {
@@ -111,6 +167,35 @@ button {
   color: var(--ink-dim);
   box-shadow: none;
   cursor: default;
+}
+
+/* FORM STYLING ENHANCEMENTS */
+.trip-form-grid input,
+.trip-form-grid select,
+.trip-form-grid textarea {
+  border: 2px solid var(--color-blue) !important;
+  border-left: 4px solid var(--color-blue) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  font-size: 15px !important;
+  transition: all 0.2s ease !important;
+  background: linear-gradient(to right, color-mix(in srgb, var(--color-blue) 2%, white), white) !important;
+}
+
+/* Focus uses coral (the action color), not purple — purple is reserved
+   for the single-source confidence tier specifically (see the COLOR
+   SYSTEM block at the top of this file). */
+.trip-form-grid input:focus,
+.trip-form-grid select:focus,
+.trip-form-grid textarea:focus {
+  outline: none !important;
+  border-color: var(--color-coral) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-coral) 15%, transparent) !important;
+}
+
+.trip-form-grid input::placeholder {
+  color: var(--ink-dim);
+  opacity: 0.7;
 }
 
 .trip-form-grid {
@@ -145,6 +230,16 @@ button {
     padding-top: 18px;
     margin-top: 6px;
     border-top: 1px solid var(--line);
+  }
+
+  /* contextLink now renders as its own sibling next to the logo (see
+     SiteHeader.tsx) instead of as header-nav-row's first child, so it no
+     longer automatically gets that row's "full width, own line" mobile
+     treatment above — give it the same forced-own-line behavior directly
+     so it doesn't squeeze onto the logo's row on narrow screens. */
+  .header-context-link {
+    width: 100%;
+    margin-top: 6px;
   }
 
   /* The links/controls groups already wrap onto separate lines at this
@@ -247,4 +342,308 @@ button {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* VISUAL ENHANCEMENTS */
+
+/* Page sections with visual interest */
+div[style*="padding: 32px 24px"] {
+  position: relative;
+}
+
+/* How It Works section - colored background. Teal + coral, the two
+   colors that already anchor the rest of the page (brand/trust and
+   action), instead of a third hue introduced just for this section. */
+div[id="how-it-works"] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blue) 6%, transparent), color-mix(in srgb, var(--color-coral) 6%, transparent));
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--color-blue) 10%, transparent);
+}
+
+/* Step cards - enhanced styling with colored backgrounds */
+div[style*="display: grid"] > div {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--color-blue) 15%, transparent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+/* Step 1 - teal (brand/primary) */
+div[style*="display: grid"] > div[data-step="0"] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blue) 8%, transparent), color-mix(in srgb, var(--color-blue) 3%, transparent));
+  border-color: color-mix(in srgb, var(--color-blue) 20%, transparent) !important;
+}
+
+/* Step 2 - purple (this is the one deliberate decorative use of the
+   single-source tier's purple outside the tier system itself — three
+   steps need three distinct colors, and reusing an existing brand color
+   here still beats introducing a 7th hue). */
+div[style*="display: grid"] > div[data-step="1"] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-purple) 8%, transparent), color-mix(in srgb, var(--color-purple) 3%, transparent));
+  border-color: color-mix(in srgb, var(--color-purple) 20%, transparent) !important;
+}
+
+/* Step 3 - gold (secondary accent) */
+div[style*="display: grid"] > div[data-step="2"] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-2) 8%, transparent), color-mix(in srgb, var(--accent-2) 3%, transparent));
+  border-color: color-mix(in srgb, var(--accent-2) 20%, transparent) !important;
+}
+
+div[style*="display: grid"] > div:hover {
+  border-color: var(--color-blue) !important;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--color-blue) 20%, transparent);
+  transform: translateY(-4px);
+}
+
+/* Confidence legend pills - each one now colored by its own tier instead
+   of a uniform blue border, so the legend itself previews the palette
+   used throughout the app (verified/fact-grounded cyan, single-source
+   purple, conflicting amber, inferred neutral) rather than looking like
+   one generic chip style repeated five times. */
+span[data-tier] {
+  transition: all 0.2s ease;
+  background: white;
+  border-width: 1.5px !important;
+}
+
+span[data-tier="verified"],
+span[data-tier="fact_grounded"] {
+  border-color: var(--grounded) !important;
+  background: color-mix(in srgb, var(--grounded) 10%, white) !important;
+}
+
+span[data-tier="single_source"] {
+  border-color: var(--tier-single-source) !important;
+  background: color-mix(in srgb, var(--tier-single-source) 10%, white) !important;
+}
+
+span[data-tier="conflicting"] {
+  border-color: var(--unverified) !important;
+  background: color-mix(in srgb, var(--unverified) 10%, white) !important;
+}
+
+span[data-tier="inferred"] {
+  border-color: var(--tier-inferred) !important;
+  background: color-mix(in srgb, var(--tier-inferred) 10%, white) !important;
+}
+
+span[data-tier]:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Demo link - styled button, teal (trust/brand), not teal-into-purple */
+a[style*="color: var(--grounded)"] {
+  transition: all 0.2s ease;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-blue) 12%, transparent);
+  color: var(--color-blue) !important;
+  border: 1.5px solid var(--color-blue);
+  text-decoration: none !important;
+  display: inline-block;
+  font-weight: 600;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-blue) 15%, transparent);
+}
+
+a[style*="color: var(--grounded)"]:hover {
+  background: var(--color-blue);
+  color: white !important;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-blue) 35%, transparent);
+  transform: translateY(-2px);
+}
+
+/* Better link hover states */
+a {
+  transition: all 0.2s ease;
+}
+
+/* Header nav links - previously all six (How it works / Destination
+   guides / Real examples / Ask a Local / Places you've been / Pricing)
+   sat at the same weight and color as ordinary body text with nothing but
+   a gap between them, so the row read as one run-on sentence rather than
+   a menu of distinct items — the hover underline alone didn't fix that
+   because it only kicks in per-item, after you've already had to parse
+   the resting-state wall of text. Bolder weight, darker resting color, a
+   divider between items, and padding that gives each one its own visual
+   "button-shaped" footprint all address the resting state instead of
+   only the hover state. */
+.nav-link {
+  position: relative;
+  color: var(--ink);
+  font-weight: 600;
+  padding: 6px 14px;
+}
+
+.nav-link:not(:first-child) {
+  border-left: 1px solid var(--line-strong);
+}
+
+/* Coral, the action color — not teal-into-purple. This is interaction
+   feedback (hover), the same job coral does on the primary button and
+   form focus states, so hovering a nav link reads as the same kind of
+   moment instead of introducing its own gradient. */
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 0;
+  height: 2px;
+  background: var(--color-coral);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+
+.nav-link:hover {
+  color: var(--color-coral) !important;
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* The stacked mobile menu (.nav-links-row--open, flex-direction: column)
+   already separates items onto their own rows, so the inline divider
+   would just float as a stray tick mark at the start of each line. */
+@media (max-width: 700px) {
+  .nav-link:not(:first-child) {
+    border-left: none;
+  }
+
+  .nav-link {
+    padding-left: 0;
+  }
+}
+
+/* Language (EN/BG) segmented toggle - solid teal (brand/primary), not a
+   teal-into-purple gradient, with a hover state on the inactive option
+   so the control doesn't feel dead. Covers both the client-side
+   <button> version (SiteHeader) and the server-rendered <a> version
+   (destinations/showcase pages, which switch language via a ?lang= URL
+   param instead of client state). */
+.lang-toggle button[data-active="true"],
+.lang-toggle a[data-active="true"] {
+  background: var(--color-blue) !important;
+  color: white !important;
+}
+
+.lang-toggle button[data-active="false"]:hover,
+.lang-toggle a[data-active="false"]:hover {
+  background: color-mix(in srgb, var(--color-blue) 10%, transparent) !important;
+  color: var(--color-blue) !important;
+}
+
+.lang-toggle {
+  border-color: color-mix(in srgb, var(--color-blue) 25%, transparent) !important;
+}
+
+/* Currency <select> - flat gray border felt out of place next to the
+   brighter nav/lang controls beside it. */
+.currency-select {
+  border-color: color-mix(in srgb, var(--color-blue) 30%, transparent) !important;
+  color: var(--ink-soft) !important;
+  transition: all 0.2s ease;
+}
+
+.currency-select:hover {
+  border-color: var(--color-blue) !important;
+  color: var(--color-blue) !important;
+}
+
+/* Global "Sign in" / "Account" header pill (AccountControl.tsx) — teal
+   while signed out (same brand/primary color as the rest of the header
+   controls), green once signed in (the "feasible/success" color, reused
+   here for "this is in a good state" rather than introducing a 7th hue). */
+.account-control {
+  color: var(--color-blue);
+  border-color: color-mix(in srgb, var(--color-blue) 30%, transparent) !important;
+  transition: all 0.2s ease;
+}
+
+.account-control:hover {
+  border-color: var(--color-blue) !important;
+  background: color-mix(in srgb, var(--color-blue) 10%, transparent);
+}
+
+.account-control[data-signed-in="true"] {
+  color: var(--accent-green);
+  border-color: color-mix(in srgb, var(--accent-green) 35%, transparent) !important;
+}
+
+.account-control[data-signed-in="true"]:hover {
+  border-color: var(--accent-green) !important;
+  background: color-mix(in srgb, var(--accent-green) 12%, transparent);
+}
+
+.account-control-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  flex-shrink: 0;
+}
+
+/* Improved button transitions */
+button {
+  transition: all 0.15s ease;
+}
+
+/* Typography enhancements */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* How It Works heading with accent underline */
+div[id="how-it-works"] h2 {
+  position: relative;
+  padding-bottom: 12px;
+  margin-bottom: 24px !important;
+}
+
+div[id="how-it-works"] h2::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-blue), var(--color-coral));
+  border-radius: 2px;
+}
+
+p {
+  letter-spacing: 0.01em;
+  line-height: 1.7;
+}
+
+/* Form container styling */
+div[style*="padding: 36px 24px"] {
+  background: linear-gradient(180deg, #f7f1e2, #f0e8d8);
+  position: relative;
+}
+
+div[style*="padding: 36px 24px"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-blue), var(--color-coral));
+}
+
+/* Decorative background elements */
+.trip-form-grid {
+  background: linear-gradient(135deg, white, color-mix(in srgb, var(--color-blue) 1%, transparent));
+  padding: 32px;
+  border-radius: 16px;
+  border: 2px solid color-mix(in srgb, var(--color-blue) 25%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-blue) 12%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-blue) 5%, transparent);
 }
