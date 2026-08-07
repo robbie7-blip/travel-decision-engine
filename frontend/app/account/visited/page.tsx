@@ -297,7 +297,12 @@ export default function VisitedPage() {
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
+          {/* Page H1 uses the brand teal (same color as the "decide"
+           * wordmark in SiteHeader) as a consistent signature accent across
+           * every page's title — body copy/labels below stay --ink-dim/
+           * --ink for readability, color is deliberately scoped to just
+           * the heading. */}
+          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.visited.pageHeading}
           </h1>
           <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 24px", lineHeight: 1.5 }}>{t.visited.pageSubheading}</p>
