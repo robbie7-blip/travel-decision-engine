@@ -126,7 +126,7 @@ export function TripView({ jobId }: { jobId: string }) {
         onLanguageChange={setLanguage}
         t={t}
         maxWidth={1280}
-        extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} />}
+        extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
         contextLink={{ href: "/", label: `${t.trip.planAnother} →` }}
       />
 

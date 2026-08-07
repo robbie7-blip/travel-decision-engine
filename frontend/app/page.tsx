@@ -116,7 +116,7 @@ export default function Home() {
         language={form.language}
         onLanguageChange={setLanguage}
         t={t}
-        extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} />}
+        extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
       />
       <div style={{ padding: "16px 24px 36px", borderBottom: "1px solid var(--line)", position: "relative" }}>
         {/* Decorative background elements */}
@@ -207,8 +207,8 @@ export default function Home() {
 
       <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--line)" }}>
         <div id="how-it-works" style={{ maxWidth: 960, margin: "0 auto", scrollMarginTop: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--ink)" }}>
-            How It Works
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--brand-teal)" }}>
+            {t.howItWorks}
           </h2>
           <div
             style={{

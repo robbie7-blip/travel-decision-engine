@@ -9,7 +9,7 @@ import { VisitedTimeline } from "@/components/VisitedTimeline";
 import { VisitedChronology } from "@/components/VisitedChronology";
 import { VisitedZoomableMap } from "@/components/VisitedZoomableMap";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
-import { COUNTRIES, countryFlagEmoji, CONTINENTS } from "@/lib/countries";
+import { COUNTRIES, countryFlagEmoji, CONTINENTS, getCountryName, getContinentName } from "@/lib/countries";
 import { computeVisitedStats } from "@/lib/visited";
 import {
   readLocalVisitedEntries,
@@ -44,6 +44,19 @@ function GlobeLoadingPlaceholder() {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// A distinct brand color per badge instead of one uniform green for every
+// milestone — same wider-use-of-the-existing-palette idea as TABS' colors
+// below. Falls back to --accent-green for any future badge id that isn't
+// listed here yet, so a new badge never renders with an undefined color.
+const BADGE_COLORS: Record<string, string> = {
+  first_stamp: "var(--brand-coral)",
+  explorer: "var(--brand-teal)",
+  globetrotter: "var(--brand-purple)",
+  continent_hopper: "var(--brand-gold)",
+  all_continents: "var(--brand-green)",
+  half_the_world: "var(--brand-red)",
+};
 
 type Tab = "map" | "globe" | "zoomable" | "flags" | "timeline" | "chronology" | "pins";
 
@@ -252,14 +265,19 @@ export default function VisitedPage() {
     window.location.href = `/compare-stats?a=${myToken}&b=${friendToken}`;
   }
 
-  const TABS: { id: Tab; label: string }[] = [
-    { id: "map", label: v.tabMap },
-    { id: "globe", label: v.tabGlobe },
-    { id: "zoomable", label: v.tabZoomable },
-    { id: "flags", label: v.tabFlags },
-    { id: "timeline", label: v.tabTimeline },
-    { id: "chronology", label: v.tabChronology },
-    { id: "pins", label: v.tabPins },
+  // A distinct brand color per tab (Been-app-style playful tab row, per the
+  // original inspiration for this whole visualize feature) rather than one
+  // uniform green for every active state — cycles through the same 6 brand
+  // colors already used for the logo/confidence tiers elsewhere, so it's a
+  // wider use of the existing palette, not a new one invented just for this.
+  const TABS: { id: Tab; label: string; color: string }[] = [
+    { id: "map", label: v.tabMap, color: "var(--brand-teal)" },
+    { id: "globe", label: v.tabGlobe, color: "var(--brand-coral)" },
+    { id: "zoomable", label: v.tabZoomable, color: "var(--brand-gold)" },
+    { id: "flags", label: v.tabFlags, color: "var(--brand-purple)" },
+    { id: "timeline", label: v.tabTimeline, color: "var(--brand-green)" },
+    { id: "chronology", label: v.tabChronology, color: "var(--brand-red)" },
+    { id: "pins", label: v.tabPins, color: "var(--brand-teal)" },
   ];
 
   return (
@@ -279,82 +297,15 @@ export default function VisitedPage() {
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
+          {/* Page H1 uses the brand teal (same color as the "decide"
+           * wordmark in SiteHeader) as a consistent signature accent across
+           * every page's title — body copy/labels below stay --ink-dim/
+           * --ink for readability, color is deliberately scoped to just
+           * the heading. */}
+          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.visited.pageHeading}
           </h1>
           <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 24px", lineHeight: 1.5 }}>{t.visited.pageSubheading}</p>
-
-          {/* Sync is an optional upgrade, not a requirement to use any of
-           * the page below — never gates it like a login wall. Placed
-           * right here, before any of the map/tabs/country-button content,
-           * because this used to sit at the very bottom of the page, past
-           * the map, all 7 visualization tabs, the share panel, and ~195
-           * country toggle buttons — reachable only by scrolling through
-           * everything else first, which meant most people never saw it
-           * and had no visible way to actually sign in from this page. */}
-          {!signedIn && (
-            <div
-              style={{
-                background: "var(--bg-panel)",
-                border: "1px solid var(--line)",
-                borderLeft: "3px solid var(--color-blue)",
-                borderRadius: 8,
-                padding: "14px 18px",
-                boxShadow: "var(--shadow-panel)",
-                marginBottom: 24,
-              }}
-            >
-              <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
-                {t.visited.signInPrompt}
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input
-                  type="email"
-                  value={signInEmail}
-                  onChange={(e) => setSignInEmail(e.target.value)}
-                  placeholder={t.account.emailPlaceholder}
-                  style={{
-                    flex: 1,
-                    minWidth: 200,
-                    background: "var(--bg-panel-raised)",
-                    border: "1px solid var(--line-strong)",
-                    borderRadius: 8,
-                    padding: "10px 13px",
-                    color: "var(--ink)",
-                    fontSize: 14,
-                    boxSizing: "border-box",
-                    boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
-                  }}
-                />
-                <button
-                  onClick={requestSignIn}
-                  disabled={signInSending || !signInEmail.trim()}
-                  className="font-mono btn-primary"
-                  style={{
-                    padding: "10px 16px",
-                    fontWeight: 700,
-                    fontSize: 12,
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                    cursor: signInSending || !signInEmail.trim() ? "default" : "pointer",
-                    flexShrink: 0,
-                  }}
-                >
-                  {t.visited.signInButton}
-                </button>
-              </div>
-              {signInMessage && (
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
-                  {signInMessage}
-                </div>
-              )}
-              {signInError && (
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
-                  {signInError}
-                </div>
-              )}
-            </div>
-          )}
 
           <div
             style={{
@@ -368,7 +319,7 @@ export default function VisitedPage() {
           >
             <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginBottom: stats.earnedBadgeIds.length > 0 ? 16 : 0 }}>
               <div>
-                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-teal)" }}>
                   {stats.countriesVisited}
                 </div>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
@@ -376,7 +327,7 @@ export default function VisitedPage() {
                 </div>
               </div>
               <div>
-                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-gold)" }}>
                   {stats.percentOfWorld}%
                 </div>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
@@ -384,7 +335,7 @@ export default function VisitedPage() {
                 </div>
               </div>
               <div>
-                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-purple)" }}>
                   {stats.continentsVisited.length}/{stats.continentsTotal}
                 </div>
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
@@ -402,8 +353,8 @@ export default function VisitedPage() {
                     className="font-mono"
                     style={{
                       fontSize: 11,
-                      border: "1px solid var(--accent-green)",
-                      color: "var(--accent-green)",
+                      border: `1px solid ${BADGE_COLORS[id] ?? "var(--accent-green)"}`,
+                      color: BADGE_COLORS[id] ?? "var(--accent-green)",
                       borderRadius: 999,
                       padding: "4px 12px",
                     }}
@@ -427,11 +378,12 @@ export default function VisitedPage() {
                   fontSize: 12,
                   letterSpacing: "0.02em",
                   borderRadius: 999,
-                  border: `1px solid ${tab === tabDef.id ? "var(--accent-green)" : "var(--line)"}`,
-                  background: tab === tabDef.id ? "var(--accent-green)" : "var(--bg-panel)",
+                  border: `1px solid ${tab === tabDef.id ? tabDef.color : "var(--line)"}`,
+                  background: tab === tabDef.id ? tabDef.color : "var(--bg-panel)",
                   color: tab === tabDef.id ? "var(--bg-panel)" : "var(--ink-soft)",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
+                  transition: "background 0.15s ease, border-color 0.15s ease",
                 }}
               >
                 {tabDef.label}
@@ -448,6 +400,7 @@ export default function VisitedPage() {
                 visitedLabel={t.visited.mapVisited}
                 notVisitedLabel={t.visited.mapNotVisited}
                 untrackedLabel={t.visited.mapUntracked}
+                language={language}
               />
             )}
             {tab === "globe" && (
@@ -457,6 +410,7 @@ export default function VisitedPage() {
                 visitedLabel={t.visited.mapVisited}
                 notVisitedLabel={t.visited.mapNotVisited}
                 untrackedLabel={t.visited.mapUntracked}
+                language={language}
               />
             )}
             {tab === "zoomable" && (
@@ -466,10 +420,11 @@ export default function VisitedPage() {
                 visitedLabel={t.visited.mapVisited}
                 notVisitedLabel={t.visited.mapNotVisited}
                 untrackedLabel={t.visited.mapUntracked}
+                language={language}
                 hint={v.zoomableHint}
               />
             )}
-            {tab === "flags" && <VisitedFlags codes={[...codes]} onToggle={toggle} emptyLabel={v.flagsEmpty} />}
+            {tab === "flags" && <VisitedFlags codes={[...codes]} onToggle={toggle} emptyLabel={v.flagsEmpty} language={language} />}
             {tab === "timeline" && (
               <VisitedTimeline
                 entries={entryList}
@@ -478,16 +433,71 @@ export default function VisitedPage() {
                 dateUnknownLabel={v.timelineDateUnknown}
                 setDateLabel={v.timelineSetDate}
                 locale={language === "bg" ? "bg-BG" : "en-US"}
+                language={language}
               />
             )}
             {tab === "chronology" && (
-              <VisitedChronology entries={entryList} undatedLabel={v.chronologyUndated} countLabel={v.chronologyCountLabel} />
+              <VisitedChronology
+                entries={entryList}
+                undatedLabel={v.chronologyUndated}
+                countLabel={v.chronologyCountLabel}
+                language={language}
+              />
             )}
-            {tab === "pins" && <VisitedPinsPanel entries={entryList} onAddPin={addPin} onRemovePin={removePin} t={t.visited} />}
+            {tab === "pins" && (
+              <VisitedPinsPanel entries={entryList} onAddPin={addPin} onRemovePin={removePin} t={t.visited} language={language} />
+            )}
           </div>
 
           {tab === "map" && (
             <>
+              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 16px", lineHeight: 1.5 }}>
+                {t.visited.mapSmallCountriesNote}
+              </p>
+
+              {CONTINENTS.map((continent) => (
+                <div key={continent} style={{ marginBottom: 28 }}>
+                  <div
+                    className="font-mono"
+                    style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 10 }}
+                  >
+                    {getContinentName(continent, language)}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {COUNTRIES.filter((c) => c.continent === continent).map((c) => {
+                      const isVisited = codes.has(c.code);
+                      return (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => toggle(c.code)}
+                          className="font-mono"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            border: `1px solid ${isVisited ? "var(--accent-green)" : "var(--line)"}`,
+                            background: isVisited ? "var(--accent-green)" : "var(--bg-panel)",
+                            color: isVisited ? "var(--bg-panel)" : "var(--ink-soft)",
+                            borderRadius: 999,
+                            padding: "6px 12px",
+                            fontSize: 12,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span>{countryFlagEmoji(c.code)}</span>
+                          {getCountryName(c.code, language)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Below the full checklist, not competing with it for
+               * attention at the top of the tab — comparing with a friend
+               * is a nice-to-have on top of the tracker, not part of using
+               * it. */}
               <div
                 style={{
                   background: "var(--bg-panel)",
@@ -495,7 +505,7 @@ export default function VisitedPage() {
                   borderRadius: 8,
                   padding: 20,
                   boxShadow: "var(--shadow-panel)",
-                  marginBottom: 28,
+                  marginTop: 12,
                 }}
               >
                 <div className="font-mono" style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
@@ -602,50 +612,73 @@ export default function VisitedPage() {
                   </>
                 )}
               </div>
-
-              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 16px", lineHeight: 1.5 }}>
-                {t.visited.mapSmallCountriesNote}
-              </p>
-
-              {CONTINENTS.map((continent) => (
-                <div key={continent} style={{ marginBottom: 28 }}>
-                  <div
-                    className="font-mono"
-                    style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 10 }}
-                  >
-                    {continent}
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {COUNTRIES.filter((c) => c.continent === continent).map((c) => {
-                      const isVisited = codes.has(c.code);
-                      return (
-                        <button
-                          key={c.code}
-                          type="button"
-                          onClick={() => toggle(c.code)}
-                          className="font-mono"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            border: `1px solid ${isVisited ? "var(--accent-green)" : "var(--line)"}`,
-                            background: isVisited ? "var(--accent-green)" : "var(--bg-panel)",
-                            color: isVisited ? "var(--bg-panel)" : "var(--ink-soft)",
-                            borderRadius: 999,
-                            padding: "6px 12px",
-                            fontSize: 12,
-                            cursor: "pointer",
-                          }}
-                        >
-                          <span>{countryFlagEmoji(c.code)}</span>
-                          {c.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
             </>
+          )}
+
+          {/* Sync is an optional upgrade, not a requirement to use any of
+           * the above — kept at the bottom, out of the way, rather than
+           * gating the page like a login wall. */}
+          {!signedIn && (
+            <div
+              style={{
+                background: "var(--bg-panel)",
+                border: "1px solid var(--line)",
+                borderRadius: 8,
+                padding: 20,
+                boxShadow: "var(--shadow-panel)",
+                marginTop: 12,
+              }}
+            >
+              <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
+                {t.visited.signInPrompt}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input
+                  type="email"
+                  value={signInEmail}
+                  onChange={(e) => setSignInEmail(e.target.value)}
+                  placeholder={t.account.emailPlaceholder}
+                  style={{
+                    flex: 1,
+                    minWidth: 200,
+                    background: "var(--bg-panel-raised)",
+                    border: "1px solid var(--line-strong)",
+                    borderRadius: 8,
+                    padding: "10px 13px",
+                    color: "var(--ink)",
+                    fontSize: 14,
+                    boxSizing: "border-box",
+                    boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
+                  }}
+                />
+                <button
+                  onClick={requestSignIn}
+                  disabled={signInSending || !signInEmail.trim()}
+                  className="font-mono btn-primary"
+                  style={{
+                    padding: "10px 16px",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    cursor: signInSending || !signInEmail.trim() ? "default" : "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  {t.visited.signInButton}
+                </button>
+              </div>
+              {signInMessage && (
+                <div className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
+                  {signInMessage}
+                </div>
+              )}
+              {signInError && (
+                <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
+                  {signInError}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

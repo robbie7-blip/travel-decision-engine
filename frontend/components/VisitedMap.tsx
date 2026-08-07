@@ -18,7 +18,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import WorldMap, { regions, type CountryContext, type ISOCode } from "react-svg-worldmap";
-import { getCountry } from "@/lib/countries";
+import { getCountry, getCountryName } from "@/lib/countries";
+import type { Language } from "@/lib/types";
 
 interface VisitedMapProps {
   visitedCodes: Set<string>;
@@ -27,6 +28,7 @@ interface VisitedMapProps {
   visitedLabel: string;
   notVisitedLabel: string;
   untrackedLabel: string;
+  language: Language;
   /** Skips the ResizeObserver-measured sizing below and renders at this
    * exact pixel size instead — for VisitedZoomableMap, whose pan/zoom
    * wrapper sizes ITSELF to its content, which would otherwise deadlock
@@ -37,7 +39,7 @@ interface VisitedMapProps {
   fixedSize?: number;
 }
 
-export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, notVisitedLabel, untrackedLabel, fixedSize }: VisitedMapProps) {
+export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, notVisitedLabel, untrackedLabel, language, fixedSize }: VisitedMapProps) {
   // The library's own size="responsive" mode measures its width via a
   // ResizeObserver + window.innerWidth fallback that, on real mobile
   // Safari, was observed rendering the map at a stale/oversized width
@@ -133,8 +135,15 @@ export function VisitedMap({ visitedCodes, onToggle, pendingCode, visitedLabel, 
         }}
         tooltipTextFunction={(context: CountryContext<number>) => {
           const code = context.countryCode.toUpperCase();
-          if (!isTracked(code)) return `${context.countryName} — ${untrackedLabel}`;
-          return `${context.countryName} — ${context.countryValue === 1 ? visitedLabel : notVisitedLabel}`;
+          // The library's own context.countryName is always English (it's
+          // baked into its bundled map data) — for a tracked country, use
+          // our own name in the active language instead, so the tooltip
+          // doesn't switch back to English mid-Bulgarian-UI. Untracked
+          // territories (see file header) aren't in our data at all, so
+          // context.countryName is the only name available for those.
+          const name = isTracked(code) ? getCountryName(code, language) : context.countryName;
+          if (!isTracked(code)) return `${name} — ${untrackedLabel}`;
+          return `${name} — ${context.countryValue === 1 ? visitedLabel : notVisitedLabel}`;
         }}
         onClickFunction={(context) => {
           const code = context.countryCode.toUpperCase();

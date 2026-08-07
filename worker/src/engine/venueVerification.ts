@@ -166,10 +166,17 @@ function namesLikelyMatch(venueName: string, placeName: string): boolean {
  * since that list missed real cases like "Tattoo studio visit at X" or any
  * other activity phrasing that doesn't start with one of the listed words.
  * Returns null (not a fallback to the full title) when no "at X" pattern is
- * found — that absence is exactly the signal isNamedVenueItem uses to tell
- * a genuinely generic title (a walk, a park visit) apart from one that
- * names a business and must be verified. */
-function extractVenueName(title: string): string | null {
+ * found.
+ *
+ * LEGACY FALLBACK ONLY — English titles only, since "at" isn't how other
+ * languages phrase this (confirmed: this used to be the ONLY detection
+ * method, and it silently broke venue verification, Maps links, AND the
+ * "hard rule, non-negotiable" real-business check entirely for every
+ * non-English trip, since titles follow the trip's response language). The
+ * primary path is item.venue_name below, a structured field the model sets
+ * directly per prompt.ts's LANGUAGE-INDEPENDENT FIELDS instruction. This
+ * regex only still runs for itineraries cached before that field existed. */
+function extractVenueNameFromTitle(title: string): string | null {
   const atRegex = /\bat\b/gi;
   let lastIndex = -1;
   let match: RegExpExecArray | null;
@@ -179,6 +186,17 @@ function extractVenueName(title: string): string | null {
   if (lastIndex === -1) return null;
   const rest = title.slice(lastIndex + 2).trim();
   return rest.length > 0 ? rest : null;
+}
+
+/** Resolves the venue name to verify: prefers the model's own structured
+ * venue_name field, falling back to the legacy title-regex only when that
+ * field is absent (an itinerary cached before this field existed) — see
+ * extractVenueNameFromTitle's header for why the regex alone isn't enough
+ * on its own for a non-English trip. */
+function resolveVenueName(item: { title: string; venue_name?: string | null }): string | null {
+  if (item.venue_name) return item.venue_name;
+  if (item.venue_name === undefined) return extractVenueNameFromTitle(item.title);
+  return null; // venue_name explicitly null — model says this item doesn't name one
 }
 
 function mapPriceLevel(level?: string): GooglePriceLevel | undefined {
@@ -246,13 +264,13 @@ async function lookupPlace(apiKey: string, query: string, bias?: GeoPoint | null
 }
 
 /** A "named venue" is any meal or activity whose title actually names a
- * business (extractVenueName found an "at X" pattern) — NOT based on
- * whether it costs money. A free activity can still name a real business
- * (e.g. "Tattoo studio visit at Vodka Tattoo", a no-charge browse) and must
- * be verified exactly like a paid one; a genuinely generic title (a walk, a
- * park visit) has no "at X" pattern at all and is correctly left alone. */
-function isNamedVenueItem(item: { type: string; title: string }): boolean {
-  return (item.type === "meal" || item.type === "activity") && extractVenueName(item.title) !== null;
+ * business (resolveVenueName found one) — NOT based on whether it costs
+ * money. A free activity can still name a real business (e.g. "Tattoo
+ * studio visit at Vodka Tattoo", a no-charge browse) and must be verified
+ * exactly like a paid one; a genuinely generic title (a walk, a park visit)
+ * resolves to null and is correctly left alone. */
+function isNamedVenueItem(item: { type: string; title: string; venue_name?: string | null }): boolean {
+  return (item.type === "meal" || item.type === "activity") && resolveVenueName(item) !== null;
 }
 
 function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
@@ -276,8 +294,8 @@ export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
   await Promise.all(
     targets.map(async (item) => {
       // Safe: item is only in targets because isNamedVenueItem already
-      // confirmed extractVenueName(item.title) is non-null.
-      const venueName = extractVenueName(item.title)!;
+      // confirmed resolveVenueName(item) is non-null.
+      const venueName = resolveVenueName(item)!;
       const bias = await geocode(item.location, geoCache);
       const place = await lookupPlace(apiKey, `${venueName}, ${item.location}`, bias);
       const placeName = place?.displayName?.text;

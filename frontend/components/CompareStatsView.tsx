@@ -184,7 +184,7 @@ export function CompareStatsView() {
       {header}
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 24px", color: "var(--ink)" }}>
+          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 24px", color: "var(--brand-teal)" }}>
             {t.compareStats.heading}
           </h1>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>

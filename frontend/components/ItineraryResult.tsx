@@ -278,7 +278,7 @@ export function ItineraryResult({
           fontSize: 22,
           lineHeight: 1.4,
           margin: "0 0 20px",
-          color: "var(--ink)",
+          color: "var(--brand-teal)",
         }}
       >
         {result.trip_summary}
@@ -350,7 +350,7 @@ export function ItineraryResult({
       )}
 
       {destinations && destinations.length > 0 && startDate && endDate && (
-        <WeatherStrip destinations={destinations} startDate={startDate} endDate={endDate} t={t} />
+        <WeatherStrip destinations={destinations} startDate={startDate} endDate={endDate} t={t} language={language} />
       )}
 
       {result.key_decisions && result.key_decisions.length > 0 && (

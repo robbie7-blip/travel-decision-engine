@@ -7,16 +7,18 @@
 // top — they don't have a place on the chronological line yet, so grouping
 // them under a fabricated year would be more misleading than useful.
 
-import { countryFlagEmoji, getCountry } from "@/lib/countries";
+import { countryFlagEmoji, getCountry, getCountryName } from "@/lib/countries";
 import type { VisitedEntry } from "@/lib/localVisited";
+import type { Language } from "@/lib/types";
 
 interface VisitedChronologyProps {
   entries: VisitedEntry[];
   undatedLabel: string;
   countLabel: string; // "{count} countries", "{count}" placeholder
+  language: Language;
 }
 
-export function VisitedChronology({ entries, undatedLabel, countLabel }: VisitedChronologyProps) {
+export function VisitedChronology({ entries, undatedLabel, countLabel, language }: VisitedChronologyProps) {
   const withCountry = entries
     .map((e) => ({ entry: e, country: getCountry(e.code) }))
     .filter((x): x is { entry: VisitedEntry; country: NonNullable<ReturnType<typeof getCountry>> } => x.country !== undefined);
@@ -72,7 +74,7 @@ export function VisitedChronology({ entries, undatedLabel, countLabel }: Visited
               {items.map(({ entry, country }) => (
                 <span
                   key={entry.code}
-                  title={country.name}
+                  title={getCountryName(country.code, language)}
                   style={{ fontSize: 22, lineHeight: 1, cursor: "default" }}
                 >
                   {countryFlagEmoji(entry.code)}

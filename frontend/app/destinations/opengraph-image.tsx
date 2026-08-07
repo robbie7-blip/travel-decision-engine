@@ -1,11 +1,21 @@
 // Social share image for the /destinations index — same branding as the
 // per-city guide image (see [slug]/opengraph-image.tsx) and the trip
 // share image, just without a specific city's photo to feature.
+//
+// English-only, not a locale gap that's fixable here: Next's
+// opengraph-image.tsx file convention only ever passes `params` to this
+// function, never `searchParams` — confirmed by trying it (a ?lang=bg
+// request still throws "Cannot destructure property 'lang' of undefined"
+// inside this function, and the build's static-prerender pass also has no
+// searchParams at all). See https://github.com/vercel/next.js/discussions/56314.
+// A real per-locale OG image would need a custom Route Handler instead of
+// this file convention, reading request.nextUrl.searchParams directly.
 
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { listDestinationSlugs } from "@/lib/destinations";
+import { TRANSLATIONS } from "@/lib/i18n";
 
 export const runtime = "nodejs";
 export const alt = "decide — destination guides";
@@ -36,6 +46,7 @@ const MARK_SVG = `
 const MARK_DATA_URI = `data:image/svg+xml;base64,${Buffer.from(MARK_SVG).toString("base64")}`;
 
 export default async function DestinationsIndexOgImage() {
+  const t = TRANSLATIONS.en.destinations;
   const count = listDestinationSlugs().length;
 
   let fraunces: Buffer | null = null;
@@ -65,10 +76,10 @@ export default async function DestinationsIndexOgImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", gap: 24 }}>
           <div style={{ display: "flex", fontSize: 64, fontWeight: 600, color: "#2b241c", lineHeight: 1.15 }}>
-            Destination guides
+            {t.pageTitle}
           </div>
           <div style={{ display: "flex", fontSize: 27, color: "#4a4136", lineHeight: 1.5, maxWidth: 940 }}>
-            What decide already knows about {count} cities before it even runs a live search.
+            {t.pageDescription.replace("{count}", String(count))}
           </div>
         </div>
       </div>

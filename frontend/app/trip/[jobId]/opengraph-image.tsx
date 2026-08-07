@@ -7,6 +7,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { loadJob } from "@/lib/loadJob";
 import { computeTrustScore } from "@/lib/trustScore";
+import { TRANSLATIONS } from "@/lib/i18n";
 
 export const runtime = "nodejs";
 export const alt = "A trip planned with decide";
@@ -50,8 +51,15 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
   const { jobId } = await params;
   const job = await loadJob(jobId);
 
-  const destinations = job?.brief?.destinations?.join(" · ") ?? "A trip, decided";
-  const rawSummary = job?.result?.trip_summary ?? "It doesn't list options. It decides for you.";
+  // job.brief.language is already known server-side (it's how the itinerary
+  // itself was generated) — no ?lang= query param needed here, unlike the
+  // destinations OG images, which don't have a per-request "language" to
+  // read until a query param supplies one.
+  const language = job?.brief?.language === "bg" ? "bg" : "en";
+  const t = TRANSLATIONS[language];
+
+  const destinations = job?.brief?.destinations?.join(" · ") ?? t.tagline;
+  const rawSummary = job?.result?.trip_summary ?? `${t.headlineLine1} ${t.headlineLine2}`;
   const summary = rawSummary.length > MAX_SUMMARY_LENGTH ? `${rawSummary.slice(0, MAX_SUMMARY_LENGTH - 1)}…` : rawSummary;
   const feasible = job?.result?.budget_feasibility?.feasible;
   const trustScore = job?.result ? computeTrustScore(job.result) : null;
@@ -105,7 +113,7 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
                   textTransform: "uppercase",
                 }}
               >
-                {feasible ? "Budget: feasible" : "Budget: not feasible"}
+                {feasible ? t.result.budgetFeasible : t.result.budgetNotFeasible}
               </div>
             )}
             {trustScore && trustScore.totalCount > 0 && (
@@ -122,7 +130,7 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
                   textTransform: "uppercase",
                 }}
               >
-                {trustScore.percent}% verified
+                {trustScore.percent}% {t.result.trustScoreLabel}
               </div>
             )}
           </div>

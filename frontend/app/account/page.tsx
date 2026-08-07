@@ -99,7 +99,7 @@ export default function AccountPage() {
 
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 20px", color: "var(--ink)" }}>
+          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 20px", color: "var(--brand-teal)" }}>
             {t.account.accountHeading}
           </h1>
 

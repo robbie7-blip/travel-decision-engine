@@ -18,6 +18,11 @@ export async function generateMetadata({
   const { lang } = await searchParams;
   const t = TRANSLATIONS[resolveLanguage(lang)].destinations;
   const title = `${t.pageTitle} — decide`;
+  // The OG image itself (opengraph-image.tsx in this folder) stays
+  // English-only regardless of language here — Next's file-convention
+  // image routes don't receive searchParams at all, so there's no ?lang=
+  // value to forward to it. See that file's header for the confirmed
+  // Next.js limitation.
   return {
     title,
     description: t.metaIndexDescription,
@@ -109,7 +114,7 @@ export default async function DestinationsIndexPage({
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <h1
             className="font-display"
-            style={{ fontWeight: 600, fontSize: "clamp(28px, 4.5vw, 38px)", lineHeight: 1.2, margin: "0 0 14px", color: "var(--ink)" }}
+            style={{ fontWeight: 600, fontSize: "clamp(28px, 4.5vw, 38px)", lineHeight: 1.2, margin: "0 0 14px", color: "var(--brand-teal)" }}
           >
             {dt.pageTitle}
           </h1>
