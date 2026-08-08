@@ -10,6 +10,22 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 
 export class EmailNotConfiguredError extends Error {}
 
+// Carries Resend's own reason (parsed from its JSON error body when
+// possible, e.g. "The yourdecide.com domain is not verified" or a rate-
+// limit message) so the API route can show it directly instead of a
+// generic "couldn't send" message — the alternative is whoever's testing
+// sign-in has no way to tell a bad EMAIL_FROM domain apart from a rate
+// limit apart from anything else without going and checking Resend's own
+// dashboard by hand.
+export class EmailSendFailedError extends Error {
+  constructor(
+    public readonly httpStatus: number,
+    public readonly reason: string
+  ) {
+    super(`Resend request failed: HTTP ${httpStatus} ${reason}`);
+  }
+}
+
 export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
@@ -62,7 +78,18 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
   });
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Resend request failed: HTTP ${res.status} ${body}`);
+    const bodyText = await res.text().catch(() => "");
+    // Resend's error responses are JSON ({"statusCode":...,"message":"...",
+    // "name":"..."}) — pull out .message when present for a clean, specific
+    // reason (unverified domain, rate limit, invalid "from" format, etc.);
+    // fall back to the raw body for anything that doesn't parse.
+    let reason = bodyText;
+    try {
+      const parsed = JSON.parse(bodyText);
+      if (typeof parsed?.message === "string") reason = parsed.message;
+    } catch {
+      // not JSON — keep the raw text
+    }
+    throw new EmailSendFailedError(res.status, reason || "no further detail returned");
   }
 }

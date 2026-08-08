@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, AUTH_RATE_LIMIT } from "@/lib/ratelimit";
 import { generateMagicLinkToken, storeMagicLinkToken } from "@/lib/magicLink";
-import { sendMagicLinkEmail, EmailNotConfiguredError } from "@/lib/email";
+import { sendMagicLinkEmail, EmailNotConfiguredError, EmailSendFailedError } from "@/lib/email";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
@@ -51,10 +51,24 @@ export async function POST(request: NextRequest) {
   try {
     await sendMagicLinkEmail(email, verifyUrl);
   } catch (e) {
+    // Always logged server-side (visible in Vercel's function logs)
+    // regardless of what's shown to the client below.
+    console.error("[request-link] sendMagicLinkEmail failed:", e);
+
     if (e instanceof EmailNotConfiguredError) {
       return NextResponse.json(
         { detail: "Sign-in email isn't configured on this deployment yet." },
         { status: 500 }
+      );
+    }
+    if (e instanceof EmailSendFailedError) {
+      // Surfaces Resend's own reason (unverified domain, rate limit, bad
+      // "from" format, etc.) directly, instead of a generic message that
+      // leaves whoever's testing this with no way to tell those apart
+      // without going to check Resend's dashboard by hand.
+      return NextResponse.json(
+        { detail: `Couldn't send the sign-in email: ${e.reason}` },
+        { status: 502 }
       );
     }
     return NextResponse.json({ detail: "Couldn't send the sign-in email. Try again shortly." }, { status: 502 });
