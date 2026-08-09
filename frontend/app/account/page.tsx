@@ -33,8 +33,19 @@ export default function AccountPage() {
     if (saved === "en" || saved === "bg") setLanguageState(saved);
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get("error") === "invalid_link") {
-      setError(TRANSLATIONS[(saved === "bg" ? "bg" : "en") as Language].account.invalidLink);
+    const errorCode = params.get("error");
+    const dict = TRANSLATIONS[(saved === "bg" ? "bg" : "en") as Language];
+    if (errorCode === "invalid_link") {
+      setError(dict.account.invalidLink);
+    } else if (errorCode) {
+      // Anything else (missing_token, server, ...) used to fail silently
+      // here — the page would just sit on "not signed in" with no
+      // indication anything had gone wrong, which is a big part of why
+      // this class of bug was so hard to diagnose from the outside: a
+      // real click that hit a real server error looked identical to
+      // someone who'd simply never signed in. Surfacing *something* for
+      // every error code means a stuck sign-in is never silent again.
+      setError(dict.account.genericError);
     }
 
     fetch("/api/account")

@@ -106,11 +106,26 @@ export async function GET(request: NextRequest) {
       fetch('/api/auth/verify', { method: 'POST', body: body })
         .then(function (res) {
           clearTimeout(fallbackTimer);
-          // redirect: 'follow' is fetch's default — res.url is already the
-          // final /account?... URL after following the server's 303, and
-          // any Set-Cookie along that chain has already been applied by
-          // the browser by the time this callback runs.
-          window.location.href = res.url;
+          // fetch() only rejects on network-level failure — an HTTP error
+          // status (e.g. a 500 from an unhandled exception on the server)
+          // still resolves here with res.ok === false. Blindly navigating
+          // to res.url in that case is exactly how a real server error
+          // turned into a confusing "?error=missing_token": with no
+          // redirect to follow, res.url is just this same POST endpoint
+          // with no query string, and *that* URL's own GET handler is what
+          // was actually producing the missing_token redirect — hiding the
+          // real failure completely. Checking res.ok first means a genuine
+          // server error now falls through to the visible fallback button
+          // instead of masquerading as a token problem.
+          if (res.ok) {
+            // redirect: 'follow' is fetch's default — res.url is already the
+            // final /account?... URL after following the server's 303, and
+            // any Set-Cookie along that chain has already been applied by
+            // the browser by the time this callback runs.
+            window.location.href = res.url;
+          } else {
+            document.getElementById('fallback').style.display = 'inline-block';
+          }
         })
         .catch(function () {
           clearTimeout(fallbackTimer);
@@ -194,8 +209,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(`${site}/account?error=invalid_link`, { status: 303 });
   }
 
+  // Token is already consumed above by this point — a throw here (e.g.
+  // SESSION_SECRET missing) used to bubble up as an unhandled 500 with no
+  // redirect at all, which the fetch() caller then (mis)treated as success
+  // and navigated to res.url with no query string, landing on this same
+  // route's GET-with-no-token branch and showing ?error=missing_token —
+  // completely hiding that the real problem was server config, not the
+  // token. Catching it here and logging explicitly means the real cause
+  // shows up in Vercel's logs instead of a wild goose chase, and the
+  // fetch() caller's res.ok check (see the GET handler's inline script)
+  // now shows the visible fallback button instead of a silent bad redirect.
+  let cookieValue: string;
+  try {
+    cookieValue = createSessionCookieValue(email);
+  } catch (e) {
+    console.error("[verify][POST] createSessionCookieValue threw (token already consumed for", email, "):", e);
+    return NextResponse.redirect(`${site}/account?error=server`, { status: 303 });
+  }
+
   const response = NextResponse.redirect(`${site}/account?signedIn=1`, { status: 303 });
-  response.cookies.set(SESSION_COOKIE_NAME, createSessionCookieValue(email), {
+  response.cookies.set(SESSION_COOKIE_NAME, cookieValue, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
