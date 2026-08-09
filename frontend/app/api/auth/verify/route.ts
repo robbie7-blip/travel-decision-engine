@@ -50,6 +50,13 @@ export async function GET(request: NextRequest) {
   const site = getSiteUrl();
 
   if (!token) {
+    // Logged so we can tell this apart from the POST hitting the same
+    // ?error=missing_token redirect below — if this is the branch firing,
+    // the email link itself arrived at this route with no ?token= at all
+    // (link-wrapping/click-tracking rewrite, a copy-paste that dropped the
+    // query string, etc.), which is a completely different bug from the
+    // POST losing a token it *did* receive.
+    console.error("[verify][GET] no token in query string. Full URL:", request.url);
     return NextResponse.redirect(`${site}/account?error=missing_token`);
   }
 
@@ -140,8 +147,29 @@ async function extractToken(request: NextRequest): Promise<string | null> {
     }
     const raw = await request.text();
     const value = new URLSearchParams(raw).get("token");
+    if (!value) {
+      // Logged (not just the generic redirect) so a Vercel Runtime Log
+      // capture actually tells us which of two very different bugs this is:
+      // content-type wrong/missing entirely (client-side send bug) vs.
+      // content-type looks right but the body came through empty/mangled
+      // (something between the browser and this function stripped it —
+      // could be a CDN/edge layer, could be Vercel's own deployment
+      // protection intercepting the POST). Body is logged truncated since
+      // it's expected to just be "token=<opaque>" — nothing sensitive
+      // beyond the token itself, which is already single-use and about to
+      // be invalidated by this same request either way.
+      console.error(
+        "[verify][POST] token not found in body. content-type:",
+        JSON.stringify(contentType),
+        "raw body (first 200 chars):",
+        JSON.stringify(raw.slice(0, 200)),
+        "raw body length:",
+        raw.length
+      );
+    }
     return value || null;
-  } catch {
+  } catch (e) {
+    console.error("[verify][POST] extractToken threw:", e);
     return null;
   }
 }
