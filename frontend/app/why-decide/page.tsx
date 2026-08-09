@@ -24,11 +24,12 @@ export async function generateMetadata({
   const { lang } = await searchParams;
   const wd = TRANSLATIONS[resolveLanguage(lang)].whyDecide;
   const title = `${wd.pageTitle} — decide`;
+  const description = `${wd.subheadGeneric} ${wd.subheadDecide}`;
   return {
     title,
-    description: wd.subhead,
-    openGraph: { title, description: wd.subhead },
-    twitter: { title, description: wd.subhead },
+    description,
+    openGraph: { title, description },
+    twitter: { title, description },
   };
 }
 
@@ -116,9 +117,27 @@ export default async function WhyDecidePage({
               margin: "0 0 16px",
             }}
           >
-            {wd.headline}
+            {wd.headlineLine1}
+            <br />
+            {wd.headlineLine2}
           </h1>
-          <p style={{ color: "var(--ink-dim)", fontSize: 16, lineHeight: 1.6, maxWidth: 620, margin: 0 }}>{wd.subhead}</p>
+          {/* Same ×/✓ language as the comparison rows below, as a two-line
+              teaser instead of one flowing sentence — previews the page's
+              whole argument before the reader even scrolls to the table. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 620 }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span aria-hidden style={{ color: "var(--tier-inferred)", flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>
+                ×
+              </span>
+              <p style={{ color: "var(--ink-dim)", fontSize: 16, lineHeight: 1.6, margin: 0 }}>{wd.subheadGeneric}</p>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span aria-hidden style={{ color: "var(--color-blue)", fontWeight: 700, flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>
+                ✓
+              </span>
+              <p style={{ color: "var(--ink)", fontWeight: 500, fontSize: 16, lineHeight: 1.6, margin: 0 }}>{wd.subheadDecide}</p>
+            </div>
+          </div>
         </div>
         </div>
       </div>

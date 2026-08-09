@@ -234,8 +234,17 @@ export interface Dictionary {
   whyDecide: {
     navLink: string;
     pageTitle: string;
-    headline: string;
-    subhead: string;
+    // Two explicit lines (not one string left to wrap on its own) so the
+    // break always falls at the sentence boundary — a flexible single
+    // string wraps wherever the viewport happens to cut it, which on a
+    // narrow phone landed mid-sentence ("...It's a" / "decision.").
+    headlineLine1: string;
+    headlineLine2: string;
+    // Same "generic AI chatbot vs decide" framing as the comparison rows
+    // below, just as a two-line teaser right under the headline instead of
+    // one flowing paragraph — sets up the ×/✓ visual language early.
+    subheadGeneric: string;
+    subheadDecide: string;
     columnHeadingGeneric: string; // e.g. "A GENERIC AI CHATBOT"
     columnHeadingDecide: string; // e.g. "DECIDE"
     rows: {
@@ -590,9 +599,10 @@ const en: Dictionary = {
   whyDecide: {
     navLink: "Why decide?",
     pageTitle: "Why decide?",
-    headline: "It's not a chatbot. It's a decision.",
-    subhead:
-      "Ask a generic AI chatbot to plan a trip and you get a list to go research yourself. Ask decide and you get an answer - checked, labeled, and ready to book.",
+    headlineLine1: "It's not a chatbot.",
+    headlineLine2: "It's a decision.",
+    subheadGeneric: "Ask a generic AI chatbot to plan a trip and you get a list to go research yourself.",
+    subheadDecide: "Ask decide and you get an answer - checked, labeled, and ready to book.",
     columnHeadingGeneric: "A GENERIC AI CHATBOT",
     columnHeadingDecide: "DECIDE",
     rows: [
@@ -957,9 +967,10 @@ const bg: Dictionary = {
   whyDecide: {
     navLink: "Защо decide?",
     pageTitle: "Защо decide?",
-    headline: "Не е чатбот. Е решение.",
-    subhead:
-      "Питаш обикновен AI чатбот да планира пътуване и получаваш списък за проучване. Питаш decide и получаваш отговор - проверен, обозначен и готов за резервация.",
+    headlineLine1: "Не е чатбот.",
+    headlineLine2: "Е решение.",
+    subheadGeneric: "Питаш обикновен AI чатбот да планира пътуване и получаваш списък за проучване.",
+    subheadDecide: "Питаш decide и получаваш отговор - проверен, обозначен и готов за резервация.",
     columnHeadingGeneric: "ОБИКНОВЕН AI ЧАТБОТ",
     columnHeadingDecide: "DECIDE",
     rows: [
