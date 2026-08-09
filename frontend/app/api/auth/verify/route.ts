@@ -6,12 +6,27 @@
 // antivirus link scanners) only needs to issue one GET to burn a single-use
 // token, which meant a real click could fail with "invalid or expired"
 // before the traveler ever saw the link. GET now just renders a page that
-// auto-submits a POST via a tiny inline script (with a plain <button>
-// fallback for the rare no-JS case) — the POST is what actually consumes
-// the token and sets the session cookie. Automated fetchers essentially
-// never execute JavaScript or submit forms, so they see this harmless
+// completes sign-in via a fetch() POST — the POST is what actually
+// consumes the token and sets the session cookie. Automated fetchers
+// essentially never execute JavaScript, so they see this harmless
 // intermediate page and nothing happens to the token; a real person's
-// browser submits it near-instantly, so it still feels like one tap.
+// browser completes it within milliseconds, so it still feels like one tap.
+//
+// fetch()-driven, not a raw auto-submitted <form> — confirmed in production
+// (Safari, desktop, no extensions/cache involved) that a form.submit() fired
+// from an inline <script> right as the page loads could leave the tab on a
+// blank page with the navigation never completing (no status, no response
+// headers at all in the network inspector — the request never finished).
+// Handing control to the browser's own navigation timing right as the
+// document is still settling is exactly the kind of thing that varies by
+// browser; driving it with fetch() instead means the intermediate page
+// stays fully loaded and in control throughout, and *this* script decides
+// when to navigate away, once it actually has a real response in hand — no
+// dependency on how any particular browser sequences a same-tick form
+// submission against its own page-load lifecycle. A visible fallback
+// button still appears (via a short timeout, or immediately for the no-JS
+// case) so nobody is ever stuck looking at a page that silently never
+// resolves.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
@@ -39,8 +54,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Token isn't touched here at all — validity is only checked (and
-  // consumed) by the POST below, once a real browser actually submits it.
+  // consumed) by the POST below, once the browser actually issues it.
   const safeToken = escapeHtmlAttr(token);
+  // Also embedded as a JSON-encoded JS string literal for the fetch() call
+  // below — JSON.stringify handles quote/backslash escaping correctly for
+  // that context, which is different from (and not covered by) the HTML-
+  // attribute escaping used for the <form> fallback's hidden input above.
+  const jsToken = JSON.stringify(token);
   const html = `<!doctype html>
 <html>
 <head>
@@ -54,6 +74,7 @@ export async function GET(request: NextRequest) {
     .brand { font-size: 20px; font-weight: 700; color: #1f6f8a; margin-bottom: 12px; }
     button { font-family: inherit; background: #1f6f8a; color: white; border: none; border-radius: 8px;
              padding: 12px 24px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 12px; }
+    #fallback { display: none; }
   </style>
 </head>
 <body>
@@ -63,9 +84,33 @@ export async function GET(request: NextRequest) {
     <form id="f" method="POST" action="/api/auth/verify">
       <input type="hidden" name="token" value="${safeToken}" />
       <noscript><button type="submit">Click to finish signing in</button></noscript>
+      <button id="fallback" type="submit">Click to finish signing in</button>
     </form>
   </div>
-  <script>document.getElementById('f').submit();</script>
+  <script>
+    (function () {
+      var fallbackTimer = setTimeout(function () {
+        document.getElementById('fallback').style.display = 'inline-block';
+      }, 4000);
+
+      var body = new URLSearchParams();
+      body.set('token', ${jsToken});
+
+      fetch('/api/auth/verify', { method: 'POST', body: body })
+        .then(function (res) {
+          clearTimeout(fallbackTimer);
+          // redirect: 'follow' is fetch's default — res.url is already the
+          // final /account?... URL after following the server's 303, and
+          // any Set-Cookie along that chain has already been applied by
+          // the browser by the time this callback runs.
+          window.location.href = res.url;
+        })
+        .catch(function () {
+          clearTimeout(fallbackTimer);
+          document.getElementById('fallback').style.display = 'inline-block';
+        });
+    })();
+  </script>
 </body>
 </html>`;
 
