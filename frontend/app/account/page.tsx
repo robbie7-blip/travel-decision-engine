@@ -95,6 +95,15 @@ export default function AccountPage() {
 
   const planName = account?.plan === "paid" ? t.account.paidPlanName : t.account.freePlanName;
 
+  // Same teal → gold → red ramp the rest of the app already uses for
+  // confidence tiers ("grounded" / "unverified" / "infeasible") — reused
+  // here because it's the same underlying meaning: fine, getting close,
+  // over. Aliased vars, not new colors, per the 6-color system.
+  const quotaPercent = account?.quota ? Math.min(100, Math.round((account.quota.used / Math.max(account.quota.limit, 1)) * 100)) : 0;
+  const quotaColor = quotaPercent >= 100 ? "var(--infeasible)" : quotaPercent >= 80 ? "var(--unverified)" : "var(--brand-teal)";
+
+  const initial = (account?.email ?? "?").trim().charAt(0).toUpperCase() || "?";
+
   return (
     <div style={{ minHeight: "100%" }}>
       {/* Header stays 1450 (matching the rest of the site) even though this
@@ -120,62 +129,90 @@ export default function AccountPage() {
                 ...
               </div>
             ) : account.signedIn ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontSize: 14, color: "var(--ink)" }}>{t.account.signedInAs.replace("{email}", account.email ?? "")}</div>
-                <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                  {t.account.currentPlan.replace("{plan}", planName)}
-                </div>
-                {account.quota && (
-                  <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                    {t.account.quotaUsed
-                      .replace("{used}", String(account.quota.used))
-                      .replace("{limit}", String(account.quota.limit))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div className="account-avatar">{initial}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: "var(--ink)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {account.email}
+                    </div>
+                    <div className="account-plan-badge" data-plan={account.plan === "paid" ? "paid" : "free"}>
+                      {planName}
+                    </div>
                   </div>
-                )}
-                {account.plan === "paid" && account.currentPeriodEnd && (
-                  <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
-                    {t.account.renewsOn.replace(
-                      "{date}",
-                      new Date(account.currentPeriodEnd * 1000).toLocaleDateString(language === "bg" ? "bg-BG" : "en-GB")
+                </div>
+
+                {account.quota && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div
+                      className="font-mono"
+                      style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--ink-soft)" }}
+                    >
+                      <span>
+                        {t.account.quotaUsed
+                          .replace("{used}", String(account.quota.used))
+                          .replace("{limit}", String(account.quota.limit))}
+                      </span>
+                    </div>
+                    <div className="account-progress-track">
+                      <div className="account-progress-fill" style={{ width: `${quotaPercent}%`, background: quotaColor }} />
+                    </div>
+                    {account.plan === "paid" && account.currentPeriodEnd && (
+                      <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                        {t.account.renewsOn.replace(
+                          "{date}",
+                          new Date(account.currentPeriodEnd * 1000).toLocaleDateString(language === "bg" ? "bg-BG" : "en-GB")
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
-                {account.plan !== "paid" && (
-                  <a
-                    href="/pricing"
-                    className="font-mono"
-                    style={{ fontSize: 13, color: "var(--accent-green)", marginTop: 4, textDecoration: "underline" }}
-                  >
-                    {t.account.upgradeCta}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {account.plan !== "paid" && (
+                    <a href="/pricing" className="account-row account-upgrade-row">
+                      <span style={{ fontWeight: 600, color: "var(--accent-green)" }}>{t.account.upgradeCta.replace(" →", "")}</span>
+                      <span className="account-row-arrow">→</span>
+                    </a>
+                  )}
+                  <a href="/account/visited" className="account-row">
+                    <span>{t.visited.navLink.replace(" →", "")}</span>
+                    <span className="account-row-arrow">→</span>
                   </a>
-                )}
-                <a
-                  href="/account/visited"
-                  className="font-mono"
-                  style={{ fontSize: 13, color: "var(--ink-soft)", marginTop: 4, textDecoration: "underline" }}
-                >
-                  {t.visited.navLink}
-                </a>
-                <button
-                  onClick={signOut}
-                  className="font-mono"
-                  style={{
-                    marginTop: 10,
-                    alignSelf: "flex-start",
-                    background: "transparent",
-                    border: "1px solid var(--line)",
-                    borderRadius: 999,
-                    padding: "6px 14px",
-                    fontSize: 12,
-                    color: "var(--ink-soft)",
-                    cursor: "pointer",
-                  }}
-                >
-                  {t.account.signOutButton}
-                </button>
+                </div>
+
+                <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+                  <button
+                    onClick={signOut}
+                    className="font-mono"
+                    style={{
+                      background: "transparent",
+                      border: "1px solid var(--line)",
+                      borderRadius: 999,
+                      padding: "6px 14px",
+                      fontSize: 12,
+                      color: "var(--ink-soft)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t.account.signOutButton}
+                  </button>
+                </div>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div className="account-avatar" style={{ background: "var(--bg-panel-raised)", color: "var(--ink-dim)", marginBottom: 4 }}>
+                  ?
+                </div>
                 <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)" }}>
                   {t.account.notSignedIn}
                 </div>
