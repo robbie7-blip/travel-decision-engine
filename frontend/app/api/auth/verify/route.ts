@@ -117,12 +117,40 @@ export async function GET(request: NextRequest) {
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 
+// Both submission paths — the fetch() call above and the <noscript>/fallback
+// <form> — send the token as application/x-www-form-urlencoded: that's
+// URLSearchParams's serialization for the fetch body, and it's also a plain
+// HTML <form>'s default enctype (multipart/form-data is opt-in, not the
+// default). request.formData() is supposed to handle both per the Fetch
+// spec, but in production this was silently failing on the urlencoded case —
+// the request reached this handler (proven by landing on this route's own
+// ?error=missing_token, not a blank page or a different error), yet the
+// token never came out of form.get("token"), which only happens if
+// formData() threw and got swallowed by the .catch(() => null) that used to
+// be here, or returned an empty FormData. Parsing urlencoded bodies by hand
+// with URLSearchParams sidesteps whatever gap that was, and is at least as
+// reliable since it's the same string format either submission path sends.
+async function extractToken(request: NextRequest): Promise<string | null> {
+  const contentType = request.headers.get("content-type") ?? "";
+  try {
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+      const value = form.get("token");
+      return typeof value === "string" && value ? value : null;
+    }
+    const raw = await request.text();
+    const value = new URLSearchParams(raw).get("token");
+    return value || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const site = getSiteUrl();
-  const form = await request.formData().catch(() => null);
-  const token = form?.get("token");
+  const token = await extractToken(request);
 
-  if (typeof token !== "string" || !token) {
+  if (!token) {
     return NextResponse.redirect(`${site}/account?error=missing_token`, { status: 303 });
   }
 
