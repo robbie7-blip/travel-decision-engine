@@ -132,7 +132,7 @@ export default async function DestinationPage({
         // none of our (fixed, curated) inputs actually contain it.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
-      <div style={{ padding: "20px 24px", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "20px 40px", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         {/* 1450, not this page's own 780px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why the header
             stays pinned to the site-wide width regardless. */}
@@ -205,7 +205,7 @@ export default async function DestinationPage({
           at the same left edge as every other page's — see the same fix on
           account/page.tsx. Top margin moved to padding on the outer div
           since it now also carries the horizontal padding. */}
-      <div style={{ padding: "36px 24px 0" }}>
+      <div style={{ padding: "36px 40px 0" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 780 }}>
           <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
@@ -222,7 +222,7 @@ export default async function DestinationPage({
         </div>
       </div>
 
-      <div style={{ padding: "32px 24px 72px" }}>
+      <div style={{ padding: "32px 40px 72px" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 780 }}>
           {intro && (
