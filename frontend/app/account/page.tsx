@@ -118,7 +118,12 @@ export default function AccountPage() {
       />
 
       <div style={{ padding: "36px 24px 64px" }}>
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        {/* Outer 1450 matches the header's own width (see SiteHeader.tsx)
+            so this page's content starts at the same left edge as every
+            other page's, regardless of how narrow its own reading column
+            is — the 560 below controls line length, not position. */}
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ maxWidth: 560 }}>
           <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 20px", color: "var(--brand-teal)" }}>
             {t.account.accountHeading}
           </h1>
@@ -265,6 +270,7 @@ export default function AccountPage() {
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
     </div>

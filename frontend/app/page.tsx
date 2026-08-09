@@ -136,7 +136,14 @@ export default function Home() {
           <circle cx="100" cy="120" r="80" fill="var(--color-purple)" />
         </svg>
 
-        <div style={{ maxWidth: 960, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        {/* Outer 1550 matches the "large" header variant's own width above
+            (see SiteHeader.tsx) so this section's left edge lines up with
+            the logo instead of drifting based on its own narrower 960
+            reading-width — same fix applied sitewide, see the COLOR SYSTEM-
+            adjacent note on page alignment in globals.css if this pattern
+            gets touched again. */}
+        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        <div style={{ maxWidth: 960, position: "relative", zIndex: 1 }}>
           <h1
             className="font-display gradient-text"
             style={{
@@ -203,10 +210,12 @@ export default function Home() {
           </div>
           <RecentTrips t={t} />
         </div>
+        </div>
       </div>
 
       <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--line)" }}>
-        <div id="how-it-works" style={{ maxWidth: 960, margin: "0 auto", scrollMarginTop: 24 }}>
+        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        <div id="how-it-works" style={{ maxWidth: 960, scrollMarginTop: 24 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--brand-teal)" }}>
             {t.howItWorks}
           </h2>
@@ -307,6 +316,7 @@ export default function Home() {
             ))}
           </div>
         </div>
+        </div>
       </div>
 
       <div style={{ padding: "36px 24px", borderBottom: "1px solid var(--line)", position: "relative" }}>
@@ -329,7 +339,8 @@ export default function Home() {
           <path d="M 125 25 L 225 125 L 125 225 L 25 125 Z" fill="none" stroke="var(--color-coral)" strokeWidth="1.5" opacity="0.5" />
         </svg>
 
-        <div style={{ maxWidth: 960, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        <div style={{ maxWidth: 960, position: "relative", zIndex: 1 }}>
           <TripForm
             value={form}
             onChange={setForm}
@@ -362,6 +373,7 @@ export default function Home() {
               </a>
             </div>
           )}
+        </div>
         </div>
       </div>
 

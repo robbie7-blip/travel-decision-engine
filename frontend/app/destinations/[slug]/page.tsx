@@ -201,21 +201,30 @@ export default async function DestinationPage({
         </div>
       </div>
 
-      <div style={{ maxWidth: 780, margin: "36px auto 0", padding: "0 24px" }}>
-        <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
-        {photo?.credit && (
-          <p className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
-            {dt.photoCredit}{" "}
-            <a href={photo.credit.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
-              {photo.credit.artist}
-            </a>{" "}
-            · {photo.credit.license}
-          </p>
-        )}
+      {/* Outer 1450 matches the header above so this page's content starts
+          at the same left edge as every other page's — see the same fix on
+          account/page.tsx. Top margin moved to padding on the outer div
+          since it now also carries the horizontal padding. */}
+      <div style={{ padding: "36px 24px 0" }}>
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ maxWidth: 780 }}>
+          <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
+          {photo?.credit && (
+            <p className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
+              {dt.photoCredit}{" "}
+              <a href={photo.credit.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
+                {photo.credit.artist}
+              </a>{" "}
+              · {photo.credit.license}
+            </p>
+          )}
+        </div>
+        </div>
       </div>
 
       <div style={{ padding: "32px 24px 72px" }}>
-        <div style={{ maxWidth: 780, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ maxWidth: 780 }}>
           {intro && (
             <p
               className="font-display"
@@ -338,6 +347,7 @@ export default async function DestinationPage({
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

@@ -46,7 +46,11 @@ export default function AskPage() {
       />
 
       <div style={{ padding: "36px 24px 64px" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        {/* Outer 1450 matches the header above so this page's content
+            starts at the same left edge as every other page's — see the
+            same fix on account/page.tsx. */}
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ maxWidth: 720 }}>
           <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.tripQA.pageHeading}
           </h1>
@@ -64,6 +68,7 @@ export default function AskPage() {
           >
             <TripQA language={language} t={t} />
           </div>
+        </div>
         </div>
       </div>
     </div>

@@ -100,7 +100,11 @@ export default async function WhyDecidePage({
       </div>
 
       <div style={{ padding: "48px 24px 32px", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 780, margin: "0 auto" }}>
+        {/* Outer 1450 matches the header above so this page's content
+            starts at the same left edge as every other page's — see the
+            same fix on account/page.tsx. */}
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ maxWidth: 780 }}>
           <h1
             className="font-display gradient-text"
             style={{
@@ -116,10 +120,13 @@ export default async function WhyDecidePage({
           </h1>
           <p style={{ color: "var(--ink-dim)", fontSize: 16, lineHeight: 1.6, maxWidth: 620, margin: 0 }}>{wd.subhead}</p>
         </div>
+        </div>
       </div>
 
       <div style={{ padding: "40px 24px", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        {/* Same 1450-outer fix as the hero section above. */}
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ maxWidth: 900 }}>
           {/* Column headers, hidden on mobile where each row stacks to a
               single column anyway (see the 700px media rule below) — the
               "GENERIC" vs "DECIDE" framing is carried by each cell's own
@@ -180,6 +187,7 @@ export default async function WhyDecidePage({
               </div>
             </div>
           ))}
+        </div>
         </div>
       </div>
 
