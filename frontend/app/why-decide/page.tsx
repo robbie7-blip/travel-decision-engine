@@ -46,56 +46,60 @@ export default async function WhyDecidePage({
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "20px 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "18px 0 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         {/* 1450, not this page's own 780px content width below — see the
-            comment on ask/page.tsx's SiteHeader call for why. */}
-        <div
-          style={{ maxWidth: 1450, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}
-        >
-          <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
-            <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
-              decide
-            </span>
-          </a>
-          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
-            <NavMenu t={t} language={language} />
-            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
-            <AccountControl language={language} t={t} />
-            <div
-              className="font-mono lang-toggle"
-              style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
-            >
-              <a
-                href="/why-decide"
-                data-active={language === "en"}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: 11,
-                  letterSpacing: "0.04em",
-                  textDecoration: "none",
-                  background: "transparent",
-                  color: "var(--ink-dim)",
-                }}
+            comment on ask/page.tsx's SiteHeader call for why. Two rows,
+            matching SiteHeader.tsx's own layout (see that file's header
+            comment for why) — logo+account/language on row 1, full nav on
+            its own row 2, instead of cramming everything into one row. */}
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
+            <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
+              <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
+                decide
+              </span>
+            </a>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+              <AccountControl language={language} t={t} />
+              <div
+                className="font-mono lang-toggle"
+                style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
-                EN
-              </a>
-              <a
-                href="/why-decide?lang=bg"
-                data-active={language === "bg"}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: 11,
-                  letterSpacing: "0.04em",
-                  textDecoration: "none",
-                  background: "transparent",
-                  color: "var(--ink-dim)",
-                }}
-              >
-                BG
-              </a>
+                <a
+                  href="/why-decide"
+                  data-active={language === "en"}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: 11,
+                    letterSpacing: "0.04em",
+                    textDecoration: "none",
+                    background: "transparent",
+                    color: "var(--ink-dim)",
+                  }}
+                >
+                  EN
+                </a>
+                <a
+                  href="/why-decide?lang=bg"
+                  data-active={language === "bg"}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: 11,
+                    letterSpacing: "0.04em",
+                    textDecoration: "none",
+                    background: "transparent",
+                    color: "var(--ink-dim)",
+                  }}
+                >
+                  BG
+                </a>
+              </div>
             </div>
+          </div>
+          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", borderTop: "1px solid var(--line)", padding: "10px 0" }}>
+            <NavMenu t={t} language={language} />
           </div>
         </div>
       </div>

@@ -10,6 +10,19 @@
 // already uses (.nav-menu-toggle/.nav-links-row in globals.css) — a page
 // can still show its own extra context link (contextLink prop) alongside
 // it, it just isn't the ONLY way to navigate anymore.
+//
+// Two rows, not one — logo + account controls on row 1, the full nav on
+// its own row 2 below a divider. A single combined row (logo + 7 nav
+// links + account pill + language toggle, more on the homepage with the
+// currency switcher too) needs ~1500px+ to lay out without cramming,
+// which is wider than a lot of ordinary laptop browser windows — it kept
+// either overflowing/wrapping badly or forcing an early collapse to a
+// bare hamburger button that looked sparse next to reference sites
+// (Booking.com, Ryanair) that never collapse this early because THEIR
+// headers are two rows too (logo+account on top, nav tabs below). Splitting
+// the same way here means each row only needs roughly half the width, so
+// the full nav now stays visible inline down to a much narrower window
+// instead of vanishing into "Menu ☰" the moment things got tight.
 
 import type { ReactNode } from "react";
 import { AccountControl } from "./AccountControl";
@@ -22,9 +35,9 @@ interface SiteHeaderProps {
   language: Language;
   onLanguageChange: (lang: Language) => void;
   t: Dictionary;
-  /** "large" is the homepage's own hero lockup (big logo + tagline,
-   * wrapped in its own bottom border); every other page uses the default
-   * compact treatment. */
+  /** "large" is the homepage's own hero lockup (big logo + tagline);
+   * every other page uses the default compact treatment. Both are now
+   * two rows — large just has a bigger row 1. */
   variant?: "compact" | "large";
   /** Extra control rendered next to the language switcher — currently
    * only the homepage/trip pages' CurrencySwitcher. */
@@ -61,29 +74,24 @@ export function SiteHeader({
   return (
     <div
       style={{
-        padding: large ? "28px 0 12px" : "20px 0",
+        padding: large ? "28px 0 0" : "18px 0 0",
         background: "var(--bg-panel-raised)",
         borderBottom: `1px solid ${large ? "var(--line-strong)" : "var(--line)"}`,
       }}
     >
-      {/* Plain maxWidth + margin:auto, not a percentage-based clamp — the
-          clamp version shrank the header's own available width on a normal
-          (not ultra-wide) window enough that the nav row stopped fitting on
-          one line and wrapped into an ugly 3-row stack. The header's nav
-          content needs close to its full ~1450-1550px to lay out in one
-          row; unlike the narrower text content below, it isn't the source
-          of the "left/right symmetry" complaint (see the body content's own
-          fix — that one self-centers now), so it doesn't need shrinking
-          for that. 1550 for the large variant's bigger 84px logo/wordmark/
-          currency-switcher, matching maxWidth elsewhere otherwise. */}
       <div style={{ maxWidth: large ? 1550 : maxWidth, margin: "0 auto" }}>
+        {/* Row 1: logo (+ tagline on large) on the left, every account/
+            language/context control on the right — no nav here, so this
+            row's own space need is small regardless of how many nav links
+            exist. */}
         <div
           style={{
             display: "flex",
             flexWrap: "wrap",
             alignItems: "center",
+            justifyContent: "space-between",
             gap: large ? 22 : 16,
-            ...(large ? { paddingBottom: 24, marginBottom: 26, borderBottom: "1px solid var(--line)" } : {}),
+            paddingBottom: large ? 20 : 14,
           }}
         >
           <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: large ? 22 : 12, textDecoration: "none" }}>
@@ -115,54 +123,55 @@ export function SiteHeader({
             </div>
           </a>
 
-          {/* contextLink sits here, next to the logo, rather than inside
-              header-nav-row below — it used to be the first child of that
-              row, which has marginLeft:auto and renders as one right-flush
-              block. Since contextLink's text length (or absence) varied
-              per page ("← Back to account" / "Your account →" / none),
-              that block's total width varied too, which shifted where
-              "How it works" started on every page even though the *right*
-              edge (language toggle) always lined up. Pulling contextLink
-              out means header-nav-row's content (nav + divider + language
-              toggle) is now identical on every page that renders it, so it
-              is pixel-identically positioned everywhere, not just
-              right-edge-aligned. */}
-          {contextLink && (
-            <a href={contextLink.href} className="font-mono header-context-link" style={linkStyle}>
-              {contextLink.label}
-            </a>
-          )}
-
-          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, marginLeft: "auto" }}>
-            <NavMenu t={t} language={language} />
-            <div className="nav-divider" style={{ width: 1, height: 18, background: "var(--line)" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {extraControls}
-              <AccountControl language={language} t={t} />
-              <div className="font-mono lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
-                {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => onLanguageChange(lang)}
-                    data-active={language === lang}
-                    style={{
-                      border: "none",
-                      padding: "6px 12px",
-                      fontSize: 11,
-                      letterSpacing: "0.04em",
-                      cursor: "pointer",
-                      background: "transparent",
-                      color: "var(--ink-dim)",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    {lang.toUpperCase()}
-                  </button>
-                ))}
-              </div>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+            {contextLink && (
+              <a href={contextLink.href} className="font-mono header-context-link" style={linkStyle}>
+                {contextLink.label}
+              </a>
+            )}
+            {extraControls}
+            <AccountControl language={language} t={t} />
+            <div className="font-mono lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
+              {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => onLanguageChange(lang)}
+                  data-active={language === lang}
+                  style={{
+                    border: "none",
+                    padding: "6px 12px",
+                    fontSize: 11,
+                    letterSpacing: "0.04em",
+                    cursor: "pointer",
+                    background: "transparent",
+                    color: "var(--ink-dim)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {lang.toUpperCase()}
+                </button>
+              ))}
             </div>
           </div>
+        </div>
+
+        {/* Row 2: the full nav, on its own line — same visual pattern as
+            Booking.com's tab strip below its own top bar. Only this row's
+            content (7 links) has to fit the available width, which is why
+            it can stay inline much further down than the old combined row
+            could. */}
+        <div
+          className="header-nav-row"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            borderTop: "1px solid var(--line)",
+            padding: "10px 0",
+          }}
+        >
+          <NavMenu t={t} language={language} />
         </div>
       </div>
     </div>
