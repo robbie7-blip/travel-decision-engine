@@ -117,7 +117,7 @@ export default function AccountPage() {
         contextLink={{ href: "/pricing", label: `${t.account.pricingHeading} →` }}
       />
 
-      <div style={{ padding: "36px 32px 64px" }}>
+      <div style={{ padding: "36px clamp(32px, 8%, 180px) 64px" }}>
         {/* Outer 1450 matches the header's own width (see SiteHeader.tsx)
             so this page's content starts at the same left edge as every
             other page's, regardless of how narrow its own reading column

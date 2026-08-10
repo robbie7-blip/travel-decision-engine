@@ -46,7 +46,7 @@ export default async function WhyDecidePage({
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "18px 32px 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         {/* 1450, not this page's own 780px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why. Two rows,
             matching SiteHeader.tsx's own layout (see that file's header
@@ -104,7 +104,7 @@ export default async function WhyDecidePage({
         </div>
       </div>
 
-      <div style={{ padding: "48px 32px 32px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "48px clamp(32px, 8%, 180px) 32px", borderBottom: "1px solid var(--line)" }}>
         {/* Outer 1450 matches the header above so this page's content
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
@@ -146,7 +146,7 @@ export default async function WhyDecidePage({
         </div>
       </div>
 
-      <div style={{ padding: "40px 32px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "40px clamp(32px, 8%, 180px)", borderBottom: "1px solid var(--line)" }}>
         {/* Same 1450-outer fix as the hero section above. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1300 }}>
@@ -214,7 +214,7 @@ export default async function WhyDecidePage({
         </div>
       </div>
 
-      <div style={{ padding: "48px 32px 64px" }}>
+      <div style={{ padding: "48px clamp(32px, 8%, 180px) 64px" }}>
         <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
           <h2 className="font-display" style={{ fontSize: "clamp(22px, 3.5vw, 28px)", fontWeight: 600, margin: "0 0 24px", color: "var(--ink)" }}>
             {wd.ctaHeading}

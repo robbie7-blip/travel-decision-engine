@@ -98,7 +98,7 @@ export default async function ShowcasePage({
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "18px 32px 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         {/* 1450, not this page's own 960px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why. Two rows,
             matching SiteHeader.tsx — see that file's header comment. */}
@@ -154,7 +154,7 @@ export default async function ShowcasePage({
         </div>
       </div>
 
-      <div style={{ padding: "40px 32px 72px" }}>
+      <div style={{ padding: "40px clamp(32px, 8%, 180px) 72px" }}>
         {/* Outer 1450 matches the header above so this page's content
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
