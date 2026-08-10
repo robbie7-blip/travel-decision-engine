@@ -287,6 +287,10 @@ export interface Dictionary {
     // a fresh /ask visit, and doubles as a hint at the kind of question
     // this is for (packing/safety/customs, not itinerary planning).
     examplePrompts: string[];
+    // 3 icon cards shown above the Q&A box on the standalone /ask page —
+    // the page used to be just a heading and a plain input, with nothing
+    // hinting at scope before you typed something.
+    topics: { title: string; body: string }[];
   };
   // Pricing + account/sign-in — a signed-in visitor trades the anonymous
   // per-IP trial limit for a per-email monthly quota (see account.ts);
@@ -298,10 +302,19 @@ export interface Dictionary {
     headerAccountLink: string; // short "Account" label for the same header slot once signed in
     pricingHeading: string;
     pricingSubheading: string;
+    // 3 icon cards shown above the plan comparison — features every visitor
+    // already gets regardless of plan (see lib/account.ts: quota is the
+    // ONLY thing that's actually plan-gated), so the pricing page doesn't
+    // read as an empty grid of two prices with nothing to compare.
+    valuePropsHeading: string;
+    valueProps: { title: string; body: string }[];
     freePlanName: string;
     freePlanBlurb: string; // "{count}" placeholder for FREE_MONTHLY_GENERATIONS
+    freePlanFeatures: string[]; // checklist; "{count}" placeholder in the first entry
     paidPlanName: string;
     paidPlanBlurb: string; // "{count}" placeholder for PAID_MONTHLY_GENERATIONS
+    paidPlanFeaturesIntro: string; // "Everything in Free, plus:"
+    paidPlanFeatures: string[]; // checklist; "{count}"/"{multiplier}" placeholders in the first entry
     paidPlanPrice: string;
     emailLabel: string;
     emailPlaceholder: string;
@@ -659,6 +672,11 @@ const en: Dictionary = {
       "What's a local custom I shouldn't accidentally break in Tokyo?",
       "Do I need to tip in Berlin restaurants?",
     ],
+    topics: [
+      { title: "Packing", body: "What to bring for the season, the climate, and what you're actually planning to do there." },
+      { title: "Safety & practicalities", body: "Walking around at night, getting around town, money, SIM cards — the stuff you'd ask a friend who's already been." },
+      { title: "Local customs", body: "Tipping, etiquette, what's normal — so you don't stand out for the wrong reasons." },
+    ],
   },
   account: {
     navLink: "Pricing",
@@ -667,10 +685,29 @@ const en: Dictionary = {
     pricingHeading: "Plans",
     pricingSubheading:
       "Every visitor can try decide without an account. Sign in with an email to track your plan across visits, or subscribe for more generations a month.",
+    valuePropsHeading: "Every plan gets the real thing",
+    valueProps: [
+      { title: "Budget feasibility, checked", body: "Every trip is checked against real, live costs — not numbers invented mid-conversation." },
+      { title: "Confidence you can see", body: "Each recommendation is tagged grounded, inferred, or unverified, so you know what to double-check." },
+      { title: "Ask a Local, anytime", body: "Packing, safety, local customs — unlimited questions, on both plans." },
+    ],
     freePlanName: "Free",
     freePlanBlurb: "{count} generations a month, signed in with just an email — no card needed.",
+    freePlanFeatures: [
+      "{count} full itinerary generations a month",
+      "Unlimited Ask a Local Q&A",
+      "Budget feasibility check & trust score on every trip",
+      "Destination guides, showcase & visited-countries tracker",
+      "No card required — just an email",
+    ],
     paidPlanName: "Pro",
     paidPlanBlurb: "{count} generations a month, plus you're directly supporting the real API costs behind every trip.",
+    paidPlanFeaturesIntro: "Everything in Free, plus:",
+    paidPlanFeatures: [
+      "{count} generations a month — {multiplier}× the Free quota",
+      "Room to plan (and compare) more than one trip a month",
+      "Directly funds the real API costs behind every generation",
+    ],
     paidPlanPrice: "€9/month",
     emailLabel: "EMAIL",
     emailPlaceholder: "you@example.com",
@@ -1027,6 +1064,11 @@ const bg: Dictionary = {
       "Кой местен обичай да внимавам да не наруша в Токио?",
       "Трябва ли да оставям бакшиш в ресторантите в Берлин?",
     ],
+    topics: [
+      { title: "Багаж", body: "Какво да вземете според сезона, климата и с какво всъщност ще се занимавате там." },
+      { title: "Безопасност и практични съвети", body: "Разходки вечер, придвижване, пари, SIM карти - нещата, които бихте попитали приятел, който вече е бил там." },
+      { title: "Местни обичаи", body: "Бакшиши, етикет, какво е нормално - за да не се откроявате по грешния начин." },
+    ],
   },
   account: {
     navLink: "Цени",
@@ -1035,10 +1077,29 @@ const bg: Dictionary = {
     pricingHeading: "Планове",
     pricingSubheading:
       "Всеки посетител може да пробва decide без акаунт. Влезте с имейл, за да следите плана си между посещенията, или се абонирайте за повече генерации на месец.",
+    valuePropsHeading: "Всеки план получава истинското нещо",
+    valueProps: [
+      { title: "Проверена изпълнимост на бюджета", body: "Всяко пътуване се проверява спрямо реални, актуални цени - не измислени по средата на разговора числа." },
+      { title: "Увереност, която виждате", body: "Всяка препоръка е обозначена като обоснована, изведена или непроверена, за да знаете какво да проверите допълнително." },
+      { title: "Питай местен, по всяко време", body: "Багаж, безопасност, местни обичаи - неограничен брой въпроси, на двата плана." },
+    ],
     freePlanName: "Безплатен",
     freePlanBlurb: "{count} генерации на месец, само с имейл - без карта.",
+    freePlanFeatures: [
+      "{count} пълни генерации на пътувания на месец",
+      "Неограничени въпроси към Питай местен",
+      "Проверка за изпълнимост на бюджета и ниво на доверие за всяко пътуване",
+      "Гидове за дестинации, витрина и тракер на посетени държави",
+      "Не се изисква карта - само имейл",
+    ],
     paidPlanName: "Pro",
     paidPlanBlurb: "{count} генерации на месец, плюс директно подпомагате реалните разходи зад всяко пътуване.",
+    paidPlanFeaturesIntro: "Всичко от Безплатния план, плюс:",
+    paidPlanFeatures: [
+      "{count} генерации на месец - {multiplier}× повече от безплатната квота",
+      "Достатъчно за планиране (и сравняване) на повече от едно пътуване месечно",
+      "Директно подпомагате реалните разходи зад всяка генерация",
+    ],
     paidPlanPrice: "9€/месец",
     emailLabel: "ИМЕЙЛ",
     emailPlaceholder: "you@example.com",

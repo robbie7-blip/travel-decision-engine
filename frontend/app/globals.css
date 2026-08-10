@@ -482,65 +482,37 @@ a {
   transition: all 0.2s ease;
 }
 
-/* Header nav links - previously all six (How it works / Destination
-   guides / Real examples / Ask a Local / Places you've been / Pricing)
-   sat at the same weight and color as ordinary body text with nothing but
-   a gap between them, so the row read as one run-on sentence rather than
-   a menu of distinct items — the hover underline alone didn't fix that
-   because it only kicks in per-item, after you've already had to parse
-   the resting-state wall of text. Bolder weight, darker resting color, a
-   divider between items, and padding that gives each one its own visual
-   "button-shaped" footprint all address the resting state instead of
-   only the hover state. */
+/* Header nav links — was plain black text with a divider between items
+   and only a hover underline, which read as flat/generic (no sense of
+   "where am I" and nothing but a color change to notice on hover). Pill-
+   shaped chips instead: a soft tinted background on hover, a solid brand-
+   teal fill for whichever page you're actually on (data-active, set in
+   NavMenu.tsx via usePathname()) — so the nav carries real wayfinding
+   information instead of being a flat list of same-weight links. */
 .nav-link {
   position: relative;
-  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-soft);
   font-weight: 600;
-  padding: 6px 14px;
-}
-
-.nav-link:not(:first-child) {
-  border-left: 1px solid var(--line-strong);
-}
-
-/* Coral, the action color — not teal-into-purple. This is interaction
-   feedback (hover), the same job coral does on the primary button and
-   form focus states, so hovering a nav link reads as the same kind of
-   moment instead of introducing its own gradient. */
-.nav-link::after {
-  content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 0;
-  height: 2px;
-  background: var(--color-coral);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.25s ease;
+  padding: 7px 14px;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .nav-link:hover {
-  color: var(--color-coral) !important;
+  background: color-mix(in srgb, var(--color-blue) 10%, transparent);
+  color: var(--color-blue) !important;
 }
 
-.nav-link:hover::after {
-  transform: scaleX(1);
+.nav-link[data-active="true"] {
+  background: var(--color-blue);
+  color: white !important;
+  font-weight: 700;
 }
 
-/* The stacked mobile menu (.nav-links-row--open, flex-direction: column)
-   already separates items onto their own rows, so the inline divider
-   would just float as a stray tick mark at the start of each line. Same
-   1000px breakpoint as the collapse itself above — this only matters
-   once .nav-links-row is actually in its stacked mode. */
-@media (max-width: 1000px) {
-  .nav-link:not(:first-child) {
-    border-left: none;
-  }
-
-  .nav-link {
-    padding-left: 0;
-  }
+.nav-link[data-active="true"]:hover {
+  background: color-mix(in srgb, var(--color-blue) 85%, black);
 }
 
 /* Language (EN/BG) segmented toggle - solid teal (brand/primary), not a
