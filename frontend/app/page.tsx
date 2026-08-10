@@ -118,7 +118,7 @@ export default function Home() {
         t={t}
         extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
       />
-      <div style={{ padding: "16px 40px 36px", borderBottom: "1px solid var(--line)", position: "relative" }}>
+      <div style={{ padding: "16px clamp(40px, 6vw, 120px) 36px", borderBottom: "1px solid var(--line)", position: "relative" }}>
         {/* Decorative background elements */}
         <svg
           style={{
@@ -213,7 +213,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ padding: "18px 40px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "18px clamp(40px, 6vw, 120px)", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
         <div id="how-it-works" style={{ maxWidth: 960, scrollMarginTop: 24 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--brand-teal)" }}>
@@ -319,7 +319,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ padding: "36px 40px", borderBottom: "1px solid var(--line)", position: "relative" }}>
+      <div style={{ padding: "36px clamp(40px, 6vw, 120px)", borderBottom: "1px solid var(--line)", position: "relative" }}>
         {/* Decorative background illustration */}
         <svg
           style={{
