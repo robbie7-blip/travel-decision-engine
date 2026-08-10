@@ -111,11 +111,17 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100%" }}>
+      {/* Was variant="large" (bigger logo, tagline, its own nav row) — now
+          the same compact single-row header every other page uses. The
+          "large" hero treatment made the homepage's own header look
+          different from the rest of the site with no real payoff beyond
+          novelty; explicit maxWidth=1450 to match everywhere else exactly
+          (was 1550, sized for the large variant's bigger logo/tagline). */}
       <SiteHeader
-        variant="large"
         language={form.language}
         onLanguageChange={setLanguage}
         t={t}
+        maxWidth={1450}
         extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
       />
       <div style={{ padding: "16px clamp(40px, 6vw, 120px) 36px", borderBottom: "1px solid var(--line)", position: "relative" }}>
@@ -136,13 +142,11 @@ export default function Home() {
           <circle cx="100" cy="120" r="80" fill="var(--color-purple)" />
         </svg>
 
-        {/* Outer 1550 matches the "large" header variant's own width above
-            (see SiteHeader.tsx) so this section's left edge lines up with
-            the logo instead of drifting based on its own narrower 960
-            reading-width — same fix applied sitewide, see the COLOR SYSTEM-
-            adjacent note on page alignment in globals.css if this pattern
-            gets touched again. */}
-        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        {/* Outer 1450 matches the header above (now the same compact
+            header/width every page uses) so this section's left edge lines
+            up with the logo instead of drifting based on its own narrower
+            960 reading-width — same fix applied sitewide. */}
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 960, position: "relative", zIndex: 1 }}>
           <h1
             className="font-display gradient-text"
@@ -214,7 +218,7 @@ export default function Home() {
       </div>
 
       <div style={{ padding: "18px clamp(40px, 6vw, 120px)", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div id="how-it-works" style={{ maxWidth: 960, scrollMarginTop: 24 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--brand-teal)" }}>
             {t.howItWorks}
@@ -339,7 +343,7 @@ export default function Home() {
           <path d="M 125 25 L 225 125 L 125 225 L 25 125 Z" fill="none" stroke="var(--color-coral)" strokeWidth="1.5" opacity="0.5" />
         </svg>
 
-        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 960, position: "relative", zIndex: 1 }}>
           <TripForm
             value={form}
