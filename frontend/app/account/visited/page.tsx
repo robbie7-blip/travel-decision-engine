@@ -300,7 +300,7 @@ export default function VisitedPage() {
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
-        <div style={{ maxWidth: 860 }}>
+        <div style={{ maxWidth: 1100 }}>
           {/* Page H1 uses the brand teal (same color as the "decide"
            * wordmark in SiteHeader) as a consistent signature accent across
            * every page's title — body copy/labels below stay --ink-dim/

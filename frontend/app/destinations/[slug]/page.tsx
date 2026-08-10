@@ -202,7 +202,7 @@ export default async function DestinationPage({
           since it now also carries the horizontal padding. */}
       <div style={{ padding: "36px 0 0" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
-        <div style={{ maxWidth: 780 }}>
+        <div style={{ maxWidth: 900 }}>
           <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
           {photo?.credit && (
             <p className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
@@ -219,7 +219,7 @@ export default async function DestinationPage({
 
       <div style={{ padding: "32px 0 72px" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
-        <div style={{ maxWidth: 780 }}>
+        <div style={{ maxWidth: 1100 }}>
           {intro && (
             <p
               className="font-display"

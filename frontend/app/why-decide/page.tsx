@@ -109,7 +109,7 @@ export default async function WhyDecidePage({
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
-        <div style={{ maxWidth: 780 }}>
+        <div style={{ maxWidth: 1100 }}>
           <h1
             className="font-display gradient-text"
             style={{
@@ -149,7 +149,7 @@ export default async function WhyDecidePage({
       <div style={{ padding: "40px 0", borderBottom: "1px solid var(--line)" }}>
         {/* Same 1450-outer fix as the hero section above. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
-        <div style={{ maxWidth: 900 }}>
+        <div style={{ maxWidth: 1300 }}>
           {/* Column headers, hidden on mobile where each row stacks to a
               single column anyway (see the 700px media rule below) — the
               "GENERIC" vs "DECIDE" framing is carried by each cell's own

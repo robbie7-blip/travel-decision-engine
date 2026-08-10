@@ -74,7 +74,7 @@ export default function PricingPage() {
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
-        <div style={{ maxWidth: 720 }}>
+        <div style={{ maxWidth: 900 }}>
           <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.account.pricingHeading}
           </h1>
