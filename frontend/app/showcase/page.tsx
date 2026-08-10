@@ -102,7 +102,7 @@ export default async function ShowcasePage({
         {/* 1450, not this page's own 960px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why. */}
         <div
-          style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}
+          style={{ width: "clamp(320px, 80%, 1450px)", margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}
         >
           <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -156,7 +156,7 @@ export default async function ShowcasePage({
         {/* Outer 1450 matches the header above so this page's content
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
-        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
+        <div style={{ width: "clamp(320px, 80%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 960 }}>
           <h1
             className="font-display"

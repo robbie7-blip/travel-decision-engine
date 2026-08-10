@@ -54,7 +54,7 @@ export default async function DestinationsIndexPage({
             stays pinned to the site-wide width regardless. */}
         <div
           style={{
-            width: "clamp(320px, 90%, 1450px)",
+            width: "clamp(320px, 80%, 1450px)",
             margin: "0 auto",
             display: "flex",
             flexWrap: "wrap",
@@ -114,7 +114,7 @@ export default async function DestinationsIndexPage({
         {/* Outer 1450 matches the header above so this page's content
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
-        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
+        <div style={{ width: "clamp(320px, 80%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 780 }}>
           <h1
             className="font-display"

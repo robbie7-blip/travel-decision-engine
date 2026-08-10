@@ -66,17 +66,19 @@ export function SiteHeader({
         borderBottom: `1px solid ${large ? "var(--line-strong)" : "var(--line)"}`,
       }}
     >
-      {/* width: clamp(floor, 90%, cap) instead of a flat maxWidth + separate
+      {/* width: clamp(floor, 80%, cap) instead of a flat maxWidth + separate
           fixed padding — a fixed px padding can't give a proportional
           margin (it either hugs the edge on a normal window or barely
           registers on a huge one, and guessing the right flat number for
-          "everyone's window" doesn't work). 90% always leaves a real,
-          window-proportional gutter; the cap (1550 for the large variant's
+          "everyone's window" doesn't work). 80% (was 90% — still read as
+          hugging the edge on a normal-width window, since 5%-per-side is a
+          pretty subtle gutter) leaves a real 10%-per-side window-
+          proportional margin; the cap (1550 for the large variant's
           bigger 84px logo/wordmark/currency-switcher, matching maxWidth
           elsewhere otherwise) still stops the line length from running
           away on an ultra-wide monitor; the 320px floor is just a sanity
           minimum for very small screens. */}
-      <div style={{ width: `clamp(320px, 90%, ${large ? 1550 : maxWidth}px)`, margin: "0 auto" }}>
+      <div style={{ width: `clamp(320px, 80%, ${large ? 1550 : maxWidth}px)`, margin: "0 auto" }}>
         <div
           style={{
             display: "flex",

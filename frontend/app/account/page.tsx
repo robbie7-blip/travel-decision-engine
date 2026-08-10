@@ -122,7 +122,7 @@ export default function AccountPage() {
             so this page's content starts at the same left edge as every
             other page's, regardless of how narrow its own reading column
             is — the 560 below controls line length, not position. */}
-        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
+        <div style={{ width: "clamp(320px, 80%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 560 }}>
           <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 20px", color: "var(--brand-teal)" }}>
             {t.account.accountHeading}
