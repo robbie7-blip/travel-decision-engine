@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS } from "@/lib/planLimits";
@@ -274,6 +275,20 @@ export default function PricingPage() {
                   {error}
                 </div>
               )}
+              {/* Right at the point money changes hands — the one place on
+                  the site these links genuinely need to be, not buried in a
+                  footer no one scrolls to before paying. */}
+              <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 12, lineHeight: 1.5, textAlign: "center" }}>
+                By subscribing, you agree to our{" "}
+                <Link href="/terms" style={{ color: "var(--ink-dim)" }}>
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" style={{ color: "var(--ink-dim)" }}>
+                  Privacy Policy
+                </Link>
+                .
+              </div>
             </div>
           </div>
         </div>
