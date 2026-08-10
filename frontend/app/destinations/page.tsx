@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AccountControl } from "@/components/AccountControl";
 import { DestinationHero } from "@/components/DestinationHero";
 import { NavMenu } from "@/components/NavMenu";
@@ -55,20 +56,20 @@ export default async function DestinationsIndexPage({
             matching SiteHeader.tsx — see that file's header comment. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
-            <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
               <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
                 decide
               </span>
-            </a>
+            </Link>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <AccountControl language={language} t={t} />
               <div
                 className="font-mono lang-toggle"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
-                <a
+                <Link
                   href="/destinations"
                   data-active={language === "en"}
                   style={{
@@ -81,8 +82,8 @@ export default async function DestinationsIndexPage({
                   }}
                 >
                   EN
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/destinations?lang=bg"
                   data-active={language === "bg"}
                   style={{
@@ -95,7 +96,7 @@ export default async function DestinationsIndexPage({
                   }}
                 >
                   BG
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -126,7 +127,7 @@ export default async function DestinationsIndexPage({
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16 }}>
             {destinations.map((d) => (
-              <a
+              <Link
                 key={d.slug}
                 href={`/destinations/${d.slug}${langSuffix}`}
                 className="hover-card"
@@ -145,7 +146,7 @@ export default async function DestinationsIndexPage({
                     {dt.localNotesCount.replace("{count}", String(d.facts.length))}
                   </div>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         </div>

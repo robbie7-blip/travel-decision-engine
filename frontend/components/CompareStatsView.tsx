@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
@@ -170,9 +171,9 @@ export function CompareStatsView() {
         <div style={{ padding: "36px 24px" }}>
           <div className="font-mono" style={{ maxWidth: 860, margin: "0 auto", fontSize: 14, color: "var(--infeasible)" }}>
             {t.compareStats.missingLink}{" "}
-            <a href="/account/visited" style={{ color: "var(--infeasible)" }}>
+            <Link href="/account/visited" style={{ color: "var(--infeasible)" }}>
               {t.compareStats.getYourLink}
-            </a>
+            </Link>
           </div>
         </div>
       </div>

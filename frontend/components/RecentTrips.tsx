@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getRecentTrips, removeRecentTrip, type RecentTrip } from "@/lib/recentTrips";
 import { SectionLabel } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
@@ -39,7 +40,7 @@ export function RecentTrips({ t }: { t: Dictionary }) {
               padding: "6px 8px 6px 14px",
             }}
           >
-            <a
+            <Link
               href={`/trip/${trip.jobId}`}
               className="font-mono"
               style={{ fontSize: 12, color: "var(--ink)", textDecoration: "none" }}
@@ -48,7 +49,7 @@ export function RecentTrips({ t }: { t: Dictionary }) {
               <span style={{ color: "var(--ink-dim)" }}>
                 · {trip.startDate} → {trip.endDate}
               </span>
-            </a>
+            </Link>
             <button
               type="button"
               onClick={() => handleRemove(trip.jobId)}

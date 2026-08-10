@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
@@ -154,9 +155,9 @@ export function CompareView() {
         <div style={{ padding: "36px 24px" }}>
           <div className="font-mono" style={{ maxWidth: 960, margin: "0 auto", fontSize: 14, color: "var(--infeasible)" }}>
             {t.compare.missingJobs}{" "}
-            <a href="/" style={{ color: "var(--infeasible)" }}>
+            <Link href="/" style={{ color: "var(--infeasible)" }}>
               {t.compare.planAnother} →
-            </a>
+            </Link>
           </div>
         </div>
       </div>

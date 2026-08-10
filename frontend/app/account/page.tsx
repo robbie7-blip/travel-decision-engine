@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
@@ -184,15 +185,15 @@ export default function AccountPage() {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {account.plan !== "paid" && (
-                    <a href="/pricing" className="account-row account-upgrade-row">
+                    <Link href="/pricing" className="account-row account-upgrade-row">
                       <span style={{ fontWeight: 600, color: "var(--accent-green)" }}>{t.account.upgradeCta.replace(" →", "")}</span>
                       <span className="account-row-arrow">→</span>
-                    </a>
+                    </Link>
                   )}
-                  <a href="/account/visited" className="account-row">
+                  <Link href="/account/visited" className="account-row">
                     <span>{t.visited.navLink.replace(" →", "")}</span>
                     <span className="account-row-arrow">→</span>
-                  </a>
+                  </Link>
                 </div>
 
                 <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>

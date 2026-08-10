@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AccountControl } from "@/components/AccountControl";
 import { DestinationHero } from "@/components/DestinationHero";
@@ -139,27 +140,27 @@ export default async function DestinationPage({
             matching SiteHeader.tsx — see that file's header comment. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
-            <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
               <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
                 decide
               </span>
-            </a>
+            </Link>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
-              <a
+              <Link
                 href={`/destinations${langSuffix}`}
                 className="font-mono"
                 style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
               >
                 {dt.backToAll}
-              </a>
+              </Link>
               <AccountControl language={language} t={t} />
               <div
                 className="font-mono lang-toggle"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
-                <a
+                <Link
                   href={`/destinations/${slug}`}
                   data-active={language === "en"}
                   style={{
@@ -172,8 +173,8 @@ export default async function DestinationPage({
                   }}
                 >
                   EN
-                </a>
-                <a
+                </Link>
+                <Link
                   href={`/destinations/${slug}?lang=bg`}
                   data-active={language === "bg"}
                   style={{
@@ -186,7 +187,7 @@ export default async function DestinationPage({
                   }}
                 >
                   BG
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -294,7 +295,7 @@ export default async function DestinationPage({
           </a>
 
           <div style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--line)" }}>
-            <a
+            <Link
               href={`/?dest=${encodeURIComponent(destination.city)}${language === "bg" ? "&lang=bg" : ""}`}
               className="font-mono btn-primary"
               style={{
@@ -308,7 +309,7 @@ export default async function DestinationPage({
               }}
             >
               {dt.planTrip.replace("{city}", displayCity)}
-            </a>
+            </Link>
             <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 14, lineHeight: 1.6 }}>
               {dt.notLimitedNote}
             </p>
@@ -324,7 +325,7 @@ export default async function DestinationPage({
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
                 {more.map((d) => (
-                  <a
+                  <Link
                     key={d.slug}
                     href={`/destinations/${d.slug}${langSuffix}`}
                     className="hover-card"
@@ -337,7 +338,7 @@ export default async function DestinationPage({
                     }}
                   >
                     <DestinationHero city={d.displayCity} slug={d.slug} compact eyebrow={dt.eyebrow} />
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>

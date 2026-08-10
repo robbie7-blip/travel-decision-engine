@@ -6,6 +6,7 @@
 // as /admin/feedback.
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -104,20 +105,20 @@ export default async function ShowcasePage({
             matching SiteHeader.tsx — see that file's header comment. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
-            <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
               <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
                 decide
               </span>
-            </a>
+            </Link>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <AccountControl language={language} t={t} />
               <div
                 className="font-mono lang-toggle"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
-                <a
+                <Link
                   href="/showcase"
                   data-active={language === "en"}
                   style={{
@@ -130,8 +131,8 @@ export default async function ShowcasePage({
                   }}
                 >
                   EN
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/showcase?lang=bg"
                   data-active={language === "bg"}
                   style={{
@@ -144,7 +145,7 @@ export default async function ShowcasePage({
                   }}
                 >
                   BG
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -176,7 +177,7 @@ export default async function ShowcasePage({
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
             {cards.map((card) => (
-              <a
+              <Link
                 key={card.jobId}
                 href={`/trip/${card.jobId}`}
                 className="hover-card"
@@ -209,7 +210,7 @@ export default async function ShowcasePage({
                 <div className="font-mono" style={{ fontSize: 12, color: "var(--grounded)" }}>
                   {t.showcase.viewTrip}
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         </div>

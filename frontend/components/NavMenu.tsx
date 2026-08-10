@@ -7,6 +7,7 @@
 // the same full nav menu instead of hand-rolling their own header markup.
 
 import { useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
@@ -64,7 +65,7 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
           a little breathing room between items instead of the old 0. */}
       <div className={menuOpen ? "nav-links-row nav-links-row--open" : "nav-links-row"} style={{ alignItems: "center", gap: 4 }}>
         {links.map((link) => (
-          <a
+          <Link
             key={link.href}
             href={link.href}
             className="font-mono nav-link"
@@ -72,7 +73,7 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
             style={{ fontSize: 12, letterSpacing: "0.04em", textDecoration: "none" }}
           >
             {link.label}
-          </a>
+          </Link>
         ))}
       </div>
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AddToShowcaseButton } from "./AddToShowcaseButton";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
@@ -138,9 +139,9 @@ export function TripView({ jobId }: { jobId: string }) {
           {loadError && (
             <div className="font-mono" style={{ fontSize: 14, color: "var(--infeasible)" }}>
               {loadError}{" "}
-              <a href="/" style={{ color: "var(--infeasible)" }}>
+              <Link href="/" style={{ color: "var(--infeasible)" }}>
                 {t.trip.planAnother} →
-              </a>
+              </Link>
             </div>
           )}
           {result && (

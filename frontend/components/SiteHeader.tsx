@@ -25,6 +25,7 @@
 // instead of vanishing into "Menu ☰" the moment things got tight.
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { AccountControl } from "./AccountControl";
 import { NavMenu } from "./NavMenu";
 import { LANGUAGE_NAMES } from "@/lib/i18n";
@@ -94,7 +95,7 @@ export function SiteHeader({
             paddingBottom: large ? 20 : 14,
           }}
         >
-          <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: large ? 22 : 12, textDecoration: "none" }}>
+          <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: large ? 22 : 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={large ? 84 : 40} height={large ? 84 : 40} style={{ flexShrink: 0 }} />
             <div>
@@ -121,13 +122,13 @@ export function SiteHeader({
                 </div>
               )}
             </div>
-          </a>
+          </Link>
 
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
             {contextLink && (
-              <a href={contextLink.href} className="font-mono header-context-link" style={linkStyle}>
+              <Link href={contextLink.href} className="font-mono header-context-link" style={linkStyle}>
                 {contextLink.label}
-              </a>
+              </Link>
             )}
             {extraControls}
             <AccountControl language={language} t={t} />

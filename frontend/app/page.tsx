@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   compareDateOverride,
@@ -168,7 +169,7 @@ export default function Home() {
             {t.subheadLine2}
           </p>
           {demo && (
-            <a
+            <Link
               href={`/trip/${demo.jobId}`}
               className="font-mono"
               style={{
@@ -180,7 +181,7 @@ export default function Home() {
               }}
             >
               {t.demo.seeExample.replace("{destination}", demo.destinations.join(" · "))}
-            </a>
+            </Link>
           )}
           <div
             id="confidence-legend"
@@ -361,7 +362,7 @@ export default function Home() {
               <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: 0 }}>
                 {t.form.reassurance}
               </p>
-              <a
+              <Link
                 href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
                 className="font-mono"
                 style={{
@@ -373,7 +374,7 @@ export default function Home() {
                 }}
               >
                 {t.form.notSurePrompt}
-              </a>
+              </Link>
             </div>
           )}
         </div>

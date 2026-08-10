@@ -7,6 +7,7 @@
 // /destinations) rather than a client component — worth being crawlable.
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AccountControl } from "@/components/AccountControl";
 import { NavMenu } from "@/components/NavMenu";
 import { TRANSLATIONS } from "@/lib/i18n";
@@ -54,20 +55,20 @@ export default async function WhyDecidePage({
             its own row 2, instead of cramming everything into one row. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
-            <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
               <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
                 decide
               </span>
-            </a>
+            </Link>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <AccountControl language={language} t={t} />
               <div
                 className="font-mono lang-toggle"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
-                <a
+                <Link
                   href="/why-decide"
                   data-active={language === "en"}
                   style={{
@@ -80,8 +81,8 @@ export default async function WhyDecidePage({
                   }}
                 >
                   EN
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/why-decide?lang=bg"
                   data-active={language === "bg"}
                   style={{
@@ -94,7 +95,7 @@ export default async function WhyDecidePage({
                   }}
                 >
                   BG
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -219,7 +220,7 @@ export default async function WhyDecidePage({
           <h2 className="font-display" style={{ fontSize: "clamp(22px, 3.5vw, 28px)", fontWeight: 600, margin: "0 0 24px", color: "var(--ink)" }}>
             {wd.ctaHeading}
           </h2>
-          <a
+          <Link
             href={`/${langSuffix}`}
             className="font-mono btn-primary"
             style={{
@@ -230,7 +231,7 @@ export default async function WhyDecidePage({
             }}
           >
             {wd.ctaButton}
-          </a>
+          </Link>
         </div>
       </div>
     </div>

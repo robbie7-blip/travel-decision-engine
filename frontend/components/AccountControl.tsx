@@ -12,6 +12,7 @@
 // small pill instead of duplicating that UI in the header.
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
@@ -28,7 +29,7 @@ export function AccountControl({ language, t }: { language: Language; t: Diction
   const langSuffix = language === "bg" ? "?lang=bg" : "";
 
   return (
-    <a
+    <Link
       href={`/account${langSuffix}`}
       className="font-mono account-control"
       data-signed-in={signedIn}
@@ -47,6 +48,6 @@ export function AccountControl({ language, t }: { language: Language; t: Diction
     >
       {signedIn && <span className="account-control-dot" aria-hidden />}
       {signedIn ? t.account.headerAccountLink : t.account.headerSignIn}
-    </a>
+    </Link>
   );
 }
