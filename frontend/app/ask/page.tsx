@@ -91,7 +91,7 @@ export default function AskPage() {
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1100 }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
+          <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.tripQA.pageHeading}
           </h1>
           <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 32px", lineHeight: 1.5, maxWidth: 640 }}>

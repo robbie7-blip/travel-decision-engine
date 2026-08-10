@@ -306,7 +306,7 @@ export default function VisitedPage() {
            * every page's title — body copy/labels below stay --ink-dim/
            * --ink for readability, color is deliberately scoped to just
            * the heading. */}
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
+          <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.visited.pageHeading}
           </h1>
           <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 24px", lineHeight: 1.5 }}>{t.visited.pageSubheading}</p>

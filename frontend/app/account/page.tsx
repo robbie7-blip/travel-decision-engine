@@ -125,7 +125,7 @@ export default function AccountPage() {
             is — the 560 below controls line length, not position. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 700 }}>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 20px", color: "var(--brand-teal)" }}>
+          <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 20px", color: "var(--brand-teal)" }}>
             {t.account.accountHeading}
           </h1>
 
