@@ -91,6 +91,22 @@ export function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
+/** Heading + body block shared by /terms, /privacy, and /cookies — the
+ * three legal pages were each hand-rolling an identical version of this
+ * before, which is exactly the kind of drift risk worth collapsing into
+ * one place (unlike the header markup those same pages duplicate, which
+ * differs in small page-specific ways — see why-decide/page.tsx etc.). */
+export function LegalSection({ heading, children }: { heading: string; children: ReactNode }) {
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <h2 className="font-display" style={{ fontSize: 18, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
+        {heading}
+      </h2>
+      <div style={{ fontSize: 14, lineHeight: 1.65, color: "var(--ink-soft)" }}>{children}</div>
+    </div>
+  );
+}
+
 export const inputStyle: CSSProperties = {
   width: "100%",
   background: "var(--bg-panel-raised)",

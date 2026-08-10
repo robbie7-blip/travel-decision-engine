@@ -8,18 +8,15 @@
 // for Pro) — not generic privacy-policy boilerplate.
 
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { AccountControl } from "@/components/AccountControl";
 import { NavMenu } from "@/components/NavMenu";
+import { LegalSection } from "@/components/ui";
 import { TRANSLATIONS } from "@/lib/i18n";
+import { OPERATOR_NAME, CONTACT_EMAIL } from "@/lib/legal";
 import type { Language } from "@/lib/types";
 
 const LAST_UPDATED = "10 August 2026";
-// TODO: replace before launch — see this file's top-of-file comment and
-// /terms's matching placeholders.
-const OPERATOR_NAME = "[operator name — replace before launch]";
-const CONTACT_EMAIL = "[support email — replace before launch]";
 
 function resolveLanguage(lang?: string): Language {
   return lang === "bg" ? "bg" : "en";
@@ -29,17 +26,6 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = "Privacy Policy — decide";
   const description = "What decide collects, why, and how it's used.";
   return { title, description, openGraph: { title, description }, twitter: { title, description } };
-}
-
-function Section({ heading, children }: { heading: string; children: ReactNode }) {
-  return (
-    <div style={{ marginBottom: 28 }}>
-      <h2 className="font-display" style={{ fontSize: 18, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
-        {heading}
-      </h2>
-      <div style={{ fontSize: 14, lineHeight: 1.65, color: "var(--ink-soft)" }}>{children}</div>
-    </div>
-  );
 }
 
 interface DataRow {
@@ -137,7 +123,7 @@ export default async function PrivacyPage({
             the only cookie decide sets is a session cookie used solely to keep you signed in.
           </p>
 
-          <Section heading="What we collect">
+          <LegalSection heading="What we collect">
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {DATA_COLLECTED.map((row) => (
                 <div key={row.what}>
@@ -146,15 +132,15 @@ export default async function PrivacyPage({
                 </div>
               ))}
             </div>
-          </Section>
+          </LegalSection>
 
-          <Section heading="Where it's stored">
+          <LegalSection heading="Where it's stored">
             <p style={{ margin: 0 }}>
               Upstash Redis — a hosted database. There&apos;s no separate customer database beyond that.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section heading="Who we share it with">
+          <LegalSection heading="Who we share it with">
             <p style={{ margin: "0 0 10px" }}>
               <strong style={{ color: "var(--ink)" }}>Anthropic</strong> — trip details and questions, to generate
               itineraries and answers.
@@ -169,17 +155,17 @@ export default async function PrivacyPage({
               also be queried for destination, venue, flight, or weather information — these receive search terms
               about places, not information that identifies you personally.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section heading="How long we keep it">
+          <LegalSection heading="How long we keep it">
             <p style={{ margin: 0 }}>
               Generated trip records: 30 days. Usage/quota counters: roughly 40 days. Account and subscription
               records, and visited-countries data (if you&apos;re signed in): kept for as long as your account
               exists.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section heading="Your rights">
+          <LegalSection heading="Your rights">
             <p style={{ margin: "0 0 10px" }}>
               You can request a copy of your data, ask us to correct it, or ask us to delete your account and
               associated data at any time by emailing {CONTACT_EMAIL}. If you&apos;re in the EU/UK, this includes
@@ -189,25 +175,25 @@ export default async function PrivacyPage({
               We don&apos;t currently offer a self-service "delete my account" button in the app — deletion
               requests are handled manually once we receive your email.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section heading="Children">
+          <LegalSection heading="Children">
             <p style={{ margin: 0 }}>
               decide isn&apos;t directed at children, and we don&apos;t knowingly collect data from anyone under 16.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section heading="Changes">
+          <LegalSection heading="Changes">
             <p style={{ margin: 0 }}>
               We may update this policy from time to time; the "Last updated" date above will change when we do.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section heading="Contact">
+          <LegalSection heading="Contact">
             <p style={{ margin: 0 }}>
               Questions about this policy, or to exercise your rights above: {CONTACT_EMAIL}.
             </p>
-          </Section>
+          </LegalSection>
         </div>
         </div>
       </div>

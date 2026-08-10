@@ -329,6 +329,11 @@ export interface Dictionary {
     quotaUsed: string; // "{used}" / "{limit}" placeholders
     renewsOn: string; // "{date}" placeholder
     upgradeCta: string;
+    // Self-service cancel/manage-payment-method flow via Stripe's hosted
+    // Customer Portal (see app/api/billing-portal) — only shown to a
+    // signed-in Pro account.
+    manageSubscriptionButton: string;
+    openingPortal: string;
     signOutButton: string;
     notSignedIn: string;
     invalidLink: string;
@@ -727,6 +732,8 @@ const en: Dictionary = {
     quotaUsed: "{used} of {limit} generations used this month",
     renewsOn: "Renews {date}",
     upgradeCta: "Upgrade to Pro →",
+    manageSubscriptionButton: "Manage subscription",
+    openingPortal: "Opening...",
     signOutButton: "Sign out",
     notSignedIn: "Not signed in.",
     invalidLink: "That sign-in link is invalid or has expired — request a new one below.",
@@ -1121,6 +1128,8 @@ const bg: Dictionary = {
     quotaUsed: "{used} от {limit} генерации използвани този месец",
     renewsOn: "Подновява се на {date}",
     upgradeCta: "Надградете до Pro →",
+    manageSubscriptionButton: "Управление на абонамента",
+    openingPortal: "Отваряне...",
     signOutButton: "Изход",
     notSignedIn: "Не сте влезли.",
     invalidLink: "Този линк за вход е невалиден или е изтекъл - заявете нов по-долу.",

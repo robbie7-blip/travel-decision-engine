@@ -28,6 +28,7 @@ export default function AccountPage() {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [openingPortal, setOpeningPortal] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -92,6 +93,22 @@ export default function AccountPage() {
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     setAccount({ signedIn: false });
+  }
+
+  async function openBillingPortal() {
+    setOpeningPortal(true);
+    setError("");
+    try {
+      const res = await fetch("/api/billing-portal", { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.url) {
+        throw new Error(typeof data?.detail === "string" ? data.detail : t.account.genericError);
+      }
+      window.location.href = data.url;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.account.genericError);
+      setOpeningPortal(false);
+    }
   }
 
   const planName = account?.plan === "paid" ? t.account.paidPlanName : t.account.freePlanName;
@@ -196,7 +213,25 @@ export default function AccountPage() {
                   </Link>
                 </div>
 
-                <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+                <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {account.plan === "paid" && (
+                    <button
+                      onClick={openBillingPortal}
+                      disabled={openingPortal}
+                      className="font-mono"
+                      style={{
+                        background: "transparent",
+                        border: "1px solid var(--line)",
+                        borderRadius: 999,
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        color: "var(--ink-soft)",
+                        cursor: openingPortal ? "default" : "pointer",
+                      }}
+                    >
+                      {openingPortal ? t.account.openingPortal : t.account.manageSubscriptionButton}
+                    </button>
+                  )}
                   <button
                     onClick={signOut}
                     className="font-mono"
