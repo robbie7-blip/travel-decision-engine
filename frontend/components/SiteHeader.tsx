@@ -74,7 +74,7 @@ export function SiteHeader({
   return (
     <div
       style={{
-        padding: large ? "28px 0 0" : "18px 0 0",
+        padding: large ? "28px 32px 0" : "18px 32px 0",
         background: "var(--bg-panel-raised)",
         borderBottom: `1px solid ${large ? "var(--line-strong)" : "var(--line)"}`,
       }}

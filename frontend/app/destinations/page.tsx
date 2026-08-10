@@ -48,7 +48,7 @@ export default async function DestinationsIndexPage({
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "18px 0 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "18px 32px 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         {/* 1450, not this page's own 780px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why the header
             stays pinned to the site-wide width regardless. Two rows,
@@ -105,7 +105,7 @@ export default async function DestinationsIndexPage({
         </div>
       </div>
 
-      <div style={{ padding: "40px 0 72px" }}>
+      <div style={{ padding: "40px 32px 72px" }}>
         {/* Outer 1450 matches the header above so this page's content
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
