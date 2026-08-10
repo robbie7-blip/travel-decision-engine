@@ -46,11 +46,11 @@ export default async function WhyDecidePage({
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "20px clamp(40px, 6vw, 120px)", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "20px 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         {/* 1450, not this page's own 780px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why. */}
         <div
-          style={{ maxWidth: 1450, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}
+          style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}
         >
           <a href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -100,11 +100,11 @@ export default async function WhyDecidePage({
         </div>
       </div>
 
-      <div style={{ padding: "48px clamp(40px, 6vw, 120px) 32px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "48px 0 32px", borderBottom: "1px solid var(--line)" }}>
         {/* Outer 1450 matches the header above so this page's content
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
-        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 780 }}>
           <h1
             className="font-display gradient-text"
@@ -142,9 +142,9 @@ export default async function WhyDecidePage({
         </div>
       </div>
 
-      <div style={{ padding: "40px clamp(40px, 6vw, 120px)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "40px 0", borderBottom: "1px solid var(--line)" }}>
         {/* Same 1450-outer fix as the hero section above. */}
-        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 900 }}>
           {/* Column headers, hidden on mobile where each row stacks to a
               single column anyway (see the 700px media rule below) — the
@@ -210,7 +210,7 @@ export default async function WhyDecidePage({
         </div>
       </div>
 
-      <div style={{ padding: "48px clamp(40px, 6vw, 120px) 64px" }}>
+      <div style={{ padding: "48px 0 64px" }}>
         <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
           <h2 className="font-display" style={{ fontSize: "clamp(22px, 3.5vw, 28px)", fontWeight: 600, margin: "0 0 24px", color: "var(--ink)" }}>
             {wd.ctaHeading}

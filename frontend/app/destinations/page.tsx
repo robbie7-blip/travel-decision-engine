@@ -48,13 +48,13 @@ export default async function DestinationsIndexPage({
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "20px clamp(40px, 6vw, 120px)", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "20px 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         {/* 1450, not this page's own 780px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why the header
             stays pinned to the site-wide width regardless. */}
         <div
           style={{
-            maxWidth: 1450,
+            width: "clamp(320px, 90%, 1450px)",
             margin: "0 auto",
             display: "flex",
             flexWrap: "wrap",
@@ -110,11 +110,11 @@ export default async function DestinationsIndexPage({
         </div>
       </div>
 
-      <div style={{ padding: "40px clamp(40px, 6vw, 120px) 72px" }}>
+      <div style={{ padding: "40px 0 72px" }}>
         {/* Outer 1450 matches the header above so this page's content
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
-        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 780 }}>
           <h1
             className="font-display"

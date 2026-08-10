@@ -117,12 +117,12 @@ export default function AccountPage() {
         contextLink={{ href: "/pricing", label: `${t.account.pricingHeading} →` }}
       />
 
-      <div style={{ padding: "36px clamp(40px, 6vw, 120px) 64px" }}>
+      <div style={{ padding: "36px 0 64px" }}>
         {/* Outer 1450 matches the header's own width (see SiteHeader.tsx)
             so this page's content starts at the same left edge as every
             other page's, regardless of how narrow its own reading column
             is — the 560 below controls line length, not position. */}
-        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 560 }}>
           <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 20px", color: "var(--brand-teal)" }}>
             {t.account.accountHeading}

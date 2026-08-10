@@ -61,21 +61,22 @@ export function SiteHeader({
   return (
     <div
       style={{
-        padding: large ? "28px clamp(40px, 6vw, 120px) 12px" : "20px clamp(40px, 6vw, 120px)",
+        padding: large ? "28px 0 12px" : "20px 0",
         background: "var(--bg-panel-raised)",
         borderBottom: `1px solid ${large ? "var(--line-strong)" : "var(--line)"}`,
       }}
     >
-      {/* 1550 (not 960) for the large variant specifically — its bigger
-          84px logo + 48px wordmark plus the extra currency-switcher
-          control need more room than the compact header's nav content
-          does before nav + currency + language toggle stop fitting on
-          one line (measured need: ~1498px, after the 7-link nav +
-          AccountControl addition). The homepage's own body content below
-          stays at its own narrower 960, same pattern as every other
-          page's header being wider than that page's content column —
-          see ask/page.tsx's SiteHeader call. */}
-      <div style={{ maxWidth: large ? 1550 : maxWidth, margin: "0 auto" }}>
+      {/* width: clamp(floor, 90%, cap) instead of a flat maxWidth + separate
+          fixed padding — a fixed px padding can't give a proportional
+          margin (it either hugs the edge on a normal window or barely
+          registers on a huge one, and guessing the right flat number for
+          "everyone's window" doesn't work). 90% always leaves a real,
+          window-proportional gutter; the cap (1550 for the large variant's
+          bigger 84px logo/wordmark/currency-switcher, matching maxWidth
+          elsewhere otherwise) still stops the line length from running
+          away on an ultra-wide monitor; the 320px floor is just a sanity
+          minimum for very small screens. */}
+      <div style={{ width: `clamp(320px, 90%, ${large ? 1550 : maxWidth}px)`, margin: "0 auto" }}>
         <div
           style={{
             display: "flex",

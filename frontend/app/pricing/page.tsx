@@ -69,11 +69,11 @@ export default function PricingPage() {
         contextLink={{ href: "/account", label: `${t.account.accountHeading} →` }}
       />
 
-      <div style={{ padding: "36px clamp(40px, 6vw, 120px) 64px" }}>
+      <div style={{ padding: "36px 0 64px" }}>
         {/* Outer 1450 matches the header above so this page's content
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
-        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 720 }}>
           <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>
             {t.account.pricingHeading}

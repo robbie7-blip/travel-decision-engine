@@ -132,13 +132,13 @@ export default async function DestinationPage({
         // none of our (fixed, curated) inputs actually contain it.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
-      <div style={{ padding: "20px clamp(40px, 6vw, 120px)", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "20px 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         {/* 1450, not this page's own 780px content width below — see the
             comment on ask/page.tsx's SiteHeader call for why the header
             stays pinned to the site-wide width regardless. */}
         <div
           style={{
-            maxWidth: 1450,
+            width: "clamp(320px, 90%, 1450px)",
             margin: "0 auto",
             display: "flex",
             flexWrap: "wrap",
@@ -205,8 +205,8 @@ export default async function DestinationPage({
           at the same left edge as every other page's — see the same fix on
           account/page.tsx. Top margin moved to padding on the outer div
           since it now also carries the horizontal padding. */}
-      <div style={{ padding: "36px clamp(40px, 6vw, 120px) 0" }}>
-        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+      <div style={{ padding: "36px 0 0" }}>
+        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 780 }}>
           <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
           {photo?.credit && (
@@ -222,8 +222,8 @@ export default async function DestinationPage({
         </div>
       </div>
 
-      <div style={{ padding: "32px clamp(40px, 6vw, 120px) 72px" }}>
-        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+      <div style={{ padding: "32px 0 72px" }}>
+        <div style={{ width: "clamp(320px, 90%, 1450px)", margin: "0 auto" }}>
         <div style={{ maxWidth: 780 }}>
           {intro && (
             <p
