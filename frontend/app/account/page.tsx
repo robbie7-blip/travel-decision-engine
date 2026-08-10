@@ -123,7 +123,7 @@ export default function AccountPage() {
             other page's, regardless of how narrow its own reading column
             is — the 560 below controls line length, not position. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ maxWidth: 560 }}>
           <h1 className="font-display" style={{ fontSize: 26, fontWeight: 600, margin: "0 0 20px", color: "var(--brand-teal)" }}>
             {t.account.accountHeading}
           </h1>

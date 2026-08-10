@@ -115,7 +115,7 @@ export default async function DestinationsIndexPage({
             starts at the same left edge as every other page's — see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
-        <div style={{ maxWidth: 780, margin: "0 auto" }}>
+        <div style={{ maxWidth: 780 }}>
           <h1
             className="font-display"
             style={{ fontWeight: 600, fontSize: "clamp(28px, 4.5vw, 38px)", lineHeight: 1.2, margin: "0 0 14px", color: "var(--brand-teal)" }}

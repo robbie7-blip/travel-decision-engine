@@ -146,7 +146,7 @@ export default function Home() {
             sitewide, just with a percentage-based width instead of a flat
             maxWidth so the margin actually scales with the real window. */}
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <div style={{ maxWidth: 960, position: "relative", zIndex: 1 }}>
           <h1
             className="font-display gradient-text"
             style={{
@@ -218,7 +218,7 @@ export default function Home() {
 
       <div style={{ padding: "18px 0", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
-        <div id="how-it-works" style={{ maxWidth: 960, margin: "0 auto", scrollMarginTop: 24 }}>
+        <div id="how-it-works" style={{ maxWidth: 960, scrollMarginTop: 24 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--brand-teal)" }}>
             {t.howItWorks}
           </h2>
@@ -343,7 +343,7 @@ export default function Home() {
         </svg>
 
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <div style={{ maxWidth: 960, position: "relative", zIndex: 1 }}>
           <TripForm
             value={form}
             onChange={setForm}

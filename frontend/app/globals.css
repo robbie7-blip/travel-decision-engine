@@ -222,8 +222,21 @@ button {
 
 /* When the header nav (how it works / destinations / language) wraps below
    the logo lockup on narrow screens, give it its own clearly separated row
-   instead of sitting right under the tagline with barely any gap. */
-@media (max-width: 700px) {
+   instead of sitting right under the tagline with barely any gap.
+
+   1600px, not 700px — the inline nav's actual content (7 links + account
+   pill + language toggle, more on the homepage's large variant with the
+   currency switcher too) needs close to 1500-1550px to lay out with any
+   breathing room at all. A 700px collapse breakpoint left a huge dead
+   zone — any real window between roughly 700 and 1550px (which covers a
+   lot of ordinary laptop browser windows, confirmed via a live report of
+   window.innerWidth === 1470 rendering the nav visibly cramped, right at
+   the edge of overflowing) forced the full inline nav to squeeze into
+   less room than it needs instead of cleanly collapsing. Collapsing
+   earlier, with real margin to spare, means the header is always either
+   comfortably spacious (wide screen) or a clean single "Menu" toggle
+   (everything narrower) — never caught in between. */
+@media (max-width: 1600px) {
   .header-nav-row {
     margin-left: 0 !important;
     width: 100%;
@@ -518,8 +531,10 @@ a {
 
 /* The stacked mobile menu (.nav-links-row--open, flex-direction: column)
    already separates items onto their own rows, so the inline divider
-   would just float as a stray tick mark at the start of each line. */
-@media (max-width: 700px) {
+   would just float as a stray tick mark at the start of each line. Same
+   1600px breakpoint as the collapse itself above — this only matters
+   once .nav-links-row is actually in its stacked mode. */
+@media (max-width: 1600px) {
   .nav-link:not(:first-child) {
     border-left: none;
   }
