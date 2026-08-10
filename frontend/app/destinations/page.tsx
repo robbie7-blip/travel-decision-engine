@@ -118,7 +118,11 @@ export default async function DestinationsIndexPage({
           >
             {dt.pageTitle}
           </h1>
-          <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 620, margin: "0 0 12px" }}>
+          {/* Responsive size (not a flat 15px) so a phone-width viewport gets
+              more characters per line — at a fixed 15px this sentence wrapped
+              to 4 lines on a phone, stranding "runs." alone on the last one;
+              clamping down a couple px on narrow screens brings it back to 3. */}
+          <p style={{ color: "var(--ink-dim)", fontSize: "clamp(13.5px, 3.4vw, 15px)", lineHeight: 1.6, maxWidth: 620, margin: "0 0 12px" }}>
             {dt.pageDescription.replace("{count}", String(destinations.length))}
           </p>
           <p className="font-mono" style={{ color: "var(--ink-dim)", fontSize: 12, lineHeight: 1.6, marginBottom: 36 }}>
@@ -148,6 +152,29 @@ export default async function DestinationsIndexPage({
                 </div>
               </Link>
             ))}
+          </div>
+
+          {/* Bottom CTA — after scrolling past a full grid of city cards
+              (24 and counting) there was previously no way back to actually
+              starting a trip without scrolling all the way back up to the
+              header, which mattered most on a phone where that's a much
+              longer scroll. */}
+          <div style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--line)", textAlign: "center" }}>
+            <Link
+              href={`/${langSuffix}`}
+              className="font-mono btn-primary"
+              style={{
+                display: "inline-block",
+                padding: "14px 26px",
+                fontWeight: 700,
+                fontSize: 13,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                textDecoration: "none",
+              }}
+            >
+              {dt.ctaButton}
+            </Link>
           </div>
         </div>
         </div>

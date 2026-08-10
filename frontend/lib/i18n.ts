@@ -416,6 +416,10 @@ export interface Dictionary {
     pageTitle: string;
     pageDescription: string; // "{count}" placeholder for the city count
     notOnListNote: string;
+    // Bottom-of-page CTA — after scrolling past a full grid of city cards
+    // (24 and growing), there was no way back to actually starting a trip
+    // without scrolling all the way back up to the header logo/nav.
+    ctaButton: string;
     localNotesCount: string; // "{count}" placeholder
     backToAll: string;
     eyebrow: string;
@@ -805,6 +809,7 @@ const en: Dictionary = {
     pageDescription:
       "Local notes decide already has on hand for these {count} cities - real costs, how to get around, and what to skip - before a live search ever runs.",
     notOnListNote: "Not on this list? decide plans anywhere - these are just a head start.",
+    ctaButton: "Plan my trip →",
     localNotesCount: "{count} local notes",
     backToAll: "← All destinations",
     eyebrow: "DESTINATION GUIDE",
@@ -1197,6 +1202,7 @@ const bg: Dictionary = {
     pageDescription:
       "Местни бележки за {count} града - реални цени, придвижване и какво да пропуснете, преди да търсим на живо.",
     notOnListNote: "Няма я в списъка? decide планира навсякъде - тези градове са само примери.",
+    ctaButton: "Планирай пътуването ми →",
     localNotesCount: "{count} местни бележки",
     backToAll: "← Всички дестинации",
     eyebrow: "ПЪТЕВОДИТЕЛ",
