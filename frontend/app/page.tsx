@@ -145,8 +145,8 @@ export default function Home() {
             based on its own narrower 960 reading-width — same fix applied
             sitewide, just with a percentage-based width instead of a flat
             maxWidth so the margin actually scales with the real window. */}
-        <div style={{ width: "clamp(320px, 80%, 1550px)", margin: "0 auto" }}>
-        <div style={{ maxWidth: 960, position: "relative", zIndex: 1 }}>
+        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <h1
             className="font-display gradient-text"
             style={{
@@ -217,8 +217,8 @@ export default function Home() {
       </div>
 
       <div style={{ padding: "18px 0", borderBottom: "1px solid var(--line)" }}>
-        <div style={{ width: "clamp(320px, 80%, 1550px)", margin: "0 auto" }}>
-        <div id="how-it-works" style={{ maxWidth: 960, scrollMarginTop: 24 }}>
+        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        <div id="how-it-works" style={{ maxWidth: 960, margin: "0 auto", scrollMarginTop: 24 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--brand-teal)" }}>
             {t.howItWorks}
           </h2>
@@ -342,8 +342,8 @@ export default function Home() {
           <path d="M 125 25 L 225 125 L 125 225 L 25 125 Z" fill="none" stroke="var(--color-coral)" strokeWidth="1.5" opacity="0.5" />
         </svg>
 
-        <div style={{ width: "clamp(320px, 80%, 1550px)", margin: "0 auto" }}>
-        <div style={{ maxWidth: 960, position: "relative", zIndex: 1 }}>
+        <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <TripForm
             value={form}
             onChange={setForm}

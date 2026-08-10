@@ -138,7 +138,7 @@ export default async function DestinationPage({
             stays pinned to the site-wide width regardless. */}
         <div
           style={{
-            width: "clamp(320px, 80%, 1450px)",
+            maxWidth: 1450,
             margin: "0 auto",
             display: "flex",
             flexWrap: "wrap",
@@ -206,8 +206,8 @@ export default async function DestinationPage({
           account/page.tsx. Top margin moved to padding on the outer div
           since it now also carries the horizontal padding. */}
       <div style={{ padding: "36px 0 0" }}>
-        <div style={{ width: "clamp(320px, 80%, 1450px)", margin: "0 auto" }}>
-        <div style={{ maxWidth: 780 }}>
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
           {photo?.credit && (
             <p className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
@@ -223,8 +223,8 @@ export default async function DestinationPage({
       </div>
 
       <div style={{ padding: "32px 0 72px" }}>
-        <div style={{ width: "clamp(320px, 80%, 1450px)", margin: "0 auto" }}>
-        <div style={{ maxWidth: 780 }}>
+        <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+        <div style={{ maxWidth: 780, margin: "0 auto" }}>
           {intro && (
             <p
               className="font-display"
