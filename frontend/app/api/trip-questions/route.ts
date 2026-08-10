@@ -26,6 +26,8 @@ import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
 import { estimateCostUsd } from "@/lib/costBudget";
+import { getUserRecord, isPaidStatus } from "@/lib/account";
+import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { MAX_TRIP_QA_HISTORY, MAX_TRIP_QA_MESSAGE_LENGTH, type TripQAContext, type TripQAMessage } from "@/lib/tripQA";
 import type { Language } from "@/lib/types";
 
@@ -33,6 +35,31 @@ export const runtime = "nodejs";
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 500;
+
+// Pro-only: gives a signed-in Pro traveler's questions the same
+// web_search tool the itinerary engine uses (see worker/src/index.ts's
+// SEARCH_INSTRUCTIONS/web_search_20260209 declaration) so a question like
+// "is it going to rain in Lisbon next week" or "is [venue] actually still
+// open" gets a real, current answer instead of the honest-but-unhelpful
+// "I don't have live info, check an official source" the base system
+// prompt falls back to. Free stays exactly as it was — this is additive
+// capability, not a cap on how many questions anyone can ask (see
+// pricing.freePlanFeatures/paidPlanFeatures: both plans are "unlimited
+// Ask a Local Q&A").
+//
+// Capped low (2, vs. the itinerary engine's estimateMaxSearchUses which
+// can go much higher across a multi-day plan): a single conversational
+// question rarely needs more than one or two searches, and this route is
+// a synchronous request (no job queue — see the file-header comment
+// above), so keeping search usage small keeps it comfortably inside
+// Vercel's function-duration limit the same way the plain-text/no-search
+// free path already does.
+const WEB_SEARCH_MAX_USES = 2;
+const WEB_SEARCH_ADDENDUM = `\n\nYou also have a web_search tool available for this question — use it when a \
+current/time-sensitive detail would actually change the answer (today's weather, whether a specific place is \
+still open, a current price, a real advisory), not for background knowledge you already know. When you do use \
+it, answer based on what you actually found, and you no longer need the "I don't have live info" hedge for \
+whatever you searched.`;
 
 // Anthropic's backend occasionally returns a transient 529 "overloaded"
 // error — confirmed happening in practice. One immediate retry (no
@@ -157,6 +184,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Same session cookie /api/generate reads for quota — here it only gates
+  // web_search access, not whether the question can be asked at all (see
+  // WEB_SEARCH_MAX_USES's comment above).
+  const email = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+  let isPaid = false;
+  if (email) {
+    const user = await getUserRecord(redis, email);
+    isPaid = isPaidStatus(user?.subscriptionStatus ?? null);
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ detail: "Server is misconfigured (invalid API key)." }, { status: 500 });
@@ -168,9 +205,12 @@ export async function POST(request: NextRequest) {
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: [
-      { type: "text" as const, text: SYSTEM_PROMPT },
+      { type: "text" as const, text: isPaid ? SYSTEM_PROMPT + WEB_SEARCH_ADDENDUM : SYSTEM_PROMPT },
       { type: "text" as const, text: contextBlock(body.context, language) },
     ],
+    ...(isPaid
+      ? { tools: [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES }] }
+      : {}),
     messages: trimmedMessages.map((m) => ({ role: m.role, content: m.content })),
   };
 

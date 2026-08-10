@@ -709,6 +709,7 @@ const en: Dictionary = {
     paidPlanFeaturesIntro: "Everything in Free, plus:",
     paidPlanFeatures: [
       "{count} generations a month — {multiplier}× the Free quota",
+      "Ask a Local can search the live web for current answers — weather, opening hours, real advisories",
       "Room to plan (and compare) more than one trip a month",
       "Directly funds the real API costs behind every generation",
     ],
@@ -1102,6 +1103,7 @@ const bg: Dictionary = {
     paidPlanFeaturesIntro: "Всичко от Безплатния план, плюс:",
     paidPlanFeatures: [
       "{count} генерации на месец - {multiplier}× повече от безплатната квота",
+      "Питай местен може да търси на живо в мрежата - времето, работно време, реални предупреждения",
       "Достатъчно за планиране (и сравняване) на повече от едно пътуване месечно",
       "Директно подпомагате реалните разходи зад всяка генерация",
     ],
