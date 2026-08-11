@@ -282,6 +282,15 @@ export interface Dictionary {
     thinking: string; // shown while waiting for the first word of a reply
     genericError: string;
     tooLong: string;
+    // Photo questions (Pro) — "what is this / is this included", asked from
+    // wherever the traveler is standing. See app/api/trip-questions.
+    addPhoto: string;
+    removePhoto: string;
+    photoAlt: string;
+    photoTooLarge: string;
+    photoUnreadable: string;
+    photoProOnly: string; // upsell shown when a free account taps the camera
+    photoProOnlyCta: string;
     // Clickable starter questions shown only before the first message —
     // fills what was otherwise a lot of empty space under the input box on
     // a fresh /ask visit, and doubles as a hint at the kind of question
@@ -675,6 +684,13 @@ const en: Dictionary = {
     thinking: "Thinking...",
     genericError: "Something went wrong answering that. Try again.",
     tooLong: "That message is a bit long - try trimming it.",
+    addPhoto: "Add photo",
+    removePhoto: "Remove photo",
+    photoAlt: "Photo attached to your question",
+    photoTooLarge: "That image is too large - try a smaller photo.",
+    photoUnreadable: "Couldn't read that image - try a different photo.",
+    photoProOnly: "Photos are a Pro feature. Snap the minibar card, a menu, a sign - anything you're looking at - and ask about it.",
+    photoProOnlyCta: "See Pro",
     examplePrompts: [
       "What should I pack for Lisbon in October?",
       "Is it safe to walk around at night in Mexico City?",
@@ -715,6 +731,7 @@ const en: Dictionary = {
     paidPlanFeatures: [
       "{count} generations a month — {multiplier}× the Free quota",
       "Ask a Local can search the live web for current answers — weather, opening hours, real advisories",
+      "Ask a Local with photos — snap a minibar card, a menu or a sign and ask what it says",
       "Room to plan (and compare) more than one trip a month",
       "Directly funds the real API costs behind every generation",
     ],
@@ -1071,6 +1088,13 @@ const bg: Dictionary = {
     thinking: "Мисля...",
     genericError: "Нещо се обърка при отговора. Опитайте отново.",
     tooLong: "Съобщението е малко дълго - опитайте да го съкратите.",
+    addPhoto: "Добави снимка",
+    removePhoto: "Премахни снимката",
+    photoAlt: "Снимка към вашия въпрос",
+    photoTooLarge: "Снимката е твърде голяма - опитайте с по-малка.",
+    photoUnreadable: "Снимката не може да бъде прочетена - опитайте с друга.",
+    photoProOnly: "Снимките са функция на Pro. Снимайте картата на минибара, меню, табела - каквото гледате - и попитайте за него.",
+    photoProOnlyCta: "Виж Pro",
     examplePrompts: [
       "Какво да си взема за Лисабон през октомври?",
       "Безопасно ли е да се разхождам вечер в Мексико Сити?",
@@ -1111,6 +1135,7 @@ const bg: Dictionary = {
     paidPlanFeatures: [
       "{count} генерации на месец - {multiplier}× повече от безплатната квота",
       "Питай местен може да търси на живо в мрежата - времето, работно време, реални предупреждения",
+      "Питай местен със снимки - снимайте карта на минибар, меню или табела и питайте какво пише",
       "Достатъчно за планиране (и сравняване) на повече от едно пътуване месечно",
       "Директно подпомагате реалните разходи зад всяка генерация",
     ],

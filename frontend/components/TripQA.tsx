@@ -1,9 +1,54 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import Link from "next/link";
 import type { Dictionary } from "@/lib/i18n";
-import { MAX_TRIP_QA_MESSAGE_LENGTH, type TripQAContext, type TripQAMessage } from "@/lib/tripQA";
+import {
+  MAX_TRIP_QA_IMAGE_BYTES,
+  MAX_TRIP_QA_MESSAGE_LENGTH,
+  TRIP_QA_IMAGE_MAX_EDGE_PX,
+  type TripQAContext,
+  type TripQAImage,
+  type TripQAMessage,
+} from "@/lib/tripQA";
 import type { Language } from "@/lib/types";
+
+/** Downscales a picked photo to TRIP_QA_IMAGE_MAX_EDGE_PX on its long edge
+ * and re-encodes it as JPEG, in the browser, before anything is uploaded.
+ * Three things this has to get right:
+ *
+ * - EXIF orientation. A phone photo is very often stored rotated with an
+ *   orientation flag, and drawing it to a canvas without honouring that
+ *   flag uploads a sideways picture — which for this feature means asking
+ *   the model to read sideways small print.
+ * - Quality over size. Encoded at 0.9 because the entire use case is
+ *   reading fine print on a minibar card or a menu; JPEG artifacts land
+ *   hardest on exactly that kind of small text.
+ * - Never uploading the original. A modern phone photo is several MB and
+ *   far more resolution than the model uses anyway. */
+async function fileToResizedImage(file: File): Promise<TripQAImage> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() =>
+    // Safari lagged on the options argument; retry bare rather than failing
+    // outright, accepting possible rotation over no photo at all.
+    createImageBitmap(file)
+  );
+
+  const scale = Math.min(1, TRIP_QA_IMAGE_MAX_EDGE_PX / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("no 2d context");
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+  const data = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  return { mediaType: "image/jpeg", data };
+}
 
 interface TripQAProps {
   // Omitted (or partially filled) on /ask when no trip has been generated
@@ -31,19 +76,76 @@ export function TripQA({ context, language, t }: TripQAProps) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [pendingImage, setPendingImage] = useState<TripQAImage | null>(null);
+  // null until the account check resolves — the photo button stays visible
+  // throughout, so the control never pops into existence after load.
+  const [isPro, setIsPro] = useState<boolean | null>(null);
+  const [showProUpsell, setShowProUpsell] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/account")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setIsPro(d?.plan === "paid");
+      })
+      .catch(() => {
+        if (!cancelled) setIsPro(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function onPhotoButtonClick() {
+    if (sending) return;
+    // Tell a free traveler up front rather than letting them pick a photo,
+    // type a question and only then hit a 403 from the route.
+    if (isPro === false) {
+      setShowProUpsell(true);
+      return;
+    }
+    fileInputRef.current?.click();
+  }
+
+  async function onFilePicked(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset immediately so picking the same file twice in a row still fires
+    // a change event.
+    e.target.value = "";
+    if (!file) return;
+    setError("");
+    try {
+      const image = await fileToResizedImage(file);
+      if (Math.floor((image.data.length * 3) / 4) > MAX_TRIP_QA_IMAGE_BYTES) {
+        setError(t.tripQA.photoTooLarge);
+        return;
+      }
+      setPendingImage(image);
+    } catch {
+      setError(t.tripQA.photoUnreadable);
+    }
+  }
 
   async function send() {
     const content = draft.trim();
-    if (!content || sending) return;
+    // A photo on its own is a valid question — only require text when
+    // there's no image attached.
+    if ((!content && !pendingImage) || sending) return;
     if (content.length > MAX_TRIP_QA_MESSAGE_LENGTH) {
       setError(t.tripQA.tooLong);
       return;
     }
 
-    const next: TripQAMessage[] = [...messages, { role: "user", content }];
+    const next: TripQAMessage[] = [
+      ...messages,
+      { role: "user", content, ...(pendingImage ? { images: [pendingImage] } : {}) },
+    ];
     const assistantIndex = next.length;
     setMessages([...next, { role: "assistant", content: "" }]);
     setDraft("");
+    setPendingImage(null);
     setSending(true);
     setError("");
 
@@ -148,6 +250,20 @@ export function TripQA({ context, language, t }: TripQAProps) {
                   whiteSpace: "pre-wrap",
                 }}
               >
+                {m.images?.map((img, imgIndex) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={imgIndex}
+                    src={`data:${img.mediaType};base64,${img.data}`}
+                    alt={t.tripQA.photoAlt}
+                    style={{
+                      display: "block",
+                      maxWidth: "100%",
+                      borderRadius: 6,
+                      marginBottom: m.content ? 8 : 0,
+                    }}
+                  />
+                ))}
                 {isPendingAssistant ? (
                   <span className="font-mono" style={{ color: "var(--ink-dim)" }}>
                     {t.tripQA.thinking}
@@ -160,7 +276,99 @@ export function TripQA({ context, language, t }: TripQAProps) {
           })}
         </div>
       )}
+      {pendingImage && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`data:${pendingImage.mediaType};base64,${pendingImage.data}`}
+            alt={t.tripQA.photoAlt}
+            style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
+          />
+          <button
+            type="button"
+            onClick={() => setPendingImage(null)}
+            className="font-mono"
+            style={{
+              border: "1px solid var(--line)",
+              background: "transparent",
+              color: "var(--ink-soft)",
+              borderRadius: 999,
+              padding: "5px 12px",
+              fontSize: 11,
+              cursor: "pointer",
+            }}
+          >
+            {t.tripQA.removePhoto}
+          </button>
+        </div>
+      )}
+      {showProUpsell && (
+        <div
+          className="font-mono"
+          style={{
+            fontSize: 12,
+            lineHeight: 1.5,
+            color: "var(--ink-soft)",
+            background: "var(--bg-panel-raised)",
+            border: "1px solid var(--line)",
+            borderRadius: 8,
+            padding: "10px 12px",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span>{t.tripQA.photoProOnly}</span>
+          <Link href="/pricing" style={{ color: "var(--accent-green)", fontWeight: 700 }}>
+            {t.tripQA.photoProOnlyCta} →
+          </Link>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        {/* capture="environment" makes this open the rear camera directly on
+            a phone, which is the actual moment this feature is for — standing
+            in front of the thing you're asking about. Desktop browsers ignore
+            it and show a normal file picker. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onFilePicked}
+          style={{ display: "none" }}
+        />
+        <button
+          type="button"
+          onClick={onPhotoButtonClick}
+          disabled={sending}
+          aria-label={t.tripQA.addPhoto}
+          title={t.tripQA.addPhoto}
+          className="font-mono"
+          style={{
+            border: "1px solid var(--line)",
+            background: "var(--bg-panel)",
+            color: "var(--ink-soft)",
+            borderRadius: 8,
+            padding: "10px 12px",
+            cursor: sending ? "default" : "pointer",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden style={{ width: 17, height: 17 }}>
+            <path
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 8.5h3.2l1.4-2h7.8l1.4 2H20a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"
+            />
+            <circle cx="12" cy="13.5" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          </svg>
+        </button>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -182,7 +390,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
         <button
           type="button"
           onClick={send}
-          disabled={sending || !draft.trim()}
+          disabled={sending || (!draft.trim() && !pendingImage)}
           className="font-mono btn-primary"
           style={{
             padding: "10px 16px",
@@ -190,7 +398,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
             fontSize: 12,
             letterSpacing: "0.04em",
             textTransform: "uppercase",
-            cursor: sending || !draft.trim() ? "default" : "pointer",
+            cursor: sending || (!draft.trim() && !pendingImage) ? "default" : "pointer",
             flexShrink: 0,
           }}
         >

@@ -47,6 +47,10 @@ const DATA_COLLECTED: DataRow[] = [
     why: "Sent to Anthropic to generate an answer. On a Pro account, a question may also trigger a live web search (via Anthropic's search tool) when it needs current information.",
   },
   {
+    what: "Photos you attach to a question (Pro)",
+    why: "Sent to Anthropic to answer the question about them, and never stored by decide — not on our servers, not in our database. They exist for the length of that one request and then they're gone. They stay visible in your browser for the rest of that conversation only, and disappear when you reload or leave the page. Photos in this context are often of hotel rooms, menus, receipts or documents, so avoid including anything you wouldn't want read by a third-party AI provider — passports, boarding passes, card numbers.",
+  },
+  {
     what: "Visited-countries data",
     why: "If you use that feature: stored against your email if you're signed in, or only in your own browser's local storage if you're not.",
   },
