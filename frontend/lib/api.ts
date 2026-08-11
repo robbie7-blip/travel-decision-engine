@@ -5,7 +5,13 @@ import { getTestModeKey, TEST_MODE_HEADER } from "./testMode";
 
 export class ApiError extends Error {}
 
-const POLL_INTERVAL_MS = 2000;
+// 800ms, not 2s: this is dead time bolted onto the END of every generation
+// — the job can finish a full interval before the next poll notices, so a
+// 2s interval was adding up to 2s of pure waiting to a number that's
+// already the thing travelers complain about. A poll is a single cheap
+// Redis read, so the extra requests cost far less than the latency they
+// remove.
+const POLL_INTERVAL_MS = 800;
 const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes — generous now that generation runs in the worker, unconstrained by a serverless timeout
 
 async function readErrorDetail(response: Response, fallback: string): Promise<string> {

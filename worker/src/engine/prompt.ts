@@ -320,14 +320,27 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
   return lines.join("\n");
 }
 
-function buildContext(
+/** Exported so the two-phase generator (engine/twoPhase.ts) composes its
+ * skeleton/day prompts from the exact same trip-brief + facts context this
+ * file already builds for the single-call path — one context builder, not
+ * a second copy that can drift from it. */
+export function buildContext(
   brief: TripBriefInput,
-  cachedLodgingFacts?: Record<string, string>
+  cachedLodgingFacts?: Record<string, string>,
+  // Limits the facts block to a single destination. Used by two-phase day
+  // calls, which only ever write one city's day — sending every other
+  // destination's curated facts to each of them is pure input bloat on a
+  // multi-city trip, repeated once per day call.
+  onlyCity?: string
 ): { tripBlock: string; factsBlock: string; warning: string } {
   const factsBlocks: string[] = [];
   let anyUngrounded = false;
 
-  for (const city of brief.destinations) {
+  const cities = onlyCity
+    ? brief.destinations.filter((d) => d.toLowerCase().trim() === onlyCity.toLowerCase().trim())
+    : brief.destinations;
+
+  for (const city of cities.length > 0 ? cities : brief.destinations) {
     const facts = loadFacts(city);
     if (facts.length) {
       const factsStr = facts.map((f) => `- [${f.category}] ${f.text}`).join("\n");

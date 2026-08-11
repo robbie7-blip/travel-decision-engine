@@ -310,6 +310,47 @@ it's reached, resetting at UTC midnight.
 | `OUTPUT_COST_PER_MTOK_USD` | `10.00` | Override if Sonnet 5 output pricing changes |
 | `BUDGET_ALERT_WEBHOOK_URL` | unset | If set, POSTed `{text}` once/day when spend crosses 80% (worker only) |
 
+## Generation latency
+
+Generation wall-time is dominated by **output tokens**, which are produced
+strictly serially. A 5-day itinerary is ~30 items, and emitting all of them
+plus the trip-level fields from a single model call is 3,000+ tokens in one
+sequential stream — no amount of search tuning touches that, which is why
+generation stayed near-constant even after live search stopped being the
+bottleneck.
+
+The worker therefore generates in **two phases** (`worker/src/engine/twoPhase.ts`):
+
+1. **Skeleton** (one call) — every decision needing a whole-trip view:
+   budget feasibility, city order, which day is where, accommodation per
+   city, key decisions, things to skip, and each day's *named anchor
+   venues*. Small output, because it names things without writing them up.
+2. **Days** (N calls, concurrent) — each expands exactly one day's plan into
+   full items, reusing `SYSTEM_PROMPT` verbatim so every venue-naming,
+   hedging, tone and schema rule applies identically to item writing.
+
+Wall time becomes `skeleton + max(day)` instead of `sum(everything)`.
+Cross-day consistency is handled in the skeleton rather than left to
+chance: it assigns each day its own anchors, and every day call is shown
+the other days' anchors so it can't reuse one. Any failure in the fast path
+falls back automatically to the original single-call generation, so a
+partial itinerary can never reach a traveler.
+
+Lodging prices are resolved *before* phase 1 by `prefetchLodging`, one
+small concurrent call per uncached destination, so neither phase needs a
+search round-trip mid-conversation.
+
+Every job logs a stage breakdown (`lodgingPrefetch`, `generate`,
+`venuesAndFlights`, plus skeleton-vs-days inside `generate`) — read that
+first before tuning anything here.
+
+| Env var | Default | Meaning |
+|---|---|---|
+| `TWO_PHASE_GENERATION` | on | Set `0` to force the original single-call path |
+| `DAY_MODEL` | same as `MODEL` | Model for phase-2 day calls only; a faster one materially shortens phase 2 at some cost to prose polish. Phase 1 (all real decisions) always stays on `MODEL` |
+| `MAX_PARALLEL_DAYS` | `6` | Cap on concurrent day calls, so a long trip plus comparison mode can't trip provider rate limits |
+| `WORKER_CONCURRENCY` | `4` | Jobs handled at once by one worker process |
+
 The introductory Sonnet 5 rates ($2/$10 per MTok) above are in effect
 through 2026-08-31; after that, either bump the two override env vars or
 update the defaults in `costBudget.ts` (kept byte-identical between

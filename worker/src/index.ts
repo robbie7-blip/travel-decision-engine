@@ -17,6 +17,16 @@ import { getRedis } from "./redis";
 // out, breaks in the deployed container). Mirrors the existing
 // facts/ vs frontend/facts/ duplication already in this repo.
 import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prompt";
+import {
+  assembleItinerary,
+  buildDayPrompt,
+  buildSkeletonPrompt,
+  getDayInstructions,
+  getSkeletonSystemPrompt,
+  isUsableSkeleton,
+  type SkeletonDay,
+  type TripSkeleton,
+} from "./engine/twoPhase";
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { checkVenues } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
@@ -32,7 +42,7 @@ import {
   SPEND_KEY_TTL_SECONDS,
   type ModelUsage,
 } from "./costBudget";
-import type { Itinerary, TripBriefInput } from "./types";
+import type { Itinerary, ItineraryDay, TripBriefInput } from "./types";
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 12000;
@@ -293,7 +303,11 @@ async function callModel(
   }
 }
 
-async function withOneRetry(fn: () => Promise<Itinerary>): Promise<Itinerary> {
+/** Generic over the call's result type so the two-phase generator's skeleton
+ * and per-day calls get the same one-retry treatment the single-call path
+ * has always had — malformed JSON is non-deterministic, and a retry costs
+ * far less than failing a whole generation over it. */
+async function withOneRetryOf<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (e) {
@@ -306,7 +320,163 @@ async function withOneRetry(fn: () => Promise<Itinerary>): Promise<Itinerary> {
   }
 }
 
-function generateItinerary(
+const withOneRetry = withOneRetryOf<Itinerary>;
+
+// Two-phase parallel generation (see engine/twoPhase.ts for the full
+// rationale) — on by default, since one call streaming the whole itinerary
+// out sequentially is the dominant remaining cost in generation wall-time.
+// Set TWO_PHASE_GENERATION=0 to fall back to the original single-call path
+// for every job, without a deploy of different code.
+const TWO_PHASE_ENABLED = process.env.TWO_PHASE_GENERATION !== "0";
+
+// Model used for the phase-2 day calls only. Phase 1 (every real decision:
+// budget, city order, which venues anchor which day) always stays on MODEL.
+// Phase 2 is comparatively mechanical — expand an already-decided day into
+// items under rules it's handed verbatim — so a faster model is a genuine
+// latency lever here in a way it wouldn't be for phase 1. Defaults to the
+// same model as phase 1 (zero quality change vs. today); set DAY_MODEL to
+// a faster one to trade some prose polish for a materially shorter phase 2.
+const DAY_MODEL = process.env.DAY_MODEL ?? MODEL;
+
+// Caps how many day calls are in flight at once. Days are pure I/O wait, so
+// this isn't about CPU — it's about not opening an unbounded number of
+// concurrent Anthropic requests when a long trip and comparison mode (two
+// jobs at once, see WORKER_CONCURRENCY) coincide, which is how you trip
+// provider rate limits and end up slower than the serial path you replaced.
+const MAX_PARALLEL_DAYS = Number(process.env.MAX_PARALLEL_DAYS ?? 6);
+
+async function runWithLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+/** One phase-2 call: expands a single already-planned day into real items.
+ * No tools declared at all — every price that needed a live lookup was
+ * already resolved by prefetchLodging and carried through the skeleton, so
+ * there is nothing here worth a search round-trip. */
+async function generateDay(
+  client: Anthropic,
+  brief: TripBriefInput,
+  skeleton: TripSkeleton,
+  day: SkeletonDay,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<ItineraryDay> {
+  const response = await client.messages.create({
+    model: DAY_MODEL,
+    max_tokens: 4000,
+    // Same two-block shape (and so the same shared, cached prefix) as the
+    // single-call path: SYSTEM_PROMPT is byte-identical across every day
+    // call of every job, so after the first call in a job the whole prefix
+    // is a cache read rather than N full re-sends of a ~4K-token prompt.
+    system: [
+      { type: "text", text: SYSTEM_PROMPT },
+      { type: "text", text: getDayInstructions(), cache_control: { type: "ephemeral" } },
+    ],
+    output_config: { effort: EFFORT },
+    messages: [{ role: "user", content: buildDayPrompt(brief, skeleton, day) }],
+  });
+  onUsage?.(response.usage);
+
+  if (response.stop_reason === "refusal") {
+    throw new ModelOutputError(`The model declined to generate day ${day.day}.`);
+  }
+
+  const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
+  const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+  let parsed: ItineraryDay;
+  try {
+    parsed = JSON.parse(extractJson(text)) as ItineraryDay;
+  } catch (e) {
+    throw new ModelOutputError(`Day ${day.day} was not valid JSON: ${(e as Error).message}`);
+  }
+  if (!Array.isArray(parsed?.items)) {
+    throw new ModelOutputError(`Day ${day.day} came back with no items array.`);
+  }
+  // The model is told its own day number and date, but the skeleton is the
+  // authority on both — a day that renumbers itself would silently reorder
+  // or collide once merged.
+  parsed.day = day.day;
+  parsed.date = day.date;
+  parsed.feasibility_flag = parsed.feasibility_flag ?? null;
+  return parsed;
+}
+
+/** Phase 1: every decision that needs a whole-trip view. */
+async function generateSkeleton(
+  client: Anthropic,
+  brief: TripBriefInput,
+  cachedLodgingFacts: Record<string, string>,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<TripSkeleton> {
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 4000,
+    system: [
+      { type: "text", text: getSkeletonSystemPrompt(), cache_control: { type: "ephemeral" } },
+    ],
+    output_config: { effort: EFFORT },
+    messages: [{ role: "user", content: buildSkeletonPrompt(brief, cachedLodgingFacts) }],
+  });
+  onUsage?.(response.usage);
+
+  if (response.stop_reason === "refusal") {
+    throw new ModelOutputError("The model declined to plan this trip.");
+  }
+
+  const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
+  const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(extractJson(text));
+  } catch (e) {
+    throw new ModelOutputError(`Trip plan was not valid JSON: ${(e as Error).message}`);
+  }
+  if (!isUsableSkeleton(parsed)) {
+    throw new ModelOutputError("Trip plan was missing required fields.");
+  }
+  return parsed;
+}
+
+/** Skeleton, then all days concurrently. Throws on any failure so the
+ * caller can fall back to the single-call path — a partially-written
+ * itinerary must never reach a traveler just because it was faster. */
+async function generateItineraryTwoPhase(
+  client: Anthropic,
+  brief: TripBriefInput,
+  cachedLodgingFacts: Record<string, string>,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<Itinerary> {
+  const startedAt = Date.now();
+  const skeleton = await withOneRetryOf(() =>
+    generateSkeleton(client, brief, cachedLodgingFacts, onUsage)
+  );
+  const skeletonMs = Date.now() - startedAt;
+
+  const daysStartedAt = Date.now();
+  const days = await runWithLimit(skeleton.days, MAX_PARALLEL_DAYS, (day) =>
+    withOneRetryOf(() => generateDay(client, brief, skeleton, day, onUsage))
+  );
+  console.log(
+    `[worker] two-phase: skeleton ${skeletonMs}ms, ${days.length} day(s) in ${Date.now() - daysStartedAt}ms ` +
+      `(<=${MAX_PARALLEL_DAYS} at a time, day model ${DAY_MODEL})`
+  );
+
+  return assembleItinerary(skeleton, days);
+}
+
+/** The original single-call path: one model call emits the entire
+ * itinerary. Still the correctness backstop the two-phase path falls back
+ * to, and still what runs when TWO_PHASE_GENERATION=0. */
+function generateItinerarySingleCall(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
@@ -327,6 +497,29 @@ function generateItinerary(
   return withOneRetry(() =>
     callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage, skipSearch)
   );
+}
+
+async function generateItinerary(
+  client: Anthropic,
+  brief: TripBriefInput,
+  cachedLodgingFacts: Record<string, string>,
+  onUsage?: (usage: ModelUsage) => void,
+  forceSkipSearch = false
+): Promise<Itinerary> {
+  if (TWO_PHASE_ENABLED) {
+    try {
+      return await generateItineraryTwoPhase(client, brief, cachedLodgingFacts, onUsage);
+    } catch (e) {
+      // Deliberately broad: whatever went wrong in the fast path (malformed
+      // skeleton twice over, a day that wouldn't parse, a provider hiccup
+      // mid-fan-out), the traveler should still get a real itinerary rather
+      // than an error. Costs a slow generation in the rare failure case,
+      // which is strictly better than failing one. Auth/rate-limit errors
+      // will simply fail again below and surface normally.
+      console.error("[worker] two-phase generation failed, falling back to single-call:", e);
+    }
+  }
+  return generateItinerarySingleCall(client, brief, cachedLodgingFacts, onUsage, forceSkipSearch);
 }
 
 /** Handles a pushback/follow-up request: re-sends the previously generated
@@ -411,10 +604,28 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     costUsd += estimateCostUsd(usage);
   };
 
+  // Stage timings, logged as one line at the end of every job. Generation
+  // latency has been tuned three separate times against reasoning about
+  // which stage "should" dominate rather than a measurement of which one
+  // actually does — this makes the next round (and any regression) a
+  // matter of reading a log line instead of re-deriving it from the code.
+  const jobStartedAt = Date.now();
+  const timings: Record<string, number> = {};
+  async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
+    const t0 = Date.now();
+    try {
+      return await fn();
+    } finally {
+      timings[label] = (timings[label] ?? 0) + (Date.now() - t0);
+    }
+  }
+
   try {
     let itinerary: Itinerary;
     if (job.refinement) {
-      itinerary = await generateRefinement(client, job.brief, job.refinement, onUsage);
+      itinerary = await timed("refine", () =>
+        generateRefinement(client, job.brief, job.refinement!, onUsage)
+      );
     } else {
       let cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
 
@@ -426,7 +637,9 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
       // doesn't care about lodging accuracy for the owner's own tests.
       const missing = job.testMode ? [] : job.brief.destinations.filter((d) => !(d in cachedLodgingFacts));
       if (missing.length > 0) {
-        const results = await Promise.all(missing.map((city) => prefetchLodging(client, city, onUsage)));
+        const results = await timed("lodgingPrefetch", () =>
+          Promise.all(missing.map((city) => prefetchLodging(client, city, onUsage)))
+        );
         await Promise.all(
           results.map((result, i) =>
             result
@@ -444,7 +657,9 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
         cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
       }
 
-      itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode);
+      itinerary = await timed("generate", () =>
+        generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode)
+      );
     }
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
@@ -454,7 +669,9 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     // independent (venues vs. flights), so they run concurrently rather
     // than adding their latency on top of each other.
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
-    [itinerary] = await Promise.all([checkVenues(itinerary), attachFlightPrices(itinerary, job.brief)]);
+    [itinerary] = await timed("venuesAndFlights", () =>
+      Promise.all([checkVenues(itinerary), attachFlightPrices(itinerary, job.brief)])
+    );
     itinerary = deriveConfidenceTiers(itinerary);
     job.status = "done";
     job.result = itinerary;
@@ -478,7 +695,13 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
 
   await recordSpend(redis, costUsd);
   await writeJob(redis, job);
-  console.log(`[worker] finished ${id}: ${job.status}${costUsd > 0 ? ` (~$${costUsd.toFixed(4)})` : ""}`);
+  const breakdown = Object.entries(timings)
+    .map(([label, ms]) => `${label} ${(ms / 1000).toFixed(1)}s`)
+    .join(", ");
+  console.log(
+    `[worker] finished ${id}: ${job.status} in ${((Date.now() - jobStartedAt) / 1000).toFixed(1)}s` +
+      `${breakdown ? ` (${breakdown})` : ""}${costUsd > 0 ? ` ~$${costUsd.toFixed(4)}` : ""}`
+  );
 }
 
 // How many jobs this single worker process handles at once. Jobs are
