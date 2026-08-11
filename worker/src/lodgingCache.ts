@@ -65,9 +65,24 @@ export async function loadCachedLodgingFacts(
   return result;
 }
 
+/** Shared write path — both the post-hoc extraction below and the
+ * standalone prefetch (see prefetchLodging in index.ts) land here, so
+ * there's exactly one place that decides the cache entry's shape/TTL. */
+export async function writeCachedLodgingFact(
+  redis: Redis,
+  city: string,
+  fact: Omit<CachedLodgingFact, "cachedAt">
+): Promise<void> {
+  const entry: CachedLodgingFact = { ...fact, cachedAt: Date.now() };
+  await redis.set(cacheKey(city), JSON.stringify(entry), "EX", CACHE_TTL_SECONDS);
+}
+
 /** Best-effort: scans a finished itinerary for search-verified lodging
  * items and caches one per matched destination. Never throws — caching
- * must not affect the actual response. */
+ * must not affect the actual response. Mostly a fallback/backstop now that
+ * prefetchLodging (index.ts) populates the cache upfront for anything
+ * missing before generation even starts — this still catches whatever
+ * that path didn't (e.g. testMode jobs, which skip prefetch entirely). */
 export async function cacheLodgingFacts(redis: Redis, brief: TripBriefInput, itinerary: Itinerary): Promise<void> {
   try {
     const seen = new Set<string>();
@@ -78,13 +93,11 @@ export async function cacheLodgingFacts(redis: Redis, brief: TripBriefInput, iti
         const dest = matchDestination(item.location, brief.destinations);
         if (!dest || seen.has(dest)) continue;
         seen.add(dest);
-        const fact: CachedLodgingFact = {
+        await writeCachedLodgingFact(redis, dest, {
           costEstimateEur: item.cost_estimate_eur,
           sourceUrls: item.source_urls ?? [],
           sourceAgreement: item.source_agreement ?? null,
-          cachedAt: Date.now(),
-        };
-        await redis.set(cacheKey(dest), JSON.stringify(fact), "EX", CACHE_TTL_SECONDS);
+        });
       }
     }
   } catch (e) {

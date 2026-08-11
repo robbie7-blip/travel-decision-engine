@@ -22,7 +22,7 @@ import { checkVenues } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { attachFlightPrices } from "./engine/flightPricing";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
-import { cacheLodgingFacts, loadCachedLodgingFacts } from "./lodgingCache";
+import { cacheLodgingFacts, loadCachedLodgingFacts, writeCachedLodgingFact } from "./lodgingCache";
 import {
   ALERT_THRESHOLD_RATIO,
   DAILY_BUDGET_USD,
@@ -168,6 +168,62 @@ class ModelOutputError extends Error {}
 // means fewer multi-second round-trips in the critical path.
 function estimateMaxSearchUses(brief: TripBriefInput): number {
   return Math.min(brief.destinations.length * 3, 12);
+}
+
+// A single destination's lodging price, fetched on its own rather than as
+// part of the main itinerary-writing call. The old design had the model do
+// this search INLINE, mid-conversation, once per destination — for an
+// N-destination trip that's N sequential search pauses stacked in front of
+// (and adding straight onto) the time it separately takes to write the
+// whole itinerary, all inside one linear call. Firing one of these per
+// missing destination via Promise.all (see the prefetch step in
+// processJob) turns that into max(N parallel lookups) instead of their
+// sum, then hands the main call a fully-cached brief so it can always take
+// the fast NO_SEARCH_INSTRUCTIONS path — no tool-use turn in the critical
+// generation call at all. The prompt/output here is deliberately tiny
+// (a handful of tokens, not a whole schema) so this call's own non-search
+// portion is as close to free as possible; the wall-clock cost is close to
+// pure search latency.
+const LODGING_LOOKUP_SYSTEM = `Find the current typical price per night for a mid-range hotel or Airbnb in the \
+given city, using exactly one web search. Respond with ONLY this JSON, no other text: \
+{"cost_estimate_eur": <number, converted to EUR if the source quoted another currency>, "source_url": "<the URL you used>"} \
+— or, if the search returns nothing usable, exactly: {"cost_estimate_eur": null, "source_url": null}. Never invent a \
+number or a URL.`;
+
+interface LodgingLookupResult {
+  costEstimateEur: number;
+  sourceUrl: string;
+}
+
+async function prefetchLodging(
+  client: Anthropic,
+  city: string,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<LodgingLookupResult | null> {
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 300,
+      system: LODGING_LOOKUP_SYSTEM,
+      output_config: { effort: EFFORT },
+      tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: 2 }],
+      messages: [{ role: "user", content: `City: ${city}` }],
+    });
+    onUsage?.(response.usage);
+
+    const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
+    const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+    const parsed = JSON.parse(extractJson(text)) as { cost_estimate_eur: number | null; source_url: string | null };
+    if (parsed.cost_estimate_eur == null || !parsed.source_url) return null;
+    return { costEstimateEur: parsed.cost_estimate_eur, sourceUrl: parsed.source_url };
+  } catch (e) {
+    // Same fallback as an inline search that finds nothing: the main call
+    // still runs fine without this destination cached, it just falls back
+    // to an inferred lodging estimate for it — never let a lookup failure
+    // fail the whole generation.
+    console.error(`[worker] lodging prefetch failed for ${city}:`, e);
+    return null;
+  }
 }
 
 async function callModel(
@@ -360,7 +416,34 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     if (job.refinement) {
       itinerary = await generateRefinement(client, job.brief, job.refinement, onUsage);
     } else {
-      const cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
+      let cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
+
+      // Prefetch, in parallel, whatever isn't already cached — turns what
+      // used to be N sequential in-conversation searches into max(N
+      // parallel lookups), then lets the main call always take the fast
+      // no-search path (see prefetchLodging's comment). Skipped for
+      // testMode, which already forces skipSearch unconditionally and
+      // doesn't care about lodging accuracy for the owner's own tests.
+      const missing = job.testMode ? [] : job.brief.destinations.filter((d) => !(d in cachedLodgingFacts));
+      if (missing.length > 0) {
+        const results = await Promise.all(missing.map((city) => prefetchLodging(client, city, onUsage)));
+        await Promise.all(
+          results.map((result, i) =>
+            result
+              ? writeCachedLodgingFact(redis, missing[i], {
+                  costEstimateEur: result.costEstimateEur,
+                  sourceUrls: [result.sourceUrl],
+                  sourceAgreement: null,
+                })
+              : Promise.resolve()
+          )
+        );
+        // Re-read rather than hand-building the prompt text here — reuses
+        // loadCachedLodgingFacts' one formatting path (formatCachedFact)
+        // instead of a second, easily-drifting copy of it.
+        cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
+      }
+
       itinerary = await generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode);
     }
     itinerary = checkFeasibility(itinerary);
