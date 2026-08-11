@@ -163,16 +163,20 @@ export default function Home() {
             <br />
             {t.headlineLine2}
           </h1>
-          {/* No forced <br/> between the two sentences (unlike headlineLine1/2
-              above) — on a narrow phone, subheadLine1 alone already wraps to
-              2-3 lines, and forcing subheadLine2 onto its own line after that
-              stranded "guess." alone mid-paragraph and pushed the whole block
-              to 4 lines. Letting it flow naturally means "guess." rejoins the
-              line above it, and subheadLine2 (short enough to reliably sit on
-              one line by itself) just continues the wrap — 3 lines on mobile
-              instead of 4, same 2-line result as before on desktop. */}
+          {/* The <br> is CSS-gated (.subhead-break, see globals.css), not
+              unconditional like headlineLine1/2's above — on a narrow phone,
+              subheadLine1 alone already wraps to 2-3 lines, and forcing
+              subheadLine2 onto its own line after that stranded "guess."
+              alone mid-paragraph and pushed the whole block to 4 lines. Below
+              the breakpoint the <br> collapses to nothing and this falls
+              back to the old space-joined natural wrap (3 lines on mobile).
+              At/above it, the full 820 column is available and natural wrap
+              was instead splitting mid-sentence-2 ("...never" / "overstated."
+              on separate lines) — the forced break fixes that by always
+              landing exactly on the sentence boundary. */}
           <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 820, margin: 0 }}>
-            {t.subheadLine1} {t.subheadLine2}
+            {t.subheadLine1} <br className="subhead-break" />
+            {t.subheadLine2}
           </p>
           {demo && (
             <Link

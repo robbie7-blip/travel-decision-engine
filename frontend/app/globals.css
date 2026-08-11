@@ -294,6 +294,21 @@ button {
   display: none;
 }
 
+/* Hero subhead's forced break between its two sentences (see page.tsx) —
+   off by default (mobile: falls back to natural space-joined wrap, which
+   is what avoids stranding "guess." on its own line there) and turned on
+   once the paragraph's 820px column has room to fully apply, where the
+   natural wrap was instead splitting mid-way through the second sentence
+   rather than at the sentence boundary. */
+.subhead-break {
+  display: none;
+}
+@media (min-width: 640px) {
+  .subhead-break {
+    display: block;
+  }
+}
+
 /* /why-decide's two-column "generic chatbot vs decide" comparison rows —
    side by side on desktop, stacked on mobile where two ~150px-wide columns
    would otherwise squeeze both cells' text down to nearly unreadable. */
