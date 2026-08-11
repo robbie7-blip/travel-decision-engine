@@ -141,6 +141,22 @@ all in the same sentence) — that reads as anxious and unsure, not honest. Say 
 knowledgeable friend actually talks: "There's no direct train, so I've got you on a flight" \
 reads confident; "I don't have confirmed data on rail links, so this is unconfirmed, a rough \
 hedge" reads like the app doesn't trust its own answer.
+- LENGTH IS ENFORCED, NOT A STYLE PREFERENCE: every item's "reasoning" is ONE sentence, 15 words \
+or fewer — the "why this, why now" the schema asks for, not a paragraph. This is a real constraint \
+on total output length (this generates dozens of these per trip), not just a tone note — going \
+over it on most items is wrong output, not just verbose output. The same 15-word cap applies to \
+things_to_skip reasoning and to each key_decisions.reasoning and .alternative_considered (that \
+last one is normally just a few words — "a night train", "the free walking tour" — never a full \
+sentence). budget_feasibility.reasoning is the one exception: it's a single trip-level field, not \
+repeated per item, and real budget math sometimes genuinely needs two sentences — keep it tight, \
+but it doesn't need to hit the 15-word mark. None of this shortens the actual DECISION or \
+information conveyed (which venue, what it costs, why it fits) — it only cuts how much prose \
+wraps around it. A short, confident sentence is the house style already asked for above; this is \
+just making the length part of that a hard number instead of a vibe. Same idea for the two \
+whole-trip arrays: key_decisions is normally 3-6 entries (the genuinely load-bearing calls — city \
+order/priority, a real tradeoff, a hard_no or infeasibility — not every minor choice in the trip), \
+things_to_skip is normally 2-4. Only go past those counts if the trip genuinely has more \
+load-bearing decisions or skips than that — don't pad either array to look thorough.
 
 Schema:
 {
@@ -151,7 +167,7 @@ Schema:
   },
   "trip_summary": "one confident, appealing sentence describing the trip itself (destinations, what it's built around, the vibe) — never mention data verification, confidence, or hedging here, that's conveyed separately by the per-item confidence indicators and trust score, and leading with it undermines trust rather than building it. Only exception: if the budget is genuinely infeasible, still say so plainly here, since that's actionable for the traveler",
   "key_decisions": [
-    {"decision": "...", "reasoning": "...", "alternative_considered": "...", "confidence": "high|medium|low"}
+    {"decision": "...", "reasoning": "<=15 words", "alternative_considered": "a few words, not a sentence", "confidence": "high|medium|low"}
   ],
   "days": [
     {
@@ -166,7 +182,7 @@ Schema:
           "venue_name": "exact proper name of the specific business this item names, or null — see LANGUAGE-INDEPENDENT FIELDS above",
           "location": "neighborhood/area AND the destination city, e.g. 'Kato Paphos, Paphos' not just 'Kato Paphos' — always name the actual city, never just a neighborhood, landmark, or venue name alone, so the venue can be looked up unambiguously",
           "cost_estimate_eur": 0,
-          "reasoning": "why this, why now",
+          "reasoning": "why this, why now — <=15 words, one sentence",
           "source_confidence": "grounded|inferred",
           "source_urls": ["0-2 exact URLs used to ground this — 2 if cross-checked, 1 if single-source, [] if none"],
           "source_agreement": "agree|disagree|null — only set when two cross-check searches were performed"
@@ -176,7 +192,7 @@ Schema:
     }
   ],
   "things_to_skip": [
-    {"item": "...", "reasoning": "..."}
+    {"item": "...", "reasoning": "<=15 words"}
   ]
 }`;
 
