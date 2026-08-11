@@ -18,6 +18,7 @@ import type Stripe from "stripe";
 import { getRedis } from "@/lib/redis";
 import { getStripe } from "@/lib/stripe";
 import { linkStripeCustomerToEmail, getEmailForStripeCustomer, upsertUserRecord } from "@/lib/account";
+import { recordFunnelEvent } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
@@ -90,10 +91,18 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(stripe, event.data.object as Stripe.Checkout.Session);
+        // Funnel visibility (see lib/analytics.ts) — the actual conversion
+        // event, not just a checkout attempt. Deliberately after the real
+        // work above, not before: never counted if granting access itself
+        // failed and this handler threw.
+        await recordFunnelEvent(getRedis(), "checkout_completed").catch(() => {});
         break;
       case "customer.subscription.updated":
+        await handleSubscriptionChange(event.data.object as Stripe.Subscription);
+        break;
       case "customer.subscription.deleted":
         await handleSubscriptionChange(event.data.object as Stripe.Subscription);
+        await recordFunnelEvent(getRedis(), "subscription_canceled").catch(() => {});
         break;
       default:
         // Every other event type is irrelevant to access control — Stripe

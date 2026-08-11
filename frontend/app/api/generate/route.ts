@@ -13,7 +13,7 @@ import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
 import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
-import { recordEvent } from "@/lib/analytics";
+import { recordEvent, recordFunnelEvent } from "@/lib/analytics";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan } from "@/lib/account";
 import { getVisitedCodes } from "@/lib/visited";
@@ -94,6 +94,10 @@ export async function POST(request: NextRequest) {
           plan === "paid"
             ? `You've used all ${quota.limit} generations included this month. It resets at the start of next month.`
             : `You've used all ${quota.limit} free generations this month. Upgrade for more, or wait for next month's reset.`;
+        // Funnel visibility — a Free account hitting its cap is exactly
+        // the moment an upgrade would make sense; worth knowing how often
+        // that actually happens vs. how many people ever reach checkout.
+        await recordFunnelEvent(redis, plan === "paid" ? "quota_blocked_paid" : "quota_blocked_free").catch(() => {});
         return NextResponse.json({ detail }, { status: 429 });
       }
       quotaPlan = plan;

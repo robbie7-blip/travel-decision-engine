@@ -5,22 +5,26 @@
 
 import Link from "next/link";
 import { getRedis } from "@/lib/redis";
-import { loadAnalyticsSnapshot, type AnalyticsSnapshot } from "@/lib/analytics";
+import { loadAnalyticsSnapshot, loadFunnelSnapshot, type AnalyticsSnapshot, type FunnelSnapshot } from "@/lib/analytics";
 import { checkDailyBudget, type BudgetCheckResult } from "@/lib/spendCheck";
 import { ALERT_THRESHOLD_RATIO } from "@/lib/costBudget";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
 export const runtime = "nodejs";
 
-async function loadSnapshot(): Promise<{ analytics: AnalyticsSnapshot; budget: BudgetCheckResult } | null> {
+async function loadSnapshot(): Promise<{ analytics: AnalyticsSnapshot; funnel: FunnelSnapshot; budget: BudgetCheckResult } | null> {
   let redis;
   try {
     redis = getRedis();
   } catch {
     return null;
   }
-  const [analytics, budget] = await Promise.all([loadAnalyticsSnapshot(redis), checkDailyBudget(redis)]);
-  return { analytics, budget };
+  const [analytics, funnel, budget] = await Promise.all([
+    loadAnalyticsSnapshot(redis),
+    loadFunnelSnapshot(redis),
+    checkDailyBudget(redis),
+  ]);
+  return { analytics, funnel, budget };
 }
 
 export default async function StatsAdminPage() {
@@ -37,7 +41,10 @@ export default async function StatsAdminPage() {
     );
   }
 
-  const { analytics: snapshot, budget } = loaded;
+  const { analytics: snapshot, funnel, budget } = loaded;
+  // Percentage of `from` that reached `to` — null (rendered as "—") rather
+  // than a misleading 0% or NaN when the denominator is 0 (no data yet).
+  const rate = (from: number, to: number): string => (from > 0 ? `${Math.round((to / from) * 100)}%` : "—");
   const maxDaily = Math.max(1, ...snapshot.daily.map((d) => d.generate + d.refine));
   // Mirrors the worker's own early-warning threshold (see
   // maybeAlertBudgetThreshold in worker/src/index.ts) so this page's color
@@ -90,6 +97,39 @@ export default async function StatsAdminPage() {
             of ${budget.limitUsd.toFixed(2)} budget
             {!budget.allowed ? " — new generations paused" : budgetNearLimit ? " — nearing cap" : ""}
           </div>
+        </div>
+      </div>
+
+      {/* Where visitors actually drop off, not a guess — see
+          lib/analytics.ts's FunnelEventType. Totals since these counters
+          were added, not lifetime (there was no visibility before this). */}
+      <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+        Conversion funnel
+      </div>
+      <div style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "16px 20px", marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13 }}>Pricing page views: {funnel.pricing_view}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13 }}>
+            → Checkout started: {funnel.checkout_started}{" "}
+            <span style={{ color: "var(--ink-dim)" }}>({rate(funnel.pricing_view, funnel.checkout_started)} of views)</span>
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13 }}>
+            → Checkout completed: {funnel.checkout_completed}{" "}
+            <span style={{ color: "var(--ink-dim)" }}>
+              ({rate(funnel.checkout_started, funnel.checkout_completed)} of checkouts started)
+            </span>
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13, color: "var(--unverified)" }}>Subscriptions canceled: {funnel.subscription_canceled}</span>
+        </div>
+        <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", gap: 20, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Free quota hit: {funnel.quota_blocked_free}</span>
+          <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Pro quota hit: {funnel.quota_blocked_paid}</span>
         </div>
       </div>
 

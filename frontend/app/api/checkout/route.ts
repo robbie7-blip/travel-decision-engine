@@ -10,6 +10,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, getSubscriptionPriceId } from "@/lib/stripe";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { getRedis } from "@/lib/redis";
+import { recordFunnelEvent } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
@@ -51,6 +53,14 @@ export async function POST(request: NextRequest) {
     if (!session.url) {
       return NextResponse.json({ detail: "Couldn't start checkout. Try again." }, { status: 502 });
     }
+
+    // Funnel visibility — best-effort, must never block a real checkout.
+    try {
+      await recordFunnelEvent(getRedis(), "checkout_started");
+    } catch {
+      // swallow
+    }
+
     return NextResponse.json({ url: session.url });
   } catch {
     return NextResponse.json({ detail: "Couldn't start checkout. Try again." }, { status: 502 });

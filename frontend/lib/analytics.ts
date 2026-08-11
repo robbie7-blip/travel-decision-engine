@@ -35,6 +35,47 @@ export async function recordEvent(redis: Redis, type: AnalyticsEventType, langua
   ]);
 }
 
+// Conversion-funnel counters — separate from the generate/refine tracking
+// above (own key namespace, own recording function) rather than folded
+// into AnalyticsEventType, since these don't have a language dimension
+// that makes sense for every one of them (a Stripe webhook event, for
+// instance, carries no site-language context at all) where generate/refine
+// always do. Totals only for now, no daily breakdown — this exists to
+// answer "where do people actually drop off" at all, which zero visibility
+// couldn't answer; a day-by-day view is a natural next step once these
+// totals turn up something worth digging into.
+export type FunnelEventType =
+  | "pricing_view"
+  | "checkout_started"
+  | "checkout_completed"
+  | "subscription_canceled"
+  | "quota_blocked_free"
+  | "quota_blocked_paid";
+
+const FUNNEL_EVENT_TYPES: FunnelEventType[] = [
+  "pricing_view",
+  "checkout_started",
+  "checkout_completed",
+  "subscription_canceled",
+  "quota_blocked_free",
+  "quota_blocked_paid",
+];
+
+const funnelTotalKey = (type: FunnelEventType) => `analytics:funnel:${type}:total`;
+
+/** Same "best-effort, never breaks the real feature" contract as
+ * recordEvent above — every call site swallows failures from this. */
+export async function recordFunnelEvent(redis: Redis, type: FunnelEventType): Promise<void> {
+  await redis.incr(funnelTotalKey(type));
+}
+
+export type FunnelSnapshot = Record<FunnelEventType, number>;
+
+export async function loadFunnelSnapshot(redis: Redis): Promise<FunnelSnapshot> {
+  const counts = await Promise.all(FUNNEL_EVENT_TYPES.map((type) => redis.get<number>(funnelTotalKey(type))));
+  return Object.fromEntries(FUNNEL_EVENT_TYPES.map((type, i) => [type, counts[i] ?? 0])) as FunnelSnapshot;
+}
+
 export interface DailyCount {
   day: string;
   generate: number;

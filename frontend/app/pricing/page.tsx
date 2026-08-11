@@ -47,6 +47,16 @@ export default function PricingPage() {
   useEffect(() => {
     const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (saved === "en" || saved === "bg") setLanguageState(saved);
+
+    // Funnel visibility (see lib/analytics.ts) — the one event with no
+    // server route to piggyback on, since this page has no server-side
+    // render step to hook into. Fire-and-forget: a dropped pageview count
+    // must never block or visibly affect the actual page.
+    fetch("/api/analytics/funnel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "pricing_view" }),
+    }).catch(() => {});
   }, []);
 
   const t = TRANSLATIONS[language];
