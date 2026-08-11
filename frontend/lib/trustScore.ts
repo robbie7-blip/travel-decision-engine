@@ -28,7 +28,15 @@ export function computeTrustScore(itinerary: Itinerary): TrustScore {
     for (const item of day.items) {
       totalCount++;
       const searchGrounded = (item.confidence_tier ?? "inferred") !== "inferred";
-      const placesGrounded = item.google_rating != null;
+      // A confirmed Places match — NOT merely the presence of a rating.
+      // google_maps_url is only ever set once checkVenues matched the name
+      // AND the location, so it's the real "this business exists, is open,
+      // and is where we said it is" signal. Keyed off the rating instead,
+      // this silently under-counted every venue whose rating sample was too
+      // thin to display (see MIN_RATING_COUNT in venueVerification.ts) —
+      // those are still fully verified as real places, which is what this
+      // score actually claims to measure.
+      const placesGrounded = item.google_maps_url != null || item.google_rating != null;
       if (searchGrounded || placesGrounded) groundedCount++;
     }
   }
