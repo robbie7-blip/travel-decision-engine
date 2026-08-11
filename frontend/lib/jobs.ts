@@ -44,6 +44,17 @@ export const JOBS_QUEUE_KEY = "jobs:queue";
 // session by a lot, not just cover the few minutes generation takes.
 export const JOB_TTL_SECONDS = 60 * 60 * 24 * 30;
 
+// ~1 year — applied to a job's TTL the moment it's curated into the
+// showcase gallery or set as the homepage demo (see the admin routes for
+// both), on top of the normal JOB_TTL_SECONDS every job starts with. A
+// curated trip is a deliberate, ongoing editorial choice, not a transient
+// generation — it shouldn't silently rot on the same 30-day clock as every
+// other job and vanish from a page someone is actively pointing visitors
+// at, with no warning. Not literally forever, so a truly abandoned/
+// forgotten entry still eventually frees its Redis space rather than
+// staying forever.
+export const CURATED_JOB_TTL_SECONDS = 60 * 60 * 24 * 365;
+
 export function jobKey(id: string): string {
   return `job:${id}`;
 }

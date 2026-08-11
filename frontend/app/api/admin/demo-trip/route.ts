@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
+import { jobKey, CURATED_JOB_TTL_SECONDS } from "@/lib/jobs";
 import { DEMO_TRIP_KEY, type DemoTrip } from "@/lib/demoTrip";
 
 export const runtime = "nodejs";
@@ -55,6 +56,10 @@ export async function POST(request: NextRequest) {
 
   const demo: DemoTrip = { jobId: job.id, destinations: job.brief.destinations, setAt: Date.now() };
   await redis.set(DEMO_TRIP_KEY, JSON.stringify(demo));
+  // Same reasoning as the showcase gallery's own POST handler — this is
+  // now the homepage's featured example, not a transient job; it shouldn't
+  // silently disappear on the normal 30-day job TTL.
+  await redis.expire(jobKey(job.id), CURATED_JOB_TTL_SECONDS);
   return NextResponse.json({ demo });
 }
 

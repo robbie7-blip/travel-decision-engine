@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
+import { jobKey, CURATED_JOB_TTL_SECONDS } from "@/lib/jobs";
 import { MAX_SHOWCASE_ENTRIES, SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
 
 export const runtime = "nodejs";
@@ -77,6 +78,9 @@ export async function POST(request: NextRequest) {
   const entry: ShowcaseTrip = { jobId: job.id, destinations: job.brief.destinations, addedAt: Date.now() };
   const updated = [...existing, entry].slice(-MAX_SHOWCASE_ENTRIES);
   await saveList(redis, updated);
+  // The whole point of curating this trip is that it keeps showing up —
+  // don't let it quietly drop off the gallery on the normal 30-day job TTL.
+  await redis.expire(jobKey(job.id), CURATED_JOB_TTL_SECONDS);
 
   return NextResponse.json({ trips: [...updated].reverse() });
 }
