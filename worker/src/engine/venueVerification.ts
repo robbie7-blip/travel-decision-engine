@@ -36,6 +36,22 @@ import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem }
 // Below this, a venue is dropped rather than shown.
 const MIN_RATING = 4.2;
 
+// ...but only once the average is built on enough reviews to mean anything.
+// Without this, the rating gate was strictly backwards at the low-sample
+// end: a 5.0 from 2 reviews sailed through while a 3.9 from 5,000 was
+// dropped, and the UI then printed that 2-review average next to the venue
+// as if it were a credential. On a product whose entire pitch is that its
+// signals are earned, an unearned one is worse than none — so below this
+// count the rating is neither trusted for the accept/reject decision nor
+// shown to the traveler. The venue itself still stands (it's a real,
+// confirmed business, with its real Maps link); we just don't pretend to
+// know how good it is.
+const MIN_RATING_COUNT = 20;
+
+function hasReliableRating(place: PlacesApiPlace): boolean {
+  return place.rating != null && (place.userRatingCount ?? 0) >= MIN_RATING_COUNT;
+}
+
 // A same-named match further than this from the item's stated location is
 // treated as the wrong venue entirely, regardless of name similarity — chosen
 // to comfortably cover a city's metro/outskirts sprawl while still rejecting
@@ -274,8 +290,11 @@ function isNamedVenueItem(item: { type: string; title: string; venue_name?: stri
 }
 
 function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
-  item.google_rating = place.rating;
-  item.google_rating_count = place.userRatingCount;
+  // Only surface a rating we'd actually stand behind — see MIN_RATING_COUNT.
+  if (hasReliableRating(place)) {
+    item.google_rating = place.rating;
+    item.google_rating_count = place.userRatingCount;
+  }
   item.google_price_level = mapPriceLevel(place.priceLevel);
   item.google_business_status = mapBusinessStatus(place.businessStatus);
   if (place.id && place.displayName?.text) {
@@ -319,7 +338,9 @@ export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
       const status = item.google_business_status;
       if (status === "closed_permanently" || status === "closed_temporarily") {
         toRemove.add(item);
-      } else if (place.rating != null && place.rating < MIN_RATING) {
+      } else if (hasReliableRating(place) && place.rating! < MIN_RATING) {
+        // Only reject on a rating solid enough to justify it — a bad
+        // average over a handful of reviews isn't evidence the place is bad.
         toRemove.add(item);
       }
     })

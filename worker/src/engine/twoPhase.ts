@@ -106,18 +106,27 @@ total for this trip, including accommodation for every night (unless the brief s
 is already arranged, in which case exclude it entirely). Compare that to the stated budget. Never \
 quietly shrink or drop a real cost category to make the numbers appear to fit — if the honest \
 minimum breaks the budget, say so plainly, that IS the correct finding.
-- ANCHORS MUST BE REAL, SPECIFIC, NAMED BUSINESSES: "Mocotó (dinner)", not "a churrascaria \
+- ANCHORS ARE THE COMPLETE LIST OF NAMED VENUES FOR THE WHOLE TRIP. The day-expansion stage is \
+forbidden from inventing any named business of its own — it can only use what you assign here. So \
+anything that needs a real name must appear in some day's anchors, or it will not exist in the \
+finished trip.
+- That means EVERY MEAL the day realistically needs is an anchor: breakfast, lunch AND dinner for \
+a full day, adjusted only for arrival/departure timing (no lunch anchor on a day the traveler \
+lands mid-afternoon, no dinner anchor on a day they fly out at 16:00). Do not quietly skip a \
+day's lunch — a full day with no midday meal is a hole in the itinerary, not a stylistic choice.
+- Anchors must be real, specific, named businesses: "Mocotó (dinner)", not "a churrascaria \
 (dinner)"; "Vodka Tattoo (afternoon)", not "a tattoo studio". Name your single best real candidate \
 even when you can't confirm current hours/prices. Genuinely generic activities with no business to \
-name (a walk through a neighborhood, a rest at the accommodation, browsing a public market) are \
-fine to leave unnamed and don't belong in anchors at all.
-- NEVER REPEAT AN ANCHOR ACROSS DAYS: each named venue appears on exactly ONE day for the whole \
-trip. The day-expansion stage cannot see the other days, so any duplicate you leave here ships as \
-a duplicate.
-- Give each day 3 to 5 anchors — enough that the day has a real shape, few enough that the \
-expansion stage still has room for the connective tissue (a coffee stop, a walk between two of \
-them, getting from A to B).
-- Match anchor count and ambition to the stated pace: relaxed means fewer, packed means more.
+name (a walk through a neighborhood, a rest at the accommodation, a stroll along the river) need \
+no anchor — the expansion stage adds those itself.
+- NEVER REPEAT AN ANCHOR ANYWHERE IN THE TRIP: each named venue appears on exactly ONE day, in \
+exactly one slot. This is the only place duplicates can be prevented — the day-expansion calls \
+cannot see each other, so any venue you list twice ships to the traveler as a visible duplicate \
+(the same cafe for breakfast two mornings running, the same restaurant twice). Before you finish, \
+re-read your anchors across all days and confirm every name is unique.
+- So a normal full day is about 5 to 7 anchors (three meals plus two to four activities). Match \
+the activity count to the stated pace — relaxed means fewer activities, packed means more — but \
+the meals are not the thing you trim to hit a pace.
 - Respect all hard constraints exactly (dietary, mobility, budget ceiling, hard_no). Treat \
 must-see/must-do items as near-mandatory — assign each to a specific day. If one is genuinely \
 infeasible, say so explicitly in trip_summary and in a key_decisions entry rather than silently \
@@ -224,10 +233,16 @@ budget_feasibility, no other days:
 Stage 1 already made the whole-trip decisions. Hold to them:
 - Build the day around the anchors you're given. Each one becomes an item, at a sensible time, in \
 a sensible order. Keep the venue names exactly as given.
-- Add the connective tissue the anchors don't cover: getting between them, a coffee or a snack \
-stop, a walk, downtime that fits the stated pace. These are yours to choose, but they must not \
-name any venue listed under "Anchors used on OTHER days" — those belong to another day and would \
-read as a duplicate to the traveler.
+- DO NOT INVENT A NAMED BUSINESS. This is absolute. Every restaurant, cafe, bar, museum, studio, \
+shop or other named venue in your output must come from THIS day's anchor list — not from the \
+other days' list, and not from your own knowledge of the city. You are writing one day of a trip \
+in parallel with the other days and you cannot see what they chose, so a venue you add yourself is \
+how the traveler ends up with the same cafe for breakfast two mornings running. If a slot feels \
+like it wants a place that isn't in your anchors, leave it unnamed instead.
+- You may still add connective tissue the anchors don't cover, as long as it names no business: \
+walking between two of them, a stroll through a neighborhood or park, browsing an open-air market, \
+downtime back at the accommodation, getting to the airport. Write these as real items with a time \
+and a reason, just without a venue_name.
 - ACCOMMODATION: include exactly one item with type "lodging" if and only if you are told to \
 include it for this day, using the accommodation name, area and per-night cost you're given. Its \
 cost_estimate_eur is ONE night, never a multi-night total. Copy the given source_confidence and \
@@ -312,15 +327,60 @@ export function buildDayPrompt(
   return lines.join("\n");
 }
 
+function normalizeVenue(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Last line of defence against the one failure mode parallel day calls
+ * can't see for themselves: the same named venue landing on two days.
+ * The prompts prevent it two ways over (the skeleton must not repeat an
+ * anchor; day calls must not invent names at all) — this catches the
+ * residue anyway, because "the same cafe two mornings running" is exactly
+ * the kind of thing a traveler notices immediately and reads as the app
+ * being careless.
+ *
+ * Later occurrences are stripped of their venue identity rather than
+ * dropped outright: deleting the item would leave a hole in the day (no
+ * breakfast at all), whereas an unnamed "breakfast near the hotel" is a
+ * weaker but still honest item, and downstream venue verification simply
+ * skips it. Days are processed in order so the FIRST day to use a venue
+ * keeps it. */
+function dedupeVenuesAcrossDays(days: ItineraryDay[]): number {
+  const seen = new Set<string>();
+  let stripped = 0;
+  for (const day of days) {
+    for (const item of day.items) {
+      const name = item.venue_name?.trim();
+      if (!name) continue;
+      const key = normalizeVenue(name);
+      if (!key) continue;
+      if (seen.has(key)) {
+        item.venue_name = null;
+        stripped++;
+      } else {
+        seen.add(key);
+      }
+    }
+  }
+  return stripped;
+}
+
 /** Stitches phase 1's trip-level fields together with phase 2's independently
  * generated days. Days are sorted by number rather than trusting the order
  * the parallel calls happened to resolve in. */
 export function assembleItinerary(skeleton: TripSkeleton, days: ItineraryDay[]): Itinerary {
+  const ordered = [...days].sort((a, b) => a.day - b.day);
+  const stripped = dedupeVenuesAcrossDays(ordered);
+  if (stripped > 0) {
+    console.warn(
+      `[twoPhase] ${stripped} duplicate venue name(s) across days — kept the first use, unnamed the rest`
+    );
+  }
   return {
     budget_feasibility: skeleton.budget_feasibility,
     trip_summary: skeleton.trip_summary,
     key_decisions: skeleton.key_decisions ?? [],
-    days: [...days].sort((a, b) => a.day - b.day),
+    days: ordered,
     things_to_skip: skeleton.things_to_skip ?? [],
   };
 }
