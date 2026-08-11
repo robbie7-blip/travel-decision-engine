@@ -445,6 +445,17 @@ to write a subscription status.
 4. All four (plus the two `NEXT_PUBLIC_*` quota vars) go on the **Vercel**
    frontend project — none of this touches the worker.
 
+**`PRO_OVERRIDE_EMAILS`** (optional) — comma-separated list of emails that
+always resolve to the paid plan (see `resolvePlan` in `lib/account.ts`),
+regardless of Stripe subscription status. For the site owner's own account
+(or anyone else's) to get Pro's quota and Ask a Local's web_search without
+an actual subscription — dogfooding shouldn't require paying yourself.
+Unset means nobody, same "off by default" shape as `ADMIN_PASSWORD`. An
+override account has no real `stripeCustomerId`, so the billing portal
+correctly has nothing to manage for it — `/account` hides "Manage
+subscription" in that case rather than showing a button that would just
+404.
+
 ### Testing without burning budget/rate limits
 
 Visit `/admin/test-mode` (same `ADMIN_PASSWORD`-gated area as `/admin/feedback`)

@@ -68,6 +68,32 @@ export function isPaidStatus(status: string | null): boolean {
   return status != null && PAID_ACCESS_STATUSES.has(status);
 }
 
+// Lets the site owner (and anyone else added here) use Pro features on
+// their own account without an actual Stripe subscription behind it —
+// dogfooding decide, or just testing Ask a Local's web_search gating,
+// shouldn't require paying yourself €9/month. Comma-separated env var
+// (unset = nobody, same "off by default" shape as ADMIN_PASSWORD) rather
+// than a hardcoded email, so the allowlist is a Vercel dashboard edit, not
+// a code change + redeploy. This only ever widens free->paid for the
+// emails listed — never narrows a real paying customer's access, and
+// never grants a stripeCustomerId, so billing-portal correctly has
+// nothing to manage for an override-only account (see account/page.tsx's
+// hasStripeSubscription check).
+const PRO_OVERRIDE_EMAILS = new Set(
+  (process.env.PRO_OVERRIDE_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+/** The plan every route should actually gate features on — layers the
+ * owner override on top of isPaidStatus rather than each call site
+ * checking both separately. */
+export function resolvePlan(email: string, subscriptionStatus: string | null): Plan {
+  if (PRO_OVERRIDE_EMAILS.has(email.toLowerCase().trim())) return "paid";
+  return isPaidStatus(subscriptionStatus) ? "paid" : "free";
+}
+
 export async function getUserRecord(redis: Redis, email: string): Promise<UserRecord | null> {
   const data = await redis.hgetall<Record<string, string>>(userKey(email));
   if (!data || Object.keys(data).length === 0) return null;

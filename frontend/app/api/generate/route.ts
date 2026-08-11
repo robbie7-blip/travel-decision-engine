@@ -15,7 +15,7 @@ import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent } from "@/lib/analytics";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
-import { getUserRecord, getQuotaStatus, consumeQuota, isPaidStatus } from "@/lib/account";
+import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan } from "@/lib/account";
 import { getVisitedCodes } from "@/lib/visited";
 import { getCountry } from "@/lib/countries";
 import { TEST_MODE_HEADER } from "@/lib/testMode";
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     if (email) {
       const user = await getUserRecord(redis, email);
-      const plan = isPaidStatus(user?.subscriptionStatus ?? null) ? "paid" : "free";
+      const plan = resolvePlan(email, user?.subscriptionStatus ?? null);
       const quota = await getQuotaStatus(redis, email, plan);
       if (!quota.allowed) {
         const detail =

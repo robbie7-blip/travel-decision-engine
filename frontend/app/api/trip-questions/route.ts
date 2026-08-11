@@ -26,7 +26,7 @@ import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
 import { estimateCostUsd } from "@/lib/costBudget";
-import { getUserRecord, isPaidStatus } from "@/lib/account";
+import { getUserRecord, resolvePlan } from "@/lib/account";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { MAX_TRIP_QA_HISTORY, MAX_TRIP_QA_MESSAGE_LENGTH, type TripQAContext, type TripQAMessage } from "@/lib/tripQA";
 import type { Language } from "@/lib/types";
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
   let isPaid = false;
   if (email) {
     const user = await getUserRecord(redis, email);
-    isPaid = isPaidStatus(user?.subscriptionStatus ?? null);
+    isPaid = resolvePlan(email, user?.subscriptionStatus ?? null) === "paid";
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

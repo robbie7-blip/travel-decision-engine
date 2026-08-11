@@ -14,6 +14,10 @@ interface AccountState {
   plan?: "free" | "paid";
   currentPeriodEnd?: number | null;
   quota?: { used: number; limit: number };
+  // False for an account that's "paid" via the owner-override allowlist
+  // (see lib/account.ts's resolvePlan) rather than a real Stripe
+  // subscription — nothing for the billing portal to manage in that case.
+  hasStripeSubscription?: boolean;
 }
 
 /** Shows the signed-in visitor's plan + usage, or a sign-in box if not
@@ -214,7 +218,7 @@ export default function AccountPage() {
                 </div>
 
                 <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  {account.plan === "paid" && (
+                  {account.plan === "paid" && account.hasStripeSubscription && (
                     <button
                       onClick={openBillingPortal}
                       disabled={openingPortal}
