@@ -17,6 +17,13 @@ interface CachedLodgingFact {
   sourceUrls: string[];
   sourceAgreement: "agree" | "disagree" | null;
   cachedAt: number;
+  // The actual property the price belongs to, when the lookup found one.
+  // Optional on purpose: entries written before accommodation was named
+  // are still in Redis under the same key with a ~20h TTL, and an old
+  // entry should keep working as an unnamed city rate rather than blowing
+  // up or being thrown away.
+  name?: string;
+  area?: string;
 }
 
 function cacheKey(city: string): string {
@@ -31,12 +38,25 @@ function matchDestination(location: string, destinations: string[]): string | un
 function formatCachedFact(city: string, fact: CachedLodgingFact): string {
   const hoursAgo = Math.max(1, Math.round((Date.now() - fact.cachedAt) / 3_600_000));
   const urlsText = fact.sourceUrls.length ? fact.sourceUrls.join(", ") : "(no URL recorded)";
+
+  // Named entries let the itinerary point at a real, checkable property
+  // instead of "a mid-range hotel". Unnamed ones (pre-existing cache
+  // entries, or a lookup that found a rate but no specific place) keep the
+  // original generic wording — better a generic accommodation item than a
+  // property name we can't stand behind.
+  const property = fact.name
+    ? `Accommodation for ${city}: stay at ${fact.name}${fact.area ? ` in ${fact.area}` : ""} — a real, ` +
+      `specific property found via live search ${hoursAgo}h ago, at approx €${fact.costEstimateEur}/night. ` +
+      `Use this exact property name for ${city}'s accommodation; do not substitute a different place or a ` +
+      `generic "a mid-range hotel".`
+    : `Accommodation for ${city}: no specific property was found, but the typical mid-range rate was verified ` +
+      `via live search ${hoursAgo}h ago at approx €${fact.costEstimateEur}/night. Leave the accommodation ` +
+      `unnamed for this city and describe it generically.`;
+
   return (
-    `Lodging for ${city} was already verified via live search ${hoursAgo}h ago — reuse this instead of ` +
-    `searching lodging again for ${city}: approx €${fact.costEstimateEur}/night, source_urls: [${urlsText}], ` +
-    `source_agreement: ${fact.sourceAgreement ?? "null"}. Copy these exact source_urls/source_agreement values ` +
-    `into your lodging item(s) for ${city}, set source_confidence to "grounded", and do not perform a new ` +
-    `lodging search for this destination.`
+    `${property} source_urls: [${urlsText}], source_agreement: ${fact.sourceAgreement ?? "null"}. Copy these ` +
+    `exact source_urls/source_agreement values into your accommodation item(s) for ${city}, set ` +
+    `source_confidence to "grounded", and do not perform a new accommodation search for this destination.`
   );
 }
 
@@ -97,6 +117,11 @@ export async function cacheLodgingFacts(redis: Redis, brief: TripBriefInput, iti
           costEstimateEur: item.cost_estimate_eur,
           sourceUrls: item.source_urls ?? [],
           sourceAgreement: item.source_agreement ?? null,
+          // Carry the property forward when the finished item names one —
+          // otherwise this path would keep overwriting a named cache entry
+          // with an unnamed one on every generation, quietly undoing the
+          // prefetch's work for that city.
+          name: item.venue_name ?? undefined,
         });
       }
     }

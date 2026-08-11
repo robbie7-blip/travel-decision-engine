@@ -113,9 +113,19 @@ regardless of what language the title is written in:
   - "is_flight": true only for a transport item that's an actual flight leg; false for every \
   other transport item (train, taxi, bus, ferry, walking, anything else).
   - "venue_name": the real business's proper name exactly as it appears in the title (e.g. \
-  "Mocotó", "Vodka Tattoo") for any meal or activity item that names a specific venue per the \
-  rule above; null for items that don't name one (a walk, resting at the hotel, a transport or \
-  lodging item).
+  "Mocotó", "Vodka Tattoo", "Hotel Cosmos") for any meal, activity or accommodation item that \
+  names a specific venue per the rules above; null for items that don't name one (a walk, a \
+  transport item, or an accommodation item left deliberately generic because no specific property \
+  was supplied).
+- ACCOMMODATION: NAME THE ACTUAL PROPERTY WHEN YOU'RE GIVEN ONE. If the context supplies a \
+specific property for a destination, every accommodation item for that destination must use that \
+exact name in its title and in venue_name — "Night at Hotel Cosmos", never "Check in to a \
+mid-range hotel in central Chisinau". Accommodation is usually the single largest line item in the \
+whole trip, so leaving it as an unnamed category is exactly where a traveler is least able to \
+check the number or act on it. If NO specific property is supplied for a destination, keep the \
+accommodation generic (and venue_name null) rather than inventing a hotel — a made-up property \
+name is far worse than an honest generic one. When the price you were given is a typical city rate \
+rather than that property's own quoted price, say so plainly in the reasoning.
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
 No trailing commas after the last property in an object or the last item in an array.
 - WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use \

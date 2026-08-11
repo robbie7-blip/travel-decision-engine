@@ -286,7 +286,44 @@ async function lookupPlace(apiKey: string, query: string, bias?: GeoPoint | null
  * exactly like a paid one; a genuinely generic title (a walk, a park visit)
  * resolves to null and is correctly left alone. */
 function isNamedVenueItem(item: { type: string; title: string; venue_name?: string | null }): boolean {
+  // Accommodation is verified ONLY off an explicit venue_name, never off
+  // the legacy title regex the other types fall back to. That regex keys
+  // on the last " at " in a title, which is a good signal in "Lunch at
+  // Mocotó" and a bad one in "Second night at the central Chisinau hotel"
+  // — it would extract "the central Chisinau hotel" and either burn a
+  // lookup failing to match it or, worse, match some unrelated hotel and
+  // hang a confident Maps link off it.
+  if (item.type === "lodging") return Boolean(item.venue_name);
   return (item.type === "meal" || item.type === "activity") && resolveVenueName(item) !== null;
+}
+
+/** Accommodation is verified like any other venue but can NEVER be removed
+ * on a failed lookup, unlike a meal or activity. Dropping a lodging item
+ * doesn't just lose a suggestion — it silently breaks the itinerary's
+ * arithmetic: one item per night is what the budget total and
+ * checkBudgetIntegrity's night count are both built on, and a trip that
+ * quietly loses a night's accommodation cost understates its own budget.
+ * An unconfirmable hotel therefore keeps its item and simply loses its
+ * name (see stripUnverifiedLodging), which downgrades it to the honest
+ * generic accommodation it would have been anyway. */
+function isLodging(item: ItineraryItem): boolean {
+  return item.type === "lodging";
+}
+
+/** Reverts a lodging item to its unnamed form: no venue_name (so nothing
+ * downstream treats it as a confirmed venue) and no Places fields. The
+ * title is deliberately left alone — it's written in the trip's own
+ * language, so rewriting it here would either break localization or
+ * require re-calling the model for a cosmetic fix. Its confidence tier
+ * still reflects the price grounding, which is unaffected by whether the
+ * property itself checked out. */
+function stripUnverifiedLodging(item: ItineraryItem): void {
+  item.venue_name = null;
+  item.google_rating = undefined;
+  item.google_rating_count = undefined;
+  item.google_price_level = undefined;
+  item.google_business_status = undefined;
+  item.google_maps_url = undefined;
 }
 
 function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
@@ -320,8 +357,15 @@ export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
       const placeName = place?.displayName?.text;
       const matched = place && placeName && namesLikelyMatch(venueName, placeName);
 
+      // Lodging is downgraded to unnamed instead of dropped — see
+      // isLodging/stripUnverifiedLodging for why removal isn't an option.
+      const reject = (target: ItineraryItem) => {
+        if (isLodging(target)) stripUnverifiedLodging(target);
+        else toRemove.add(target);
+      };
+
       if (!place || !matched) {
-        toRemove.add(item); // couldn't confirm this business exists at all
+        reject(item); // couldn't confirm this business exists at all
         return;
       }
 
@@ -330,18 +374,18 @@ export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
       // (a different city, once a different country). Reject on distance
       // regardless of how well the name matched.
       if (bias && place.location && distanceKm(bias, place.location) > MAX_MATCH_DISTANCE_KM) {
-        toRemove.add(item);
+        reject(item);
         return;
       }
 
       applyPlaceData(item, place);
       const status = item.google_business_status;
       if (status === "closed_permanently" || status === "closed_temporarily") {
-        toRemove.add(item);
+        reject(item);
       } else if (hasReliableRating(place) && place.rating! < MIN_RATING) {
         // Only reject on a rating solid enough to justify it — a bad
         // average over a handful of reviews isn't evidence the place is bad.
-        toRemove.add(item);
+        reject(item);
       }
     })
   );

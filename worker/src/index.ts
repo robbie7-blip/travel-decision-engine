@@ -194,15 +194,35 @@ function estimateMaxSearchUses(brief: TripBriefInput): number {
 // (a handful of tokens, not a whole schema) so this call's own non-search
 // portion is as close to free as possible; the wall-clock cost is close to
 // pure search latency.
-const LODGING_LOOKUP_SYSTEM = `Find the current typical price per night for a mid-range hotel or Airbnb in the \
-given city, using exactly one web search. Respond with ONLY this JSON, no other text: \
-{"cost_estimate_eur": <number, converted to EUR if the source quoted another currency>, "source_url": "<the URL you used>"} \
-— or, if the search returns nothing usable, exactly: {"cost_estimate_eur": null, "source_url": null}. Never invent a \
-number or a URL.`;
+// Asks for a real, specific property AND its nightly rate in the same
+// search, rather than a city-wide average. That pairing matters for
+// honesty, not just usefulness: a city-average rate is a fair thing to
+// print next to "a mid-range hotel", but bolting a named property onto an
+// average would quietly claim to be quoting THAT hotel's price when it
+// isn't. One lookup that returns both keeps the name and the number
+// describing the same thing.
+//
+// "name": null is a first-class, expected outcome — plenty of searches
+// surface a credible rate without a single property worth committing to,
+// and lodgingCache falls back to the original generic wording for those.
+const LODGING_LOOKUP_SYSTEM = `Using exactly one web search, find a real, specific, well-reviewed mid-range hotel \
+in the given city that a couple would actually be happy staying in, plus its typical price per night.
+
+Respond with ONLY this JSON, no other text:
+{"name": "<the hotel's real proper name>", "area": "<its neighborhood/district>", "cost_estimate_eur": <number, converted to EUR if the source quoted another currency>, "source_url": "<the URL you used>"}
+
+If the search surfaces a usable nightly rate but no specific property you'd confidently name, return the rate with \
+"name": null and "area": null. If it surfaces nothing usable at all, return exactly: \
+{"name": null, "area": null, "cost_estimate_eur": null, "source_url": null}.
+
+Never invent a hotel name, a number, or a URL. A real rate with no name is far better than a name you are not sure \
+exists.`;
 
 interface LodgingLookupResult {
   costEstimateEur: number;
   sourceUrl: string;
+  name: string | null;
+  area: string | null;
 }
 
 async function prefetchLodging(
@@ -223,9 +243,19 @@ async function prefetchLodging(
 
     const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
     const text = textBlocks[textBlocks.length - 1]?.text ?? "";
-    const parsed = JSON.parse(extractJson(text)) as { cost_estimate_eur: number | null; source_url: string | null };
+    const parsed = JSON.parse(extractJson(text)) as {
+      cost_estimate_eur: number | null;
+      source_url: string | null;
+      name?: string | null;
+      area?: string | null;
+    };
     if (parsed.cost_estimate_eur == null || !parsed.source_url) return null;
-    return { costEstimateEur: parsed.cost_estimate_eur, sourceUrl: parsed.source_url };
+    return {
+      costEstimateEur: parsed.cost_estimate_eur,
+      sourceUrl: parsed.source_url,
+      name: parsed.name?.trim() || null,
+      area: parsed.area?.trim() || null,
+    };
   } catch (e) {
     // Same fallback as an inline search that finds nothing: the main call
     // still runs fine without this destination cached, it just falls back
@@ -647,6 +677,8 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
                   costEstimateEur: result.costEstimateEur,
                   sourceUrls: [result.sourceUrl],
                   sourceAgreement: null,
+                  name: result.name ?? undefined,
+                  area: result.area ?? undefined,
                 })
               : Promise.resolve()
           )

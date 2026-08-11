@@ -63,8 +63,11 @@ export interface TripSkeleton {
 
 export interface SkeletonAccommodation {
   city: string;
-  name: string;
-  area: string;
+  /** Null when no specific property could be verified for this city — the
+   * accommodation item then stays deliberately generic rather than being
+   * given an invented hotel name. */
+  name: string | null;
+  area: string | null;
   cost_per_night_eur: number;
   source_confidence: "grounded" | "inferred";
   source_urls?: string[];
@@ -134,11 +137,16 @@ dropping it.
 - If any preferences are in direct tension (a packed pace plus mandatory long rests, a long \
 interest list on a short trip), say so explicitly in trip_summary and a key_decisions entry \
 instead of silently complying with each in isolation.
-- ACCOMMODATION: pick one place per city and give its real per-night cost in EUR. If the context \
-below includes an already-verified accommodation price for a city, reuse that exact figure and its \
-source_urls, and set source_confidence "grounded". Otherwise give your best hedged estimate and \
-set source_confidence "inferred" with no source_urls. If the brief says accommodation is already \
-arranged, return an empty accommodation array and set include_lodging false on every day.
+- ACCOMMODATION: one entry per city, with its real per-night cost in EUR. If the context below \
+supplies a SPECIFIC PROPERTY for a city, use that exact property name and area, reuse that exact \
+price and its source_urls, and set source_confidence "grounded" — do not substitute a different \
+hotel or downgrade it to a generic "mid-range hotel". If the context supplies a verified price but \
+no specific property, set name to null and keep source_confidence "grounded" (the price is still \
+verified, just not the property). If neither is supplied, give your best hedged price estimate, set \
+name null and source_confidence "inferred" with no source_urls. NEVER invent a property name that \
+wasn't supplied to you — accommodation is the biggest line item in most trips, and a fabricated \
+hotel is the worst possible place to be wrong. If the brief says accommodation is already arranged, \
+return an empty accommodation array and set include_lodging false on every day.
 - include_lodging: true for every day the traveler actually spends the night at the accommodation, \
 false for the final departure day (and any day they're in transit overnight). The number of true \
 values must equal the number of nights in the trip.
@@ -170,7 +178,7 @@ Schema:
     {"decision": "...", "reasoning": "<=15 words", "alternative_considered": "a few words", "confidence": "high|medium|low"}
   ],
   "accommodation": [
-    {"city": "...", "name": "real, specific place", "area": "neighborhood", "cost_per_night_eur": 0, "source_confidence": "grounded|inferred", "source_urls": []}
+    {"city": "...", "name": "the exact property name you were supplied, or null if none was", "area": "neighborhood", "cost_per_night_eur": 0, "source_confidence": "grounded|inferred", "source_urls": []}
   ],
   "days": [
     {
@@ -297,9 +305,14 @@ export function buildDayPrompt(
   }
 
   if (day.include_lodging && accommodation) {
+    const where = accommodation.name
+      ? `${accommodation.name}${accommodation.area ? `, ${accommodation.area}` : ""} — use this exact ` +
+        `property name in the title AND in venue_name, do not substitute a generic description`
+      : `no specific property was verified for this city, so keep it generic and set venue_name to ` +
+        `null — do NOT invent a hotel name`;
     lines.push(
-      `Accommodation (include exactly one "lodging" item for this night): ${accommodation.name}, ` +
-        `${accommodation.area} — €${accommodation.cost_per_night_eur} for this one night, ` +
+      `Accommodation (include exactly one "lodging" item for this night): ${where}. ` +
+        `€${accommodation.cost_per_night_eur} for this one night, ` +
         `source_confidence "${accommodation.source_confidence}", source_urls ` +
         `${JSON.stringify(accommodation.source_urls ?? [])}.`
     );
