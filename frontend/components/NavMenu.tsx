@@ -19,7 +19,6 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
 
   const links = [
     { href: `/why-decide${langSuffix}`, label: t.whyDecide.navLink },
-    { href: "/#how-it-works", label: t.howItWorks },
     { href: `/destinations${langSuffix}`, label: t.browseDestinations },
     { href: `/showcase${langSuffix}`, label: t.showcase.navLabel },
     { href: "/ask", label: t.tripQA.navLink },
@@ -28,14 +27,8 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
   ];
 
   // Strip the ?lang= suffix each href may carry before comparing to the
-  // current route — pathname never includes it. A same-page hash link
-  // (just "#how-it-works" on the homepage) is never treated as "active":
-  // it's a scroll target, not a route, and stripping its hash down to "/"
-  // would otherwise make it falsely light up as "the current page"
-  // whenever pathname is "/" — including while looking at the trip form
-  // above it, nowhere near that section.
+  // current route — pathname never includes it.
   function isActive(href: string): boolean {
-    if (href.includes("#")) return false;
     const path = href.split("?")[0];
     return pathname === path || pathname.startsWith(`${path}/`);
   }
