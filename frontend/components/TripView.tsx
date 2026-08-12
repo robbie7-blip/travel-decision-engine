@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AddToShowcaseButton } from "./AddToShowcaseButton";
+import { JobTimings } from "./JobTimings";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
 import { SiteHeader } from "./SiteHeader";
@@ -12,7 +13,7 @@ import { LoadingScreen } from "./LoadingScreen";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
-import type { Job } from "@/lib/jobs";
+import type { Job, JobTimings as Timings } from "@/lib/jobs";
 import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
 
 /** The page behind a shared/bookmarked /trip/[jobId] link. Loads a job cold
@@ -29,6 +30,7 @@ export function TripView({ jobId }: { jobId: string }) {
   const [currentJobId, setCurrentJobId] = useState(jobId);
   const [lastBrief, setLastBrief] = useState<TripBriefInput | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string | undefined>(undefined);
+  const [timings, setTimings] = useState<Timings | undefined>(undefined);
   const [refining, setRefining] = useState(false);
   const [refineJobStatus, setRefineJobStatus] = useState<Job["status"] | null>(null);
   const [refineError, setRefineError] = useState("");
@@ -53,10 +55,11 @@ export function TripView({ jobId }: { jobId: string }) {
       setJobStatus(status);
       setLastBrief(brief);
     })
-      .then(({ itinerary, brief }) => {
+      .then(({ itinerary, brief, timings: t }) => {
         if (cancelled) return;
         setResult(itinerary);
         setLastBrief(brief);
+        setTimings(t);
         const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
         if (saved !== "en" && saved !== "bg") setLanguageState(brief.language);
         // Bookmarks this visit so a returning visitor can find their way
@@ -164,6 +167,7 @@ export function TripView({ jobId }: { jobId: string }) {
                 interests={lastBrief?.interests}
                 language={language}
               />
+              <JobTimings timings={timings} />
               <AddToShowcaseButton jobId={currentJobId} />
             </>
           )}

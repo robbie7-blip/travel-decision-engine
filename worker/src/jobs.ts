@@ -36,6 +36,36 @@ export interface Job {
   // generation (it's still a real, smaller Claude call) — just the
   // cheapest and fastest real path, for the site owner's own testing.
   testMode?: boolean;
+  // Stage timings in ms, written by the worker on every job. Generation
+  // latency has now been diagnosed three times by reasoning about which
+  // stage *should* dominate, and been wrong. This puts the actual numbers
+  // on the job record itself, where they travel with the result and can be
+  // read without shell access to the worker — see the diagnostics line on
+  // the trip page (admin-only).
+  timings?: JobTimings;
+}
+
+export interface JobTimings {
+  totalMs: number;
+  /** Live lodging/property lookups, in parallel, before generation. */
+  lodgingPrefetchMs?: number;
+  /** Whole generation stage — the sum of the two phases below, plus any
+   * fallback. */
+  generateMs?: number;
+  /** Phase 1 of two-phase generation. */
+  skeletonMs?: number;
+  /** Phase 2 — wall time for all day calls together, not their sum. */
+  daysMs?: number;
+  dayCount?: number;
+  /** Google Places + Amadeus, which run concurrently with each other. */
+  venuesAndFlightsMs?: number;
+  /** True when two-phase generation failed and the entire itinerary was
+   * regenerated through the original single-call path — the single most
+   * expensive thing that can happen to a job, and previously invisible
+   * from outside the worker's stderr. */
+  fellBackToSingleCall?: boolean;
+  /** Why it fell back, when it did. */
+  fallbackReason?: string;
 }
 
 export const JOBS_QUEUE_KEY = "jobs:queue";

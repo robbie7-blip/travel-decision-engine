@@ -1,5 +1,5 @@
 import type { Itinerary, TripBriefInput } from "./types";
-import type { Job } from "./jobs";
+import type { Job, JobTimings } from "./jobs";
 import type { FeedbackEntry } from "./feedback";
 import { getTestModeKey, TEST_MODE_HEADER } from "./testMode";
 
@@ -38,7 +38,7 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
 export async function pollJob(
   jobId: string,
   onStatus?: (status: Job["status"], brief: TripBriefInput) => void
-): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput }> {
+): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput; timings?: JobTimings }> {
   const start = Date.now();
   for (;;) {
     const jobResponse = await fetch(`/api/job/${jobId}`);
@@ -53,7 +53,9 @@ export async function pollJob(
 
     if (job.status === "done") {
       if (!job.result) throw new ApiError("Job finished but returned no result.");
-      return { jobId, itinerary: job.result, brief: job.brief };
+      // timings ride along so the owner-only diagnostics panel can show
+      // where the wall time actually went (see components/JobTimings.tsx).
+      return { jobId, itinerary: job.result, brief: job.brief, timings: job.timings };
     }
     if (job.status === "error") {
       throw new ApiError(job.error ?? "Generation failed.");
@@ -101,7 +103,7 @@ export async function refineItinerary(
   itinerary: Itinerary,
   question: string,
   onStatus?: (status: Job["status"]) => void
-): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput }> {
+): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput; timings?: JobTimings }> {
   const createResponse = await fetch("/api/refine", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -32,7 +32,7 @@ import { checkVenues } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { attachFlightPrices } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
-import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
+import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type JobTimings, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts, writeCachedLodgingFact } from "./lodgingCache";
 import {
   ALERT_THRESHOLD_RATIO,
@@ -514,7 +514,8 @@ async function generateItineraryTwoPhase(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage) => void,
+  onPhaseTimings?: (t: { skeletonMs: number; daysMs: number; dayCount: number }) => void
 ): Promise<Itinerary> {
   const startedAt = Date.now();
   const skeleton = await withOneRetryOf(() =>
@@ -526,8 +527,10 @@ async function generateItineraryTwoPhase(
   const days = await runWithLimit(skeleton.days, MAX_PARALLEL_DAYS, (day) =>
     withOneRetryOf(() => generateDay(client, brief, skeleton, day, onUsage))
   );
+  const daysMs = Date.now() - daysStartedAt;
+  onPhaseTimings?.({ skeletonMs, daysMs, dayCount: days.length });
   console.log(
-    `[worker] two-phase: skeleton ${skeletonMs}ms, ${days.length} day(s) in ${Date.now() - daysStartedAt}ms ` +
+    `[worker] two-phase: skeleton ${skeletonMs}ms, ${days.length} day(s) in ${daysMs}ms ` +
       `(<=${MAX_PARALLEL_DAYS} at a time, day model ${DAY_MODEL})`
   );
 
@@ -565,12 +568,23 @@ async function generateItinerary(
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void,
-  forceSkipSearch = false
+  forceSkipSearch = false,
+  timings?: JobTimings
 ): Promise<Itinerary> {
   if (TWO_PHASE_ENABLED) {
     try {
-      return await generateItineraryTwoPhase(client, brief, cachedLodgingFacts, onUsage);
+      return await generateItineraryTwoPhase(client, brief, cachedLodgingFacts, onUsage, (t) => {
+        if (timings) {
+          timings.skeletonMs = t.skeletonMs;
+          timings.daysMs = t.daysMs;
+          timings.dayCount = t.dayCount;
+        }
+      });
     } catch (e) {
+      if (timings) {
+        timings.fellBackToSingleCall = true;
+        timings.fallbackReason = e instanceof Error ? e.message : String(e);
+      }
       // Deliberately broad: whatever went wrong in the fast path (malformed
       // skeleton twice over, a day that wouldn't parse, a provider hiccup
       // mid-fan-out), the traveler should still get a real itinerary rather
@@ -672,6 +686,7 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
   // matter of reading a log line instead of re-deriving it from the code.
   const jobStartedAt = Date.now();
   const timings: Record<string, number> = {};
+  const jobTimings: JobTimings = { totalMs: 0 };
   async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
     const t0 = Date.now();
     try {
@@ -721,7 +736,7 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
       }
 
       itinerary = await timed("generate", () =>
-        generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode)
+        generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode, jobTimings)
       );
     }
     itinerary = checkFeasibility(itinerary);
@@ -761,6 +776,12 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
                 ? "The model's response was malformed twice in a row — try a shorter or simpler trip brief."
                 : "Unexpected error generating itinerary.";
   }
+
+  jobTimings.totalMs = Date.now() - jobStartedAt;
+  jobTimings.lodgingPrefetchMs = timings.lodgingPrefetch;
+  jobTimings.generateMs = timings.generate;
+  jobTimings.venuesAndFlightsMs = timings.venuesAndFlights;
+  job.timings = jobTimings;
 
   await recordSpend(redis, costUsd);
   await writeJob(redis, job);
