@@ -257,6 +257,92 @@ function isFlightItem(item: ItineraryItem): boolean {
  * special-casing needed downstream, and the frontend shows the real number
  * instead of the link-only fallback exactly when this succeeds (see
  * ItineraryResult.tsx's `source_confidence === "grounded"` check). */
+export interface PrefetchedFare {
+  fareEur: number;
+  metrics: { firstEur: number; thirdEur: number } | null;
+  adults: number;
+}
+
+/** The Amadeus half of flight pricing, which depends ONLY on the trip brief
+ * — origin, destination, dates, party size. It used to run after generation
+ * finished, purely because that's where the itinerary was available to
+ * write into, which put a provider this module's own header calls slow
+ * squarely on the critical path for no reason. Started at t=0 instead and
+ * awaited at the end, it costs nothing at all in wall time. */
+export async function fetchFarePricing(brief: TripBriefInput): Promise<PrefetchedFare | null> {
+  const apiKey = process.env.AMADEUS_API_KEY;
+  const apiSecret = process.env.AMADEUS_API_SECRET;
+  if (!apiKey || !apiSecret) return null;
+  if (!brief.origin?.trim() || brief.needs_flight === false) return null;
+  if (brief.destinations.length === 0) return null;
+
+  const token = await getAccessToken(apiKey, apiSecret);
+  if (!token) return null;
+
+  const [originCode, destinationCode] = await Promise.all([
+    resolveIataCode(token, brief.origin.trim()),
+    resolveIataCode(token, brief.destinations[0]),
+  ]);
+  if (!originCode || !destinationCode) return null;
+
+  const departureDate = brief.arrival_date?.trim() || brief.start_date;
+  const adults = Math.max(1, Math.min(brief.party_size, 9));
+  const startedAt = Date.now();
+  const [fare, metrics] = await Promise.all([
+    searchCheapestFare(token, originCode, destinationCode, departureDate, brief.end_date, brief.party_size),
+    fetchPriceMetrics(token, originCode, destinationCode, departureDate, false),
+  ]);
+  console.log(`[flightPricing] amadeus lookups took ${Date.now() - startedAt}ms`);
+  if (fare == null) return null;
+
+  lastObservation = {
+    originCode,
+    destinationCode,
+    departureDate,
+    fareEur: Math.round(fare),
+    observedAt: Date.now(),
+    daysBeforeDeparture: Math.round((new Date(`${departureDate}T00:00:00Z`).getTime() - Date.now()) / 86_400_000),
+  };
+  return { fareEur: fare, metrics, adults };
+}
+
+let lastObservation: FareObservation | null = null;
+
+/** Applies an already-fetched fare to the itinerary. Pure bookkeeping — no
+ * network — so it adds nothing to the critical path. */
+export function applyFlightPricing(
+  itinerary: Itinerary,
+  brief: TripBriefInput,
+  prefetched: PrefetchedFare | null,
+  onFareObserved?: (obs: FareObservation) => void
+): Itinerary {
+  if (!prefetched) return itinerary;
+  const arrivalItem = (itinerary.days ?? [])[0]?.items.find(isFlightItem);
+  if (!arrivalItem) return itinerary;
+
+  const { fareEur: fare, metrics, adults } = prefetched;
+  arrivalItem.cost_estimate_eur = Math.round(fare);
+  arrivalItem.source_confidence = "grounded";
+  arrivalItem.source_urls = arrivalItem.flight_search_url ? [arrivalItem.flight_search_url] : [];
+  arrivalItem.source_agreement = null;
+  arrivalItem.reasoning =
+    brief.party_size > 1
+      ? `Checked live: this is today's real round-trip fare for the group, not a guess.`
+      : `Checked live: this is today's real round-trip fare, not a guess.`;
+
+  if (lastObservation) onFareObserved?.(lastObservation);
+
+  if (metrics) {
+    const perPassenger = fare / adults;
+    arrivalItem.fare_price_context = {
+      level: perPassenger <= metrics.firstEur ? "low" : perPassenger <= metrics.thirdEur ? "typical" : "high",
+      typicalLowEur: Math.round(metrics.firstEur * adults),
+      typicalHighEur: Math.round(metrics.thirdEur * adults),
+    };
+  }
+  return itinerary;
+}
+
 export async function attachFlightPrices(
   itinerary: Itinerary,
   brief: TripBriefInput,

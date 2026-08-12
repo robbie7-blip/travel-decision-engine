@@ -407,3 +407,49 @@ export function isUsableSkeleton(skeleton: unknown): skeleton is TripSkeleton {
     (d) => typeof d?.day === "number" && typeof d?.date === "string" && Array.isArray(d?.anchors)
   );
 }
+
+/** Overlays a live-verified accommodation onto the skeleton's own estimate,
+ * for the case where the lodging lookup ran CONCURRENTLY with phase 1 and
+ * therefore wasn't available when the skeleton made its guess.
+ *
+ * Running those two at the same time removes a whole serial stage from the
+ * critical path, but it means phase 1 priced accommodation from general
+ * knowledge. The real figure is strictly better, so it wins — and because
+ * accommodation is usually the largest line in the trip, the trip-level
+ * budget minimum is corrected by the same delta rather than being left
+ * quietly inconsistent with the items underneath it. Deterministic
+ * arithmetic, not another model call: the number has to agree with the
+ * items, and that's a calculation, not a judgement. */
+export function applyVerifiedAccommodation(
+  skeleton: TripSkeleton,
+  city: string,
+  verified: { costPerNightEur: number; name: string | null; area: string | null; sourceUrls: string[] }
+): void {
+  const nights = skeleton.days.filter(
+    (d) => d.include_lodging && d.city.toLowerCase().trim() === city.toLowerCase().trim()
+  ).length;
+
+  const existing = skeleton.accommodation.find(
+    (a) => a.city.toLowerCase().trim() === city.toLowerCase().trim()
+  );
+  const previousPerNight = existing?.cost_per_night_eur ?? 0;
+
+  const next: SkeletonAccommodation = {
+    city: existing?.city ?? city,
+    name: verified.name ?? existing?.name ?? null,
+    area: verified.area ?? existing?.area ?? null,
+    cost_per_night_eur: verified.costPerNightEur,
+    source_confidence: "grounded",
+    source_urls: verified.sourceUrls,
+  };
+  if (existing) Object.assign(existing, next);
+  else skeleton.accommodation.push(next);
+
+  if (nights > 0 && previousPerNight > 0) {
+    const delta = (verified.costPerNightEur - previousPerNight) * nights;
+    skeleton.budget_feasibility.min_realistic_total_eur = Math.max(
+      0,
+      Math.round(skeleton.budget_feasibility.min_realistic_total_eur + delta)
+    );
+  }
+}

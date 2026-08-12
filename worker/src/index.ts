@@ -24,6 +24,7 @@ import {
   getDayInstructions,
   getSkeletonSystemPrompt,
   findDuplicateVenueItems,
+  applyVerifiedAccommodation,
   isUsableSkeleton,
   stripVenueIdentity,
   type SkeletonDay,
@@ -32,7 +33,7 @@ import {
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { checkVenues } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
-import { attachFlightPrices } from "./engine/flightPricing";
+import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type JobTimings, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts, writeCachedLodgingFact } from "./lodgingCache";
@@ -641,13 +642,30 @@ async function generateItineraryTwoPhase(
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void,
-  onPhaseTimings?: (t: { skeletonMs: number; daysMs: number; dayCount: number }) => void
+  onPhaseTimings?: (t: { skeletonMs: number; daysMs: number; dayCount: number }) => void,
+  // Lodging lookups already in flight, started at t=0 alongside this call
+  // rather than before it. Awaited between the two phases: phase 1 doesn't
+  // need them (it can price accommodation from general knowledge and be
+  // corrected), phase 2 does (it writes the actual accommodation items), so
+  // this is exactly where a whole serial stage can be folded into one that
+  // was already running.
+  pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>
 ): Promise<Itinerary> {
   const startedAt = Date.now();
   const skeleton = await withOneRetryOf(() =>
     generateSkeleton(client, brief, cachedLodgingFacts, onUsage)
   );
   const skeletonMs = Date.now() - startedAt;
+
+  for (const { city, result } of (await pendingLodging) ?? []) {
+    if (!result) continue;
+    applyVerifiedAccommodation(skeleton, city, {
+      costPerNightEur: result.costEstimateEur,
+      name: result.name,
+      area: result.area,
+      sourceUrls: [result.sourceUrl],
+    });
+  }
 
   const daysStartedAt = Date.now();
   const days = await runWithLimit(skeleton.days, MAX_PARALLEL_DAYS, (day) =>
@@ -695,7 +713,8 @@ async function generateItinerary(
   cachedLodgingFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void,
   forceSkipSearch = false,
-  timings?: JobTimings
+  timings?: JobTimings,
+  pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>
 ): Promise<Itinerary> {
   if (TWO_PHASE_ENABLED) {
     try {
@@ -705,7 +724,7 @@ async function generateItinerary(
           timings.daysMs = t.daysMs;
           timings.dayCount = t.dayCount;
         }
-      });
+      }, pendingLodging);
     } catch (e) {
       if (timings) {
         timings.fellBackToSingleCall = true;
@@ -822,6 +841,10 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     }
   }
 
+  // Hoisted above the refinement branch so the tail can await it either
+  // way; a refinement re-runs flight pricing too.
+  const pendingFare = fetchFarePricing(job.brief).catch(() => null);
+
   try {
     let itinerary: Itinerary;
     if (job.refinement) {
@@ -829,40 +852,41 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
         generateRefinement(client, job.brief, job.refinement!, onUsage)
       );
     } else {
-      let cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
+      const cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
 
-      // Prefetch, in parallel, whatever isn't already cached — turns what
-      // used to be N sequential in-conversation searches into max(N
-      // parallel lookups), then lets the main call always take the fast
-      // no-search path (see prefetchLodging's comment). Skipped for
-      // testMode, which already forces skipSearch unconditionally and
-      // doesn't care about lodging accuracy for the owner's own tests.
+      // Anything already cached is free and phase 1 gets it immediately.
+      // Anything missing needs live searches, and those used to run BEFORE
+      // generation started — a serial stage on the critical path that phase
+      // 1 doesn't actually depend on. It now runs concurrently with phase 1
+      // and is folded in before phase 2, which is the point at which the
+      // itinerary genuinely needs it. Cache hits behave exactly as before.
       const missing = job.testMode ? [] : job.brief.destinations.filter((d) => !(d in cachedLodgingFacts));
-      if (missing.length > 0) {
-        const results = await timed("lodgingPrefetch", () =>
-          Promise.all(missing.map((city) => prefetchLodging(client, city, onUsage)))
-        );
-        await Promise.all(
-          results.map((result, i) =>
-            result
-              ? writeCachedLodgingFact(redis, missing[i], {
-                  costEstimateEur: result.costEstimateEur,
-                  sourceUrls: [result.sourceUrl],
-                  sourceAgreement: null,
-                  name: result.name ?? undefined,
-                  area: result.area ?? undefined,
-                })
-              : Promise.resolve()
-          )
-        );
-        // Re-read rather than hand-building the prompt text here — reuses
-        // loadCachedLodgingFacts' one formatting path (formatCachedFact)
-        // instead of a second, easily-drifting copy of it.
-        cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
-      }
+      const lodgingStartedAt = Date.now();
+      const pendingLodging =
+        missing.length > 0
+          ? Promise.all(
+              missing.map(async (city) => ({ city, result: await prefetchLodging(client, city, onUsage) }))
+            ).then(async (results) => {
+              timings.lodgingPrefetch = Date.now() - lodgingStartedAt;
+              await Promise.all(
+                results.map(({ city, result }) =>
+                  result
+                    ? writeCachedLodgingFact(redis, city, {
+                        costEstimateEur: result.costEstimateEur,
+                        sourceUrls: [result.sourceUrl],
+                        sourceAgreement: null,
+                        name: result.name ?? undefined,
+                        area: result.area ?? undefined,
+                      })
+                    : Promise.resolve()
+                )
+              );
+              return results;
+            })
+          : undefined;
 
       itinerary = await timed("generate", () =>
-        generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode, jobTimings)
+        generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode, jobTimings, pendingLodging)
       );
     }
     // Before Places runs, so a replaced venue is verified like any other —
@@ -876,15 +900,15 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     // independent (venues vs. flights), so they run concurrently rather
     // than adding their latency on top of each other.
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
-    [itinerary] = await timed("venuesAndFlights", () =>
-      Promise.all([
-        checkVenues(itinerary),
-        attachFlightPrices(itinerary, job.brief, (obs) => {
-          // Fire-and-forget: see recordFareObservation's own contract.
-          void recordFareObservation(redis, obs);
-        }),
-      ])
-    );
+    itinerary = await timed("venuesAndFlights", async () => {
+      // The Amadeus round-trips already happened concurrently with
+      // generation; applying them is pure bookkeeping, so only the Places
+      // verification actually costs anything here.
+      const [verified, fare] = await Promise.all([checkVenues(itinerary), pendingFare]);
+      return applyFlightPricing(verified, job.brief, fare, (obs) => {
+        void recordFareObservation(redis, obs);
+      });
+    });
     itinerary = deriveConfidenceTiers(itinerary);
     job.status = "done";
     job.result = itinerary;
