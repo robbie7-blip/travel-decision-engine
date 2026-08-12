@@ -807,7 +807,7 @@ async function recordSpend(redis: Redis, costUsd: number): Promise<void> {
   await maybeAlertBudgetThreshold(redis, Number(newTotal));
 }
 
-async function processJob(redis: Redis, client: Anthropic, id: string): Promise<void> {
+export async function processJob(redis: Redis, client: Anthropic, id: string): Promise<void> {
   const raw = await redis.get(jobKey(id));
   if (!raw) {
     console.error(`[worker] job ${id} not found (expired?), skipping`);
@@ -996,7 +996,11 @@ async function main() {
   );
 }
 
-main().catch((e) => {
-  console.error("[worker] fatal error:", e);
-  process.exit(1);
-});
+// Guarded so a test harness can import processJob without the consumer
+// loop starting and blocking on Redis (see pipeline.test.ts).
+if (process.env.WORKER_NO_AUTOSTART !== "1") {
+  main().catch((e) => {
+    console.error("[worker] fatal error:", e);
+    process.exit(1);
+  });
+}
