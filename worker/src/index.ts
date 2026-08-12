@@ -206,18 +206,17 @@ function estimateMaxSearchUses(brief: TripBriefInput): number {
 // "name": null is a first-class, expected outcome — plenty of searches
 // surface a credible rate without a single property worth committing to,
 // and lodgingCache falls back to the original generic wording for those.
-const LODGING_LOOKUP_SYSTEM = `Using exactly one web search, find a real, specific, well-reviewed mid-range hotel \
-in the given city that a couple would actually be happy staying in, plus its typical price per night.
+const LODGING_LOOKUP_SYSTEM = `Find the current typical price per night for a mid-range hotel in the given city, \
+using exactly ONE web search. Speed matters more here than completeness.
 
 Respond with ONLY this JSON, no other text:
-{"name": "<the hotel's real proper name>", "area": "<its neighborhood/district>", "cost_estimate_eur": <number, converted to EUR if the source quoted another currency>, "source_url": "<the URL you used>"}
+{"cost_estimate_eur": <number, converted to EUR if the source quoted another currency>, "source_url": "<the URL you used>", "name": "<a specific hotel's real name IF one appeared in that same search result, otherwise null>", "area": "<its neighborhood, or null>"}
 
-If the search surfaces a usable nightly rate but no specific property you'd confidently name, return the rate with \
-"name": null and "area": null. If it surfaces nothing usable at all, return exactly: \
-{"name": null, "area": null, "cost_estimate_eur": null, "source_url": null}.
+If the search returns nothing usable, return exactly: \
+{"cost_estimate_eur": null, "source_url": null, "name": null, "area": null}.
 
-Never invent a hotel name, a number, or a URL. A real rate with no name is far better than a name you are not sure \
-exists.`;
+Do NOT search a second time to find or confirm a property name — "name": null is a perfectly good answer and the \
+itinerary handles it. Never invent a hotel name, a number, or a URL.`;
 
 interface LodgingLookupResult {
   costEstimateEur: number;
@@ -237,7 +236,7 @@ async function prefetchLodging(
       max_tokens: 300,
       system: LODGING_LOOKUP_SYSTEM,
       output_config: { effort: EFFORT },
-      tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: 2 }],
+      tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: 1 }],
       messages: [{ role: "user", content: `City: ${city}` }],
     });
     onUsage?.(response.usage);

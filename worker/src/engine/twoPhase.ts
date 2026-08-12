@@ -34,9 +34,14 @@
 // once, in the skeleton, not duplicated per day.
 //
 // Cross-day consistency — the real risk when N calls can't see each other
-// — is handled in the skeleton rather than left to chance: it assigns each
-// day its own anchor venues, and every day call is shown the full
-// cross-trip anchor list so it can't reuse another day's venue.
+// — is handled three ways, deliberately NOT by making the skeleton name
+// every venue in the trip. That was tried, and it moved the bulk of the
+// naming work into the one serial call, which is the single worst place to
+// put work: it roughly tripled generation time. Instead the skeleton names
+// only each day's few load-bearing anchors and guarantees THOSE are unique,
+// each day call is shown the other days' anchors and forbidden to reuse
+// one, and dedupeVenuesAcrossDays below catches anything that still slips
+// through, deterministically and for free.
 
 import type {
   BudgetFeasibility,
@@ -109,27 +114,15 @@ total for this trip, including accommodation for every night (unless the brief s
 is already arranged, in which case exclude it entirely). Compare that to the stated budget. Never \
 quietly shrink or drop a real cost category to make the numbers appear to fit — if the honest \
 minimum breaks the budget, say so plainly, that IS the correct finding.
-- ANCHORS ARE THE COMPLETE LIST OF NAMED VENUES FOR THE WHOLE TRIP. The day-expansion stage is \
-forbidden from inventing any named business of its own — it can only use what you assign here. So \
-anything that needs a real name must appear in some day's anchors, or it will not exist in the \
-finished trip.
-- That means EVERY MEAL the day realistically needs is an anchor: breakfast, lunch AND dinner for \
-a full day, adjusted only for arrival/departure timing (no lunch anchor on a day the traveler \
-lands mid-afternoon, no dinner anchor on a day they fly out at 16:00). Do not quietly skip a \
-day's lunch — a full day with no midday meal is a hole in the itinerary, not a stylistic choice.
-- Anchors must be real, specific, named businesses: "Mocotó (dinner)", not "a churrascaria \
-(dinner)"; "Vodka Tattoo (afternoon)", not "a tattoo studio". Name your single best real candidate \
-even when you can't confirm current hours/prices. Genuinely generic activities with no business to \
-name (a walk through a neighborhood, a rest at the accommodation, a stroll along the river) need \
-no anchor — the expansion stage adds those itself.
-- NEVER REPEAT AN ANCHOR ANYWHERE IN THE TRIP: each named venue appears on exactly ONE day, in \
-exactly one slot. This is the only place duplicates can be prevented — the day-expansion calls \
-cannot see each other, so any venue you list twice ships to the traveler as a visible duplicate \
-(the same cafe for breakfast two mornings running, the same restaurant twice). Before you finish, \
-re-read your anchors across all days and confirm every name is unique.
-- So a normal full day is about 5 to 7 anchors (three meals plus two to four activities). Match \
-the activity count to the stated pace — relaxed means fewer activities, packed means more — but \
-the meals are not the thing you trim to hit a pace.
+- ANCHORS ARE THE FEW LOAD-BEARING VENUES OF THE DAY, not everything in it: the 2-4 places that decide what \
+the day IS (the sight it's built around, the one dinner worth planning). The expansion stage fills in the rest \
+itself — the other meals, the coffee stop, the walk between two of them.
+- Anchors must be real, specific, named businesses: "Mocotó (dinner)", not "a churrascaria (dinner)". Name your \
+single best real candidate even when you can't confirm current hours or prices. Genuinely generic activities with \
+no business to name (a walk through a neighborhood, a rest at the accommodation) need no anchor.
+- NEVER REPEAT AN ANCHOR ACROSS DAYS: each named venue appears on exactly ONE day.
+- Match the anchor count to the stated pace: relaxed means fewer, packed means more. Keep this list SHORT — it is \
+a plan, not the itinerary, and every extra entry here is time the traveler spends waiting.
 - Respect all hard constraints exactly (dietary, mobility, budget ceiling, hard_no). Treat \
 must-see/must-do items as near-mandatory — assign each to a specific day. If one is genuinely \
 infeasible, say so explicitly in trip_summary and in a key_decisions entry rather than silently \
@@ -240,17 +233,16 @@ budget_feasibility, no other days:
 
 Stage 1 already made the whole-trip decisions. Hold to them:
 - Build the day around the anchors you're given. Each one becomes an item, at a sensible time, in \
-a sensible order. Keep the venue names exactly as given.
-- DO NOT INVENT A NAMED BUSINESS. This is absolute. Every restaurant, cafe, bar, museum, studio, \
-shop or other named venue in your output must come from THIS day's anchor list — not from the \
-other days' list, and not from your own knowledge of the city. You are writing one day of a trip \
-in parallel with the other days and you cannot see what they chose, so a venue you add yourself is \
-how the traveler ends up with the same cafe for breakfast two mornings running. If a slot feels \
-like it wants a place that isn't in your anchors, leave it unnamed instead.
-- You may still add connective tissue the anchors don't cover, as long as it names no business: \
-walking between two of them, a stroll through a neighborhood or park, browsing an open-air market, \
-downtime back at the accommodation, getting to the airport. Write these as real items with a time \
-and a reason, just without a venue_name.
+a sensible order. Keep those venue names exactly as given.
+- Then fill in the rest of the day yourself: the meals the anchors don't already cover, a coffee or \
+snack stop, getting between places, downtime that fits the stated pace. Name real specific venues \
+for these exactly as the rules above require — this is your day to write.
+- EVERY MEAL THE DAY REALISTICALLY NEEDS MUST BE THERE: breakfast, lunch AND dinner on a full day, \
+adjusted only for arrival/departure timing (no lunch if they land mid-afternoon, no dinner if they \
+fly out at 16:00). A full day with no midday meal is a hole in the itinerary, not a stylistic \
+choice — do not skip one to keep the day looking relaxed.
+- NEVER name a venue listed under "Anchors used on OTHER days" — those belong to another day and \
+would read to the traveler as the same place twice.
 - ACCOMMODATION: include exactly one item with type "lodging" if and only if you are told to \
 include it for this day, using the accommodation name, area and per-night cost you're given. Its \
 cost_estimate_eur is ONE night, never a multi-night total. Copy the given source_confidence and \
