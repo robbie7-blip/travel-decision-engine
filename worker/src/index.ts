@@ -23,7 +23,9 @@ import {
   buildSkeletonPrompt,
   getDayInstructions,
   getSkeletonSystemPrompt,
+  findDuplicateVenueItems,
   isUsableSkeleton,
+  stripVenueIdentity,
   type SkeletonDay,
   type TripSkeleton,
 } from "./engine/twoPhase";
@@ -47,7 +49,17 @@ import type { Itinerary, ItineraryDay, TripBriefInput } from "./types";
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 12000;
-const EFFORT = "low";
+// The single largest quality knob available, and it had been pinned to the
+// minimum since before any of the latency work — not because low effort was
+// judged good enough, but because it was the cheapest way to make
+// generation fast. That is the wrong trade for this product: the whole
+// pitch is that the reasoning is worth trusting, and effort is exactly the
+// setting that buys reasoning.
+//
+// "high" costs real time and real money per generation. That is the
+// intended trade. MODEL_EFFORT overrides it without a code change if the
+// balance ever needs revisiting — "low" restores the old behaviour exactly.
+const EFFORT = (process.env.MODEL_EFFORT ?? "high") as "low" | "medium" | "high" | "xhigh" | "max";
 
 // Full search is the entire point of moving generation into a worker with
 // no execution-time limit — but per-item restaurant/activity searches were
@@ -206,17 +218,24 @@ function estimateMaxSearchUses(brief: TripBriefInput): number {
 // "name": null is a first-class, expected outcome — plenty of searches
 // surface a credible rate without a single property worth committing to,
 // and lodgingCache falls back to the original generic wording for those.
-const LODGING_LOOKUP_SYSTEM = `Find the current typical price per night for a mid-range hotel in the given city, \
-using exactly ONE web search. Speed matters more here than completeness.
+const LODGING_RATE_SYSTEM = `Find the current typical price per night for a mid-range hotel in the given city, \
+using web search.
 
 Respond with ONLY this JSON, no other text:
-{"cost_estimate_eur": <number, converted to EUR if the source quoted another currency>, "source_url": "<the URL you used>", "name": "<a specific hotel's real name IF one appeared in that same search result, otherwise null>", "area": "<its neighborhood, or null>"}
+{"cost_estimate_eur": <number, converted to EUR if the source quoted another currency>, "source_url": "<the URL you used>"}
 
-If the search returns nothing usable, return exactly: \
-{"cost_estimate_eur": null, "source_url": null, "name": null, "area": null}.
+If nothing usable is found, return exactly: {"cost_estimate_eur": null, "source_url": null}. Never invent a number \
+or a URL.`;
 
-Do NOT search a second time to find or confirm a property name — "name": null is a perfectly good answer and the \
-itinerary handles it. Never invent a hotel name, a number, or a URL.`;
+const LODGING_PROPERTY_SYSTEM = `Find a real, specific, well-reviewed mid-range hotel in the given city that a \
+traveler would actually be happy staying in. Take the time to pick a good one — somewhere with a solid reputation \
+and a sensible central-ish location, not merely the first result.
+
+Respond with ONLY this JSON, no other text:
+{"name": "<the hotel's real proper name>", "area": "<its neighborhood or district>"}
+
+If you cannot find a specific property you would confidently name, return exactly: {"name": null, "area": null}. \
+Never invent a hotel that might not exist — a generic accommodation line is far better than a fabricated name.`;
 
 interface LodgingLookupResult {
   costEstimateEur: number;
@@ -225,45 +244,59 @@ interface LodgingLookupResult {
   area: string | null;
 }
 
+/** Rate and property are two genuinely different questions — "what does a
+ * night cost here" and "which specific hotel is worth naming" — and an
+ * earlier version tried to answer both from a single search to save a
+ * round-trip. That cost quality: the search that finds a good price article
+ * is rarely the one that surfaces a property worth committing to, so the
+ * name came back null far more often than it should have and accommodation
+ * silently degraded to "a mid-range hotel", which is the single least
+ * verifiable line in the itinerary and usually its biggest number.
+ *
+ * They're independent, so they run CONCURRENTLY instead. Two dedicated
+ * searches, each free to do its own job properly, at the wall-clock cost of
+ * one — the version that collapsed them was trading away real quality for
+ * latency it didn't actually need to save. */
 async function prefetchLodging(
   client: Anthropic,
   city: string,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<LodgingLookupResult | null> {
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 300,
-      system: LODGING_LOOKUP_SYSTEM,
-      output_config: { effort: EFFORT },
-      tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: 1 }],
-      messages: [{ role: "user", content: `City: ${city}` }],
-    });
-    onUsage?.(response.usage);
-
-    const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-    const text = textBlocks[textBlocks.length - 1]?.text ?? "";
-    const parsed = JSON.parse(extractJson(text)) as {
-      cost_estimate_eur: number | null;
-      source_url: string | null;
-      name?: string | null;
-      area?: string | null;
-    };
-    if (parsed.cost_estimate_eur == null || !parsed.source_url) return null;
-    return {
-      costEstimateEur: parsed.cost_estimate_eur,
-      sourceUrl: parsed.source_url,
-      name: parsed.name?.trim() || null,
-      area: parsed.area?.trim() || null,
-    };
-  } catch (e) {
-    // Same fallback as an inline search that finds nothing: the main call
-    // still runs fine without this destination cached, it just falls back
-    // to an inferred lodging estimate for it — never let a lookup failure
-    // fail the whole generation.
-    console.error(`[worker] lodging prefetch failed for ${city}:`, e);
-    return null;
+  async function ask<T>(system: string, maxUses: number): Promise<T | null> {
+    try {
+      const response = await client.messages.create({
+        model: MODEL,
+        max_tokens: 400,
+        system,
+        output_config: { effort: EFFORT },
+        tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: maxUses }],
+        messages: [{ role: "user", content: `City: ${city}` }],
+      });
+      onUsage?.(response.usage);
+      const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
+      const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+      return JSON.parse(extractJson(text)) as T;
+    } catch (e) {
+      // Either half failing degrades the result rather than the run: no rate
+      // means no cached lodging fact for this city, no property means a
+      // generic accommodation line. Never fails the generation.
+      console.error(`[worker] lodging lookup failed for ${city}:`, e);
+      return null;
+    }
   }
+
+  const [rate, property] = await Promise.all([
+    ask<{ cost_estimate_eur: number | null; source_url: string | null }>(LODGING_RATE_SYSTEM, 2),
+    ask<{ name: string | null; area: string | null }>(LODGING_PROPERTY_SYSTEM, 2),
+  ]);
+
+  if (!rate || rate.cost_estimate_eur == null || !rate.source_url) return null;
+  return {
+    costEstimateEur: rate.cost_estimate_eur,
+    sourceUrl: rate.source_url,
+    name: property?.name?.trim() || null,
+    area: property?.area?.trim() || null,
+  };
 }
 
 async function callModel(
@@ -453,6 +486,100 @@ async function generateDay(
   parsed.date = day.date;
   parsed.feasibility_flag = parsed.feasibility_flag ?? null;
   return parsed;
+}
+
+const VENUE_REPAIR_SYSTEM = `You are fixing ONE line of a travel itinerary. It currently names a venue that is \
+already used elsewhere in the same trip, so the traveler would see the same place twice. Replace it with a \
+DIFFERENT real, specific, named venue that fits the same slot just as well.
+
+The replacement must be a real business you actually believe exists in that city, appropriate to the slot (a \
+breakfast spot for breakfast, not a dinner restaurant), and must not be any of the venues already used.
+
+Respond with ONLY this JSON, no other text:
+{"title": "<the item's new title, naming the new venue, in the same language as the original title>", "venue_name": "<the new venue's exact proper name>", "reasoning": "<one short sentence, <=15 words, why this place>"}
+
+If you genuinely cannot name a different real venue for this slot, return exactly: {"title": null, "venue_name": null, "reasoning": null}.`;
+
+/** Replaces duplicate venues with real alternatives rather than stripping
+ * their names.
+ *
+ * Parallel day calls can't see each other, so two days can independently
+ * reach for the same obvious central cafe. The cheap response is to un-name
+ * the later one, but that swaps a visible flaw for a worse one: the item
+ * keeps its slot and loses the specific, checkable venue that is the entire
+ * reason to use this product over a generic chatbot. So each duplicate gets
+ * a small, targeted call that knows every name already in the trip and
+ * picks a genuinely different one.
+ *
+ * Only runs when a duplicate actually exists, and all repairs run
+ * concurrently. Un-naming survives strictly as the last resort, for when
+ * even the replacement call can't produce something real. */
+async function repairDuplicateVenues(
+  client: Anthropic,
+  brief: TripBriefInput,
+  itinerary: Itinerary,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<void> {
+  const dupes = findDuplicateVenueItems(itinerary.days ?? []);
+  if (dupes.length === 0) return;
+  console.log(`[worker] repairing ${dupes.length} duplicate venue(s)`);
+
+  // Claimed as replacements land, so two concurrent repairs can't both pick
+  // the same "different" venue.
+  const claimed = new Set(dupes[0].takenNames.map((n) => n.toLowerCase()));
+
+  await Promise.all(
+    dupes.map(async ({ item, day }) => {
+      try {
+        const response = await client.messages.create({
+          model: MODEL,
+          max_tokens: 500,
+          system: VENUE_REPAIR_SYSTEM,
+          output_config: { effort: EFFORT },
+          messages: [
+            {
+              role: "user",
+              content:
+                `Where: ${item.location || brief.destinations[0]}\n` +
+                `Date: ${day.date}\n` +
+                `Slot: ${item.time} (${item.type})\n` +
+                `Current title (duplicate): ${item.title}\n` +
+                `Venue to replace: ${item.venue_name}\n` +
+                `Language: write the title in the same language as the current title.\n` +
+                `Already used in this trip, do NOT reuse any of these: ${[...claimed].join("; ")}`,
+            },
+          ],
+        });
+        onUsage?.(response.usage);
+        const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
+        const parsed = JSON.parse(extractJson(textBlocks[textBlocks.length - 1]?.text ?? "")) as {
+          title: string | null;
+          venue_name: string | null;
+          reasoning: string | null;
+        };
+        if (!parsed.venue_name || !parsed.title || claimed.has(parsed.venue_name.toLowerCase())) {
+          stripVenueIdentity(item);
+          return;
+        }
+        claimed.add(parsed.venue_name.toLowerCase());
+        item.title = parsed.title;
+        item.venue_name = parsed.venue_name;
+        if (parsed.reasoning) item.reasoning = parsed.reasoning;
+        // A replaced venue has not been through Places yet, and its old
+        // verification belonged to a different business entirely.
+        item.google_rating = undefined;
+        item.google_rating_count = undefined;
+        item.google_price_level = undefined;
+        item.google_business_status = undefined;
+        item.google_maps_url = undefined;
+        item.source_confidence = "inferred";
+        item.source_urls = [];
+      } catch (e) {
+        console.error(`[worker] venue repair failed for "${item.venue_name}":`, e);
+        stripVenueIdentity(item);
+      }
+    })
+  );
 }
 
 /** Phase 1: every decision that needs a whole-trip view. */
@@ -738,6 +865,9 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
         generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode, jobTimings)
       );
     }
+    // Before Places runs, so a replaced venue is verified like any other —
+    // repairing after verification would ship an unchecked business.
+    await timed("venueRepair", () => repairDuplicateVenues(client, job.brief, itinerary, onUsage));
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
     // attachFlightSearchLinks must run before attachFlightPrices — the

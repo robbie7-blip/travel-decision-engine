@@ -380,6 +380,7 @@ first before tuning anything here.
 
 | Env var | Default | Meaning |
 |---|---|---|
+| `MODEL_EFFORT` | `high` | Reasoning effort on every model call. The single largest quality knob; was pinned to `low` purely to make generation fast. `low` restores that. |
 | `TWO_PHASE_GENERATION` | on | Set `0` to force the original single-call path |
 | `DAY_MODEL` | same as `MODEL` | Model for phase-2 day calls only; a faster one materially shortens phase 2 at some cost to prose polish. Phase 1 (all real decisions) always stays on `MODEL` |
 | `MAX_PARALLEL_DAYS` | `6` | Cap on concurrent day calls, so a long trip plus comparison mode can't trip provider rate limits |

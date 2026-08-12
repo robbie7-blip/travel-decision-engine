@@ -45,6 +45,7 @@
 
 import type {
   BudgetFeasibility,
+  ItineraryItem,
   Itinerary,
   ItineraryDay,
   KeyDecision,
@@ -336,56 +337,58 @@ function normalizeVenue(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-/** Last line of defence against the one failure mode parallel day calls
- * can't see for themselves: the same named venue landing on two days.
- * The prompts prevent it two ways over (the skeleton must not repeat an
- * anchor; day calls must not invent names at all) — this catches the
- * residue anyway, because "the same cafe two mornings running" is exactly
- * the kind of thing a traveler notices immediately and reads as the app
- * being careless.
+/** Finds venue names used more than once across the trip. The first use of
+ * a name is legitimate and kept; every later one is a genuine duplicate the
+ * traveler would notice — the same cafe two mornings running reads as the
+ * app being careless.
  *
- * Later occurrences are stripped of their venue identity rather than
- * dropped outright: deleting the item would leave a hole in the day (no
- * breakfast at all), whereas an unnamed "breakfast near the hotel" is a
- * weaker but still honest item, and downstream venue verification simply
- * skips it. Days are processed in order so the FIRST day to use a venue
- * keeps it. */
-function dedupeVenuesAcrossDays(days: ItineraryDay[]): number {
+ * Returns the offending items rather than mutating them, because the right
+ * response is to REPLACE the venue (see repairDuplicateVenues in index.ts),
+ * not to strip its name. An earlier version simply un-named duplicates,
+ * which traded one visible flaw for another: the day kept its breakfast but
+ * lost the specific, checkable venue that makes this product worth using. */
+export function findDuplicateVenueItems(
+  days: ItineraryDay[]
+): { item: ItineraryItem; day: ItineraryDay; takenNames: string[] }[] {
   const seen = new Set<string>();
-  let stripped = 0;
-  for (const day of days) {
+  const allNames: string[] = [];
+  const dupes: { item: ItineraryItem; day: ItineraryDay; takenNames: string[] }[] = [];
+
+  for (const day of [...days].sort((a, b) => a.day - b.day)) {
     for (const item of day.items) {
       const name = item.venue_name?.trim();
       if (!name) continue;
       const key = normalizeVenue(name);
       if (!key) continue;
-      if (seen.has(key)) {
-        item.venue_name = null;
-        stripped++;
-      } else {
+      if (seen.has(key)) dupes.push({ item, day, takenNames: [] });
+      else {
         seen.add(key);
+        allNames.push(name);
       }
     }
   }
-  return stripped;
+  // Every duplicate needs the full taken list, including names claimed by
+  // later days, so a replacement can't collide with something else.
+  for (const d of dupes) d.takenNames = allNames;
+  return dupes;
+}
+
+/** Fallback used only when a replacement couldn't be found — strips the
+ * venue identity so nothing downstream treats it as verified, keeping the
+ * item so the day doesn't lose a meal outright. */
+export function stripVenueIdentity(item: ItineraryItem): void {
+  item.venue_name = null;
 }
 
 /** Stitches phase 1's trip-level fields together with phase 2's independently
  * generated days. Days are sorted by number rather than trusting the order
  * the parallel calls happened to resolve in. */
 export function assembleItinerary(skeleton: TripSkeleton, days: ItineraryDay[]): Itinerary {
-  const ordered = [...days].sort((a, b) => a.day - b.day);
-  const stripped = dedupeVenuesAcrossDays(ordered);
-  if (stripped > 0) {
-    console.warn(
-      `[twoPhase] ${stripped} duplicate venue name(s) across days — kept the first use, unnamed the rest`
-    );
-  }
   return {
     budget_feasibility: skeleton.budget_feasibility,
     trip_summary: skeleton.trip_summary,
     key_decisions: skeleton.key_decisions ?? [],
-    days: ordered,
+    days: [...days].sort((a, b) => a.day - b.day),
     things_to_skip: skeleton.things_to_skip ?? [],
   };
 }
