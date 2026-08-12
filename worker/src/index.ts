@@ -376,6 +376,9 @@ const DAY_MODEL = process.env.DAY_MODEL ?? MODEL;
 // provider rate limits and end up slower than the serial path you replaced.
 const MAX_PARALLEL_DAYS = Number(process.env.MAX_PARALLEL_DAYS ?? 6);
 
+const SKELETON_MAX_TOKENS = 12000;
+const DAY_MAX_TOKENS = 6000;
+
 async function runWithLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
@@ -403,7 +406,10 @@ async function generateDay(
 ): Promise<ItineraryDay> {
   const response = await client.messages.create({
     model: DAY_MODEL,
-    max_tokens: 4000,
+    // Also raised: a day now carries all three meals plus activities plus
+    // accommodation plus any transport leg, not the sparser day the original
+    // 4000 was sized for.
+    max_tokens: DAY_MAX_TOKENS,
     // Same two-block shape (and so the same shared, cached prefix) as the
     // single-call path: SYSTEM_PROMPT is byte-identical across every day
     // call of every job, so after the first call in a job the whole prefix
@@ -419,6 +425,15 @@ async function generateDay(
 
   if (response.stop_reason === "refusal") {
     throw new ModelOutputError(`The model declined to generate day ${day.day}.`);
+  }
+  // Truncation is worth naming explicitly rather than letting it surface as
+  // "bad JSON" further down: the symptom is identical, but the fix is a
+  // token cap rather than a prompt, and mistaking one for the other is how
+  // a silent, expensive retry-then-fall-back loop hides in plain sight.
+  if (response.stop_reason === "max_tokens") {
+    throw new ModelOutputError(
+      `Day ${day.day} hit the ${DAY_MAX_TOKENS}-token cap and was cut off mid-JSON — raise DAY_MAX_TOKENS.`
+    );
   }
 
   const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
@@ -450,7 +465,15 @@ async function generateSkeleton(
 ): Promise<TripSkeleton> {
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 4000,
+    // Was 4000, which was set when the skeleton only listed a few "highlight"
+    // anchors per day. It now has to name EVERY meal and activity across the
+    // whole trip (the fix for duplicate venues across parallel day calls), so
+    // a long multi-city trip can produce several times the output it used to.
+    // Hitting the cap here is disproportionately expensive: truncated JSON
+    // fails to parse, which burns a full skeleton retry and then falls back
+    // to regenerating the entire itinerary in one call — the slow path this
+    // whole design exists to avoid. Headroom is far cheaper than that.
+    max_tokens: SKELETON_MAX_TOKENS,
     system: [
       { type: "text", text: getSkeletonSystemPrompt(), cache_control: { type: "ephemeral" } },
     ],
@@ -461,6 +484,13 @@ async function generateSkeleton(
 
   if (response.stop_reason === "refusal") {
     throw new ModelOutputError("The model declined to plan this trip.");
+  }
+  // See the day-call equivalent above. This one matters more: a truncated
+  // skeleton costs a retry AND then a full single-call regeneration.
+  if (response.stop_reason === "max_tokens") {
+    throw new ModelOutputError(
+      `The trip plan hit the ${SKELETON_MAX_TOKENS}-token cap and was cut off mid-JSON — raise SKELETON_MAX_TOKENS.`
+    );
   }
 
   const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");

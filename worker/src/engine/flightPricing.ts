@@ -286,7 +286,18 @@ export async function attachFlightPrices(
 
   const departureDate = brief.arrival_date?.trim() || brief.start_date;
   const returnDate = brief.end_date;
-  const fare = await searchCheapestFare(token, originCode, destinationCode, departureDate, returnDate, brief.party_size);
+
+  // Both calls need only the token and the two IATA codes, so they run
+  // together rather than back to back. Sequentially these stacked their
+  // timeouts (8s + 6s) onto a provider whose own test environment this
+  // module already documents as slow — pure added latency for no ordering
+  // reason, since neither result feeds the other.
+  const startedAt = Date.now();
+  const [fare, metrics] = await Promise.all([
+    searchCheapestFare(token, originCode, destinationCode, departureDate, returnDate, brief.party_size),
+    fetchPriceMetrics(token, originCode, destinationCode, departureDate, false),
+  ]);
+  console.log(`[flightPricing] amadeus lookups took ${Date.now() - startedAt}ms`);
   if (fare == null) return itinerary;
 
   arrivalItem.cost_estimate_eur = Math.round(fare);
@@ -322,7 +333,6 @@ export async function attachFlightPrices(
   // wildly expensive on every group trip.
   const adults = Math.max(1, Math.min(brief.party_size, 9));
   const perPassenger = fare / adults;
-  const metrics = await fetchPriceMetrics(token, originCode, destinationCode, departureDate, false);
   if (metrics) {
     arrivalItem.fare_price_context = {
       level: perPassenger <= metrics.firstEur ? "low" : perPassenger <= metrics.thirdEur ? "typical" : "high",
