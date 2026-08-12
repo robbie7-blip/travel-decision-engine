@@ -475,6 +475,33 @@ export function ItineraryResult({
                     <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
                       {item.location} · {item.time}
                     </div>
+                    {/* Where this live-checked fare sits against the route's
+                        own price history. Stated as a fact about a range
+                        that actually happened, never as a prediction — the
+                        band is always shown alongside the verdict so the
+                        claim is checkable rather than asserted. */}
+                    {item.fare_price_context && (
+                      <div
+                        className="font-mono"
+                        style={{
+                          fontSize: 11,
+                          marginTop: 4,
+                          color:
+                            item.fare_price_context.level === "low"
+                              ? "var(--grounded)"
+                              : item.fare_price_context.level === "high"
+                                ? "var(--unverified)"
+                                : "var(--ink-dim)",
+                        }}
+                      >
+                        {t.result.farePrice[item.fare_price_context.level]}{" "}
+                        <span style={{ color: "var(--ink-dim)" }}>
+                          {t.result.farePriceRange
+                            .replace("{low}", formatMoney(item.fare_price_context.typicalLowEur, currency, rates))
+                            .replace("{high}", formatMoney(item.fare_price_context.typicalHighEur, currency, rates))}
+                        </span>
+                      </div>
+                    )}
                     {item.google_business_status && item.google_business_status !== "operational" ? (
                       <div className="font-mono" style={{ fontSize: 11, color: "var(--infeasible)", marginTop: 4 }}>
                         ⚠{" "}

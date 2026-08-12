@@ -155,6 +155,11 @@ export interface Dictionary {
     // (see ItineraryResult.tsx) — the model's own guessed fare has turned
     // out badly wrong often enough that it's no longer shown as a number.
     checkFlightPrices: string;
+    // Where a live-checked fare sits against that route's own historical
+    // price range (see FarePriceContext) — a statement about observed
+    // prices, deliberately never a prediction about future ones.
+    farePrice: Record<"low" | "typical" | "high", string>;
+    farePriceRange: string; // "{low}" / "{high}" placeholders
     // "{percent}% " is prepended by the component; this is just the word
     // after the number (e.g. "92% verified").
     trustScoreLabel: string;
@@ -560,6 +565,12 @@ const en: Dictionary = {
     closedPermanently: "Permanently closed (Google)",
     viewOnGoogleMaps: "View on Google Maps",
     checkFlightPrices: "Check flight prices",
+    farePrice: {
+      low: "Good price for this route",
+      typical: "Normal price for this route",
+      high: "Pricier than usual for this route",
+    },
+    farePriceRange: "· usually {low}-{high}",
     trustScoreLabel: "verified",
     trustScoreDetail: "{grounded} of {total} line items are backed by a live search or a checked fact - the rest are honest, hedged guesses, not fabricated numbers.",
     downloadCalendar: "Add to calendar (.ics)",
@@ -971,6 +982,12 @@ const bg: Dictionary = {
     closedPermanently: "Трайно затворено (Google)",
     viewOnGoogleMaps: "Виж в Google Maps",
     checkFlightPrices: "Провери цени на полети",
+    farePrice: {
+      low: "Добра цена за този маршрут",
+      typical: "Нормална цена за този маршрут",
+      high: "По-скъпо от обичайното за този маршрут",
+    },
+    farePriceRange: "· обикновено {low}-{high}",
     trustScoreLabel: "проверено",
     trustScoreDetail: "{grounded} от {total} елемента са базирани на търсене на живо или проверен факт - останалите са честни, хеджирани предположения, не измислени цифри.",
     downloadCalendar: "Добави в календар (.ics)",

@@ -31,6 +31,7 @@ import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from ".
 import { checkVenues } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { attachFlightPrices } from "./engine/flightPricing";
+import { recordFareObservation } from "./fareHistory";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts, writeCachedLodgingFact } from "./lodgingCache";
 import {
@@ -702,7 +703,13 @@ async function processJob(redis: Redis, client: Anthropic, id: string): Promise<
     // than adding their latency on top of each other.
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
     [itinerary] = await timed("venuesAndFlights", () =>
-      Promise.all([checkVenues(itinerary), attachFlightPrices(itinerary, job.brief)])
+      Promise.all([
+        checkVenues(itinerary),
+        attachFlightPrices(itinerary, job.brief, (obs) => {
+          // Fire-and-forget: see recordFareObservation's own contract.
+          void recordFareObservation(redis, obs);
+        }),
+      ])
     );
     itinerary = deriveConfidenceTiers(itinerary);
     job.status = "done";

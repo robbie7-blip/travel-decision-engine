@@ -310,6 +310,40 @@ it's reached, resetting at UTC midnight.
 | `OUTPUT_COST_PER_MTOK_USD` | `10.00` | Override if Sonnet 5 output pricing changes |
 | `BUDGET_ALERT_WEBHOOK_URL` | unset | If set, POSTed `{text}` once/day when spend crosses 80% (worker only) |
 
+## Flight fare context (and building a price history)
+
+Flight items carry a real, live-checked Amadeus fare rather than a model
+guess (`worker/src/engine/flightPricing.ts` — the header there records why:
+a confident "EUR150, likely with one connection" guess for a route that was
+really a EUR43 nonstop). On top of that number, where the provider has
+history for the route, the item also shows **where that fare sits against
+the route's own past prices** — "Good price for this route, usually
+EUR80-150".
+
+This is deliberately *not* a prediction. It reports where today's number
+falls in a range that actually happened and says nothing about where it
+goes next. Real "buy or wait" needs historical prices for the specific
+route, which no model can supply — asking one produces exactly the failure
+mode above, in the single place where being confidently wrong costs the
+traveller money.
+
+Two things follow from that:
+
+- Coverage is partial. Thin regional routes frequently have no history, and
+  the correct behaviour is to show nothing rather than assume "typical".
+  Every failure path no-ops.
+- Fares are compared **per passenger**, since the provider's quartiles are
+  per traveller. Comparing a group's total against them would read as
+  wildly expensive on every family trip.
+
+Separately, every real fare the worker looks up is recorded to Redis
+(`worker/src/fareHistory.ts`), keyed by route and departure date, with the
+days-before-departure axis any future prediction would need. Nothing reads
+it yet — that's the point. The data has to exist before a feature can stand
+on it, and starting to collect late is the one mistake that can't be undone
+later. It's cache-grade storage on a ~400-day TTL, not a warehouse; if it
+ever becomes load-bearing it wants exporting somewhere durable first.
+
 ## Generation latency
 
 Generation wall-time is dominated by **output tokens**, which are produced

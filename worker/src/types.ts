@@ -141,6 +141,25 @@ export interface ItineraryItem {
   // (Google Flights runs its own fresh search when opened), but a real,
   // always-present place to check today's actual price.
   flight_search_url?: string;
+  // Set by attachFlightPrices when the provider has price history for this
+  // route — see FarePriceContext.
+  fare_price_context?: FarePriceContext;
+}
+
+/** Where a live-checked fare sits against that route's own historical price
+ * distribution — the honest version of "should I buy now?". Deliberately
+ * NOT a prediction: it reports where today's number falls in a range that
+ * actually happened, and says nothing about where it goes next. Absent
+ * whenever the provider has no history for the route (thin routes often
+ * have none), which is the correct outcome rather than a guess. */
+export type FarePriceLevel = "low" | "typical" | "high";
+
+export interface FarePriceContext {
+  level: FarePriceLevel;
+  /** First and third quartile for this route/date, EUR — the band a fare
+   * has to fall outside of to count as notably cheap or notably dear. */
+  typicalLowEur: number;
+  typicalHighEur: number;
 }
 
 export type GooglePriceLevel = "free" | "inexpensive" | "moderate" | "expensive" | "very_expensive";

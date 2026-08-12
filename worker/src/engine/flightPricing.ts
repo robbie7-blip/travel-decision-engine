@@ -170,6 +170,78 @@ async function searchCheapestFare(
   }
 }
 
+const METRICS_TIMEOUT_MS = 6_000;
+
+/** Amadeus's itinerary price metrics: the historical price distribution for
+ * a route and departure date, as quartile points. This is what makes an
+ * honest "is this a good price?" possible without predicting anything — we
+ * report where today's real fare falls in a range that actually happened.
+ *
+ * Route coverage is genuinely partial (thin regional routes frequently have
+ * no history at all), so returning null is a normal, expected outcome and
+ * every caller must treat it as "say nothing" rather than "assume typical".
+ * Saying nothing is the correct behaviour for this product: an invented
+ * price judgement is exactly the kind of confident-but-unfounded claim the
+ * whole confidence-tier system exists to prevent. */
+async function fetchPriceMetrics(
+  token: string,
+  originCode: string,
+  destinationCode: string,
+  departureDate: string,
+  oneWay: boolean
+): Promise<{ firstEur: number; thirdEur: number } | null> {
+  try {
+    const params = new URLSearchParams({
+      originIataCode: originCode,
+      destinationIataCode: destinationCode,
+      departureDate,
+      currencyCode: "EUR",
+      oneWay: String(oneWay),
+    });
+    const res = await fetch(`${AMADEUS_BASE_URL}/v1/analytics/itinerary-price-metrics?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(METRICS_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      // 404/400 here overwhelmingly means "no history for this route",
+      // which is ordinary — log at a lower key than a real failure.
+      console.warn(`[flightPricing] no price history for ${originCode}-${destinationCode} (HTTP ${res.status})`);
+      return null;
+    }
+    const data = (await res.json()) as {
+      data?: { priceMetrics?: { amount?: string; quartileRanking?: string }[] }[];
+    };
+    const metrics = data.data?.[0]?.priceMetrics ?? [];
+    const at = (ranking: string): number | null => {
+      const raw = metrics.find((m) => m.quartileRanking === ranking)?.amount;
+      const n = Number(raw);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    const firstEur = at("FIRST");
+    const thirdEur = at("THIRD");
+    if (firstEur == null || thirdEur == null || thirdEur < firstEur) return null;
+    return { firstEur, thirdEur };
+  } catch (e) {
+    logFailure("price metrics", e);
+    return null;
+  }
+}
+
+/** One observed fare, handed to the caller so it can be recorded. Kept as a
+ * callback rather than writing to Redis in here, so this module stays free
+ * of storage concerns exactly like the rest of engine/. */
+export interface FareObservation {
+  originCode: string;
+  destinationCode: string;
+  departureDate: string;
+  fareEur: number;
+  observedAt: number;
+  /** Days between observing the fare and flying — the axis any future
+   * prediction actually needs, and impossible to reconstruct later from a
+   * bare timestamp once the departure date has passed. */
+  daysBeforeDeparture: number;
+}
+
 // Matches the same title convention flightLinks.ts relies on (the system
 // prompt has the model consistently title these "Flight X to Y").
 function isFlightItem(item: ItineraryItem): boolean {
@@ -185,7 +257,11 @@ function isFlightItem(item: ItineraryItem): boolean {
  * special-casing needed downstream, and the frontend shows the real number
  * instead of the link-only fallback exactly when this succeeds (see
  * ItineraryResult.tsx's `source_confidence === "grounded"` check). */
-export async function attachFlightPrices(itinerary: Itinerary, brief: TripBriefInput): Promise<Itinerary> {
+export async function attachFlightPrices(
+  itinerary: Itinerary,
+  brief: TripBriefInput,
+  onFareObserved?: (obs: FareObservation) => void
+): Promise<Itinerary> {
   const apiKey = process.env.AMADEUS_API_KEY;
   const apiSecret = process.env.AMADEUS_API_SECRET;
   if (!apiKey || !apiSecret) return itinerary;
@@ -221,6 +297,39 @@ export async function attachFlightPrices(itinerary: Itinerary, brief: TripBriefI
     brief.party_size > 1
       ? `Checked live: this is today's real round-trip fare for the group, not a guess.`
       : `Checked live: this is today's real round-trip fare, not a guess.`;
+
+  // Every real fare we look up is worth keeping, whether or not the
+  // provider has history for this route today. This is the only place a
+  // genuine, timestamped market price passes through the system, so it's
+  // the one chance to accumulate a price history of our own — the thing
+  // any future "will this get cheaper?" would have to be built on, and
+  // something no amount of prompting can substitute for.
+  const msPerDay = 86_400_000;
+  const daysBeforeDeparture = Math.round(
+    (new Date(`${departureDate}T00:00:00Z`).getTime() - Date.now()) / msPerDay
+  );
+  onFareObserved?.({
+    originCode,
+    destinationCode,
+    departureDate,
+    fareEur: Math.round(fare),
+    observedAt: Date.now(),
+    daysBeforeDeparture,
+  });
+
+  // Per-passenger, because the quartiles the provider returns are for one
+  // traveller — comparing a family's total against them would read as
+  // wildly expensive on every group trip.
+  const adults = Math.max(1, Math.min(brief.party_size, 9));
+  const perPassenger = fare / adults;
+  const metrics = await fetchPriceMetrics(token, originCode, destinationCode, departureDate, false);
+  if (metrics) {
+    arrivalItem.fare_price_context = {
+      level: perPassenger <= metrics.firstEur ? "low" : perPassenger <= metrics.thirdEur ? "typical" : "high",
+      typicalLowEur: Math.round(metrics.firstEur * adults),
+      typicalHighEur: Math.round(metrics.thirdEur * adults),
+    };
+  }
 
   return itinerary;
 }
