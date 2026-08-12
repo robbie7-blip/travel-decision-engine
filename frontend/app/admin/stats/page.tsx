@@ -8,6 +8,7 @@ import { getRedis } from "@/lib/redis";
 import { loadAnalyticsSnapshot, loadFunnelSnapshot, type AnalyticsSnapshot, type FunnelSnapshot } from "@/lib/analytics";
 import { checkDailyBudget, type BudgetCheckResult } from "@/lib/spendCheck";
 import { ALERT_THRESHOLD_RATIO } from "@/lib/costBudget";
+import { MarkAdminUi } from "@/components/MarkAdminUi";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
 export const runtime = "nodejs";
@@ -33,6 +34,7 @@ export default async function StatsAdminPage() {
   if (!loaded) {
     return (
       <div className="font-mono" style={{ padding: "32px 24px", maxWidth: 900, margin: "0 auto", color: "var(--ink)" }}>
+      <MarkAdminUi />
         <h1 className="font-display" style={{ fontSize: 24, marginBottom: 8 }}>
           Stats
         </h1>
@@ -54,6 +56,7 @@ export default async function StatsAdminPage() {
 
   return (
     <div className="font-mono" style={{ padding: "32px 24px", maxWidth: 900, margin: "0 auto", color: "var(--ink)" }}>
+      <MarkAdminUi />
       <h1 className="font-display" style={{ fontSize: 24, marginBottom: 8 }}>
         Stats
       </h1>

@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { getRedis } from "@/lib/redis";
 import { FEEDBACK_LIST_KEY, type FeedbackEntry } from "@/lib/feedback";
+import { MarkAdminUi } from "@/components/MarkAdminUi";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
 export const runtime = "nodejs";
@@ -33,6 +34,7 @@ export default async function FeedbackAdminPage() {
       className="font-mono"
       style={{ padding: "32px 24px", maxWidth: 900, margin: "0 auto", color: "var(--ink)" }}
     >
+      <MarkAdminUi />
       <h1 className="font-display" style={{ fontSize: 24, marginBottom: 8 }}>
         Feedback
       </h1>
