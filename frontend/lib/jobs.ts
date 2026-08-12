@@ -29,12 +29,18 @@ export interface Job {
   createdAt: number;
   updatedAt: number;
   // Set by /api/generate when the request carried the owner's test-mode
-  // key (see lib/testMode.ts + app/admin/test-mode) — the worker forces
-  // skipSearch on regardless of lodging-cache state, since the web_search
-  // round-trip is the single biggest latency/cost source per generation
-  // (see generateItinerary in worker/src/index.ts). Not a cost-free
-  // generation (it's still a real, smaller Claude call) — just the
-  // cheapest and fastest real path, for the site owner's own testing.
+  // key (see lib/testMode.ts + app/admin/test-mode). Bypasses the
+  // GUARDRAILS — daily spend cap, rate limits, monthly quota — and nothing
+  // else.
+  //
+  // It used to also force the degraded no-search path, which conflated two
+  // unrelated things and got the important one backwards: the owner, the
+  // one person who needs to see exactly what a traveler sees, was the only
+  // one being served a weaker itinerary. A test that doesn't reproduce the
+  // real product can't answer questions about the real product — which is
+  // precisely what it kept being used for. Test-mode generations are now
+  // identical in output to a real one; they simply aren't blocked by limits
+  // meant for the public.
   testMode?: boolean;
   // Stage timings in ms, written by the worker on every job. Generation
   // latency has now been diagnosed three times by reasoning about which

@@ -536,10 +536,24 @@ subscription" in that case rather than showing a button that would just
 
 Visit `/admin/test-mode` (same `ADMIN_PASSWORD`-gated area as `/admin/feedback`)
 and paste `ADMIN_PASSWORD` in once. Every generation from that browser
-afterward skips the daily spend cap, all rate limits/quotas, AND the
-web_search step entirely — still a real (smaller, cheaper) Claude call, not
-a mocked $0 one, but the fastest and cheapest real path there is. Doesn't
-affect any other visitor.
+afterward skips the daily spend cap, all rate limits, and the monthly quota
+— the guardrails, and only those. Doesn't affect any other visitor.
+
+The output is deliberately **identical to a real traveler's**: same
+searches, same verification, same effort. It used to also force the
+degraded no-search path to make owner testing cheap, which got the
+important part backwards — the one person who needs to see exactly what
+ships was the only one seeing something weaker, and every "is this fast
+enough / good enough" question asked of it was being answered about a
+different product.
+
+It therefore costs real API money, because a real generation does. There is
+no way around that: the cost is Anthropic's per-token billing, not a
+guardrail this app chose to impose. What test mode removes is the limits;
+what it can't remove is the bill. For verifying pipeline *structure* without
+spending anything, use `npm run test:pipeline` in `worker/` instead — it
+runs the real pipeline against a stubbed model and asserts what actually
+overlaps.
 
 ## Troubleshooting
 

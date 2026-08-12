@@ -695,12 +695,12 @@ function generateItinerarySingleCall(
   // every destination already has a cached, recently-verified lodging price
   // (lodging is the only thing ever searched now), so a repeat/common-
   // destination generation pays zero search latency rather than relying on
-  // the model choosing not to search. forceSkipSearch (set for test-mode
-  // jobs — see the Job.testMode comment in jobs.ts) always takes this path
-  // regardless of cache state: the web_search round-trip is the single
-  // biggest latency/cost source per generation, so the owner's own test
-  // generations skip it unconditionally rather than depending on a cache
-  // hit that may not exist yet for whatever destination they're testing.
+  // the model choosing not to search.
+  //
+  // This used to be forced on for test-mode jobs as well, which made the
+  // owner's own generations quietly WEAKER than a real traveler's — the
+  // one person who needs to see the true output was the only one who
+  // couldn't. Test mode now bypasses the guardrails only (see jobs.ts).
   const skipSearch = forceSkipSearch || brief.destinations.every((d) => d in cachedLodgingFacts);
   return withOneRetry(() =>
     callModel(client, brief, buildPrompt(brief, cachedLodgingFacts), onUsage, skipSearch)
@@ -860,7 +860,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       // 1 doesn't actually depend on. It now runs concurrently with phase 1
       // and is folded in before phase 2, which is the point at which the
       // itinerary genuinely needs it. Cache hits behave exactly as before.
-      const missing = job.testMode ? [] : job.brief.destinations.filter((d) => !(d in cachedLodgingFacts));
+      const missing = job.brief.destinations.filter((d) => !(d in cachedLodgingFacts));
       const lodgingStartedAt = Date.now();
       const pendingLodging =
         missing.length > 0
@@ -886,7 +886,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
           : undefined;
 
       itinerary = await timed("generate", () =>
-        generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, job.testMode, jobTimings, pendingLodging)
+        generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, false, jobTimings, pendingLodging)
       );
     }
     // Before Places runs, so a replaced venue is verified like any other —
