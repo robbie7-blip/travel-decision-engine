@@ -56,7 +56,14 @@ export default function AdminIndexPage() {
 
   return (
     <div className="font-mono" style={{ padding: "32px 24px", maxWidth: 720, margin: "0 auto", color: "var(--ink)" }}>
-      <h1 className="font-display" style={{ fontSize: 24, marginBottom: 8 }}>
+      {/* This page is a dead end without it: it's reached directly by URL,
+          renders outside the normal site chrome, and the thing you most
+          often want next is to go and USE the site with the owner flag now
+          set (generate a trip, then read its timings panel). */}
+      <Link href="/" style={{ color: "var(--grounded)", fontSize: 12, textDecoration: "none" }}>
+        ← Back to decide
+      </Link>
+      <h1 className="font-display" style={{ fontSize: 24, margin: "10px 0 8px" }}>
         Admin
       </h1>
       <p style={{ color: "var(--ink-dim)", fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
@@ -64,6 +71,10 @@ export default function AdminIndexPage() {
         the <strong style={{ color: "var(--ink)" }}>+ Add to showcase</strong> button on any trip, and the{" "}
         <strong style={{ color: "var(--ink)" }}>generation timings</strong> panel at the bottom of a finished trip.
         Nothing here is visible to travelers.
+      </p>
+      <p style={{ color: "var(--ink-dim)", fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
+        You don&apos;t generate trips from here — go back to the site and generate one normally, then scroll to the
+        bottom of the finished trip to see how long each stage took.
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
