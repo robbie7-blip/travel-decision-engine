@@ -42,6 +42,17 @@ export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:trip-questions",
 };
 
+// Flight-history import is one Anthropic call per pasted confirmation, with
+// a bounded input and a small structured output — closer in cost to a trip
+// question than a full generation. Someone importing a backlog will
+// legitimately paste a run of these in one sitting, so the hourly allowance
+// is deliberately generous; the daily cap is what actually bounds abuse.
+export const FLIGHT_IMPORT_RATE_LIMIT: RateLimitConfig = {
+  perHour: Number(process.env.FLIGHT_IMPORT_RATE_LIMIT_PER_HOUR ?? 40),
+  perDay: Number(process.env.FLIGHT_IMPORT_RATE_LIMIT_PER_DAY ?? 120),
+  prefix: "ratelimit:flight-import",
+};
+
 // Magic-link requests cost nothing per-call in Anthropic terms, but an
 // unbounded stream would spam a stranger's inbox (anyone can type any email
 // in) and burn through the transactional-email provider's quota. Keyed by

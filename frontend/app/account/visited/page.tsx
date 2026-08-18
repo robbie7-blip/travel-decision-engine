@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { FlightImport } from "@/components/FlightImport";
 import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VisitedMap } from "@/components/VisitedMap";
@@ -167,6 +168,36 @@ export default function VisitedPage() {
     if (next[code]) delete next[code];
     else next[code] = { code };
     applyEntries(next, code);
+  }
+
+  /** Bulk-applies an imported booking. Each country is written through the
+   * same per-code sync applyEntries uses, so there's no second write path
+   * to keep in step with it — only the batching differs. A country already
+   * on the map keeps its existing date rather than being overwritten by
+   * whatever this particular booking happened to say. */
+  function importVisits(visits: { code: string; visitedAt: string }[]) {
+    let next = { ...entries };
+    for (const { code, visitedAt } of visits) {
+      if (next[code]?.visitedAt) continue;
+      next = { ...next, [code]: { ...(next[code] ?? { code }), visitedAt } };
+    }
+    setEntries(next);
+    writeLocalVisitedEntries(Object.values(next));
+    if (signedIn) {
+      for (const { code } of visits) {
+        const changed = next[code];
+        fetch("/api/visited", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code,
+            visited: Boolean(changed),
+            visitedAt: changed?.visitedAt,
+            pins: changed?.pins,
+          }),
+        }).catch(() => {});
+      }
+    }
   }
 
   function setVisitedDate(code: string, visitedAt: string) {
@@ -369,6 +400,10 @@ export default function VisitedPage() {
               </div>
             )}
           </div>
+
+          {/* Sits above the visualize tabs because it FILLS the thing they
+              visualize — the fastest way from an empty map to a full one. */}
+          <FlightImport signedIn={signedIn} language={language} onImport={importVisits} />
 
           {/* Visualize tab row — same underlying entries, different view. */}
           <div className="font-mono scroll-row-mobile" style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>

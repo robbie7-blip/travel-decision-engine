@@ -51,6 +51,10 @@ const DATA_COLLECTED: DataRow[] = [
     why: "Sent to Anthropic to answer the question about them, and never stored by decide — not on our servers, not in our database. They exist for the length of that one request and then they're gone. They stay visible in your browser for the rest of that conversation only, and disappear when you reload or leave the page. Photos in this context are often of hotel rooms, menus, receipts or documents, so avoid including anything you wouldn't want read by a third-party AI provider — passports, boarding passes, card numbers.",
   },
   {
+    what: "Booking confirmations you paste in (flight-history import)",
+    why: "Sent to Anthropic once, to read the flights out of them, and never stored by decide — not on our servers, not in our database. Only the flights you then confirm are saved, and only as airports, dates and airline. Passenger names, booking references, ticket numbers and payment details are explicitly excluded from what we extract, and the email text itself is discarded as soon as the flights are read. Import your own bookings only.",
+  },
+  {
     what: "Visited-countries data",
     why: "If you use that feature: stored against your email if you're signed in, or only in your own browser's local storage if you're not.",
   },
