@@ -20,14 +20,22 @@ import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prom
 import {
   assembleItinerary,
   buildDayPrompt,
-  buildSkeletonPrompt,
+  buildFramePrompt,
+  buildPlanPrompt,
   getDayInstructions,
-  getSkeletonSystemPrompt,
+  getFrameSystemPrompt,
+  getPlanSystemPrompt,
   findDuplicateVenueItems,
+  findMissingMeals,
+  mergeSkeleton,
   applyVerifiedAccommodation,
-  isUsableSkeleton,
+  isUsableFrame,
+  isUsablePlan,
   stripVenueIdentity,
+  type MealSlot,
   type SkeletonDay,
+  type TripFrame,
+  type TripPlan,
   type TripSkeleton,
 } from "./engine/twoPhase";
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
@@ -61,6 +69,39 @@ const MAX_TOKENS = 12000;
 // intended trade. MODEL_EFFORT overrides it without a code change if the
 // balance ever needs revisiting — "low" restores the old behaviour exactly.
 const EFFORT = (process.env.MODEL_EFFORT ?? "high") as "low" | "medium" | "high" | "xhigh" | "max";
+
+// Effort for the pipeline's small EXTRACTION calls: read a search result
+// into two JSON fields, swap one duplicated venue for another. Raising
+// MODEL_EFFORT to "high" was applied to every call in the pipeline
+// indiscriminately, including these, and that was a mistake in both
+// directions at once.
+//
+// It bought nothing: there is no judgement in "which number in this page is
+// the nightly rate", so extra reasoning has no quality to add. And it cost
+// something real, because these calls have deliberately tiny token caps
+// (they emit two fields) — reasoning is drawn from the same budget as the
+// answer, so a high-effort call under a 400-token cap can spend the whole
+// cap thinking and return no JSON at all. That failure is silent by design
+// here (a lodging lookup that fails degrades to a generic estimate rather
+// than failing the trip), which is exactly how a generation ends up
+// reporting "a mid-range hotel, unverified estimate" when a real property
+// lookup was supposed to have run.
+//
+// Both halves of that are fixed: low effort where there is nothing to
+// reason about, and caps below with enough headroom that reasoning can
+// never starve the output.
+const EXTRACT_EFFORT = (process.env.EXTRACT_MODEL_EFFORT ?? "low") as
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max";
+
+// Headroom, not a target. These calls emit ~50 tokens of JSON; the cap
+// exists to bound a runaway, and the old 400/500 values were sized when
+// effort was pinned low and nothing else drew on the budget.
+const LODGING_MAX_TOKENS = 2000;
+const REPAIR_MAX_TOKENS = 1500;
 
 // Full search is the entire point of moving generation into a worker with
 // no execution-time limit — but per-item restaurant/activity searches were
@@ -239,8 +280,10 @@ If you cannot find a specific property you would confidently name, return exactl
 Never invent a hotel that might not exist — a generic accommodation line is far better than a fabricated name.`;
 
 interface LodgingLookupResult {
-  costEstimateEur: number;
-  sourceUrl: string;
+  /** Null when the rate search came back with nothing usable. The property
+   * half is reported anyway in that case — see the return below. */
+  costEstimateEur: number | null;
+  sourceUrl: string | null;
   name: string | null;
   area: string | null;
 }
@@ -267,13 +310,23 @@ async function prefetchLodging(
     try {
       const response = await client.messages.create({
         model: MODEL,
-        max_tokens: 400,
+        max_tokens: LODGING_MAX_TOKENS,
         system,
-        output_config: { effort: EFFORT },
+        output_config: { effort: EXTRACT_EFFORT },
         tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: maxUses }],
         messages: [{ role: "user", content: `City: ${city}` }],
       });
       onUsage?.(response.usage);
+      // Named explicitly rather than left to surface as a JSON parse error
+      // below: the two have identical symptoms (null result, generic
+      // accommodation) and completely different fixes, and mistaking one
+      // for the other is what hid a silently-degraded lodging lookup.
+      if (response.stop_reason === "max_tokens") {
+        console.error(
+          `[worker] lodging lookup for ${city} hit the ${LODGING_MAX_TOKENS}-token cap before emitting JSON`
+        );
+        return null;
+      }
       const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
       const text = textBlocks[textBlocks.length - 1]?.text ?? "";
       return JSON.parse(extractJson(text)) as T;
@@ -291,13 +344,19 @@ async function prefetchLodging(
     ask<{ name: string | null; area: string | null }>(LODGING_PROPERTY_SYSTEM, 2),
   ]);
 
-  if (!rate || rate.cost_estimate_eur == null || !rate.source_url) return null;
-  return {
-    costEstimateEur: rate.cost_estimate_eur,
-    sourceUrl: rate.source_url,
-    name: property?.name?.trim() || null,
-    area: property?.area?.trim() || null,
-  };
+  const costEstimateEur = rate?.cost_estimate_eur ?? null;
+  const sourceUrl = rate?.source_url ?? null;
+  const name = property?.name?.trim() || null;
+  const area = property?.area?.trim() || null;
+
+  // The two halves fail independently, so they're reported independently.
+  // This used to return null unless the RATE came back, which threw away a
+  // successfully-found property whenever the price search happened to miss
+  // — and the property is the half the traveler actually sees. A named
+  // hotel with the frame's own hedged price estimate is a strictly better
+  // line than "a mid-range hotel" at the same price.
+  if (costEstimateEur == null && !name) return null;
+  return { costEstimateEur, sourceUrl, name, area };
 }
 
 async function callModel(
@@ -386,6 +445,35 @@ async function withOneRetryOf<T>(fn: () => Promise<T>): Promise<T> {
 
 const withOneRetry = withOneRetryOf<Itinerary>;
 
+/** Retries a call that came back rate-limited, backing off between
+ * attempts. This is what lets MAX_PARALLEL_DAYS sit above any realistic
+ * trip length: fanning a 14-day trip out at once is only reckless if a 429
+ * is fatal, and here it isn't. Honours the provider's own Retry-After when
+ * it sends one, since that number is better than any guess made here.
+ *
+ * Only rate limits and connection errors are retried. A malformed response
+ * is somebody else's job (withOneRetryOf), and an auth error retried three
+ * times is just an auth error three times. */
+async function withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const backoffsMs = [1000, 3000, 7000];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const retryable =
+        e instanceof Anthropic.RateLimitError || e instanceof Anthropic.APIConnectionError;
+      if (!retryable || attempt >= backoffsMs.length) throw e;
+      const headers = (e as { headers?: Headers }).headers;
+      const headerSeconds = Number(headers?.get?.("retry-after") ?? NaN);
+      const waitMs = Number.isFinite(headerSeconds)
+        ? Math.min(headerSeconds * 1000, 15000)
+        : backoffsMs[attempt];
+      console.warn(`[worker] ${label} rate-limited, retrying in ${waitMs}ms`);
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+}
+
 // Two-phase parallel generation (see engine/twoPhase.ts for the full
 // rationale) — on by default, since one call streaming the whole itinerary
 // out sequentially is the dominant remaining cost in generation wall-time.
@@ -407,7 +495,20 @@ const DAY_MODEL = process.env.DAY_MODEL ?? MODEL;
 // concurrent Anthropic requests when a long trip and comparison mode (two
 // jobs at once, see WORKER_CONCURRENCY) coincide, which is how you trip
 // provider rate limits and end up slower than the serial path you replaced.
-const MAX_PARALLEL_DAYS = Number(process.env.MAX_PARALLEL_DAYS ?? 6);
+//
+// It was 6, which quietly made phase 2 cost TWO waves for any trip longer
+// than six days — a 10-day trip paid max(day) twice, and the whole reason
+// phase 2 exists is to pay it once. Worse, it was invisible: the stage
+// timing showed "days: 48s" either way, so a long trip looked like it just
+// had slow days.
+//
+// The rate-limit worry behind the low number is real but was being paid up
+// front by every long trip, forever, to avoid an event that may never
+// happen. A 429 is now handled where it actually occurs (see
+// withRateLimitRetry) instead, so the cap can sit above any realistic trip
+// length and a genuine rate limit costs one backoff on one day call rather
+// than a permanent extra wave on all of them.
+const MAX_PARALLEL_DAYS = Number(process.env.MAX_PARALLEL_DAYS ?? 16);
 
 const SKELETON_MAX_TOKENS = 12000;
 const DAY_MAX_TOKENS = 6000;
@@ -519,24 +620,26 @@ async function repairDuplicateVenues(
   client: Anthropic,
   brief: TripBriefInput,
   itinerary: Itinerary,
+  // Every venue name already spoken for in this trip, shared with the
+  // missing-meal repair that runs alongside this one. Both hand out new
+  // venue names concurrently, and a set per function would let them
+  // independently pick the same "different" restaurant — reintroducing the
+  // exact duplicate one of them exists to remove.
+  claimed: Set<string>,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<void> {
   const dupes = findDuplicateVenueItems(itinerary.days ?? []);
   if (dupes.length === 0) return;
   console.log(`[worker] repairing ${dupes.length} duplicate venue(s)`);
 
-  // Claimed as replacements land, so two concurrent repairs can't both pick
-  // the same "different" venue.
-  const claimed = new Set(dupes[0].takenNames.map((n) => n.toLowerCase()));
-
   await Promise.all(
     dupes.map(async ({ item, day }) => {
       try {
         const response = await client.messages.create({
           model: MODEL,
-          max_tokens: 500,
+          max_tokens: REPAIR_MAX_TOKENS,
           system: VENUE_REPAIR_SYSTEM,
-          output_config: { effort: EFFORT },
+          output_config: { effort: EXTRACT_EFFORT },
           messages: [
             {
               role: "user",
@@ -583,29 +686,23 @@ async function repairDuplicateVenues(
   );
 }
 
-/** Phase 1: every decision that needs a whole-trip view. */
-async function generateSkeleton(
+/** One half of phase 1. Both halves are the same call shape — a cached
+ * system prompt, no tools, JSON out — so the only things that vary are
+ * which prompt, which validator, and what to call it in an error. */
+async function generatePhase1Half<T>(
   client: Anthropic,
-  brief: TripBriefInput,
-  cachedLodgingFacts: Record<string, string>,
+  label: string,
+  system: string,
+  userPrompt: string,
+  isUsable: (v: unknown) => v is T,
   onUsage?: (usage: ModelUsage) => void
-): Promise<TripSkeleton> {
+): Promise<T> {
   const response = await client.messages.create({
     model: MODEL,
-    // Was 4000, which was set when the skeleton only listed a few "highlight"
-    // anchors per day. It now has to name EVERY meal and activity across the
-    // whole trip (the fix for duplicate venues across parallel day calls), so
-    // a long multi-city trip can produce several times the output it used to.
-    // Hitting the cap here is disproportionately expensive: truncated JSON
-    // fails to parse, which burns a full skeleton retry and then falls back
-    // to regenerating the entire itinerary in one call — the slow path this
-    // whole design exists to avoid. Headroom is far cheaper than that.
     max_tokens: SKELETON_MAX_TOKENS,
-    system: [
-      { type: "text", text: getSkeletonSystemPrompt(), cache_control: { type: "ephemeral" } },
-    ],
+    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     output_config: { effort: EFFORT },
-    messages: [{ role: "user", content: buildSkeletonPrompt(brief, cachedLodgingFacts) }],
+    messages: [{ role: "user", content: userPrompt }],
   });
   onUsage?.(response.usage);
 
@@ -613,10 +710,10 @@ async function generateSkeleton(
     throw new ModelOutputError("The model declined to plan this trip.");
   }
   // See the day-call equivalent above. This one matters more: a truncated
-  // skeleton costs a retry AND then a full single-call regeneration.
+  // phase 1 costs a retry AND then a full single-call regeneration.
   if (response.stop_reason === "max_tokens") {
     throw new ModelOutputError(
-      `The trip plan hit the ${SKELETON_MAX_TOKENS}-token cap and was cut off mid-JSON — raise SKELETON_MAX_TOKENS.`
+      `The ${label} hit the ${SKELETON_MAX_TOKENS}-token cap and was cut off mid-JSON — raise SKELETON_MAX_TOKENS.`
     );
   }
 
@@ -626,12 +723,173 @@ async function generateSkeleton(
   try {
     parsed = JSON.parse(extractJson(text));
   } catch (e) {
-    throw new ModelOutputError(`Trip plan was not valid JSON: ${(e as Error).message}`);
+    throw new ModelOutputError(`The ${label} was not valid JSON: ${(e as Error).message}`);
   }
-  if (!isUsableSkeleton(parsed)) {
-    throw new ModelOutputError("Trip plan was missing required fields.");
+  if (!isUsable(parsed)) {
+    throw new ModelOutputError(`The ${label} was missing required fields.`);
   }
   return parsed;
+}
+
+const MEAL_REPAIR_SYSTEM = `You are filling ONE missing meal in a travel itinerary. The day was planned to \
+include this meal and the write-up left it out, so the traveler currently has a gap where a meal should be.
+
+Name a real, specific restaurant/cafe/bakery in that city, appropriate to the meal and to the rest of the day, \
+and not one of the venues already used anywhere in the trip.
+
+Respond with ONLY this JSON, no other text:
+{"time": "<clock time or time-of-day phrase, in the same language as the day's other items>", "title": "<the item's title, naming the venue, in that same language>", "venue_name": "<the venue's exact proper name>", "location": "<neighborhood, city>", "cost_estimate_eur": <number, per person, EUR>, "reasoning": "<one short sentence, <=15 words, why this place>"}
+
+Never use an em dash. If you genuinely cannot name a real venue for this slot, return exactly: {"venue_name": null}.`;
+
+/** Adds back any meal the day plan called for and the day write-up dropped.
+ *
+ * A trip came back with days that had a flight, a transfer and a hotel and
+ * no food at all, and with full days that went from a morning sight
+ * straight to the accommodation. The instruction to include every meal was
+ * there; it was competing with "downtime that fits the stated pace" and
+ * losing. The instruction is now an explicit per-day list (see
+ * SkeletonDay.meals), which is a much harder thing to talk yourself out of,
+ * and this is the check that the list was actually honoured.
+ *
+ * Deliberately a repair rather than a warning. A missing lunch is not
+ * something to tell a traveler about, it is something to fix, and it is
+ * cheap to fix: one small call per gap, all of them concurrent, in the same
+ * stage as the duplicate-venue repair so the critical path gains no step. */
+async function repairMissingMeals(
+  client: Anthropic,
+  brief: TripBriefInput,
+  skeletonDays: SkeletonDay[],
+  itinerary: Itinerary,
+  /** Shared with repairDuplicateVenues — see the note on its parameter. */
+  taken: Set<string>,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<void> {
+  const gaps = findMissingMeals(skeletonDays, itinerary.days ?? []);
+  if (gaps.length === 0) return;
+  const gapCount = gaps.reduce((n, g) => n + g.missing.length, 0);
+  console.log(`[worker] filling ${gapCount} missing meal(s) across ${gaps.length} day(s)`);
+
+  const jobs: { day: (typeof gaps)[number]["day"]; plan: SkeletonDay; meal: MealSlot }[] = [];
+  for (const g of gaps) for (const meal of g.missing) jobs.push({ day: g.day, plan: g.plan, meal });
+
+  await Promise.all(
+    jobs.map(async ({ day, plan, meal }) => {
+      try {
+        const response = await client.messages.create({
+          model: MODEL,
+          max_tokens: REPAIR_MAX_TOKENS,
+          system: MEAL_REPAIR_SYSTEM,
+          output_config: { effort: EXTRACT_EFFORT },
+          messages: [
+            {
+              role: "user",
+              content:
+                `City: ${plan.city || brief.destinations[0]}\n` +
+                `Date: ${day.date}\n` +
+                `Meal to add: ${meal}\n` +
+                `Day theme: ${plan.theme}\n` +
+                `What the day already has: ${
+                  day.items.map((i) => `${i.time} ${i.title}`).join(" | ") || "(nothing)"
+                }\n` +
+                `Party: ${brief.party_size} (${brief.party_composition})\n` +
+                `Dietary constraints: ${brief.dietary_constraints.join(", ") || "none"}\n` +
+                `Language: write time, title and reasoning in the same language as the items above.\n` +
+                `Already used in this trip, do NOT reuse any of these: ${[...taken].join("; ")}`,
+            },
+          ],
+        });
+        onUsage?.(response.usage);
+        const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
+        const parsed = JSON.parse(extractJson(textBlocks[textBlocks.length - 1]?.text ?? "")) as {
+          time?: string;
+          title?: string;
+          venue_name?: string | null;
+          location?: string;
+          cost_estimate_eur?: number;
+          reasoning?: string;
+        };
+        if (!parsed.venue_name || !parsed.title) return;
+        if (taken.has(parsed.venue_name.toLowerCase())) return;
+        taken.add(parsed.venue_name.toLowerCase());
+        day.items.push({
+          time: parsed.time || meal,
+          type: "meal",
+          title: parsed.title,
+          venue_name: parsed.venue_name,
+          location: parsed.location || plan.city,
+          cost_estimate_eur: typeof parsed.cost_estimate_eur === "number" ? parsed.cost_estimate_eur : 0,
+          reasoning: parsed.reasoning || "",
+          // Not searched and not yet through Places — checkVenues runs after
+          // this and will verify it like any other named venue.
+          source_confidence: "inferred",
+          source_urls: [],
+        });
+      } catch (e) {
+        // A day that's still missing a meal is worse than one that has it,
+        // but far better than a failed generation.
+        console.error(`[worker] meal repair failed for day ${day.day} ${meal}:`, e);
+      }
+    })
+  );
+
+  // Items were appended, so each touched day is re-sorted into real clock
+  // order rather than leaving lunch printed after the accommodation.
+  for (const day of new Set(jobs.map((j) => j.day))) {
+    day.items.sort((a, b) => timeOrder(a.time) - timeOrder(b.time));
+  }
+}
+
+/** Rough sort key for an item's time, used only to place repaired items
+ * sensibly among existing ones. Unparseable times keep their relative
+ * position by sorting to the end of the day rather than to the front, where
+ * an unknown would displace a real breakfast. */
+function timeOrder(time: string | undefined): number {
+  if (!time) return 24;
+  const m = /(\d{1,2})[:.](\d{2})/.exec(time);
+  if (m) return Number(m[1]) + Number(m[2]) / 60;
+  const t = time.toLowerCase();
+  if (/morning|breakfast|закуск/.test(t)) return 8.5;
+  if (/midday|noon|lunch|об[яе]д/.test(t)) return 13;
+  if (/afternoon|следобед/.test(t)) return 15.5;
+  if (/evening|dinner|вечер/.test(t)) return 19.5;
+  if (/night|нощ/.test(t)) return 22;
+  return 24;
+}
+
+/** Phase 1: the whole-trip decisions and the day layout, as two calls that
+ * run at the same time. They own disjoint fields and neither reads the
+ * other's output, so this costs max(frame, plan) where it used to cost
+ * their sum — see the header comment in engine/twoPhase.ts. */
+async function generateSkeleton(
+  client: Anthropic,
+  brief: TripBriefInput,
+  cachedLodgingFacts: Record<string, string>,
+  onUsage?: (usage: ModelUsage) => void
+): Promise<TripSkeleton> {
+  const [frame, plan] = await Promise.all([
+    withOneRetryOf(() =>
+      generatePhase1Half<TripFrame>(
+        client,
+        "trip frame",
+        getFrameSystemPrompt(),
+        buildFramePrompt(brief, cachedLodgingFacts),
+        isUsableFrame,
+        onUsage
+      )
+    ),
+    withOneRetryOf(() =>
+      generatePhase1Half<TripPlan>(
+        client,
+        "day plan",
+        getPlanSystemPrompt(),
+        buildPlanPrompt(brief),
+        isUsablePlan,
+        onUsage
+      )
+    ),
+  ]);
+  return mergeSkeleton(frame, plan);
 }
 
 /** Skeleton, then all days concurrently. Throws on any failure so the
@@ -642,7 +900,18 @@ async function generateItineraryTwoPhase(
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void,
-  onPhaseTimings?: (t: { skeletonMs: number; daysMs: number; dayCount: number }) => void,
+  onPhaseTimings?: (t: {
+    skeletonMs: number;
+    daysMs: number;
+    dayCount: number;
+    dayWaves: number;
+  }) => void,
+  // Hands the day plan back out so the post-generation checks can compare
+  // what was written against what was planned — specifically, which meals
+  // each day was supposed to have. Only the parallel path produces one; the
+  // single-call fallback has no plan to check against, which is a real (and
+  // acceptable) gap in the rare case it runs.
+  onPlan?: (days: SkeletonDay[]) => void,
   // Lodging lookups already in flight, started at t=0 alongside this call
   // rather than before it. Awaited between the two phases: phase 1 doesn't
   // need them (it can price accommodation from general knowledge and be
@@ -651,11 +920,13 @@ async function generateItineraryTwoPhase(
   // was already running.
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>
 ): Promise<Itinerary> {
+  // No retry wrapper here: each half of phase 1 retries itself, and a
+  // second layer on top would quietly turn one bad response into four
+  // calls.
   const startedAt = Date.now();
-  const skeleton = await withOneRetryOf(() =>
-    generateSkeleton(client, brief, cachedLodgingFacts, onUsage)
-  );
+  const skeleton = await generateSkeleton(client, brief, cachedLodgingFacts, onUsage);
   const skeletonMs = Date.now() - startedAt;
+  onPlan?.(skeleton.days);
 
   for (const { city, result } of (await pendingLodging) ?? []) {
     if (!result) continue;
@@ -663,19 +934,22 @@ async function generateItineraryTwoPhase(
       costPerNightEur: result.costEstimateEur,
       name: result.name,
       area: result.area,
-      sourceUrls: [result.sourceUrl],
+      sourceUrls: result.sourceUrl ? [result.sourceUrl] : [],
     });
   }
 
   const daysStartedAt = Date.now();
   const days = await runWithLimit(skeleton.days, MAX_PARALLEL_DAYS, (day) =>
-    withOneRetryOf(() => generateDay(client, brief, skeleton, day, onUsage))
+    withRateLimitRetry(`day ${day.day}`, () =>
+      withOneRetryOf(() => generateDay(client, brief, skeleton, day, onUsage))
+    )
   );
   const daysMs = Date.now() - daysStartedAt;
-  onPhaseTimings?.({ skeletonMs, daysMs, dayCount: days.length });
+  const waves = Math.ceil(days.length / MAX_PARALLEL_DAYS);
+  onPhaseTimings?.({ skeletonMs, daysMs, dayCount: days.length, dayWaves: waves });
   console.log(
-    `[worker] two-phase: skeleton ${skeletonMs}ms, ${days.length} day(s) in ${daysMs}ms ` +
-      `(<=${MAX_PARALLEL_DAYS} at a time, day model ${DAY_MODEL})`
+    `[worker] phase 1 (frame ‖ plan) ${skeletonMs}ms, ${days.length} day(s) in ${daysMs}ms ` +
+      `(<=${MAX_PARALLEL_DAYS} at a time = ${waves} wave(s), day model ${DAY_MODEL})`
   );
 
   return assembleItinerary(skeleton, days);
@@ -714,17 +988,27 @@ async function generateItinerary(
   onUsage?: (usage: ModelUsage) => void,
   forceSkipSearch = false,
   timings?: JobTimings,
-  pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>
+  pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
+  onPlan?: (days: SkeletonDay[]) => void
 ): Promise<Itinerary> {
   if (TWO_PHASE_ENABLED) {
     try {
-      return await generateItineraryTwoPhase(client, brief, cachedLodgingFacts, onUsage, (t) => {
-        if (timings) {
-          timings.skeletonMs = t.skeletonMs;
-          timings.daysMs = t.daysMs;
-          timings.dayCount = t.dayCount;
-        }
-      }, pendingLodging);
+      return await generateItineraryTwoPhase(
+        client,
+        brief,
+        cachedLodgingFacts,
+        onUsage,
+        (t) => {
+          if (timings) {
+            timings.skeletonMs = t.skeletonMs;
+            timings.daysMs = t.daysMs;
+            timings.dayCount = t.dayCount;
+            timings.dayWaves = t.dayWaves;
+          }
+        },
+        onPlan,
+        pendingLodging
+      );
     } catch (e) {
       if (timings) {
         timings.fellBackToSingleCall = true;
@@ -845,6 +1129,11 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // way; a refinement re-runs flight pricing too.
   const pendingFare = fetchFarePricing(job.brief).catch(() => null);
 
+  // What phase 1 planned each day to contain, captured so the checks below
+  // can hold the written days to it. Stays empty for a refinement and for
+  // the single-call fallback, which produce no plan.
+  let planDays: SkeletonDay[] = [];
+
   try {
     let itinerary: Itinerary;
     if (job.refinement) {
@@ -870,7 +1159,11 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
               timings.lodgingPrefetch = Date.now() - lodgingStartedAt;
               await Promise.all(
                 results.map(({ city, result }) =>
-                  result
+                  // Only a result with a real PRICE is worth caching — the
+                  // cache's whole job is to let a later generation skip the
+                  // rate search, and an entry with no rate in it would just
+                  // suppress that search while supplying nothing.
+                  result && result.costEstimateEur != null && result.sourceUrl
                     ? writeCachedLodgingFact(redis, city, {
                         costEstimateEur: result.costEstimateEur,
                         sourceUrls: [result.sourceUrl],
@@ -886,12 +1179,41 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
           : undefined;
 
       itinerary = await timed("generate", () =>
-        generateItinerary(client, job.brief, cachedLodgingFacts, onUsage, false, jobTimings, pendingLodging)
+        generateItinerary(
+          client,
+          job.brief,
+          cachedLodgingFacts,
+          onUsage,
+          false,
+          jobTimings,
+          pendingLodging,
+          (days) => {
+            planDays = days;
+          }
+        )
       );
     }
-    // Before Places runs, so a replaced venue is verified like any other —
-    // repairing after verification would ship an unchecked business.
-    await timed("venueRepair", () => repairDuplicateVenues(client, job.brief, itinerary, onUsage));
+    // Before Places runs, so a replaced or added venue is verified like any
+    // other — repairing after verification would ship an unchecked business.
+    //
+    // Both repairs run in ONE stage rather than one after the other. They
+    // touch different problems (a venue used twice vs. a meal not written at
+    // all) and neither reads the other's output, so serializing them would
+    // add a whole round-trip to every generation that needs both.
+    const claimedVenues = new Set<string>();
+    for (const day of itinerary.days ?? []) {
+      for (const item of day.items) {
+        if (item.venue_name) claimedVenues.add(item.venue_name.toLowerCase());
+      }
+    }
+    await timed("repairs", () =>
+      Promise.all([
+        repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage),
+        planDays.length > 0
+          ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage)
+          : Promise.resolve(),
+      ])
+    );
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
     // attachFlightSearchLinks must run before attachFlightPrices — the
@@ -933,6 +1255,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   jobTimings.totalMs = Date.now() - jobStartedAt;
   jobTimings.lodgingPrefetchMs = timings.lodgingPrefetch;
   jobTimings.generateMs = timings.generate;
+  jobTimings.repairsMs = timings.repairs;
   jobTimings.venuesAndFlightsMs = timings.venuesAndFlights;
   job.timings = jobTimings;
 

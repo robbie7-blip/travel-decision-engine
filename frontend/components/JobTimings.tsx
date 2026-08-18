@@ -49,11 +49,23 @@ export function JobTimings({ timings }: { timings?: Timings }) {
         generation {secs(timings.totalMs)}
       </div>
       <div>
-        lodging prefetch {secs(timings.lodgingPrefetchMs)} · generate {secs(timings.generateMs)} · venues+flights{" "}
-        {secs(timings.venuesAndFlightsMs)}
+        lodging prefetch {secs(timings.lodgingPrefetchMs)} · generate {secs(timings.generateMs)} · repairs{" "}
+        {secs(timings.repairsMs)} · venues+flights {secs(timings.venuesAndFlightsMs)}
       </div>
       <div>
-        skeleton {secs(timings.skeletonMs)} · {timings.dayCount ?? "—"} day(s) {secs(timings.daysMs)}
+        phase 1 (frame ‖ plan) {secs(timings.skeletonMs)} · {timings.dayCount ?? "—"} day(s){" "}
+        {secs(timings.daysMs)}
+        {timings.dayWaves != null && (
+          // Anything above 1 means the day calls didn't all run at once, so
+          // phase 2 paid for its slowest day more than once. It reads as
+          // "the days were slow" in the number next to it, which is exactly
+          // how it went unnoticed for weeks — so it's called out.
+          <span style={{ color: timings.dayWaves > 1 ? "var(--infeasible)" : "var(--ink-dim)" }}>
+            {" "}
+            in {timings.dayWaves} wave{timings.dayWaves === 1 ? "" : "s"}
+            {timings.dayWaves > 1 ? " ⚠ raise MAX_PARALLEL_DAYS" : ""}
+          </span>
+        )}
       </div>
       {fellBack && (
         <div style={{ color: "var(--infeasible)", marginTop: 4 }}>

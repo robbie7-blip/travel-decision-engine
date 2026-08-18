@@ -15,7 +15,13 @@
 // thing this can't measure, and it's also the one thing no amount of
 // deploying would let us control.
 //
-// Run: WORKER_NO_AUTOSTART=1 npx tsx src/pipeline.test.ts
+// Two scenarios run, and the long one is the point. A 3-day trip passed
+// every check here while a 10-day trip took two full minutes, because the
+// parallel-day cap was 6: the sixth and seventh days went into different
+// waves and nothing in the assertions could see it. Trip length is now a
+// dimension the harness actually varies.
+//
+// Run: npm run test:pipeline
 
 import type Redis from "ioredis";
 import type Anthropic from "@anthropic-ai/sdk";
@@ -25,61 +31,90 @@ import type { TripBriefInput } from "./types";
 
 const CALL_MS = 400; // stands in for one model round-trip
 
-const brief: TripBriefInput = {
-  destinations: ["Chisinau"],
-  origin: "Sofia",
-  start_date: "2026-12-28",
-  end_date: "2026-12-30",
-  party_size: 2,
-  party_composition: "couple",
-  budget_total_eur: 1200,
-  pace: "moderate",
-  interests: ["food"],
-  must_see: [],
-  dietary_constraints: [],
-  mobility_constraints: [],
-  hard_no: [],
-  language: "en",
-  needs_lodging: true,
-  needs_flight: true,
-};
+function briefFor(destinations: string[], startDate: string, endDate: string): TripBriefInput {
+  return {
+    destinations,
+    origin: "Sofia",
+    start_date: startDate,
+    end_date: endDate,
+    party_size: 2,
+    party_composition: "couple",
+    budget_total_eur: 3000,
+    pace: "relaxed",
+    interests: ["food"],
+    must_see: [],
+    dietary_constraints: [],
+    mobility_constraints: [],
+    hard_no: [],
+    language: "en",
+    needs_lodging: true,
+    needs_flight: true,
+  };
+}
 
-const DAYS = ["2026-12-28", "2026-12-29", "2026-12-30"];
+function datesBetween(start: string, days: number): string[] {
+  const out: string[] = [];
+  const d = new Date(`${start}T00:00:00Z`);
+  for (let i = 0; i < days; i++) {
+    out.push(new Date(d.getTime() + i * 86400000).toISOString().slice(0, 10));
+  }
+  return out;
+}
 
-function skeletonJson(): string {
+interface Scenario {
+  label: string;
+  destinations: string[];
+  dates: string[];
+  /** Which city each day is in, same length as dates. */
+  cityByDay: string[];
+}
+
+function frameJson(scenario: Scenario): string {
   return JSON.stringify({
     budget_feasibility: { feasible: true, min_realistic_total_eur: 320, reasoning: "r" },
     trip_summary: "A short trip.",
     key_decisions: [{ decision: "d", reasoning: "r", alternative_considered: "a", confidence: "high" }],
     things_to_skip: [{ item: "i", reasoning: "r" }],
-    accommodation: [
-      { city: "Chisinau", name: null, area: null, cost_per_night_eur: 50, source_confidence: "inferred", source_urls: [] },
-    ],
-    days: DAYS.map((date, i) => ({
-      day: i + 1,
-      date,
-      city: "Chisinau",
-      theme: "t",
-      include_lodging: i < DAYS.length - 1,
-      anchors: [`Venue ${i + 1} (dinner)`],
-      transport_note: i === 0 ? "Flight from Sofia to Chisinau" : null,
+    accommodation: scenario.destinations.map((city) => ({
+      city,
+      name: null,
+      area: null,
+      cost_per_night_eur: 50,
+      source_confidence: "inferred",
+      source_urls: [],
     })),
   });
 }
 
+function planJson(scenario: Scenario): string {
+  return JSON.stringify({
+    days: scenario.dates.map((date, i) => ({
+      day: i + 1,
+      date,
+      city: scenario.cityByDay[i],
+      theme: "t",
+      include_lodging: i < scenario.dates.length - 1,
+      anchors: [`Venue ${i + 1} (afternoon)`],
+      meals: ["breakfast", "lunch", "dinner"],
+      transport_note: i === 0 ? "Flight from Sofia" : null,
+    })),
+  });
+}
+
+// Deliberately reuses ONE venue name across every day AND leaves out the
+// lunch and dinner the plan asked for, so both repair paths are exercised
+// rather than skipped.
 function dayJson(): string {
-  // Deliberately reuses ONE venue name across every day, so the duplicate
-  // repair path is exercised rather than skipped.
   return JSON.stringify({
     day: 1,
-    date: "2026-12-28",
+    date: "2027-03-18",
     items: [
       {
-        time: "morning",
+        time: "08:30",
         type: "meal",
         title: "Breakfast at Shared Cafe",
         venue_name: "Shared Cafe",
-        location: "City center, Chisinau",
+        location: "City center",
         cost_estimate_eur: 12,
         reasoning: "r",
         source_confidence: "inferred",
@@ -95,37 +130,70 @@ interface CallRecord {
   end: number;
 }
 
-function makeClient(records: CallRecord[]): Anthropic {
+function makeClient(scenario: Scenario, records: CallRecord[]): Anthropic {
+  let replacements = 0;
   return {
     messages: {
       create: async (params: { system?: unknown; max_tokens?: number }) => {
         const sys = JSON.stringify(params.system ?? "");
-        const kind = sys.includes("STAGE 1")
-          ? "skeleton"
-          : sys.includes("STAGE 2")
-            ? "day"
-            : sys.includes("price per night")
-              ? "lodging-rate"
-              : sys.includes("well-reviewed mid-range hotel")
-                ? "lodging-property"
-                : sys.includes("fixing ONE line")
-                  ? "repair"
-                  : "other";
+        const kind = sys.includes("STAGE 1A")
+          ? "frame"
+          : sys.includes("STAGE 1B")
+            ? "plan"
+            : sys.includes("STAGE 2")
+              ? "day"
+              : sys.includes("price per night")
+                ? "lodging-rate"
+                : sys.includes("well-reviewed mid-range hotel")
+                  ? "lodging-property"
+                  : sys.includes("fixing ONE line")
+                    ? "venue-repair"
+                    : sys.includes("filling ONE missing meal")
+                      ? "meal-repair"
+                      : "other";
         const start = Date.now();
         await new Promise((r) => setTimeout(r, CALL_MS));
         records.push({ kind, start, end: Date.now() });
-        const text =
-          kind === "skeleton"
-            ? skeletonJson()
-            : kind === "day"
-              ? dayJson()
-              : kind === "lodging-rate"
-                ? JSON.stringify({ cost_estimate_eur: 55, source_url: "https://example.com/rate" })
-                : kind === "lodging-property"
-                  ? JSON.stringify({ name: "Hotel Real", area: "City center" })
-                  : kind === "repair"
-                    ? JSON.stringify({ title: "Breakfast at Other Cafe", venue_name: "Other Cafe", reasoning: "r" })
-                    : "{}";
+
+        let text: string;
+        switch (kind) {
+          case "frame":
+            text = frameJson(scenario);
+            break;
+          case "plan":
+            text = planJson(scenario);
+            break;
+          case "day":
+            text = dayJson();
+            break;
+          case "lodging-rate":
+            text = JSON.stringify({ cost_estimate_eur: 55, source_url: "https://example.com/rate" });
+            break;
+          case "lodging-property":
+            text = JSON.stringify({ name: "Hotel Real", area: "City center" });
+            break;
+          case "venue-repair":
+            replacements++;
+            text = JSON.stringify({
+              title: `Breakfast at Cafe ${replacements}`,
+              venue_name: `Cafe ${replacements}`,
+              reasoning: "r",
+            });
+            break;
+          case "meal-repair":
+            replacements++;
+            text = JSON.stringify({
+              time: "13:00",
+              title: `Meal at Place ${replacements}`,
+              venue_name: `Place ${replacements}`,
+              location: "City center",
+              cost_estimate_eur: 18,
+              reasoning: "r",
+            });
+            break;
+          default:
+            text = "{}";
+        }
         return {
           content: [{ type: "text", text }],
           stop_reason: "end_turn",
@@ -163,62 +231,131 @@ function overlaps(a: CallRecord, b: CallRecord): boolean {
   return a.start < b.end && b.start < a.end;
 }
 
-async function main() {
+async function run(scenario: Scenario) {
+  console.log(`\n${"=".repeat(72)}\n${scenario.label}\n${"=".repeat(72)}`);
+
   const store = new Map<string, string>();
   const records: CallRecord[] = [];
+  const id = `t-${scenario.dates.length}`;
   const job: Job = {
-    id: "t1",
+    id,
     status: "pending",
-    brief,
+    brief: briefFor(scenario.destinations, scenario.dates[0], scenario.dates[scenario.dates.length - 1]),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
-  store.set(jobKey("t1"), JSON.stringify(job));
+  store.set(jobKey(id), JSON.stringify(job));
 
   const startedAt = Date.now();
-  await processJob(makeRedis(store), makeClient(records), "t1");
+  await processJob(makeRedis(store), makeClient(scenario, records), id);
   const totalMs = Date.now() - startedAt;
 
-  const finished: Job = JSON.parse(store.get(jobKey("t1"))!);
+  const finished: Job = JSON.parse(store.get(jobKey(id))!);
   const by = (k: string) => records.filter((r) => r.kind === k);
 
-  console.log(`\nstub call = ${CALL_MS}ms · total = ${totalMs}ms`);
-  console.log(`calls: ${records.map((r) => r.kind).join(", ")}\n`);
+  console.log(`\nstub call = ${CALL_MS}ms · ${records.length} model calls · total = ${totalMs}ms\n`);
 
   console.log("job completed");
   check("status is done", finished.status === "done", finished.status);
-  check("no fallback to the single-call path", finished.timings?.fellBackToSingleCall !== true, finished.timings?.fallbackReason ?? "");
-  check(`all ${DAYS.length} days present`, (finished.result?.days.length ?? 0) === DAYS.length);
+  check(
+    "no fallback to the single-call path",
+    finished.timings?.fellBackToSingleCall !== true,
+    finished.timings?.fallbackReason ?? ""
+  );
+  check(
+    `all ${scenario.dates.length} days present`,
+    (finished.result?.days.length ?? 0) === scenario.dates.length
+  );
 
-  console.log("\nstages that must run CONCURRENTLY");
+  const frame = by("frame")[0];
+  const plan = by("plan")[0];
   const rate = by("lodging-rate")[0];
   const property = by("lodging-property")[0];
-  const skeleton = by("skeleton")[0];
   const days = by("day");
+  const venueRepairs = by("venue-repair");
+  const mealRepairs = by("meal-repair");
 
-  check("lodging rate + property overlap (two dedicated searches, one wall-clock cost)",
-    !!rate && !!property && overlaps(rate, property));
-  check("lodging lookups overlap the skeleton (prefetch is off the critical path)",
-    !!skeleton && !!rate && overlaps(rate, skeleton),
-    skeleton && rate ? `skeleton ${skeleton.start - startedAt}-${skeleton.end - startedAt}, rate ${rate.start - startedAt}-${rate.end - startedAt}` : "");
-  check(`all ${days.length} day calls overlap each other (phase 2 is parallel)`,
-    days.length > 1 && days.every((d) => overlaps(d, days[0])));
+  console.log("\nstages that must run CONCURRENTLY");
+  check("phase 1's two halves overlap (frame ‖ plan)", !!frame && !!plan && overlaps(frame, plan));
+  check(
+    "lodging rate + property overlap (two dedicated searches, one wall-clock cost)",
+    !!rate && !!property && overlaps(rate, property)
+  );
+  check(
+    "lodging lookups overlap phase 1 (prefetch is off the critical path)",
+    !!frame && !!rate && overlaps(rate, frame)
+  );
+  check(
+    `all ${days.length} day calls overlap each other — ONE wave, not ${Math.ceil(days.length / 6)}`,
+    days.length > 1 && days.every((d) => overlaps(d, days[0])),
+    days.length > 1
+      ? `first day ends at +${days[0].end - startedAt}ms, last starts at +${
+          Math.max(...days.map((d) => d.start)) - startedAt
+        }ms`
+      : ""
+  );
+  check(
+    "venue repair and meal repair share one stage",
+    venueRepairs.length > 0 && mealRepairs.length > 0 && overlaps(venueRepairs[0], mealRepairs[0])
+  );
 
   console.log("\nstages that must run IN ORDER");
-  check("days start only after the skeleton finishes",
-    days.every((d) => d.start >= skeleton.end - 50));
-  check("duplicate repair ran (the day stub reuses one venue everywhere)",
-    by("repair").length === DAYS.length - 1, `${by("repair").length} repairs`);
+  check("days start only after phase 1 finishes", days.every((d) => d.start >= plan.end - 50));
+  check(
+    "duplicate repair ran (the day stub reuses one venue everywhere)",
+    venueRepairs.length === scenario.dates.length - 1,
+    `${venueRepairs.length} repairs`
+  );
+  check(
+    "missing-meal repair ran (the day stub writes breakfast only)",
+    mealRepairs.length === scenario.dates.length * 2,
+    `${mealRepairs.length} meal fills, expected ${scenario.dates.length * 2}`
+  );
+
+  console.log("\nwhat the traveler actually gets");
+  const resultDays = finished.result?.days ?? [];
+  const thin = resultDays.filter((d) => d.items.filter((i) => i.type === "meal").length < 3);
+  check("every day has all three meals after repair", thin.length === 0, `${thin.length} day(s) short`);
+  const sorted = resultDays.every((d) =>
+    d.items.every((it, i) => i === 0 || (d.items[i - 1].time ?? "") <= (it.time ?? ""))
+  );
+  check("repaired items land in clock order, not appended at the end", sorted);
 
   console.log("\ncritical path shape");
-  // skeleton (‖ lodging) -> days (‖) -> repairs (‖)  ==  3 sequential stages
+  // phase 1 (‖ lodging) -> days (‖) -> repairs (‖)  ==  3 sequential stages
   const serialUpperBound = records.length * CALL_MS;
   const parallelExpectation = 3 * CALL_MS;
-  check(`total is close to max-path (~${parallelExpectation}ms), not sum (~${serialUpperBound}ms)`,
+  check(
+    `total is close to max-path (~${parallelExpectation}ms), not sum (~${serialUpperBound}ms)`,
     totalMs < parallelExpectation * 1.9,
-    `${totalMs}ms across ${records.length} model calls`);
-  check("total is well under the serial worst case", totalMs < serialUpperBound * 0.75,
-    `${totalMs}ms vs ${serialUpperBound}ms serial`);
+    `${totalMs}ms across ${records.length} model calls`
+  );
+  check(
+    "total does not grow with trip length",
+    totalMs < parallelExpectation * 1.9,
+    `${totalMs}ms for ${scenario.dates.length} days`
+  );
+}
+
+async function main() {
+  const short = datesBetween("2026-12-28", 3);
+  await run({
+    label: "SHORT TRIP — 3 days, 1 city (the shape that measured 30s)",
+    destinations: ["Chisinau"],
+    dates: short,
+    cityByDay: short.map(() => "Chisinau"),
+  });
+
+  // The trip that took two minutes. Ten days across three cities, which is
+  // where a parallel-day cap of 6 turned phase 2 into two waves.
+  const long = datesBetween("2027-03-18", 10);
+  const cities = ["Ubud", "Seminyak", "Uluwatu"];
+  await run({
+    label: "LONG TRIP — 10 days, 3 cities (the shape that measured 2 minutes)",
+    destinations: cities,
+    dates: long,
+    cityByDay: long.map((_, i) => cities[Math.min(Math.floor(i / 4), cities.length - 1)]),
+  });
 
   console.log(`\n${failures === 0 ? "ALL PASSED" : `${failures} FAILURE(S)`}\n`);
   process.exit(failures === 0 ? 0 : 1);

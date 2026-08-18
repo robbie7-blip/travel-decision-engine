@@ -7,12 +7,27 @@
 // have the Next.js path-alias resolution configured.
 import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "../types";
 
-/** Flags days with more than 5 activity/meal items as likely overpacked. */
+/** Flags days with too much scheduled in them.
+ *
+ * Counts ACTIVITIES, not meals. It used to flag any day with more than five
+ * activity-or-meal items, which was a fair proxy back when a day might or
+ * might not bother with lunch — but every full day now carries three meals
+ * by construction (see SkeletonDay.meals in engine/twoPhase.ts), so that
+ * threshold left room for only two activities before warning the traveler
+ * that a perfectly normal day was overpacked. Eating three times is not
+ * overpacking. Meals still count toward a generous overall ceiling, since a
+ * day really can have too much in it in total. */
+const MAX_ACTIVITIES_PER_DAY = 5;
+const MAX_SCHEDULED_ITEMS_PER_DAY = 8;
+
 export function checkFeasibility(itinerary: Itinerary): Itinerary {
   for (const day of itinerary.days ?? []) {
-    const activityItems = day.items.filter((i) => i.type === "activity" || i.type === "meal");
-    if (activityItems.length > 5) {
-      day.feasibility_flag = `${activityItems.length} activities/meals scheduled in one day — likely overpacked, review pacing.`;
+    const activities = day.items.filter((i) => i.type === "activity");
+    const scheduled = day.items.filter((i) => i.type === "activity" || i.type === "meal");
+    if (activities.length > MAX_ACTIVITIES_PER_DAY) {
+      day.feasibility_flag = `${activities.length} activities scheduled in one day — likely overpacked, review pacing.`;
+    } else if (scheduled.length > MAX_SCHEDULED_ITEMS_PER_DAY) {
+      day.feasibility_flag = `${scheduled.length} activities and meals scheduled in one day — likely overpacked, review pacing.`;
     }
   }
   return itinerary;

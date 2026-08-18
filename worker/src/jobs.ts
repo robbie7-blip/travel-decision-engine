@@ -58,11 +58,20 @@ export interface JobTimings {
   /** Whole generation stage — the sum of the two phases below, plus any
    * fallback. */
   generateMs?: number;
-  /** Phase 1 of two-phase generation. */
+  /** Phase 1 — the trip frame and the day plan, which run concurrently, so
+   * this is the slower of the two rather than their sum. */
   skeletonMs?: number;
   /** Phase 2 — wall time for all day calls together, not their sum. */
   daysMs?: number;
   dayCount?: number;
+  /** How many waves the day calls took. Anything above 1 means
+   * MAX_PARALLEL_DAYS is below this trip's length and phase 2 paid for its
+   * slowest day more than once — the exact regression that made a 10-day
+   * trip take twice as long as it needed to while the stage timing looked
+   * merely "slow". */
+  dayWaves?: number;
+  /** Duplicate-venue and missing-meal repairs, which share one stage. */
+  repairsMs?: number;
   /** Google Places + Amadeus, which run concurrently with each other. */
   venuesAndFlightsMs?: number;
   /** True when two-phase generation failed and the entire itinerary was
