@@ -247,7 +247,13 @@ export function loadFacts(city: string): Fact[] {
   return facts;
 }
 
-const LANGUAGE_LABEL: Record<TripBriefInput["language"], string> = {
+/** Exported so the repair calls in index.ts name the trip's language
+ * outright rather than asking the model to infer it. A repair that only
+ * sees "match the surrounding items" reads the CITY as the language cue and
+ * writes an Italian dinner into an English trip to Rome — confirmed on a
+ * real generation. The brief already knows the answer; there is no reason
+ * to make it a judgement. */
+export const LANGUAGE_LABEL: Record<TripBriefInput["language"], string> = {
   en: "English",
   bg: "Bulgarian (български)",
 };

@@ -16,7 +16,7 @@ import { getRedis } from "./redis";
 // against in production (works locally where the full repo is checked
 // out, breaks in the deployed container). Mirrors the existing
 // facts/ vs frontend/facts/ duplication already in this repo.
-import { buildPrompt, buildRefinementPrompt, SYSTEM_PROMPT } from "./engine/prompt";
+import { buildPrompt, buildRefinementPrompt, LANGUAGE_LABEL, SYSTEM_PROMPT } from "./engine/prompt";
 import {
   assembleItinerary,
   buildDayPrompt,
@@ -688,7 +688,7 @@ async function repairDuplicateVenues(
                 `Slot: ${item.time} (${item.type})\n` +
                 `Current title (duplicate): ${item.title}\n` +
                 `Venue to replace: ${item.venue_name}\n` +
-                `Language: write the title in the same language as the current title.\n` +
+                `Language: write the title in ${LANGUAGE_LABEL[brief.language]}, whatever language the city speaks.\n` +
                 `Already used in this trip, do NOT reuse any of these: ${[...claimed].join("; ")}`,
             },
           ],
@@ -842,7 +842,7 @@ async function repairMissingMeals(
                 }\n` +
                 `Party: ${brief.party_size} (${brief.party_composition})\n` +
                 `Dietary constraints: ${brief.dietary_constraints.join(", ") || "none"}\n` +
-                `Language: write time, title and reasoning in the same language as the items above.\n` +
+                `Language: write time, title and reasoning in ${LANGUAGE_LABEL[brief.language]}, whatever language the city speaks.\n` +
                 `Already used in this trip, do NOT reuse any of these: ${[...taken].join("; ")}`,
             },
           ],
