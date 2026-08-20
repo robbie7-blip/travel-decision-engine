@@ -65,14 +65,24 @@ const LOCATION_BIAS_RADIUS_M = 30000;
 const PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FIELD_MASK =
-  "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id,places.displayName,places.location";
+  "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id," +
+  "places.displayName,places.location,places.regularOpeningHours";
 
 interface GeoPoint {
   latitude: number;
   longitude: number;
 }
 
-interface PlacesApiPlace {
+/** Google's weekly hours. `day` is 0 = Sunday through 6 = Saturday. A
+ * period whose close.day differs from its open.day runs past midnight,
+ * which is normal for bars and late kitchens and is handled explicitly
+ * below rather than being quietly mis-read as "closed". */
+export interface PlacesOpeningPeriod {
+  open?: { day?: number; hour?: number; minute?: number };
+  close?: { day?: number; hour?: number; minute?: number };
+}
+
+export interface PlacesApiPlace {
   rating?: number;
   userRatingCount?: number;
   businessStatus?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY";
@@ -80,6 +90,10 @@ interface PlacesApiPlace {
   id?: string;
   displayName?: { text?: string };
   location?: GeoPoint;
+  regularOpeningHours?: {
+    periods?: PlacesOpeningPeriod[];
+    weekdayDescriptions?: string[];
+  };
 }
 
 interface PlacesApiResponse {
@@ -326,6 +340,82 @@ function stripUnverifiedLodging(item: ItineraryItem): void {
   item.google_maps_url = undefined;
 }
 
+/** Minutes past midnight on the given weekday, as one number, so an
+ * overnight period ("Fri 18:00 – Sat 02:00") is a simple range comparison
+ * instead of a special case. Sunday is 0, matching Google. */
+function weekMinute(day: number, hour: number, minute: number): number {
+  return day * 24 * 60 + hour * 60 + minute;
+}
+
+/** The hour an item is scheduled at, from either a clock time ("19:30") or
+ * a time-of-day phrase. Returns null when neither is present — an item with
+ * no time cannot be checked against opening hours, and guessing one would
+ * manufacture a closure that isn't real. */
+function scheduledMinutes(time: string | undefined): number | null {
+  if (!time) return null;
+  const m = /(\d{1,2})[:.](\d{2})/.exec(time);
+  if (m) {
+    const h = Number(m[1]);
+    const min = Number(m[2]);
+    if (h >= 0 && h <= 23 && min >= 0 && min <= 59) return h * 60 + min;
+  }
+  const t = time.toLowerCase();
+  // "afternoon" is tested BEFORE "noon", and "noon" only with word
+  // boundaries, because "afternoon" contains "noon" — which silently placed
+  // every afternoon item at 13:00 and would have declared a venue open
+  // through a 15:00–19:00 closure.
+  //
+  // Times are deliberately mid-slot rather than at the edges: a lunch place
+  // that opens at 12:00 should not read as closed because "midday" was
+  // taken to mean 11:00.
+  if (/morning|закуск|matin|mañana/.test(t)) return 9 * 60 + 30;
+  if (/afternoon|следобед/.test(t)) return 15 * 60 + 30;
+  if (/midday|\bnoon\b|lunch|об[яе]д/.test(t)) return 13 * 60;
+  if (/evening|dinner|вечер/.test(t)) return 19 * 60 + 30;
+  if (/night|нощ/.test(t)) return 21 * 60 + 30;
+  return null;
+}
+
+/** Whether the venue is open on `date` at the item's scheduled time.
+ *
+ * Returns undefined — not false — whenever the question can't be answered:
+ * no published hours, no parseable visit time, a malformed period list.
+ * That distinction is the whole point. "We don't know" and "it's shut" look
+ * identical to a naive check, and conflating them would delete perfectly
+ * good venues (parks, viewpoints, and plenty of small businesses publish no
+ * hours at all) to solve a problem they don't have. */
+export function isOpenAt(place: PlacesApiPlace, date: string, time: string | undefined): boolean | undefined {
+  const periods = place.regularOpeningHours?.periods;
+  if (!periods || periods.length === 0) return undefined;
+
+  const minutes = scheduledMinutes(time);
+  if (minutes == null) return undefined;
+
+  const parsed = Date.parse(`${date}T00:00:00Z`);
+  if (!Number.isFinite(parsed)) return undefined;
+  const weekday = new Date(parsed).getUTCDay(); // 0 = Sunday, same as Google
+  const visit = weekMinute(weekday, Math.floor(minutes / 60), minutes % 60);
+
+  // A single period with an open block and no close means "open 24 hours".
+  if (periods.length === 1 && periods[0].open && !periods[0].close) return true;
+
+  for (const period of periods) {
+    const o = period.open;
+    const c = period.close;
+    if (!o || o.day == null || !c || c.day == null) continue;
+    const start = weekMinute(o.day, o.hour ?? 0, o.minute ?? 0);
+    let end = weekMinute(c.day, c.hour ?? 0, c.minute ?? 0);
+    // Closing "before" opening means the period wraps past Saturday night
+    // into Sunday morning — add a week so the comparison stays linear.
+    if (end <= start) end += 7 * 24 * 60;
+    if (visit >= start && visit < end) return true;
+    // The same wrapped period also has to be tested one week earlier, or a
+    // Sunday-morning visit inside a Saturday-night period is missed.
+    if (visit + 7 * 24 * 60 >= start && visit + 7 * 24 * 60 < end) return true;
+  }
+  return false;
+}
+
 function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
   // Only surface a rating we'd actually stand behind — see MIN_RATING_COUNT.
   if (hasReliableRating(place)) {
@@ -339,16 +429,36 @@ function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
   }
 }
 
-export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
+export interface CheckVenuesOptions {
+  /** Verify only these items. Used for the second pass, which re-checks
+   * just the venues the repair stage added or replaced — re-verifying the
+   * whole trip would spend a Places lookup per item to confirm what the
+   * first pass already confirmed. */
+  only?: Set<ItineraryItem>;
+}
+
+export async function checkVenues(
+  itinerary: Itinerary,
+  options: CheckVenuesOptions = {}
+): Promise<Itinerary> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return itinerary;
 
-  const targets = (itinerary.days ?? []).flatMap((day) => day.items.filter(isNamedVenueItem));
+  // Paired with its day, because the single most valuable thing this
+  // function can check — is the place open when we're sending someone —
+  // needs the date, and the previous flatMap threw it away.
+  const targets = (itinerary.days ?? []).flatMap((day) =>
+    day.items
+      .filter((item) => isNamedVenueItem(item) && (!options.only || options.only.has(item)))
+      .map((item) => ({ item, date: day.date }))
+  );
+  if (targets.length === 0) return itinerary;
+
   const toRemove = new Set<ItineraryItem>();
   const geoCache = new Map<string, Promise<GeoPoint | null>>();
 
   await Promise.all(
-    targets.map(async (item) => {
+    targets.map(async ({ item, date }) => {
       // Safe: item is only in targets because isNamedVenueItem already
       // confirmed resolveVenueName(item) is non-null.
       const venueName = resolveVenueName(item)!;
@@ -379,8 +489,23 @@ export async function checkVenues(itinerary: Itinerary): Promise<Itinerary> {
       }
 
       applyPlaceData(item, place);
+
+      // Open on the actual day and hour we're sending them. Checked after
+      // applyPlaceData so the hours are recorded on the item either way —
+      // a traveler seeing "closed Mondays" next to a venue understands the
+      // plan; one seeing nothing just finds a locked door.
+      const open = isOpenAt(place, date, item.time);
+      item.google_open_on_visit = open;
+      item.google_opening_hours = place.regularOpeningHours?.weekdayDescriptions;
+
       const status = item.google_business_status;
       if (status === "closed_permanently" || status === "closed_temporarily") {
+        reject(item);
+      } else if (open === false) {
+        // A real, well-rated venue that happens to be shut that day. Same
+        // outcome as any other failed check — it does not appear — but the
+        // repair stage that runs after this pass will put a different real
+        // venue in the slot, so the day doesn't just lose a meal.
         reject(item);
       } else if (hasReliableRating(place) && place.rating! < MIN_RATING) {
         // Only reject on a rating solid enough to justify it — a bad

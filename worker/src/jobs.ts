@@ -73,6 +73,7 @@ export type QualityCheckId =
   | "day_not_empty"
   | "prices_present"
   | "transport_legs"
+  | "open_on_visit"
   | "grounded_ratio";
 
 export interface QualityFinding {
@@ -114,8 +115,13 @@ export interface JobTimings {
   dayWaves?: number;
   /** Duplicate-venue and missing-meal repairs, which share one stage. */
   repairsMs?: number;
-  /** Google Places + Amadeus, which run concurrently with each other. */
+  /** Google Places verification + Amadeus, which run concurrently with each
+   * other. Runs BEFORE the repairs now — see processJob for why. */
   venuesAndFlightsMs?: number;
+  /** The second Places pass, over only the venues the repairs replaced or
+   * added. Near-zero on a clean generation, since it's skipped entirely
+   * when nothing was repaired. */
+  verifyRepairsMs?: number;
   /** True when two-phase generation failed and the entire itinerary was
    * regenerated through the original single-call path — the single most
    * expensive thing that can happen to a job, and previously invisible

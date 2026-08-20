@@ -632,7 +632,10 @@ async function repairDuplicateVenues(
   // independently pick the same "different" restaurant — reintroducing the
   // exact duplicate one of them exists to remove.
   claimed: Set<string>,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage) => void,
+  /** Collects every item whose venue changed, so the caller can send just
+   * those back through Places rather than re-verifying the whole trip. */
+  repaired?: ItineraryItem[]
 ): Promise<void> {
   const dupes = duplicateVenueItems(itinerary.days ?? []);
   if (dupes.length === 0) return;
@@ -684,6 +687,9 @@ async function repairDuplicateVenues(
         item.google_maps_url = undefined;
         item.source_confidence = "inferred";
         item.source_urls = [];
+        item.google_open_on_visit = undefined;
+        item.google_opening_hours = undefined;
+        repaired?.push(item);
       } catch (e) {
         console.error(`[worker] venue repair failed for "${item.venue_name}":`, e);
         stripVenueIdentity(item);
@@ -769,7 +775,9 @@ async function repairMissingMeals(
   itinerary: Itinerary,
   /** Shared with repairDuplicateVenues — see the note on its parameter. */
   taken: Set<string>,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage) => void,
+  /** See repairDuplicateVenues — the added meals go back through Places. */
+  repaired?: ItineraryItem[]
 ): Promise<void> {
   const planByNumber = new Map(skeletonDays.map((d) => [d.day, d]));
   const jobs: { day: ItineraryDay; plan: SkeletonDay; meal: MealSlot }[] = [];
@@ -822,7 +830,7 @@ async function repairMissingMeals(
         if (!parsed.venue_name || !parsed.title) return;
         if (taken.has(parsed.venue_name.toLowerCase())) return;
         taken.add(parsed.venue_name.toLowerCase());
-        day.items.push({
+        const added: ItineraryItem = {
           // The time is checked against the slot it was asked to fill, not
           // taken on trust. A dinner returned at 13:00 reads as a second
           // lunch to everything downstream — including the gate — so the
@@ -841,7 +849,9 @@ async function repairMissingMeals(
           // this and will verify it like any other named venue.
           source_confidence: "inferred",
           source_urls: [],
-        });
+        };
+        day.items.push(added);
+        repaired?.push(added);
       } catch (e) {
         // A day that's still missing a meal is worse than one that has it,
         // but far better than a failed generation.
@@ -884,9 +894,11 @@ function timeOrder(time: string | undefined): number {
   const m = /(\d{1,2})[:.](\d{2})/.exec(time);
   if (m) return Number(m[1]) + Number(m[2]) / 60;
   const t = time.toLowerCase();
+  // "afternoon" before "noon" — see scheduledMinutes in
+  // engine/venueVerification.ts for why that ordering is load-bearing.
   if (/morning|breakfast|закуск/.test(t)) return 8.5;
-  if (/midday|noon|lunch|об[яе]д/.test(t)) return 13;
   if (/afternoon|следобед/.test(t)) return 15.5;
+  if (/midday|\bnoon\b|lunch|об[яе]д/.test(t)) return 13;
   if (/evening|dinner|вечер/.test(t)) return 19.5;
   if (/night|нощ/.test(t)) return 22;
   return 24;
@@ -1228,36 +1240,26 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         )
       );
     }
-    // Before Places runs, so a replaced or added venue is verified like any
-    // other — repairing after verification would ship an unchecked business.
+    // VERIFY FIRST, THEN REPAIR. This order is the fix for a hole that had
+    // been open the whole time and is invisible from either end on its own.
     //
-    // Both repairs run in ONE stage rather than one after the other. They
-    // touch different problems (a venue used twice vs. a meal not written at
-    // all) and neither reads the other's output, so serializing them would
-    // add a whole round-trip to every generation that needs both.
-    const claimedVenues = new Set<string>();
-    for (const day of itinerary.days ?? []) {
-      for (const item of day.items) {
-        if (item.venue_name) claimedVenues.add(item.venue_name.toLowerCase());
-      }
-    }
-    await timed("repairs", () =>
-      Promise.all([
-        repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage),
-        planDays.length > 0
-          ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage)
-          : Promise.resolve(),
-      ])
-    );
-    itinerary = checkFeasibility(itinerary);
-    itinerary = checkBudgetIntegrity(itinerary, job.brief);
-    // attachFlightSearchLinks must run before attachFlightPrices — the
+    // checkVenues doesn't flag a venue it can't confirm, it DELETES the
+    // item. So a restaurant that fails its Places lookup — a wrong listing,
+    // a sub-4.2 rating, or now, shut on the day we're sending them — took
+    // the day's dinner with it. Running the repairs before that, as they
+    // were, meant they could only ever fix holes the MODEL left. A hole
+    // punched by verification a moment later was nobody's job, and the day
+    // simply went out one meal short.
+    //
+    // That explains a real trip coming back with days that had no lunch and
+    // no dinner far better than the model forgetting to write them, and it
+    // would have survived every prompt fix aimed at the model.
+    //
+    // attachFlightSearchLinks must run before applyFlightPricing — the
     // price lookup reuses the same link as its source_urls value once a
-    // real fare is found. checkVenues and attachFlightPrices are otherwise
-    // independent (venues vs. flights), so they run concurrently rather
-    // than adding their latency on top of each other.
+    // real fare is found.
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
-    itinerary = await timed("venuesAndFlights", async () => {
+    itinerary = await timed("verify", async () => {
       // The Amadeus round-trips already happened concurrently with
       // generation; applying them is pure bookkeeping, so only the Places
       // verification actually costs anything here.
@@ -1266,6 +1268,42 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         void recordFareObservation(redis, obs);
       });
     });
+
+    // Now repair what's missing — whether the model never wrote it or
+    // verification just removed it. Both repairs run in ONE stage: they
+    // touch different problems and neither reads the other's output, so
+    // serializing them would add a whole round-trip to every generation
+    // that needs both.
+    const claimedVenues = new Set<string>();
+    for (const day of itinerary.days ?? []) {
+      for (const item of day.items) {
+        if (item.venue_name) claimedVenues.add(item.venue_name.toLowerCase());
+      }
+    }
+    const repaired: ItineraryItem[] = [];
+    await timed("repairs", () =>
+      Promise.all([
+        repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage, repaired),
+        planDays.length > 0
+          ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage, repaired)
+          : Promise.resolve(),
+      ])
+    );
+
+    // Second verification pass over ONLY what the repairs touched. A
+    // replacement venue is a fresh, unchecked business, and shipping it
+    // unverified would undo the guarantee the first pass exists to make —
+    // but re-checking the whole trip would spend a Places lookup per item
+    // to reconfirm what was confirmed a moment ago. Typically a handful of
+    // items, all in parallel.
+    if (repaired.length > 0) {
+      itinerary = await timed("verifyRepairs", () =>
+        checkVenues(itinerary, { only: new Set(repaired) })
+      );
+    }
+
+    itinerary = checkFeasibility(itinerary);
+    itinerary = checkBudgetIntegrity(itinerary, job.brief);
     itinerary = deriveConfidenceTiers(itinerary);
 
     // The acceptance gate, run LAST — after the repairs have had their
@@ -1308,7 +1346,8 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   jobTimings.lodgingPrefetchMs = timings.lodgingPrefetch;
   jobTimings.generateMs = timings.generate;
   jobTimings.repairsMs = timings.repairs;
-  jobTimings.venuesAndFlightsMs = timings.venuesAndFlights;
+  jobTimings.venuesAndFlightsMs = timings.verify;
+  jobTimings.verifyRepairsMs = timings.verifyRepairs;
   job.timings = jobTimings;
 
   await recordSpend(redis, costUsd);

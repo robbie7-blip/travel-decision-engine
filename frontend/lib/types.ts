@@ -125,6 +125,24 @@ export interface ItineraryItem {
   // place Google Places matched (or doesn't appear at all, rather than
   // linking somewhere that might not be the right result).
   google_maps_url?: string;
+  // Whether the venue is actually OPEN on the day and at the hour this item
+  // is scheduled for, checked against Google's real weekly opening hours.
+  //
+  // This is the difference between "this restaurant exists and is rated
+  // 4.6" and "this restaurant is open when we are sending you there", and
+  // it is the error a traveler cannot recover from: they trusted the plan,
+  // walked across a city, and found a locked door. Every other verification
+  // signal in this file is about whether a place is worth going to; this is
+  // the only one about whether going is possible.
+  //
+  // Undefined when Google publishes no hours for the venue (common for
+  // parks, viewpoints and some small businesses) or when the item has no
+  // parseable time — absence of hours is not evidence of being closed, so
+  // it is never treated as a failure.
+  google_open_on_visit?: boolean;
+  // Google's own human-readable weekly hours, carried through so the trip
+  // page can show WHY something was flagged rather than just asserting it.
+  google_opening_hours?: string[];
   // Populated by attachFlightSearchLinks (worker/src/engine/flightLinks.ts)
   // for arrival/departure transport items that are actual flights — a
   // Google Flights deep link for that exact route/date, built deterministically

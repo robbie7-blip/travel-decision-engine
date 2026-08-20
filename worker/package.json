@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "test:pipeline": "WORKER_NO_AUTOSTART=1 tsx src/pipeline.test.ts",
     "test:quality": "WORKER_NO_AUTOSTART=1 tsx src/quality.test.ts",
-    "test": "npm run test:quality && npm run test:pipeline"
+    "test": "npm run test:quality && npm run test:hours && npm run test:pipeline",
+    "test:hours": "WORKER_NO_AUTOSTART=1 tsx src/openingHours.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

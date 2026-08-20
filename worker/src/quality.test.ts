@@ -253,6 +253,25 @@ section("transport legs");
   );
 }
 
+section("closed when we send them");
+{
+  const days = baseline();
+  // checkVenues should have removed this; the gate is the backstop for
+  // anything that gets past it.
+  (days[1].items.find((i) => i.type === "meal") as ItineraryItem).google_open_on_visit = false;
+  const report = assessQuality(itinerary(days), BRIEF, plan());
+  const finding = report.findings.find((f) => f.check === "open_on_visit");
+  check("open_on_visit fires", !!finding);
+  check("counts as a defect", finding?.severity === "defect");
+
+  const unknown = baseline();
+  (unknown[1].items.find((i) => i.type === "meal") as ItineraryItem).google_open_on_visit = undefined;
+  check(
+    "a venue with no published hours is NOT flagged",
+    !firedChecks(unknown).includes("open_on_visit")
+  );
+}
+
 section("grounding");
 {
   const days = baseline();

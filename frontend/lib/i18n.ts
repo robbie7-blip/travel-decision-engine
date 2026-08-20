@@ -146,6 +146,8 @@ export interface Dictionary {
     // venueVerification.ts) — "{count}" placeholder for googleRatingCount.
     googleRatingCount: string;
     closedTemporarily: string;
+    /** Shown next to a venue we confirmed is open on the day it is scheduled. */
+    openOnThisDay: string;
     closedPermanently: string;
     viewOnGoogleMaps: string;
     // Google Flights deep link on flight items (see worker/src/engine/
@@ -562,6 +564,7 @@ const en: Dictionary = {
     },
     googleRatingCount: "{count} reviews",
     closedTemporarily: "Temporarily closed (Google)",
+    openOnThisDay: "✓ Open on this day",
     closedPermanently: "Permanently closed (Google)",
     viewOnGoogleMaps: "View on Google Maps",
     checkFlightPrices: "Check flight prices",
@@ -979,6 +982,7 @@ const bg: Dictionary = {
     },
     googleRatingCount: "{count} отзива",
     closedTemporarily: "Временно затворено (Google)",
+    openOnThisDay: "✓ Отворено в този ден",
     closedPermanently: "Трайно затворено (Google)",
     viewOnGoogleMaps: "Виж в Google Maps",
     checkFlightPrices: "Провери цени на полети",

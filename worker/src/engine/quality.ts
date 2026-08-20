@@ -95,9 +95,11 @@ function parseHour(time: string | undefined): number | null {
     return h >= 0 && h <= 23 ? h : null;
   }
   const t = time.toLowerCase();
+  // "afternoon" first — it contains "noon", and testing noon first would
+  // place every afternoon item at midday.
   if (t.includes("morning")) return 9;
-  if (t.includes("midday") || t.includes("noon")) return 13;
   if (t.includes("afternoon")) return 15;
+  if (t.includes("midday") || /\bnoon\b/.test(t)) return 13;
   if (t.includes("evening") || t.includes("night")) return 20;
   return null;
 }
@@ -268,6 +270,25 @@ export function assessQuality(
         check: "transport_legs",
         severity: "defect",
         detail: `trip starts from ${brief.origin} but no transport leg was written`,
+      });
+    }
+  }
+
+  // --- open when we send them ------------------------------------------
+  // Anything Google says is shut on the visit day should already have been
+  // removed by checkVenues, so this firing means something got past that —
+  // a repaired venue that failed its second pass, or an item whose time
+  // moved after verification. Cheap to assert, and the failure it guards
+  // against (a traveler standing outside a locked door) is the one this
+  // product least survives.
+  for (const day of days) {
+    for (const item of day.items) {
+      if (item.google_open_on_visit !== false) continue;
+      findings.push({
+        check: "open_on_visit",
+        severity: "defect",
+        day: day.day,
+        detail: `day ${day.day} "${item.title}" is closed at that time on that day`,
       });
     }
   }

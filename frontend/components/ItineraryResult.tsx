@@ -521,6 +521,32 @@ export function ItineraryResult({
                         </div>
                       )
                     )}
+                    {/* The hours for the day this item is actually on. Every
+                        other signal here is about whether a place is worth
+                        going to; this is the only one about whether going
+                        is possible, so it earns its own line rather than
+                        being folded into the rating. Anything Google says
+                        is shut at that hour was already removed upstream
+                        (see checkVenues), which is exactly why showing the
+                        hours matters: it's the visible half of a promise
+                        the traveler otherwise has to take on trust. */}
+                    {item.google_open_on_visit === true && item.google_opening_hours && (
+                      <div className="font-mono" style={{ fontSize: 11, color: "var(--grounded)", marginTop: 4 }}>
+                        {t.result.openOnThisDay}
+                        {(() => {
+                          // weekdayDescriptions is Monday-first from Google;
+                          // pick the line for this item's own weekday.
+                          const parsed = Date.parse(`${day.date}T00:00:00Z`);
+                          if (!Number.isFinite(parsed)) return null;
+                          const mondayFirst = (new Date(parsed).getUTCDay() + 6) % 7;
+                          const line = item.google_opening_hours?.[mondayFirst];
+                          if (!line) return null;
+                          // "Tuesday: 11:00 AM – 10:00 PM" -> just the hours.
+                          const hours = line.slice(line.indexOf(":") + 1).trim();
+                          return <span style={{ color: "var(--ink-dim)" }}> · {hours}</span>;
+                        })()}
+                      </div>
+                    )}
                     {item.google_maps_url && item.google_business_status !== "closed_permanently" && (
                       <a
                         href={item.google_maps_url}

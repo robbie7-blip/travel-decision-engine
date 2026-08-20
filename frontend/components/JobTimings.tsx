@@ -76,8 +76,9 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
             generation {secs(timings.totalMs)}
           </div>
           <div>
-            lodging prefetch {secs(timings.lodgingPrefetchMs)} · generate {secs(timings.generateMs)} · repairs{" "}
-            {secs(timings.repairsMs)} · venues+flights {secs(timings.venuesAndFlightsMs)}
+            lodging prefetch {secs(timings.lodgingPrefetchMs)} · generate {secs(timings.generateMs)} · verify{" "}
+            {secs(timings.venuesAndFlightsMs)} · repairs {secs(timings.repairsMs)} · re-verify{" "}
+            {secs(timings.verifyRepairsMs)}
           </div>
           <div>
             phase 1 (frame ‖ plan) {secs(timings.skeletonMs)} · {timings.dayCount ?? "—"} day(s){" "}
