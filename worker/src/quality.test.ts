@@ -10,8 +10,8 @@
 //
 // Run: npm run test:quality
 
-import { assessQuality } from "./engine/quality";
-import type { SkeletonDay } from "./engine/twoPhase";
+import { assessQuality, normalizeLodgingPrices } from "./engine/quality";
+import type { SkeletonAccommodation, SkeletonDay } from "./engine/twoPhase";
 import { check, finish, heading, section } from "./testutil";
 import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "./types";
 
@@ -111,6 +111,10 @@ function baseline(): ItineraryDay[] {
 
 function firedChecks(days: ItineraryDay[]): string[] {
   return assessQuality(itinerary(days), BRIEF, plan()).findings.map((f) => f.check);
+}
+
+function firedChecksWith(days: ItineraryDay[], accommodation: SkeletonAccommodation[]): string[] {
+  return assessQuality(itinerary(days), BRIEF, plan(), accommodation).findings.map((f) => f.check);
 }
 
 heading("ACCEPTANCE GATE — every invariant, against a real past failure");
@@ -286,6 +290,42 @@ section("grounding");
   }
   const good = assessQuality(itinerary(verified), BRIEF, plan());
   check("a Places-confirmed trip reports 100%", good.groundedPercent === 100, String(good.groundedPercent));
+}
+
+section("accommodation priced per night, not per stay");
+{
+  // The Rome trip: a two-night stay at EUR 132/night written as EUR 264 on
+  // BOTH nights, which doubles the largest line in the trip and quietly
+  // inflates a total the traveler is budgeting against.
+  const rate: SkeletonAccommodation[] = [
+    { city: "Ubud", name: "Hotel Real", area: "Centre", cost_per_night_eur: 132, source_confidence: "grounded", source_urls: ["u"] },
+  ];
+  const days = baseline();
+  for (const d of days) for (const it of d.items) if (it.type === "lodging") it.cost_estimate_eur = 264;
+
+  const before = assessQuality(itinerary(days), BRIEF, plan(), rate);
+  check("the gate catches a whole-stay price", before.findings.some((f) => f.check === "lodging_price_per_night"));
+  check("and calls it a defect", before.findings.find((f) => f.check === "lodging_price_per_night")?.severity === "defect");
+
+  const corrected = normalizeLodgingPrices(itinerary(days), rate);
+  check("every wrong night is corrected", corrected === 2, `${corrected} corrected`);
+  check(
+    "to the rate that was actually looked up",
+    days.every((d) => d.items.every((it) => it.type !== "lodging" || it.cost_estimate_eur === 132))
+  );
+  check("and the gate then passes it", !firedChecksWith(days, rate).includes("lodging_price_per_night"));
+
+  // Rounding and a city tax are legitimate; only a multiple is not.
+  const nudged = baseline();
+  for (const d of nudged) for (const it of d.items) if (it.type === "lodging") it.cost_estimate_eur = 145;
+  check(
+    "a small variance is left alone (rounding, city tax)",
+    normalizeLodgingPrices(itinerary(nudged), rate) === 0
+  );
+  check(
+    "with no rate to compare against, nothing is touched",
+    normalizeLodgingPrices(itinerary(baseline()), []) === 0
+  );
 }
 
 section("what actually moves the verified percentage");

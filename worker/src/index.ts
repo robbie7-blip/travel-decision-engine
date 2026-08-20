@@ -44,6 +44,7 @@ import {
   duplicateVenueItems,
   mealSlotOf,
   missingMealsFor,
+  normalizeLodgingPrices,
   summarizeQuality,
 } from "./engine/quality";
 import { checkVenues, prewarmGeocodes } from "./engine/venueVerification";
@@ -1114,7 +1115,7 @@ async function generateItineraryTwoPhase(
     dayWaves: number;
     waitedForFrame: boolean;
   }) => void,
-  onPlan?: (days: SkeletonDay[]) => void,
+  onPlan?: (days: SkeletonDay[], accommodation: SkeletonAccommodation[]) => void,
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
   cachedLodging: Map<string, CachedLodgingFact> = new Map()
 ): Promise<Itinerary> {
@@ -1129,7 +1130,6 @@ async function generateItineraryTwoPhase(
   // Only the PLAN gates phase 2. The frame keeps running alongside the day
   // calls and is collected at the end, where its fields are actually used.
   const plan = await planPromise;
-  onPlan?.(plan.days);
   const lodging = (await pendingLodging) ?? [];
 
   // The frame's accommodation is a fallback for the live lookup, so when
@@ -1155,6 +1155,7 @@ async function generateItineraryTwoPhase(
   const skeletonMs = Date.now() - startedAt;
 
   const dayContext: DayContext = { days: plan.days, accommodation };
+  onPlan?.(plan.days, accommodation);
   const daysStartedAt = Date.now();
   const days = await runWithLimit(plan.days, MAX_PARALLEL_DAYS, (day) =>
     withRateLimitRetry(`day ${day.day}`, () =>
@@ -1223,7 +1224,7 @@ async function generateItinerary(
   forceSkipSearch = false,
   timings?: JobTimings,
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
-  onPlan?: (days: SkeletonDay[]) => void,
+  onPlan?: (days: SkeletonDay[], accommodation: SkeletonAccommodation[]) => void,
   cachedLodging?: Map<string, CachedLodgingFact>
 ): Promise<Itinerary> {
   if (TWO_PHASE_ENABLED) {
@@ -1376,6 +1377,9 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // can hold the written days to it. Stays empty for a refinement and for
   // the single-call fallback, which produce no plan.
   let planDays: SkeletonDay[] = [];
+  /** The per-night rates behind those days, so the accommodation prices the
+   * day calls wrote can be checked against what was actually looked up. */
+  let planAccommodation: SkeletonAccommodation[] = [];
 
   try {
     let itinerary: Itinerary;
@@ -1442,8 +1446,9 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
           false,
           jobTimings,
           pendingLodging,
-          (days) => {
+          (days, accommodation) => {
             planDays = days;
+            planAccommodation = accommodation;
           },
           cachedLodgingEntries
         )
@@ -1467,6 +1472,15 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // attachFlightSearchLinks must run before applyFlightPricing — the
     // price lookup reuses the same link as its source_urls value once a
     // real fare is found.
+    // Before anything sums item costs. A day call that wrote the whole
+    // stay's price onto every night would otherwise double the largest
+    // number in the trip, and checkBudgetIntegrity below builds the total
+    // from exactly these figures.
+    const repriced = normalizeLodgingPrices(itinerary, planAccommodation);
+    if (repriced > 0) {
+      console.warn(`[worker] corrected ${repriced} accommodation item(s) back to the per-night rate`);
+    }
+
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
 
     // Every venue name already spoken for, snapshotted BEFORE anything
@@ -1570,7 +1584,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // catch it has already tried to repair. What it changes is that the
     // flaw is now RECORDED — on this job, and in the rolling quality
     // counters — instead of waiting to be noticed in a screenshot.
-    const quality = assessQuality(itinerary, job.brief, planDays);
+    const quality = assessQuality(itinerary, job.brief, planDays, planAccommodation);
     job.quality = quality;
     console.log(`[worker] quality ${id}: ${summarizeQuality(quality)}`);
     void recordQualitySample(redis, quality);

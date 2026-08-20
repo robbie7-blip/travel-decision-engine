@@ -26,6 +26,7 @@ export const QUALITY_CHECKS: { id: QualityCheckId; label: string }[] = [
   { id: "no_duplicate_venues", label: "Same venue twice" },
   { id: "day_not_empty", label: "Day with nothing to do" },
   { id: "prices_present", label: "Missing a price" },
+  { id: "lodging_price_per_night", label: "Accommodation billed per stay, not per night" },
   { id: "lodging_per_night", label: "Wrong number of nights" },
   { id: "transport_legs", label: "No transport leg" },
   { id: "open_on_visit", label: "Closed when we send them" },

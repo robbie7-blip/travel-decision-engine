@@ -49,7 +49,68 @@ import type {
   QualityReport,
 } from "../jobs";
 export type { QualityCheckId, QualityFinding, QualityReport } from "../jobs";
-import { requiredMeals, type MealSlot, type SkeletonDay } from "./twoPhase";
+import {
+  requiredMeals,
+  type MealSlot,
+  type SkeletonAccommodation,
+  type SkeletonDay,
+} from "./twoPhase";
+
+/** How far a lodging item's price may sit from the known per-night rate
+ * before it is treated as wrong. Generous, because a day call is allowed to
+ * round or to fold in a city tax — but nowhere near wide enough to let a
+ * two-night total through as one night. */
+const LODGING_PRICE_TOLERANCE = 0.35;
+
+/** Forces every accommodation item onto the per-night rate we actually
+ * looked up.
+ *
+ * A real generation priced a two-night Rome stay at EUR 264 and then wrote
+ * EUR 264 on BOTH nights. The instruction is explicit — "cost_estimate_eur
+ * is ONE night, never a multi-night total" — and it lost anyway, which is
+ * what makes this worth enforcing rather than asking for. Accommodation is
+ * the largest line in most trips and the trip total is summed from item
+ * costs, so getting it wrong here silently doubles the number the traveler
+ * is budgeting against. That is the worst kind of error this product can
+ * make: confidently stated, expensive, and invisible.
+ *
+ * Deterministic on purpose. The correct figure is already known — it came
+ * from the lodging lookup and was handed to the day call in its prompt — so
+ * this is arithmetic, not a judgement, and it does not need a model call to
+ * settle it. */
+export function normalizeLodgingPrices(
+  itinerary: Itinerary,
+  accommodation: SkeletonAccommodation[]
+): number {
+  if (accommodation.length === 0) return 0;
+  let corrected = 0;
+  for (const day of itinerary.days ?? []) {
+    for (const item of day.items) {
+      if (item.type !== "lodging") continue;
+      const rate = perNightRateFor(item, accommodation);
+      if (rate == null || rate <= 0) continue;
+      const actual = item.cost_estimate_eur;
+      if (typeof actual !== "number" || actual <= 0) continue;
+      if (Math.abs(actual - rate) / rate <= LODGING_PRICE_TOLERANCE) continue;
+      item.cost_estimate_eur = Math.round(rate);
+      corrected++;
+    }
+  }
+  return corrected;
+}
+
+/** Matches a lodging item to its city's rate, falling back to the only
+ * entry when there is just one — the same tolerance buildDayPrompt applies,
+ * since the frame and the plan name cities independently. */
+function perNightRateFor(
+  item: ItineraryItem,
+  accommodation: SkeletonAccommodation[]
+): number | null {
+  const location = (item.location ?? "").toLowerCase();
+  const match = accommodation.find((a) => location.includes(a.city.toLowerCase().trim()));
+  if (match) return match.cost_per_night_eur;
+  return accommodation.length === 1 ? accommodation[0].cost_per_night_eur : null;
+}
 
 /** Below this, an itinerary is mostly guesswork wearing a confident face.
  * Not a defect, because it can be entirely legitimate (an obscure
@@ -157,7 +218,8 @@ export function duplicateVenueItems(
 export function assessQuality(
   itinerary: Itinerary,
   brief: TripBriefInput,
-  plan: SkeletonDay[]
+  plan: SkeletonDay[],
+  accommodation: SkeletonAccommodation[] = []
 ): QualityReport {
   const findings: QualityFinding[] = [];
   const days = itinerary.days ?? [];
@@ -257,6 +319,28 @@ export function assessQuality(
         severity: "defect",
         day: day.day,
         detail: `day ${day.day} "${item.title}" has no price`,
+      });
+    }
+  }
+
+  // --- accommodation priced per night, not per stay --------------------
+  // normalizeLodgingPrices corrects these before the gate runs, so this
+  // firing means a lodging item is off its known rate by more than rounding
+  // AND could not be matched to a city — worth seeing, because the trip
+  // total is summed from these.
+  for (const day of days) {
+    for (const item of day.items) {
+      if (item.type !== "lodging") continue;
+      const rate = perNightRateFor(item, accommodation);
+      if (rate == null || rate <= 0) continue;
+      const actual = item.cost_estimate_eur;
+      if (typeof actual !== "number" || actual <= 0) continue;
+      if (Math.abs(actual - rate) / rate <= LODGING_PRICE_TOLERANCE) continue;
+      findings.push({
+        check: "lodging_price_per_night",
+        severity: "defect",
+        day: day.day,
+        detail: `day ${day.day} accommodation is EUR ${actual} against a per-night rate of EUR ${Math.round(rate)}`,
       });
     }
   }
