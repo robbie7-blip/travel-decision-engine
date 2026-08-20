@@ -81,7 +81,8 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
             {secs(timings.verifyRepairsMs)}
           </div>
           <div>
-            phase 1 (frame ‖ plan) {secs(timings.skeletonMs)} · {timings.dayCount ?? "—"} day(s){" "}
+            phase 1 ({timings.waitedForFrame ? "plan + frame ⚠ lodging came back short" : "plan only, frame ran alongside days"}){" "}
+            {secs(timings.skeletonMs)} · {timings.dayCount ?? "—"} day(s){" "}
             {secs(timings.daysMs)}
             {timings.dayWaves != null && (
               // Anything above 1 means the day calls didn't all run at once,

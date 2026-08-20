@@ -31,6 +31,16 @@ import type { TripBriefInput } from "./types";
 
 const CALL_MS = 400; // stands in for one model round-trip
 
+// The trip frame is deliberately slower than everything else, because in
+// reality it is: it does the budget arithmetic, the key decisions and the
+// things-to-skip list, while the plan just lays out days. With every stub
+// call taking the same time, "the frame overlaps the day calls" and "the
+// day calls started one millisecond after the frame finished" are
+// indistinguishable — and the whole point of the change under test is that
+// the frame must NOT gate phase 2. Making it slow is what gives that
+// assertion teeth.
+const FRAME_CALL_MS = CALL_MS * 2;
+
 function briefFor(destinations: string[], startDate: string, endDate: string): TripBriefInput {
   return {
     destinations,
@@ -152,7 +162,7 @@ function makeClient(scenario: Scenario, records: CallRecord[]): Anthropic {
                       ? "meal-repair"
                       : "other";
         const start = Date.now();
-        await new Promise((r) => setTimeout(r, CALL_MS));
+        await new Promise((r) => setTimeout(r, kind === "frame" ? FRAME_CALL_MS : CALL_MS));
         records.push({ kind, start, end: Date.now() });
 
         let text: string;
@@ -288,6 +298,19 @@ async function run(scenario: Scenario) {
 
   console.log("\nstages that must run CONCURRENTLY");
   check("phase 1's two halves overlap (frame ‖ plan)", !!frame && !!plan && overlaps(frame, plan));
+  // The frame is the heavier half and NOTHING in a day call reads it, so it
+  // must not gate phase 2. This is the assertion that keeps it that way:
+  // the day calls have to start before the frame has finished, not after.
+  check(
+    "day calls start while the frame is still running (only the plan gates phase 2)",
+    days.length > 0 && !!frame && days.every((d) => d.start < frame.end),
+    frame ? `frame ends +${frame.end - startedAt}ms, first day starts +${Math.min(...days.map((d) => d.start)) - startedAt}ms` : ""
+  );
+  check(
+    "and the frame was not on the critical path",
+    finished.timings?.waitedForFrame === false,
+    `waitedForFrame=${finished.timings?.waitedForFrame}`
+  );
   check(
     "lodging rate + property overlap (two dedicated searches, one wall-clock cost)",
     !!rate && !!property && overlaps(rate, property)
@@ -311,7 +334,7 @@ async function run(scenario: Scenario) {
   );
 
   console.log("\nstages that must run IN ORDER");
-  check("days start only after phase 1 finishes", days.every((d) => d.start >= plan.end - 50));
+  check("days start only after the PLAN finishes", days.every((d) => d.start >= plan.end - 50));
   check(
     "duplicate repair ran (the day stub reuses one venue everywhere)",
     venueRepairs.length === scenario.dates.length - 1,

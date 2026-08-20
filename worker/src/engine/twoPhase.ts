@@ -385,9 +385,27 @@ export function getDayInstructions(): string {
   return DAY_INSTRUCTIONS;
 }
 
+/** Everything a day call needs from the rest of the trip. Deliberately NOT
+ * the whole skeleton: a day needs the plan (its own anchors, the other
+ * days' anchors, whether it is the first night in this city) and where the
+ * traveler sleeps. It does not need the budget verdict, the key decisions
+ * or the things-to-skip list — none of which appear in a day's output.
+ *
+ * Naming that dependency exactly is what lets phase 2 start as soon as the
+ * PLAN is ready instead of waiting for both halves of phase 1. The frame is
+ * the heavier of the two (it does the budget reasoning), so waiting for it
+ * was pure blocked time on the critical path. */
+export interface DayContext {
+  days: SkeletonDay[];
+  accommodation: SkeletonAccommodation[];
+  /** Omitted when the frame hasn't resolved yet — it is context only, and
+   * the day is explicitly told not to repeat it. */
+  tripSummary?: string;
+}
+
 export function buildDayPrompt(
   brief: TripBriefInput,
-  skeleton: TripSkeleton,
+  skeleton: DayContext,
   day: SkeletonDay
 ): string {
   // Only this day's city's facts — the other destinations' curated facts
@@ -475,9 +493,10 @@ export function buildDayPrompt(
     );
   }
 
+  if (skeleton.tripSummary) {
+    lines.push(``, `Trip summary for context (do not repeat it in your output): ${skeleton.tripSummary}`);
+  }
   lines.push(
-    ``,
-    `Trip summary for context (do not repeat it in your output): ${skeleton.trip_summary}`,
     ``,
     `Write day ${day.day} now, as the single JSON day object described in your instructions.`
   );
@@ -538,7 +557,7 @@ export function isUsablePlan(plan: unknown): plan is TripPlan {
  * arithmetic, not another model call: the number has to agree with the
  * items, and that's a calculation, not a judgement. */
 export function applyVerifiedAccommodation(
-  skeleton: TripSkeleton,
+  skeleton: { days: SkeletonDay[]; accommodation: SkeletonAccommodation[]; budget_feasibility?: BudgetFeasibility },
   city: string,
   // costPerNightEur is null when the rate search missed but the property
   // search didn't. The two halves are separate searches and fail
@@ -576,7 +595,10 @@ export function applyVerifiedAccommodation(
   if (existing) Object.assign(existing, next);
   else skeleton.accommodation.push(next);
 
-  if (hasPrice && nights > 0 && previousPerNight > 0) {
+  // Only correctable once the frame exists — when accommodation is applied
+  // before it (the fast path), the caller re-applies against the real
+  // budget as soon as the frame lands.
+  if (hasPrice && nights > 0 && previousPerNight > 0 && skeleton.budget_feasibility) {
     const delta = (verified.costPerNightEur! - previousPerNight) * nights;
     skeleton.budget_feasibility.min_realistic_total_eur = Math.max(
       0,

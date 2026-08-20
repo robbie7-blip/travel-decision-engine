@@ -113,6 +113,14 @@ export interface JobTimings {
    * trip take twice as long as it needed to while the stage timing looked
    * merely "slow". */
   dayWaves?: number;
+  /** True when phase 2 had to wait for the trip frame as well as the day
+   * plan. The day calls only need the plan, so normally the frame runs
+   * alongside them and costs nothing — this is only set when the live
+   * lodging lookup came back short and the frame's own price estimate was
+   * the only figure available, which puts the slower half of phase 1 back
+   * on the critical path. A run showing true is a run where fixing lodging
+   * would also make generation faster. */
+  waitedForFrame?: boolean;
   /** Duplicate-venue and missing-meal repairs, which share one stage. */
   repairsMs?: number;
   /** Google Places verification + Amadeus, which run concurrently with each

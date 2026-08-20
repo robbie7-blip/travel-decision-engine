@@ -26,6 +26,8 @@ import {
   getFrameSystemPrompt,
   getPlanSystemPrompt,
   mergeSkeleton,
+  type DayContext,
+  type SkeletonAccommodation,
   applyVerifiedAccommodation,
   isUsableFrame,
   isUsablePlan,
@@ -570,7 +572,7 @@ async function runWithLimit<T, R>(items: T[], limit: number, fn: (item: T) => Pr
 async function generateDay(
   client: Anthropic,
   brief: TripBriefInput,
-  skeleton: TripSkeleton,
+  skeleton: DayContext,
   day: SkeletonDay,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<ItineraryDay> {
@@ -936,44 +938,80 @@ function timeOrder(time: string | undefined): number {
 
 /** Phase 1: the whole-trip decisions and the day layout, as two calls that
  * run at the same time. They own disjoint fields and neither reads the
- * other's output, so this costs max(frame, plan) where it used to cost
- * their sum — see the header comment in engine/twoPhase.ts. */
-async function generateSkeleton(
+ * other's output — see the header comment in engine/twoPhase.ts.
+ *
+ * Returns the plan RESOLVED and the frame still in flight. That asymmetry
+ * is the point: phase 2 needs the plan and does not need the frame, so
+ * handing back a promise lets the day calls start on the plan alone while
+ * the heavier half finishes alongside them.
+ */
+function startPhase1(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void
-): Promise<TripSkeleton> {
-  const [frame, plan] = await Promise.all([
-    withRateLimitRetry("trip frame", () =>
+): { frame: Promise<TripFrame>; plan: Promise<TripPlan> } {
+  return {
+    frame: withRateLimitRetry("trip frame", () =>
       withOneRetryOf(() =>
         generatePhase1Half<TripFrame>(
-        client,
-        "trip frame",
-        getFrameSystemPrompt(),
-        buildFramePrompt(brief, cachedLodgingFacts),
+          client,
+          "trip frame",
+          getFrameSystemPrompt(),
+          buildFramePrompt(brief, cachedLodgingFacts),
           isUsableFrame,
           onUsage
         )
       )
     ),
-    withRateLimitRetry("day plan", () =>
+    plan: withRateLimitRetry("day plan", () =>
       withOneRetryOf(() =>
         generatePhase1Half<TripPlan>(
-        client,
-        "day plan",
-        getPlanSystemPrompt(),
-        buildPlanPrompt(brief),
+          client,
+          "day plan",
+          getPlanSystemPrompt(),
+          buildPlanPrompt(brief),
           isUsablePlan,
           onUsage
         )
       )
     ),
-  ]);
-  return mergeSkeleton(frame, plan);
+  };
 }
 
-/** Skeleton, then all days concurrently. Throws on any failure so the
+/** Accommodation built from the live lodging lookups alone, or null when a
+ * city that needs a bed didn't get a usable price.
+ *
+ * When this returns a list, the day calls have everything they need and the
+ * frame's own accommodation estimate is redundant — its figures were only
+ * ever a fallback for exactly this lookup. When it returns null, the frame
+ * has to be waited for, which is the old behaviour and still correct. */
+function accommodationFromLodging(
+  plan: TripPlan,
+  lodging: { city: string; result: LodgingLookupResult | null }[]
+): SkeletonAccommodation[] | null {
+  const citiesNeedingBeds = new Set(
+    plan.days.filter((d) => d.include_lodging).map((d) => d.city.toLowerCase().trim())
+  );
+  if (citiesNeedingBeds.size === 0) return [];
+
+  const out: SkeletonAccommodation[] = [];
+  for (const { city, result } of lodging) {
+    if (result?.costEstimateEur == null) continue;
+    out.push({
+      city,
+      name: result.name,
+      area: result.area,
+      cost_per_night_eur: result.costEstimateEur,
+      source_confidence: "grounded",
+      source_urls: result.sourceUrl ? [result.sourceUrl] : [],
+    });
+    citiesNeedingBeds.delete(city.toLowerCase().trim());
+  }
+  return citiesNeedingBeds.size === 0 ? out : null;
+}
+
+/** Phase 1, then all days concurrently. Throws on any failure so the
  * caller can fall back to the single-call path — a partially-written
  * itinerary must never reach a traveler just because it was faster. */
 async function generateItineraryTwoPhase(
@@ -986,30 +1024,70 @@ async function generateItineraryTwoPhase(
     daysMs: number;
     dayCount: number;
     dayWaves: number;
+    waitedForFrame: boolean;
   }) => void,
-  // Hands the day plan back out so the post-generation checks can compare
-  // what was written against what was planned — specifically, which meals
-  // each day was supposed to have. Only the parallel path produces one; the
-  // single-call fallback has no plan to check against, which is a real (and
-  // acceptable) gap in the rare case it runs.
   onPlan?: (days: SkeletonDay[]) => void,
-  // Lodging lookups already in flight, started at t=0 alongside this call
-  // rather than before it. Awaited between the two phases: phase 1 doesn't
-  // need them (it can price accommodation from general knowledge and be
-  // corrected), phase 2 does (it writes the actual accommodation items), so
-  // this is exactly where a whole serial stage can be folded into one that
-  // was already running.
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>
 ): Promise<Itinerary> {
-  // No retry wrapper here: each half of phase 1 retries itself, and a
-  // second layer on top would quietly turn one bad response into four
-  // calls.
   const startedAt = Date.now();
-  const skeleton = await generateSkeleton(client, brief, cachedLodgingFacts, onUsage);
-  const skeletonMs = Date.now() - startedAt;
-  onPlan?.(skeleton.days);
+  const { frame: framePromise, plan: planPromise } = startPhase1(
+    client,
+    brief,
+    cachedLodgingFacts,
+    onUsage
+  );
 
-  for (const { city, result } of (await pendingLodging) ?? []) {
+  // Only the PLAN gates phase 2. The frame keeps running alongside the day
+  // calls and is collected at the end, where its fields are actually used.
+  const plan = await planPromise;
+  onPlan?.(plan.days);
+  const lodging = (await pendingLodging) ?? [];
+
+  // The frame's accommodation is a fallback for the live lookup, so when
+  // the lookup covered every city that needs a bed there is nothing left to
+  // wait for. When it didn't, the frame's estimate is the only figure we
+  // have and phase 2 genuinely cannot start without it.
+  let accommodation = accommodationFromLodging(plan, lodging);
+  const waitedForFrame = accommodation === null;
+  let earlyFrame: TripFrame | undefined;
+  if (accommodation === null) {
+    earlyFrame = await framePromise;
+    accommodation = earlyFrame.accommodation ?? [];
+    for (const { city, result } of lodging) {
+      if (!result) continue;
+      applyVerifiedAccommodation({ days: plan.days, accommodation }, city, {
+        costPerNightEur: result.costEstimateEur,
+        name: result.name,
+        area: result.area,
+        sourceUrls: result.sourceUrl ? [result.sourceUrl] : [],
+      });
+    }
+  }
+  const skeletonMs = Date.now() - startedAt;
+
+  const dayContext: DayContext = { days: plan.days, accommodation };
+  const daysStartedAt = Date.now();
+  const days = await runWithLimit(plan.days, MAX_PARALLEL_DAYS, (day) =>
+    withRateLimitRetry(`day ${day.day}`, () =>
+      withOneRetryOf(() => generateDay(client, brief, dayContext, day, onUsage))
+    )
+  );
+  const daysMs = Date.now() - daysStartedAt;
+  const waves = Math.ceil(days.length / MAX_PARALLEL_DAYS);
+  onPhaseTimings?.({ skeletonMs, daysMs, dayCount: days.length, dayWaves: waves, waitedForFrame });
+  console.log(
+    `[worker] phase 1 (plan${waitedForFrame ? " + frame, lodging incomplete" : " only, frame ran alongside days"}) ` +
+      `${skeletonMs}ms, ${days.length} day(s) in ${daysMs}ms ` +
+      `(<=${MAX_PARALLEL_DAYS} at a time = ${waves} wave(s), day model ${DAY_MODEL})`
+  );
+
+  // Almost always already resolved by now: it started at the same moment as
+  // the plan and has had the whole of phase 2 to finish.
+  const frame = earlyFrame ?? (await framePromise);
+  const skeleton = mergeSkeleton({ ...frame, accommodation }, plan);
+  // The budget was written against the frame's own accommodation estimate,
+  // so it is corrected here once both halves exist.
+  for (const { city, result } of lodging) {
     if (!result) continue;
     applyVerifiedAccommodation(skeleton, city, {
       costPerNightEur: result.costEstimateEur,
@@ -1018,20 +1096,6 @@ async function generateItineraryTwoPhase(
       sourceUrls: result.sourceUrl ? [result.sourceUrl] : [],
     });
   }
-
-  const daysStartedAt = Date.now();
-  const days = await runWithLimit(skeleton.days, MAX_PARALLEL_DAYS, (day) =>
-    withRateLimitRetry(`day ${day.day}`, () =>
-      withOneRetryOf(() => generateDay(client, brief, skeleton, day, onUsage))
-    )
-  );
-  const daysMs = Date.now() - daysStartedAt;
-  const waves = Math.ceil(days.length / MAX_PARALLEL_DAYS);
-  onPhaseTimings?.({ skeletonMs, daysMs, dayCount: days.length, dayWaves: waves });
-  console.log(
-    `[worker] phase 1 (frame ‖ plan) ${skeletonMs}ms, ${days.length} day(s) in ${daysMs}ms ` +
-      `(<=${MAX_PARALLEL_DAYS} at a time = ${waves} wave(s), day model ${DAY_MODEL})`
-  );
 
   return assembleItinerary(skeleton, days);
 }
@@ -1085,6 +1149,7 @@ async function generateItinerary(
             timings.daysMs = t.daysMs;
             timings.dayCount = t.dayCount;
             timings.dayWaves = t.dayWaves;
+            timings.waitedForFrame = t.waitedForFrame;
           }
         },
         onPlan,
