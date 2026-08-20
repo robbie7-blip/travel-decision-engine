@@ -516,8 +516,20 @@ const DAY_MODEL = process.env.DAY_MODEL ?? MODEL;
 // than a permanent extra wave on all of them.
 const MAX_PARALLEL_DAYS = Number(process.env.MAX_PARALLEL_DAYS ?? 16);
 
-const SKELETON_MAX_TOKENS = 12000;
-const DAY_MAX_TOKENS = 6000;
+// Headroom, not a target — you are billed for tokens generated, never for
+// the cap. These are sized for the WORST case rather than the typical one
+// because hitting a cap here is catastrophically expensive relative to the
+// nothing it costs to avoid: a truncated day throws, burns a retry, and if
+// the retry also truncates the entire two-phase path is abandoned and the
+// whole itinerary is regenerated in one serial call — the two-minute path
+// this design exists to avoid.
+//
+// 6000 was set for a sparser day and before effort went to "high". Adaptive
+// thinking draws on the same budget as the answer, so a full day (three
+// meals, activities, accommodation, a transport leg) plus its reasoning was
+// running uncomfortably close to a cap whose only job is to stop a runaway.
+const SKELETON_MAX_TOKENS = 24000;
+const DAY_MAX_TOKENS = 16000;
 
 async function runWithLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
@@ -1119,6 +1131,7 @@ async function maybeAlertBudgetThreshold(redis: Redis, totalSpentUsd: number): P
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: message }),
+      signal: AbortSignal.timeout(5000),
     });
   } catch (e) {
     console.error("[worker] failed to POST budget alert webhook:", e);
@@ -1146,6 +1159,11 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   }
   const job: Job = JSON.parse(raw);
 
+  // Started before the status write, not after it. Amadeus is the slowest
+  // thing that doesn't depend on anything, so it should be in flight during
+  // every Redis round-trip that follows rather than queued behind them.
+  const pendingFare = fetchFarePricing(job.brief).catch(() => null);
+
   console.log(`[worker] processing ${id}: ${job.brief.destinations.join(", ")}`);
   job.status = "running";
   await writeJob(redis, job);
@@ -1171,10 +1189,6 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       timings[label] = (timings[label] ?? 0) + (Date.now() - t0);
     }
   }
-
-  // Hoisted above the refinement branch so the tail can await it either
-  // way; a refinement re-runs flight pricing too.
-  const pendingFare = fetchFarePricing(job.brief).catch(() => null);
 
   // What phase 1 planned each day to contain, captured so the checks below
   // can hold the written days to it. Stays empty for a refinement and for
@@ -1324,7 +1338,6 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 
     job.status = "done";
     job.result = itinerary;
-    await cacheLodgingFacts(redis, job.brief, itinerary);
   } catch (e) {
     console.error(`[worker] job ${id} failed:`, e);
     job.status = "error";
@@ -1350,8 +1363,14 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   jobTimings.verifyRepairsMs = timings.verifyRepairs;
   job.timings = jobTimings;
 
-  await recordSpend(redis, costUsd);
+  // Publish FIRST. The traveler is polling for this write and nothing after
+  // it changes what they receive — the lodging cache is an optimization for
+  // some future generation and the spend counter is accounting. Awaiting
+  // them here put several Redis round-trips (one per destination, and they
+  // were sequential) between a finished itinerary and the traveler seeing
+  // it, for no benefit to the person waiting.
   await writeJob(redis, job);
+
   const breakdown = Object.entries(timings)
     .map(([label, ms]) => `${label} ${(ms / 1000).toFixed(1)}s`)
     .join(", ");
@@ -1359,6 +1378,15 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     `[worker] finished ${id}: ${job.status} in ${((Date.now() - jobStartedAt) / 1000).toFixed(1)}s` +
       `${breakdown ? ` (${breakdown})` : ""}${costUsd > 0 ? ` ~$${costUsd.toFixed(4)}` : ""}`
   );
+
+  // Off the traveler's clock. This is a long-running process, so there is
+  // no exit to race — but failures still get logged rather than swallowed.
+  void Promise.all([
+    recordSpend(redis, costUsd).catch((e) => console.error(`[worker] spend write failed for ${id}:`, e)),
+    job.result
+      ? cacheLodgingFacts(redis, job.brief, job.result)
+      : Promise.resolve(),
+  ]);
 }
 
 // How many jobs this single worker process handles at once. Jobs are

@@ -64,6 +64,19 @@ const LOCATION_BIAS_RADIUS_M = 30000;
 
 const PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
+
+// Both of these sit on the generation critical path, once per named venue,
+// and neither had a timeout — so a slow or unresponsive Google could hold a
+// traveler's generation open indefinitely with nothing to cap it. Amadeus
+// was given timeouts after exactly this failure mode was confirmed to push
+// real generations past two minutes (see engine/flightPricing.ts); these
+// were simply missed at the time.
+//
+// Generous rather than tight: the goal is to bound a hang, not to abandon a
+// call that is merely taking its time. Every lookup runs in parallel, so
+// the worst case is one of these, not N of them.
+const PLACES_TIMEOUT_MS = 8000;
+const GEOCODE_TIMEOUT_MS = 5000;
 const FIELD_MASK =
   "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id," +
   "places.displayName,places.location,places.regularOpeningHours";
@@ -115,7 +128,8 @@ function distanceKm(a: GeoPoint, b: GeoPoint): number {
 async function geocodeRaw(query: string): Promise<GeoPoint | null> {
   try {
     const res = await fetch(
-      `${GEOCODE_URL}?name=${encodeURIComponent(query)}&count=1&language=en&format=json`
+      `${GEOCODE_URL}?name=${encodeURIComponent(query)}&count=1&language=en&format=json`,
+      { signal: AbortSignal.timeout(GEOCODE_TIMEOUT_MS) }
     );
     if (!res.ok) return null;
     const data = (await res.json()) as { results?: Array<{ latitude: number; longitude: number }> };
@@ -268,7 +282,28 @@ function buildMapsUrl(placeName: string, placeId: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeName)}&query_place_id=${placeId}`;
 }
 
-async function lookupPlace(apiKey: string, query: string, bias?: GeoPoint | null): Promise<PlacesApiPlace | null> {
+/** Three outcomes, not two.
+ *
+ * "Places has no such business" and "Places did not answer" used to be the
+ * same value — null — and null meant delete the item. So a Google outage,
+ * a quota rejection, or one slow response did not degrade verification, it
+ * stripped every named venue out of the itinerary and handed the traveler a
+ * trip with no restaurants in it. The pipeline would have reported that as
+ * a successful generation.
+ *
+ * An unanswered lookup now leaves the item exactly as it was: named, shown,
+ * and simply not carrying a verification badge it never earned. That is the
+ * honest outcome when the verifier itself is down. */
+type PlaceLookup =
+  | { status: "found"; place: PlacesApiPlace }
+  | { status: "not_found" }
+  | { status: "unavailable"; reason: string };
+
+async function lookupPlace(
+  apiKey: string,
+  query: string,
+  bias?: GeoPoint | null
+): Promise<PlaceLookup> {
   try {
     const res = await fetch(PLACES_SEARCH_URL, {
       method: "POST",
@@ -284,12 +319,18 @@ async function lookupPlace(apiKey: string, query: string, bias?: GeoPoint | null
           locationBias: { circle: { center: bias, radius: LOCATION_BIAS_RADIUS_M } },
         }),
       }),
+      signal: AbortSignal.timeout(PLACES_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    // A 4xx/5xx is the API failing us, not a verdict on the venue — a 429
+    // over quota or a 500 would otherwise read as "this restaurant does not
+    // exist" for every item in the trip at once.
+    if (!res.ok) return { status: "unavailable", reason: `HTTP ${res.status}` };
     const data = (await res.json()) as PlacesApiResponse;
-    return data.places?.[0] ?? null;
-  } catch {
-    return null;
+    const place = data.places?.[0];
+    return place ? { status: "found", place } : { status: "not_found" };
+  } catch (e) {
+    const reason = e instanceof Error && e.name === "TimeoutError" ? "timeout" : String(e);
+    return { status: "unavailable", reason };
   }
 }
 
@@ -456,6 +497,7 @@ export async function checkVenues(
 
   const toRemove = new Set<ItineraryItem>();
   const geoCache = new Map<string, Promise<GeoPoint | null>>();
+  let unavailable = 0;
 
   await Promise.all(
     targets.map(async ({ item, date }) => {
@@ -463,7 +505,15 @@ export async function checkVenues(
       // confirmed resolveVenueName(item) is non-null.
       const venueName = resolveVenueName(item)!;
       const bias = await geocode(item.location, geoCache);
-      const place = await lookupPlace(apiKey, `${venueName}, ${item.location}`, bias);
+      const lookup = await lookupPlace(apiKey, `${venueName}, ${item.location}`, bias);
+
+      // Verifier down: leave the item untouched rather than deleting it.
+      if (lookup.status === "unavailable") {
+        unavailable++;
+        return;
+      }
+
+      const place = lookup.status === "found" ? lookup.place : null;
       const placeName = place?.displayName?.text;
       const matched = place && placeName && namesLikelyMatch(venueName, placeName);
 
@@ -514,6 +564,15 @@ export async function checkVenues(
       }
     })
   );
+
+  if (unavailable > 0) {
+    // Loud on purpose. Silently shipping unverified venues is the right
+    // call in the moment and the wrong thing to never find out about.
+    console.warn(
+      `[worker] Places was unavailable for ${unavailable}/${targets.length} venue(s) — ` +
+        `those items ship unverified rather than being dropped`
+    );
+  }
 
   if (toRemove.size > 0) {
     for (const day of itinerary.days ?? []) {

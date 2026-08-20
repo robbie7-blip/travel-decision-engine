@@ -349,10 +349,51 @@ async function run(scenario: Scenario) {
     !finished.quality?.findings.some((f) => f.check === "meals_present")
   );
 
+  console.log("\nsequential stages on the critical path");
+  // The number that actually decides whether a generation fits in 30s.
+  // Each stage is one model or network round-trip that cannot start until
+  // the previous one finished, so wall time is roughly the sum of the
+  // slowest call in each. Pinned as a hard assertion because every latency
+  // regression this pipeline has had was a stage silently becoming two.
+  //
+  // The four, in order:
+  //   1. phase 1     — frame ‖ plan, concurrent with the lodging prefetch
+  //   2. days        — all of them at once
+  //   3. verify      — Places ‖ Amadeus
+  //   4. repairs     — duplicates ‖ missing meals, ONLY when something is wrong
+  //   (+ re-verify   — only the repaired items, only when there were repairs)
+  //
+  // A clean generation pays 3, since stages 4 and 5 are skipped entirely.
+  const stageOf = (r: CallRecord) =>
+    r.kind === "frame" || r.kind === "plan" || r.kind === "lodging-rate" || r.kind === "lodging-property"
+      ? 1
+      : r.kind === "day"
+        ? 2
+        : 3;
+  const stageStarts = new Map<number, number>();
+  for (const r of records) {
+    const stage = stageOf(r);
+    const at = r.start - startedAt;
+    if (!stageStarts.has(stage) || at < stageStarts.get(stage)!) stageStarts.set(stage, at);
+  }
+  const observedStages = Math.round(totalMs / CALL_MS);
+  check(
+    `critical path is 4 model stages, not ${records.length}`,
+    observedStages <= 4,
+    `${totalMs}ms / ${CALL_MS}ms = ~${observedStages} sequential stages`
+  );
+  check(
+    "the stage count does not depend on trip length",
+    observedStages <= 4,
+    `${scenario.dates.length}-day trip took ~${observedStages} stages`
+  );
+
   console.log("\ncritical path shape");
   // phase 1 (‖ lodging) -> days (‖) -> repairs (‖)  ==  3 sequential stages
   const serialUpperBound = records.length * CALL_MS;
-  const parallelExpectation = 3 * CALL_MS;
+  // phase 1 -> days -> repairs -> (re-verify). The stubbed run always
+  // triggers repairs, so it pays the worst case rather than the clean one.
+  const parallelExpectation = 4 * CALL_MS;
   check(
     `total is close to max-path (~${parallelExpectation}ms), not sum (~${serialUpperBound}ms)`,
     totalMs < parallelExpectation * 1.9,
@@ -360,7 +401,7 @@ async function run(scenario: Scenario) {
   );
   check(
     "total does not grow with trip length",
-    totalMs < parallelExpectation * 1.9,
+    totalMs < parallelExpectation * 1.5,
     `${totalMs}ms for ${scenario.dates.length} days`
   );
 }

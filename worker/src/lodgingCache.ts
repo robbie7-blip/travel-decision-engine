@@ -106,6 +106,7 @@ export async function writeCachedLodgingFact(
 export async function cacheLodgingFacts(redis: Redis, brief: TripBriefInput, itinerary: Itinerary): Promise<void> {
   try {
     const seen = new Set<string>();
+    const writes: Promise<void>[] = [];
     for (const day of itinerary.days ?? []) {
       for (const item of day.items) {
         if (item.type !== "lodging") continue;
@@ -113,18 +114,24 @@ export async function cacheLodgingFacts(redis: Redis, brief: TripBriefInput, iti
         const dest = matchDestination(item.location, brief.destinations);
         if (!dest || seen.has(dest)) continue;
         seen.add(dest);
-        await writeCachedLodgingFact(redis, dest, {
-          costEstimateEur: item.cost_estimate_eur,
-          sourceUrls: item.source_urls ?? [],
-          sourceAgreement: item.source_agreement ?? null,
-          // Carry the property forward when the finished item names one —
-          // otherwise this path would keep overwriting a named cache entry
-          // with an unnamed one on every generation, quietly undoing the
-          // prefetch's work for that city.
-          name: item.venue_name ?? undefined,
-        });
+        // Collected and awaited together: these are independent keys, and
+        // writing them one after another made a multi-city trip pay one
+        // Redis round-trip per destination in sequence.
+        writes.push(
+          writeCachedLodgingFact(redis, dest, {
+            costEstimateEur: item.cost_estimate_eur,
+            sourceUrls: item.source_urls ?? [],
+            sourceAgreement: item.source_agreement ?? null,
+            // Carry the property forward when the finished item names one —
+            // otherwise this path would keep overwriting a named cache entry
+            // with an unnamed one on every generation, quietly undoing the
+            // prefetch's work for that city.
+            name: item.venue_name ?? undefined,
+          })
+        );
       }
     }
+    await Promise.all(writes);
   } catch (e) {
     console.error("[worker] failed to cache lodging facts:", e);
   }
