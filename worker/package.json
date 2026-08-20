@@ -5,7 +5,9 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
-    "test:pipeline": "WORKER_NO_AUTOSTART=1 tsx src/pipeline.test.ts"
+    "test:pipeline": "WORKER_NO_AUTOSTART=1 tsx src/pipeline.test.ts",
+    "test:quality": "WORKER_NO_AUTOSTART=1 tsx src/quality.test.ts",
+    "test": "npm run test:quality && npm run test:pipeline"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

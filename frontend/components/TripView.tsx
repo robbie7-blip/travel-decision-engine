@@ -13,7 +13,7 @@ import { LoadingScreen } from "./LoadingScreen";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
-import type { Job, JobTimings as Timings } from "@/lib/jobs";
+import type { Job, JobTimings as Timings, QualityReport } from "@/lib/jobs";
 import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
 
 /** The page behind a shared/bookmarked /trip/[jobId] link. Loads a job cold
@@ -31,6 +31,7 @@ export function TripView({ jobId }: { jobId: string }) {
   const [lastBrief, setLastBrief] = useState<TripBriefInput | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string | undefined>(undefined);
   const [timings, setTimings] = useState<Timings | undefined>(undefined);
+  const [quality, setQuality] = useState<QualityReport | undefined>(undefined);
   const [refining, setRefining] = useState(false);
   const [refineJobStatus, setRefineJobStatus] = useState<Job["status"] | null>(null);
   const [refineError, setRefineError] = useState("");
@@ -55,11 +56,12 @@ export function TripView({ jobId }: { jobId: string }) {
       setJobStatus(status);
       setLastBrief(brief);
     })
-      .then(({ itinerary, brief, timings: t }) => {
+      .then(({ itinerary, brief, timings: t, quality: q }) => {
         if (cancelled) return;
         setResult(itinerary);
         setLastBrief(brief);
         setTimings(t);
+        setQuality(q);
         const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
         if (saved !== "en" && saved !== "bg") setLanguageState(brief.language);
         // Bookmarks this visit so a returning visitor can find their way
@@ -167,7 +169,7 @@ export function TripView({ jobId }: { jobId: string }) {
                 interests={lastBrief?.interests}
                 language={language}
               />
-              <JobTimings timings={timings} />
+              <JobTimings timings={timings} quality={quality} />
               <AddToShowcaseButton jobId={currentJobId} />
             </>
           )}

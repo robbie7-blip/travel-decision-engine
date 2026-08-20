@@ -25,8 +25,6 @@ import {
   getDayInstructions,
   getFrameSystemPrompt,
   getPlanSystemPrompt,
-  findDuplicateVenueItems,
-  findMissingMeals,
   mergeSkeleton,
   applyVerifiedAccommodation,
   isUsableFrame,
@@ -39,10 +37,18 @@ import {
   type TripSkeleton,
 } from "./engine/twoPhase";
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
+import {
+  assessQuality,
+  duplicateVenueItems,
+  mealSlotOf,
+  missingMealsFor,
+  summarizeQuality,
+} from "./engine/quality";
 import { checkVenues } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
+import { recordQualitySample } from "./qualityStats";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type JobTimings, type RefinementRequest } from "./jobs";
 import { cacheLodgingFacts, loadCachedLodgingFacts, writeCachedLodgingFact } from "./lodgingCache";
 import {
@@ -54,7 +60,7 @@ import {
   SPEND_KEY_TTL_SECONDS,
   type ModelUsage,
 } from "./costBudget";
-import type { Itinerary, ItineraryDay, TripBriefInput } from "./types";
+import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "./types";
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 12000;
@@ -628,7 +634,7 @@ async function repairDuplicateVenues(
   claimed: Set<string>,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<void> {
-  const dupes = findDuplicateVenueItems(itinerary.days ?? []);
+  const dupes = duplicateVenueItems(itinerary.days ?? []);
   if (dupes.length === 0) return;
   console.log(`[worker] repairing ${dupes.length} duplicate venue(s)`);
 
@@ -765,13 +771,17 @@ async function repairMissingMeals(
   taken: Set<string>,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<void> {
-  const gaps = findMissingMeals(skeletonDays, itinerary.days ?? []);
-  if (gaps.length === 0) return;
-  const gapCount = gaps.reduce((n, g) => n + g.missing.length, 0);
-  console.log(`[worker] filling ${gapCount} missing meal(s) across ${gaps.length} day(s)`);
-
-  const jobs: { day: (typeof gaps)[number]["day"]; plan: SkeletonDay; meal: MealSlot }[] = [];
-  for (const g of gaps) for (const meal of g.missing) jobs.push({ day: g.day, plan: g.plan, meal });
+  const planByNumber = new Map(skeletonDays.map((d) => [d.day, d]));
+  const jobs: { day: ItineraryDay; plan: SkeletonDay; meal: MealSlot }[] = [];
+  for (const day of itinerary.days ?? []) {
+    const plan = planByNumber.get(day.day);
+    if (!plan) continue;
+    for (const meal of missingMealsFor(day, plan)) jobs.push({ day, plan, meal });
+  }
+  if (jobs.length === 0) return;
+  console.log(
+    `[worker] filling ${jobs.length} missing meal(s) across ${new Set(jobs.map((j) => j.day.day)).size} day(s)`
+  );
 
   await Promise.all(
     jobs.map(async ({ day, plan, meal }) => {
@@ -813,7 +823,14 @@ async function repairMissingMeals(
         if (taken.has(parsed.venue_name.toLowerCase())) return;
         taken.add(parsed.venue_name.toLowerCase());
         day.items.push({
-          time: parsed.time || meal,
+          // The time is checked against the slot it was asked to fill, not
+          // taken on trust. A dinner returned at 13:00 reads as a second
+          // lunch to everything downstream — including the gate — so the
+          // day would still be short a dinner and the repair would have
+          // spent a call to achieve nothing. The venue is the part worth
+          // asking a model for; which end of the day it goes at is
+          // arithmetic, so it's enforced here.
+          time: timeForSlot(parsed.time, meal),
           type: "meal",
           title: parsed.title,
           venue_name: parsed.venue_name,
@@ -838,6 +855,24 @@ async function repairMissingMeals(
   for (const day of new Set(jobs.map((j) => j.day))) {
     day.items.sort((a, b) => timeOrder(a.time) - timeOrder(b.time));
   }
+}
+
+const DEFAULT_MEAL_TIME: Record<MealSlot, string> = {
+  breakfast: "08:30",
+  lunch: "13:00",
+  dinner: "19:30",
+};
+
+/** Keeps a repaired meal in the slot it was meant to fill. Accepts the
+ * model's own time when it genuinely lands in that slot — it often knows
+ * that a particular place is better at 20:30 than 19:30 — and substitutes
+ * the slot's default when it doesn't. */
+function timeForSlot(proposed: string | undefined, slot: MealSlot): string {
+  if (proposed) {
+    const asItem = { time: proposed, title: "" } as ItineraryItem;
+    if (mealSlotOf(asItem) === slot) return proposed;
+  }
+  return DEFAULT_MEAL_TIME[slot];
 }
 
 /** Rough sort key for an item's time, used only to place repaired items
@@ -1232,6 +1267,23 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       });
     });
     itinerary = deriveConfidenceTiers(itinerary);
+
+    // The acceptance gate, run LAST — after the repairs have had their
+    // turn, after Places has verified what it can, after the confidence
+    // tiers are derived. Everything upstream gets to do its job first;
+    // this is the verdict on the result of all of it.
+    //
+    // It does not block the job. An itinerary with a defect still ships,
+    // because a traveler waiting on a generation is better served by a
+    // flawed itinerary than by an error page, and every defect it can
+    // catch it has already tried to repair. What it changes is that the
+    // flaw is now RECORDED — on this job, and in the rolling quality
+    // counters — instead of waiting to be noticed in a screenshot.
+    const quality = assessQuality(itinerary, job.brief, planDays);
+    job.quality = quality;
+    console.log(`[worker] quality ${id}: ${summarizeQuality(quality)}`);
+    void recordQualitySample(redis, quality);
+
     job.status = "done";
     job.result = itinerary;
     await cacheLodgingFacts(redis, job.brief, itinerary);

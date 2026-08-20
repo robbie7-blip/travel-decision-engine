@@ -8,24 +8,31 @@ import { getRedis } from "@/lib/redis";
 import { loadAnalyticsSnapshot, loadFunnelSnapshot, type AnalyticsSnapshot, type FunnelSnapshot } from "@/lib/analytics";
 import { checkDailyBudget, type BudgetCheckResult } from "@/lib/spendCheck";
 import { ALERT_THRESHOLD_RATIO } from "@/lib/costBudget";
+import { loadQualitySnapshot, QUALITY_CHECKS, type QualitySnapshot } from "@/lib/qualityStats";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
 export const runtime = "nodejs";
 
-async function loadSnapshot(): Promise<{ analytics: AnalyticsSnapshot; funnel: FunnelSnapshot; budget: BudgetCheckResult } | null> {
+async function loadSnapshot(): Promise<{
+  analytics: AnalyticsSnapshot;
+  funnel: FunnelSnapshot;
+  budget: BudgetCheckResult;
+  quality: QualitySnapshot;
+} | null> {
   let redis;
   try {
     redis = getRedis();
   } catch {
     return null;
   }
-  const [analytics, funnel, budget] = await Promise.all([
+  const [analytics, funnel, budget, quality] = await Promise.all([
     loadAnalyticsSnapshot(redis),
     loadFunnelSnapshot(redis),
     checkDailyBudget(redis),
+    loadQualitySnapshot(redis),
   ]);
-  return { analytics, funnel, budget };
+  return { analytics, funnel, budget, quality };
 }
 
 export default async function StatsAdminPage() {
@@ -43,7 +50,7 @@ export default async function StatsAdminPage() {
     );
   }
 
-  const { analytics: snapshot, funnel, budget } = loaded;
+  const { analytics: snapshot, funnel, budget, quality } = loaded;
   // Percentage of `from` that reached `to` — null (rendered as "—") rather
   // than a misleading 0% or NaN when the denominator is 0 (no data yet).
   const rate = (from: number, to: number): string => (from > 0 ? `${Math.round((to / from) * 100)}%` : "—");
@@ -102,6 +109,105 @@ export default async function StatsAdminPage() {
           </div>
         </div>
       </div>
+
+      {/* What the acceptance gate found across REAL generations — see
+          worker/src/engine/quality.ts. This section exists because the only
+          previous detector for a quality regression was the owner opening a
+          trip and noticing something wrong, which made every quality
+          question cost a paid generation to ask. Traveler traffic answers
+          it for free now, and continuously. */}
+      <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+        Generation quality — last 30 days
+      </div>
+      {quality.jobs === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 32 }}>
+          No generations recorded yet. This fills in on its own as trips are generated.
+        </div>
+      ) : (
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: "flex", gap: 32, flexWrap: "wrap", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Clean generations
+              </div>
+              <div
+                className="font-display"
+                style={{
+                  fontSize: 32,
+                  fontWeight: 600,
+                  color:
+                    quality.passed / quality.jobs >= 0.9
+                      ? "var(--accent-green)"
+                      : quality.passed / quality.jobs >= 0.7
+                        ? "var(--unverified)"
+                        : "var(--infeasible)",
+                }}
+              >
+                {Math.round((quality.passed / quality.jobs) * 100)}%
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                {quality.passed} of {quality.jobs} shipped with no defect
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Avg grounded
+              </div>
+              <div
+                className="font-display"
+                style={{
+                  fontSize: 32,
+                  fontWeight: 600,
+                  color: quality.avgGroundedPercent >= 60 ? "var(--accent-green)" : "var(--unverified)",
+                }}
+              >
+                {quality.avgGroundedPercent}%
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                of line items, averaged per trip
+              </div>
+            </div>
+          </div>
+
+          {/* Ordered by how often each fired, so the thing most worth fixing
+              is the thing at the top. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {QUALITY_CHECKS.map((check) => ({ ...check, count: quality.byCheck[check.id] ?? 0 }))
+              .sort((a, b) => b.count - a.count)
+              .map((check) => {
+                const share = quality.jobs > 0 ? check.count / quality.jobs : 0;
+                return (
+                  <div key={check.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                    <span style={{ flex: "0 0 200px", color: check.count === 0 ? "var(--ink-dim)" : "var(--ink)" }}>
+                      {check.label}
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        height: 6,
+                        borderRadius: 3,
+                        background: "var(--bg-panel-raised)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "block",
+                          height: "100%",
+                          width: `${Math.round(share * 100)}%`,
+                          background: share >= 0.25 ? "var(--infeasible)" : "var(--unverified)",
+                        }}
+                      />
+                    </span>
+                    <span style={{ flex: "0 0 90px", textAlign: "right", color: "var(--ink-dim)", fontSize: 12 }}>
+                      {check.count} ({Math.round(share * 100)}%)
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       {/* Where visitors actually drop off, not a guess — see
           lib/analytics.ts's FunnelEventType. Totals since these counters

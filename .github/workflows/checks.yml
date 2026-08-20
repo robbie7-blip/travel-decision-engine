@@ -1,0 +1,67 @@
+# Runs on every push and pull request, before Railway or Vercel deploy
+# anything.
+#
+# This exists because of a specific, repeated pattern: a change would land,
+# deploy, and the only way anyone found out it had broken generation was the
+# owner paying for a trip, opening it, and noticing something wrong in a
+# screenshot — sometimes weeks later. Three latency regressions and a broken
+# accommodation lookup all reached production that way.
+#
+# Every check below runs without an API key and without touching Redis, so
+# the whole suite is free and takes seconds. That is deliberate: a test
+# suite that costs money per run is a test suite nobody runs.
+
+name: checks
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  worker:
+    name: worker — typecheck + pipeline & quality suites
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      # The acceptance gate against itineraries broken in each of the ways
+      # this product has actually shipped broken.
+      - run: npm run test:quality
+      # Whether the stages that must overlap actually overlap. A
+      # serialization regression shows up here as a wall-clock number, with
+      # no model call involved.
+      - run: npm run test:pipeline
+
+  frontend:
+    name: frontend — typecheck + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      # Catches what typecheck alone misses — a server component importing
+      # something client-only, a bad route export, a failed page render.
+      - run: npm run build
+        env:
+          # The build must not require real credentials. Anything that needs
+          # them is behind a runtime check, not a build-time one; if this
+          # step ever starts needing a secret, that's the bug.
+          NEXT_TELEMETRY_DISABLED: "1"

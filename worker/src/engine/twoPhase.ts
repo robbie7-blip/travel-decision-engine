@@ -485,46 +485,6 @@ export function buildDayPrompt(
   return lines.join("\n");
 }
 
-function normalizeVenue(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-/** Finds venue names used more than once across the trip. The first use of
- * a name is legitimate and kept; every later one is a genuine duplicate the
- * traveler would notice — the same cafe two mornings running reads as the
- * app being careless.
- *
- * Returns the offending items rather than mutating them, because the right
- * response is to REPLACE the venue (see repairDuplicateVenues in index.ts),
- * not to strip its name. An earlier version simply un-named duplicates,
- * which traded one visible flaw for another: the day kept its breakfast but
- * lost the specific, checkable venue that makes this product worth using. */
-export function findDuplicateVenueItems(
-  days: ItineraryDay[]
-): { item: ItineraryItem; day: ItineraryDay; takenNames: string[] }[] {
-  const seen = new Set<string>();
-  const allNames: string[] = [];
-  const dupes: { item: ItineraryItem; day: ItineraryDay; takenNames: string[] }[] = [];
-
-  for (const day of [...days].sort((a, b) => a.day - b.day)) {
-    for (const item of day.items) {
-      const name = item.venue_name?.trim();
-      if (!name) continue;
-      const key = normalizeVenue(name);
-      if (!key) continue;
-      if (seen.has(key)) dupes.push({ item, day, takenNames: [] });
-      else {
-        seen.add(key);
-        allNames.push(name);
-      }
-    }
-  }
-  // Every duplicate needs the full taken list, including names claimed by
-  // later days, so a replacement can't collide with something else.
-  for (const d of dupes) d.takenNames = allNames;
-  return dupes;
-}
-
 /** Fallback used only when a replacement couldn't be found — strips the
  * venue identity so nothing downstream treats it as verified, keeping the
  * item so the day doesn't lose a meal outright. */
@@ -563,76 +523,6 @@ export function isUsablePlan(plan: unknown): plan is TripPlan {
   return p.days.every(
     (d) => typeof d?.day === "number" && typeof d?.date === "string" && Array.isArray(d?.anchors)
   );
-}
-
-/** Days that came back missing a meal the plan said they owed.
- *
- * The prompt now states the obligation as an explicit list rather than a
- * general rule, which is a much stronger instruction, but "much stronger"
- * is not "guaranteed" and a missing lunch is invisible until a traveler is
- * standing in a town at 1pm with nothing planned. So it's also checked
- * deterministically, and each gap is filled by a small targeted call (see
- * repairMissingMeals in index.ts) that runs in the same parallel stage as
- * the duplicate-venue repair, costing no extra step on the critical path.
- *
- * Matching is by the item's declared meal slot where there is one, falling
- * back to its time-of-day, because the item schema has no meal-slot field
- * and inventing one for this would ripple through every consumer. */
-export function findMissingMeals(
-  skeletonDays: SkeletonDay[],
-  days: ItineraryDay[]
-): { day: ItineraryDay; plan: SkeletonDay; missing: MealSlot[] }[] {
-  const planByNumber = new Map(skeletonDays.map((d) => [d.day, d]));
-  const out: { day: ItineraryDay; plan: SkeletonDay; missing: MealSlot[] }[] = [];
-
-  for (const day of days) {
-    const plan = planByNumber.get(day.day);
-    if (!plan) continue;
-    const covered = new Set<MealSlot>();
-    for (const item of day.items) {
-      if (item.type !== "meal") continue;
-      const slot = mealSlotOf(item);
-      if (slot) covered.add(slot);
-    }
-    const missing = requiredMeals(plan).filter((m) => !covered.has(m));
-    if (missing.length > 0) out.push({ day, plan, missing });
-  }
-  return out;
-}
-
-/** Which meal a written item represents. Reads the item's own words first
- * (they name the meal far more often than not, in whatever language the
- * trip is in is a real limitation — hence the time fallback, which is
- * language-independent and carries most of the weight). */
-function mealSlotOf(item: ItineraryItem): MealSlot | null {
-  const text = `${item.time ?? ""} ${item.title ?? ""}`.toLowerCase();
-  if (/breakfast|закуск|desayun|petit.d[ée]jeuner|frühstück|colazione/.test(text)) return "breakfast";
-  if (/lunch|об[яе]д|almuerzo|d[ée]jeuner|mittagessen|pranzo/.test(text)) return "lunch";
-  if (/dinner|supper|вечер|cena|d[îi]ner|abendessen/.test(text)) return "dinner";
-
-  // No named meal, so place it by clock time. A meal item with a parseable
-  // hour is unambiguous enough for this purpose: nobody eats their evening
-  // meal at 08:00.
-  const hour = parseHour(item.time);
-  if (hour == null) return null;
-  if (hour < 11) return "breakfast";
-  if (hour < 16) return "lunch";
-  return "dinner";
-}
-
-function parseHour(time: string | undefined): number | null {
-  if (!time) return null;
-  const m = /(\d{1,2})[:.]\d{2}/.exec(time);
-  if (m) {
-    const h = Number(m[1]);
-    return h >= 0 && h <= 23 ? h : null;
-  }
-  const t = time.toLowerCase();
-  if (t.includes("morning")) return 9;
-  if (t.includes("midday") || t.includes("noon")) return 13;
-  if (t.includes("afternoon")) return 15;
-  if (t.includes("evening") || t.includes("night")) return 20;
-  return null;
 }
 
 /** Overlays a live-verified accommodation onto the skeleton's own estimate,

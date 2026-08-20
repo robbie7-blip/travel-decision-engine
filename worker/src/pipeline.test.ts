@@ -215,6 +215,17 @@ function makeRedis(store: Map<string, string>): Redis {
     rpush: async () => 1,
     ltrim: async () => "OK",
     incrbyfloat: async () => "0",
+    sadd: async () => 1,
+    // Chainable no-op: the quality counters are written through a pipeline,
+    // and a stub that can't accept one turns a stats write into a thrown
+    // error inside the job.
+    multi: () => {
+      const chain: Record<string, unknown> = {};
+      const self = new Proxy(chain, {
+        get: (_t, prop) => (prop === "exec" ? async () => [] : () => self),
+      });
+      return self;
+    },
   } as unknown as Redis;
 }
 
@@ -320,6 +331,23 @@ async function run(scenario: Scenario) {
     d.items.every((it, i) => i === 0 || (d.items[i - 1].time ?? "") <= (it.time ?? ""))
   );
   check("repaired items land in clock order, not appended at the end", sorted);
+
+  // The gate runs last and its verdict is written onto the job. Asserting
+  // it here is what makes this an end-to-end quality test rather than only
+  // a concurrency one: the stub feeds the pipeline days that are broken in
+  // exactly the ways real generations have been (one venue reused
+  // everywhere, breakfast only), and the repairs have to actually fix them
+  // — not merely run.
+  check("the acceptance gate ran and recorded a verdict", finished.quality != null);
+  check(
+    "no duplicate venue survived the repair",
+    !finished.quality?.findings.some((f) => f.check === "no_duplicate_venues"),
+    finished.quality?.findings.map((f) => f.detail).join("; ") ?? ""
+  );
+  check(
+    "no missing meal survived the repair",
+    !finished.quality?.findings.some((f) => f.check === "meals_present")
+  );
 
   console.log("\ncritical path shape");
   // phase 1 (‖ lodging) -> days (‖) -> repairs (‖)  ==  3 sequential stages

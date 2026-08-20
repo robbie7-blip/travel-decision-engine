@@ -49,6 +49,48 @@ export interface Job {
   // read without shell access to the worker — see the diagnostics line on
   // the trip page (admin-only).
   timings?: JobTimings;
+  // What the acceptance gate found on the finished itinerary — see
+  // worker/src/engine/quality.ts. Written on every completed generation,
+  // whether it passed or not.
+  //
+  // This is deliberately part of the job record rather than a log line.
+  // The reason quality problems kept surviving deploys is that the only
+  // detector was the owner opening a trip and noticing something wrong,
+  // which meant every quality question cost a paid generation to ask.
+  // Carrying the verdict with the result makes it a field, and makes real
+  // traveler traffic the regression signal.
+  quality?: QualityReport;
+}
+
+export type QualitySeverity = "defect" | "warning";
+
+export type QualityCheckId =
+  | "meals_present"
+  | "no_duplicate_venues"
+  | "venues_named"
+  | "lodging_per_night"
+  | "lodging_named"
+  | "day_not_empty"
+  | "prices_present"
+  | "transport_legs"
+  | "grounded_ratio";
+
+export interface QualityFinding {
+  check: QualityCheckId;
+  severity: QualitySeverity;
+  detail: string;
+  day?: number;
+}
+
+export interface QualityReport {
+  findings: QualityFinding[];
+  defectCount: number;
+  warningCount: number;
+  groundedPercent: number;
+  itemCount: number;
+  /** No "defect"-severity finding survived. Not a claim the itinerary is
+   * good — a claim it isn't visibly broken. */
+  passed: boolean;
 }
 
 export interface JobTimings {
