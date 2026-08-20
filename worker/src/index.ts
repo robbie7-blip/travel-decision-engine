@@ -513,6 +513,33 @@ async function withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promi
 // for every job, without a deploy of different code.
 const TWO_PHASE_ENABLED = process.env.TWO_PHASE_GENERATION !== "0";
 
+// Effort for the phase-2 day calls only, separate from MODEL_EFFORT so the
+// two can be traded independently.
+//
+// Defaults to whatever MODEL_EFFORT is, so this changes nothing until it is
+// deliberately set. It exists because the day calls and phase 1 are not the
+// same KIND of work, and lumping them under one dial means any speed/quality
+// trade has to be made for both at once.
+//
+// Phase 1 is where the judgement lives: whether the budget is real, which
+// city gets which days, which venues are worth anchoring a day around, what
+// to skip. Phase 2 expands an already-decided day under rules it is handed
+// verbatim — the anchors are chosen, the meals are listed, the
+// accommodation is fixed, the transport is committed. It is the most
+// constrained call in the pipeline and it sits on the critical path.
+//
+// So DAY_MODEL_EFFORT=medium is the narrowest available speed trade: it
+// leaves every real decision at full effort and only asks the writing-up
+// stage to think less hard about prose it has already been told the shape
+// of. Whether that is an acceptable trade is a judgement about the product,
+// which is why it is a dial and not a default.
+const DAY_EFFORT = (process.env.DAY_MODEL_EFFORT ?? EFFORT) as
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max";
+
 // Model used for the phase-2 day calls only. Phase 1 (every real decision:
 // budget, city order, which venues anchor which day) always stays on MODEL.
 // Phase 2 is comparatively mechanical — expand an already-decided day into
@@ -596,7 +623,7 @@ async function generateDay(
       { type: "text", text: SYSTEM_PROMPT },
       { type: "text", text: getDayInstructions(), cache_control: { type: "ephemeral" } },
     ],
-    output_config: { effort: EFFORT },
+    output_config: { effort: DAY_EFFORT },
     messages: [{ role: "user", content: buildDayPrompt(brief, skeleton, day) }],
   });
   onUsage?.(response.usage);
