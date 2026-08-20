@@ -472,6 +472,28 @@ function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
   }
 }
 
+/** Starts the geocode lookups for a trip's destinations before anything
+ * needs them, and hands back the cache checkVenues will use.
+ *
+ * Every Places lookup awaits its city's geocode first — it's memoized, so
+ * a trip pays one geocode per city rather than one per venue, but that one
+ * still sat at the head of the verification stage with every lookup queued
+ * behind it. The destinations are known the instant the job is read, so
+ * this runs at t=0 alongside the flight lookup and the cache is warm by the
+ * time verification starts.
+ *
+ * Failures are already handled downstream: a null geocode just skips the
+ * distance cross-check for that city. */
+export function prewarmGeocodes(destinations: string[]): Map<string, Promise<GeoPoint | null>> {
+  const cache = new Map<string, Promise<GeoPoint | null>>();
+  for (const city of destinations) {
+    // Swallowed here as well as inside geocode(), so an unhandled rejection
+    // can't escape a promise nobody is awaiting yet.
+    void geocode(city, cache).catch(() => null);
+  }
+  return cache;
+}
+
 export interface CheckVenuesOptions {
   /** Verify only these items. Used for the second pass, which re-checks
    * just the venues the repair stage added or replaced — re-verifying the
@@ -492,6 +514,9 @@ export interface CheckVenuesOptions {
    * generic venue, which is a warning worth seeing rather than a hole
    * nobody notices. */
   keepUnverified?: boolean;
+  /** A cache pre-warmed by prewarmGeocodes, so the lookups don't have to
+   * wait on a geocode round-trip that could have happened at job start. */
+  geoCache?: Map<string, Promise<GeoPoint | null>>;
 }
 
 export async function checkVenues(
@@ -512,7 +537,7 @@ export async function checkVenues(
   if (targets.length === 0) return itinerary;
 
   const toRemove = new Set<ItineraryItem>();
-  const geoCache = new Map<string, Promise<GeoPoint | null>>();
+  const geoCache = options.geoCache ?? new Map<string, Promise<GeoPoint | null>>();
   let unavailable = 0;
 
   await Promise.all(

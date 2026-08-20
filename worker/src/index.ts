@@ -46,13 +46,19 @@ import {
   missingMealsFor,
   summarizeQuality,
 } from "./engine/quality";
-import { checkVenues } from "./engine/venueVerification";
+import { checkVenues, prewarmGeocodes } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
 import { recordQualitySample } from "./qualityStats";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type JobTimings, type RefinementRequest } from "./jobs";
-import { cacheLodgingFacts, loadCachedLodgingFacts, writeCachedLodgingFact } from "./lodgingCache";
+import {
+  cacheLodgingFacts,
+  loadCachedLodgingEntries,
+  loadCachedLodgingFacts,
+  writeCachedLodgingFact,
+  type CachedLodgingFact,
+} from "./lodgingCache";
 import {
   ALERT_THRESHOLD_RATIO,
   DAILY_BUDGET_USD,
@@ -1028,7 +1034,8 @@ function startPhase1(
  * has to be waited for, which is the old behaviour and still correct. */
 function accommodationFromLodging(
   plan: TripPlan,
-  lodging: { city: string; result: LodgingLookupResult | null }[]
+  lodging: { city: string; result: LodgingLookupResult | null }[],
+  cached: Map<string, CachedLodgingFact>
 ): SkeletonAccommodation[] | null {
   const citiesNeedingBeds = new Set(
     plan.days.filter((d) => d.include_lodging).map((d) => d.city.toLowerCase().trim())
@@ -1036,6 +1043,20 @@ function accommodationFromLodging(
   if (citiesNeedingBeds.size === 0) return [];
 
   const out: SkeletonAccommodation[] = [];
+  // A cache hit is already a completed lookup — same price, same property,
+  // from a search that ran within the last 20 hours. Treating it as one
+  // means a repeat destination needs neither a search nor the frame.
+  for (const [city, fact] of cached) {
+    out.push({
+      city,
+      name: fact.name ?? null,
+      area: fact.area ?? null,
+      cost_per_night_eur: fact.costEstimateEur,
+      source_confidence: "grounded",
+      source_urls: fact.sourceUrls,
+    });
+    citiesNeedingBeds.delete(city.toLowerCase().trim());
+  }
   for (const { city, result } of lodging) {
     if (result?.costEstimateEur == null) continue;
     out.push({
@@ -1067,7 +1088,8 @@ async function generateItineraryTwoPhase(
     waitedForFrame: boolean;
   }) => void,
   onPlan?: (days: SkeletonDay[]) => void,
-  pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>
+  pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
+  cachedLodging: Map<string, CachedLodgingFact> = new Map()
 ): Promise<Itinerary> {
   const startedAt = Date.now();
   const { frame: framePromise, plan: planPromise } = startPhase1(
@@ -1087,7 +1109,7 @@ async function generateItineraryTwoPhase(
   // the lookup covered every city that needs a bed there is nothing left to
   // wait for. When it didn't, the frame's estimate is the only figure we
   // have and phase 2 genuinely cannot start without it.
-  let accommodation = accommodationFromLodging(plan, lodging);
+  let accommodation = accommodationFromLodging(plan, lodging, cachedLodging);
   const waitedForFrame = accommodation === null;
   let earlyFrame: TripFrame | undefined;
   if (accommodation === null) {
@@ -1174,7 +1196,8 @@ async function generateItinerary(
   forceSkipSearch = false,
   timings?: JobTimings,
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
-  onPlan?: (days: SkeletonDay[]) => void
+  onPlan?: (days: SkeletonDay[]) => void,
+  cachedLodging?: Map<string, CachedLodgingFact>
 ): Promise<Itinerary> {
   if (TWO_PHASE_ENABLED) {
     try {
@@ -1193,7 +1216,8 @@ async function generateItinerary(
           }
         },
         onPlan,
-        pendingLodging
+        pendingLodging,
+        cachedLodging
       );
     } catch (e) {
       if (timings) {
@@ -1290,6 +1314,10 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // thing that doesn't depend on anything, so it should be in flight during
   // every Redis round-trip that follows rather than queued behind them.
   const pendingFare = fetchFarePricing(job.brief).catch(() => null);
+  // Warmed at t=0 for the same reason: verification can't start a single
+  // Places lookup until its city's geocode resolves, and the cities are
+  // known right now.
+  const geoCache = prewarmGeocodes(job.brief.destinations);
 
   console.log(`[worker] processing ${id}: ${job.brief.destinations.join(", ")}`);
   job.status = "running";
@@ -1329,7 +1357,12 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         generateRefinement(client, job.brief, job.refinement!, onUsage)
       );
     } else {
-      const cachedLodgingFacts = await loadCachedLodgingFacts(redis, job.brief.destinations);
+      // Both reads go together — same keys, and the pipeline needs the
+      // structured entries as much as the prompt needs the formatted ones.
+      const [cachedLodgingFacts, cachedLodgingEntries] = await Promise.all([
+        loadCachedLodgingFacts(redis, job.brief.destinations),
+        loadCachedLodgingEntries(redis, job.brief.destinations),
+      ]);
 
       // Anything already cached is free and phase 1 gets it immediately.
       // Anything missing needs live searches, and those used to run BEFORE
@@ -1377,7 +1410,8 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
           pendingLodging,
           (days) => {
             planDays = days;
-          }
+          },
+          cachedLodgingEntries
         )
       );
     }
@@ -1430,7 +1464,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     const [verifiedItinerary, mealFills] = await timed("verify", () =>
       Promise.all([
         (async () => {
-          const [verified, fare] = await Promise.all([checkVenues(itinerary), pendingFare]);
+          const [verified, fare] = await Promise.all([checkVenues(itinerary, { geoCache }), pendingFare]);
           return applyFlightPricing(verified, job.brief, fare, (obs) => {
             void recordFareObservation(redis, obs);
           });
@@ -1483,7 +1517,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         // downgraded to a generic item rather than deleted. Deleting it
         // would reopen the hole the repair had just closed, and there is no
         // third attempt coming.
-        checkVenues(itinerary, { only: new Set(repaired), keepUnverified: true })
+        checkVenues(itinerary, { only: new Set(repaired), keepUnverified: true, geoCache })
       );
     }
 

@@ -12,7 +12,7 @@ import type { Itinerary, TripBriefInput } from "./types";
 
 const CACHE_TTL_SECONDS = 20 * 60 * 60; // ~20h — long enough to help back-to-back testers/users on the same city, short enough that a real price swing doesn't linger
 
-interface CachedLodgingFact {
+export interface CachedLodgingFact {
   costEstimateEur: number;
   sourceUrls: string[];
   sourceAgreement: "agree" | "disagree" | null;
@@ -62,6 +62,39 @@ function formatCachedFact(city: string, fact: CachedLodgingFact): string {
 
 /** Returns a map of destination -> ready-to-inject prompt text, for
  * destinations that have a non-expired cached lodging lookup. */
+/** The structured cache entries behind loadCachedLodgingFacts.
+ *
+ * The formatted-string version is what the prompt needs; this is what the
+ * PIPELINE needs. A cache hit means the price and the property are already
+ * known without any model call at all — so accommodation can be built from
+ * it directly, which lets the day calls start the moment the plan lands
+ * instead of waiting on the trip frame to restate figures we already hold.
+ *
+ * Without this, a cache hit was quietly the SLOWEST path: it skipped the
+ * lodging search (good) but then had nothing to build accommodation from,
+ * so phase 2 fell back to waiting for the frame — putting the heavier half
+ * of phase 1 back on the critical path precisely when everything else had
+ * gone faster. */
+export async function loadCachedLodgingEntries(
+  redis: Redis,
+  destinations: string[]
+): Promise<Map<string, CachedLodgingFact>> {
+  const out = new Map<string, CachedLodgingFact>();
+  const entries = await Promise.all(
+    destinations.map(async (city) => {
+      const raw = await redis.get(cacheKey(city));
+      if (!raw) return null;
+      try {
+        return [city, JSON.parse(raw) as CachedLodgingFact] as const;
+      } catch {
+        return null;
+      }
+    })
+  );
+  for (const e of entries) if (e) out.set(e[0], e[1]);
+  return out;
+}
+
 export async function loadCachedLodgingFacts(
   redis: Redis,
   destinations: string[]
