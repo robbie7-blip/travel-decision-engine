@@ -625,6 +625,22 @@ async function generateDay(
   parsed.day = day.day;
   parsed.date = day.date;
   parsed.feasibility_flag = parsed.feasibility_flag ?? null;
+  // A prompt-level self-check, not itinerary data — the model reads back
+  // its own items and confirms each required meal is there. Whether it
+  // agrees with reality is decided by missingMealsFor, which counts actual
+  // items; this field's job is to make the model look before it answers.
+  // Logged when it disagrees, because a model that says "dinner" while
+  // writing no dinner is worth knowing about.
+  const claimed = (parsed as { meals_covered?: unknown }).meals_covered;
+  if (Array.isArray(claimed)) {
+    const actual = missingMealsFor(parsed, day);
+    if (actual.length > 0) {
+      console.warn(
+        `[worker] day ${day.day} claimed meals ${claimed.join(",")} but is missing ${actual.join(",")}`
+      );
+    }
+    delete (parsed as { meals_covered?: unknown }).meals_covered;
+  }
   return parsed;
 }
 
@@ -800,6 +816,37 @@ Never use an em dash. If you genuinely cannot name a real venue for this slot, r
  * something to tell a traveler about, it is something to fix, and it is
  * cheap to fix: one small call per gap, all of them concurrent, in the same
  * stage as the duplicate-venue repair so the critical path gains no step. */
+/** A filled meal, held aside rather than inserted.
+ *
+ * Splitting "work out what's missing and ask for a replacement" from
+ * "put it in the itinerary" is what lets the model calls run CONCURRENTLY
+ * with Places verification. They are the two slowest things left after
+ * generation and neither reads the other's output — but verification
+ * rewrites day.items as it drops unverifiable venues, so a repair that
+ * mutated the same array at the same time would be a genuine race. Buffered
+ * results sidestep that completely: nothing is touched until verification
+ * has finished. */
+interface PlannedMealFill {
+  day: ItineraryDay;
+  item: ItineraryItem;
+}
+
+/** Inserts buffered fills and re-sorts the days they landed on.
+ *
+ * Safe to apply after verification even though the gaps were computed
+ * before it: verification only ever REMOVES items, so a meal that was
+ * missing beforehand is still missing afterwards. It can create new gaps,
+ * which the second repair pass picks up. */
+function applyMealFills(fills: PlannedMealFill[], repaired?: ItineraryItem[]): void {
+  for (const { day, item } of fills) {
+    day.items.push(item);
+    repaired?.push(item);
+  }
+  for (const day of new Set(fills.map((f) => f.day))) {
+    day.items.sort((a, b) => timeOrder(a.time) - timeOrder(b.time));
+  }
+}
+
 async function repairMissingMeals(
   client: Anthropic,
   brief: TripBriefInput,
@@ -807,10 +854,8 @@ async function repairMissingMeals(
   itinerary: Itinerary,
   /** Shared with repairDuplicateVenues — see the note on its parameter. */
   taken: Set<string>,
-  onUsage?: (usage: ModelUsage) => void,
-  /** See repairDuplicateVenues — the added meals go back through Places. */
-  repaired?: ItineraryItem[]
-): Promise<void> {
+  onUsage?: (usage: ModelUsage) => void
+): Promise<PlannedMealFill[]> {
   const planByNumber = new Map(skeletonDays.map((d) => [d.day, d]));
   const jobs: { day: ItineraryDay; plan: SkeletonDay; meal: MealSlot }[] = [];
   for (const day of itinerary.days ?? []) {
@@ -818,10 +863,11 @@ async function repairMissingMeals(
     if (!plan) continue;
     for (const meal of missingMealsFor(day, plan)) jobs.push({ day, plan, meal });
   }
-  if (jobs.length === 0) return;
+  if (jobs.length === 0) return [];
   console.log(
     `[worker] filling ${jobs.length} missing meal(s) across ${new Set(jobs.map((j) => j.day.day)).size} day(s)`
   );
+  const fills: PlannedMealFill[] = [];
 
   await Promise.all(
     jobs.map(async ({ day, plan, meal }) => {
@@ -862,7 +908,7 @@ async function repairMissingMeals(
         if (!parsed.venue_name || !parsed.title) return;
         if (taken.has(parsed.venue_name.toLowerCase())) return;
         taken.add(parsed.venue_name.toLowerCase());
-        const added: ItineraryItem = {
+        const item: ItineraryItem = {
           // The time is checked against the slot it was asked to fill, not
           // taken on trust. A dinner returned at 13:00 reads as a second
           // lunch to everything downstream — including the gate — so the
@@ -882,8 +928,7 @@ async function repairMissingMeals(
           source_confidence: "inferred",
           source_urls: [],
         };
-        day.items.push(added);
-        repaired?.push(added);
+        fills.push({ day, item });
       } catch (e) {
         // A day that's still missing a meal is worse than one that has it,
         // but far better than a failed generation.
@@ -891,12 +936,7 @@ async function repairMissingMeals(
       }
     })
   );
-
-  // Items were appended, so each touched day is re-sorted into real clock
-  // order rather than leaving lunch printed after the accommodation.
-  for (const day of new Set(jobs.map((j) => j.day))) {
-    day.items.sort((a, b) => timeOrder(a.time) - timeOrder(b.time));
-  }
+  return fills;
 }
 
 const DEFAULT_MEAL_TIME: Record<MealSlot, string> = {
@@ -1360,36 +1400,76 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // price lookup reuses the same link as its source_urls value once a
     // real fare is found.
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
-    itinerary = await timed("verify", async () => {
-      // The Amadeus round-trips already happened concurrently with
-      // generation; applying them is pure bookkeeping, so only the Places
-      // verification actually costs anything here.
-      const [verified, fare] = await Promise.all([checkVenues(itinerary), pendingFare]);
-      return applyFlightPricing(verified, job.brief, fare, (obs) => {
-        void recordFareObservation(redis, obs);
-      });
-    });
 
-    // Now repair what's missing — whether the model never wrote it or
-    // verification just removed it. Both repairs run in ONE stage: they
-    // touch different problems and neither reads the other's output, so
-    // serializing them would add a whole round-trip to every generation
-    // that needs both.
+    // Every venue name already spoken for, snapshotted BEFORE anything
+    // below runs, so the two repair paths can't hand out the same
+    // restaurant as each other's "different" one.
     const claimedVenues = new Set<string>();
     for (const day of itinerary.days ?? []) {
       for (const item of day.items) {
         if (item.venue_name) claimedVenues.add(item.venue_name.toLowerCase());
       }
     }
-    const repaired: ItineraryItem[] = [];
-    await timed("repairs", () =>
+
+    // VERIFICATION AND THE MEAL CALLS RUN AT THE SAME TIME.
+    //
+    // These are the two slowest things left after generation — a Places
+    // lookup per named venue, and a model call per meal the day calls
+    // didn't write — and they were running one after the other for no
+    // reason. Neither reads the other's output: verification asks Google
+    // about venues that already exist, and the meal calls ask for venues to
+    // fill slots that are empty.
+    //
+    // The one real hazard is that verification REWRITES day.items as it
+    // drops unverifiable venues, so a repair mutating the same array at the
+    // same moment would be a genuine race. The meal calls therefore return
+    // their results instead of inserting them, and nothing is touched until
+    // verification has finished. Computing the gaps against pre-verification
+    // state is safe because verification only ever removes: a meal missing
+    // before is still missing after.
+    const [verifiedItinerary, mealFills] = await timed("verify", () =>
       Promise.all([
-        repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage, repaired),
+        (async () => {
+          const [verified, fare] = await Promise.all([checkVenues(itinerary), pendingFare]);
+          return applyFlightPricing(verified, job.brief, fare, (obs) => {
+            void recordFareObservation(redis, obs);
+          });
+        })(),
         planDays.length > 0
-          ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage, repaired)
-          : Promise.resolve(),
+          ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage)
+          : Promise.resolve([] as PlannedMealFill[]),
       ])
     );
+    itinerary = verifiedItinerary;
+
+    const repaired: ItineraryItem[] = [];
+    applyMealFills(mealFills, repaired);
+
+    // What's left after that: duplicate venues, and any meal that went
+    // missing because VERIFICATION removed it rather than because the model
+    // skipped it. On a clean generation both are empty and this stage is
+    // skipped entirely — which is the point. It only costs a round-trip
+    // when there is genuinely something wrong.
+    const needsSecondPass =
+      duplicateVenueItems(itinerary.days ?? []).length > 0 ||
+      (planDays.length > 0 &&
+        (itinerary.days ?? []).some((day) => {
+          const plan = planDays.find((p) => p.day === day.day);
+          return plan ? missingMealsFor(day, plan).length > 0 : false;
+        }));
+
+    if (needsSecondPass) {
+      await timed("repairs", () =>
+        Promise.all([
+          repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage, repaired),
+          planDays.length > 0
+            ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage).then((f) =>
+                applyMealFills(f, repaired)
+              )
+            : Promise.resolve(),
+        ])
+      );
+    }
 
     // Second verification pass over ONLY what the repairs touched. A
     // replacement venue is a fresh, unchecked business, and shipping it

@@ -349,14 +349,25 @@ Everything above still applies to how you write each item (naming real specific 
 once, EUR only, confident tone, the exact item fields). Only the output SHAPE changes: you are \
 expanding ONE already-planned day, not generating a whole itinerary.
 
+START WITH THE MEALS. You are told exactly which meals this day owes. Write those items FIRST, \
+before anything else, then build the rest of the day around them. This ordering is not cosmetic: a \
+day written sights-first reliably runs out of momentum and arrives at the end having quietly \
+dropped its dinner, which is the single most common way this stage fails.
+
 Output ONLY this JSON object — no trip_summary, no key_decisions, no things_to_skip, no \
 budget_feasibility, no other days:
 {
   "day": <the day number you were given>,
   "date": "YYYY-MM-DD",
+  "meals_covered": ["breakfast", "lunch", "dinner"],
   "items": [ ...items, exactly the item shape from the schema above... ],
   "feasibility_flag": null or a short note if this specific day is logistically too tight
 }
+
+"meals_covered" must list every meal slot you were asked for, and each one must have a real item in \
+"items" to match. Fill it in LAST, by reading back your own items and checking each required meal is \
+actually there. If a slot you were asked for is missing, go back and add it before you answer. This \
+field exists so you check your own work rather than assuming it is complete.
 
 Stage 1 already made the whole-trip decisions. Hold to them:
 - Build the day around the anchors you're given. Each one becomes an item, at a sensible time, in \

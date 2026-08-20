@@ -328,9 +328,21 @@ async function run(scenario: Scenario) {
         }ms`
       : ""
   );
+  // The meal calls now run UNDER the verification stage rather than after
+  // it, so they start the moment the last day call returns. Places isn't a
+  // model call and leaves no record here, so this is asserted by position:
+  // the meal calls begin with the verify stage, and the venue repairs —
+  // which genuinely cannot start until verification has finished rewriting
+  // day.items — come later.
+  const lastDayEnd = Math.max(...days.map((d) => d.end));
   check(
-    "venue repair and meal repair share one stage",
-    venueRepairs.length > 0 && mealRepairs.length > 0 && overlaps(venueRepairs[0], mealRepairs[0])
+    "missing-meal calls start as soon as the days finish, not after verification",
+    mealRepairs.length > 0 && mealRepairs.every((m) => m.start < lastDayEnd + 50),
+    mealRepairs.length ? `days end +${lastDayEnd - startedAt}ms, first meal call +${Math.min(...mealRepairs.map((m) => m.start)) - startedAt}ms` : "none"
+  );
+  check(
+    "venue repair runs after them, once verification has finished mutating",
+    venueRepairs.length > 0 && mealRepairs.length > 0 && venueRepairs[0].start >= mealRepairs[0].end - 50
   );
 
   console.log("\nstages that must run IN ORDER");

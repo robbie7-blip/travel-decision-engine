@@ -11,7 +11,11 @@ export class ApiError extends Error {}
 // already the thing travelers complain about. A poll is a single cheap
 // Redis read, so the extra requests cost far less than the latency they
 // remove.
-const POLL_INTERVAL_MS = 800;
+// Half of this is dead time on every generation: the job is finished and
+// sitting in Redis while the client waits out the rest of its sleep. At 800
+// that averaged ~400ms of pure lag on the traveler's clock for no reason
+// beyond saving a handful of Upstash reads per run.
+const POLL_INTERVAL_MS = 400;
 const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes — generous now that generation runs in the worker, unconstrained by a serverless timeout
 
 async function readErrorDetail(response: Response, fallback: string): Promise<string> {
