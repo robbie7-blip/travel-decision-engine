@@ -118,6 +118,10 @@ function baseline(): ItineraryDay[] {
   return days;
 }
 
+function firedChecks2(days: ItineraryDay[], brief: TripBriefInput): string[] {
+  return assessQuality(itinerary(days), brief, plan()).findings.map((f) => f.check);
+}
+
 function firedChecks(days: ItineraryDay[]): string[] {
   return assessQuality(itinerary(days), BRIEF, plan()).findings.map((f) => f.check);
 }
@@ -282,6 +286,74 @@ section("closed when we send them");
   check(
     "a venue with no published hours is NOT flagged",
     !firedChecks(unknown).includes("open_on_visit")
+  );
+}
+
+section("the things the traveler actually asked for");
+{
+  const wantsTrevi: TripBriefInput = { ...BRIEF, must_see: ["Trevi Fountain", "Pantheon"] };
+  const days = baseline();
+
+  // Nothing in the trip mentions either — the worst silent failure there is.
+  let report = assessQuality(itinerary(days), wantsTrevi, plan());
+  const dropped = report.findings.filter((f) => f.check === "must_see_covered");
+  check("both dropped must-sees are reported", dropped.length === 2, `${dropped.length}`);
+  check("as defects", dropped.every((f) => f.severity === "defect"));
+
+  // Present as an item — covered.
+  const withTrevi = baseline();
+  withTrevi[1].items.push(item({ title: "Toss a coin at the Trevi Fountain", venue_name: "Trevi Fountain", time: "17:00" }));
+  withTrevi[1].items.push(item({ title: "Visit the Pantheon", venue_name: "Pantheon", time: "11:00" }));
+  check(
+    "a must-see written into the days is covered",
+    !firedChecks2(withTrevi, wantsTrevi).includes("must_see_covered")
+  );
+
+  // Explained away in the skip list — allowed, because it was said out loud.
+  const explained = itinerary(baseline());
+  explained.things_to_skip = [
+    { item: "Trevi Fountain", reasoning: "Rebuilt scaffolding all November, nothing to see" },
+    { item: "Pantheon", reasoning: "Closed for restoration on both free days" },
+  ];
+  check(
+    "a must-see openly skipped is NOT a silent drop",
+    !assessQuality(explained, wantsTrevi, plan()).findings.some((f) => f.check === "must_see_covered")
+  );
+
+  // Loose matching: how someone types it vs how the itinerary writes it.
+  const loose = baseline();
+  loose[1].items.push(item({ title: "Colosseum, Roman Forum and Palatine Hill", venue_name: "Colosseo", time: "11:00" }));
+  check(
+    "'the colosseum' matches 'Colosseum, Roman Forum and Palatine Hill'",
+    !firedChecks2(loose, { ...BRIEF, must_see: ["the colosseum"] }).includes("must_see_covered")
+  );
+}
+
+section("the budget stamp against the actual bill");
+{
+  const days = baseline();
+  const tight: TripBriefInput = { ...BRIEF, budget_total_eur: 100 };
+  const report = assessQuality(itinerary(days), tight, plan());
+  const finding = report.findings.find((f) => f.check === "budget_matches_items");
+  check("a 'feasible' trip whose items exceed the budget is a defect", !!finding);
+  check("severity is defect", finding?.severity === "defect");
+  check("the detail names both numbers", finding?.detail.includes("100") === true, finding?.detail);
+
+  check(
+    "comfortably under budget does not fire",
+    !firedChecks2(days, { ...BRIEF, budget_total_eur: 100000 }).includes("budget_matches_items")
+  );
+
+  const infeasible = itinerary(baseline());
+  infeasible.budget_feasibility = { feasible: false, min_realistic_total_eur: 900, reasoning: "r" };
+  check(
+    "an honestly-infeasible trip is not also flagged — it already said so",
+    !assessQuality(infeasible, tight, plan()).findings.some((f) => f.check === "budget_matches_items")
+  );
+
+  check(
+    "no stated budget means nothing to check against",
+    !firedChecks2(days, { ...BRIEF, budget_total_eur: 0 }).includes("budget_matches_items")
   );
 }
 

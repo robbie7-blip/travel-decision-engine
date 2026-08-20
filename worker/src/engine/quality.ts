@@ -157,6 +157,37 @@ const MIN_PER_PERSON_EUR: Record<string, number | undefined> = {
   very_expensive: 45,
 };
 
+/** Whether `haystack` refers to `wanted`, loosely enough to survive the
+ * difference between how a traveler types a place and how an itinerary
+ * writes it — "colosseum" against "Colosseum, Roman Forum and Palatine
+ * Hill". Every word of the request that carries meaning has to appear;
+ * short connectives are dropped so "the Trevi Fountain" and "Trevi
+ * Fountain" match. */
+const REQUEST_STOPWORDS = new Set([
+  // Filtering by length alone kept "the", which made the check demand that
+  // an itinerary contain the word "the" before it would accept that "the
+  // Colosseum" had been included. Three letters is not the same as
+  // meaningless, so the meaningless ones are named.
+  "the", "and", "for", "with", "from", "into", "near", "our", "your", "its",
+  "see", "visit", "visiting", "tour", "trip", "day", "days", "some", "any",
+  "want", "would", "like", "must", "really", "definitely", "maybe",
+]);
+
+function mentions(haystack: string, wanted: string): boolean {
+  const normalize = (v: string) =>
+    v
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !REQUEST_STOPWORDS.has(w));
+  const words = normalize(wanted);
+  if (words.length === 0) return true;
+  const hay = new Set(normalize(haystack));
+  return words.every((w) => hay.has(w));
+}
+
 function isNamedVenueSlot(item: ItineraryItem): boolean {
   return item.type === "meal" || item.type === "activity";
 }
@@ -471,6 +502,59 @@ export function assessQuality(
         severity: "defect",
         day: day.day,
         detail: `day ${day.day} "${item.title}" is closed at that time on that day`,
+      });
+    }
+  }
+
+  // --- the things they actually asked for -------------------------------
+  // must_see goes into the prompt and, until now, was never checked against
+  // what came back. It is the single worst thing to lose: everything else
+  // in an itinerary is our suggestion, and this is the traveler's own
+  // requirement. Dropping it silently is the failure they are most likely
+  // to notice and least likely to forgive.
+  //
+  // Being unable to fit one is allowed — the prompt says so — but only out
+  // loud. So the narrative counts as coverage: a must-see explained away in
+  // the summary, a key decision or the skip list has been handled, while
+  // one that appears nowhere at all has been dropped.
+  const narrative = [
+    itinerary.trip_summary,
+    ...(itinerary.key_decisions ?? []).flatMap((d) => [d.decision, d.reasoning]),
+    ...(itinerary.things_to_skip ?? []).flatMap((s) => [s.item, s.reasoning]),
+  ].join(" ");
+  const itemText = days
+    .flatMap((d) => d.items.flatMap((i) => [i.title, i.venue_name ?? "", i.reasoning]))
+    .join(" ");
+  for (const wanted of brief.must_see ?? []) {
+    if (mentions(itemText, wanted) || mentions(narrative, wanted)) continue;
+    findings.push({
+      check: "must_see_covered",
+      severity: "defect",
+      detail: `"${wanted}" was asked for and appears nowhere, not even as something skipped`,
+    });
+  }
+
+  // --- the budget stamp against the actual bill --------------------------
+  // budget_feasibility is the model's own estimate. This is the arithmetic:
+  // what the items in front of the traveler actually add up to. A trip
+  // stamped "feasible" whose own line items exceed the stated budget is
+  // contradicting itself on the page, and the sum is what people check.
+  //
+  // One-directional on purpose. Coming in under budget is not a defect, and
+  // an item with no price (a flight priced by link rather than figure)
+  // makes the sum an UNDER-estimate — so this only ever fires when the
+  // total is over despite that, which makes a false positive very unlikely.
+  const stated = brief.budget_total_eur ?? 0;
+  if (stated > 0 && itinerary.budget_feasibility?.feasible === true) {
+    const itemTotal = days.reduce(
+      (sum, day) => sum + day.items.reduce((s, i) => s + (i.cost_estimate_eur || 0), 0),
+      0
+    );
+    if (itemTotal > stated) {
+      findings.push({
+        check: "budget_matches_items",
+        severity: "defect",
+        detail: `marked feasible, but the items add up to EUR ${Math.round(itemTotal)} against a EUR ${stated} budget`,
       });
     }
   }

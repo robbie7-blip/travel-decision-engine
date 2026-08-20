@@ -34,6 +34,8 @@ export const QUALITY_CHECKS: { id: QualityCheckId; label: string }[] = [
   { id: "open_on_visit", label: "Closed when we send them" },
   { id: "venues_named", label: "Generic venue (no name)" },
   { id: "lodging_named", label: "Generic accommodation" },
+  { id: "must_see_covered", label: "Must-see dropped silently" },
+  { id: "budget_matches_items", label: "Items cost more than the budget" },
   { id: "grounded_ratio", label: "Low grounding" },
 ];
 
