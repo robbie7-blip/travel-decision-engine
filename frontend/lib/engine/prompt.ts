@@ -23,10 +23,10 @@ Rules:
 If a fact isn't in the provided context, hedge explicitly ("roughly", "typically") \
 rather than inventing a precise number.
 - ALL prices are EUR, everywhere, always: cost_estimate_eur, and every price mentioned in \
-trip_summary, key_decisions, and item reasoning. If a source implies a price in a local \
+trip_summary, key_decisions, and item reasoning. If a live search returns a price in a local \
 currency (BRL, USD, JPY, whatever), convert it to EUR yourself before writing it down anywhere — \
 never write a raw local-currency figure into reasoning text just because that's what the source \
-implied. If a destination prices things in an unfamiliar-to-a-European-traveler unit (pay-by-weight \
+quoted. If a destination prices things in an unfamiliar-to-a-European-traveler unit (pay-by-weight \
 "per kilo" buffets, a cover charge per person, a prix-fixe menu), don't just repeat that raw unit \
 rate — translate it into an estimated total EUR cost for a typical portion/person, and say so \
 plainly (e.g. "a per-kilo buffet, a typical plate runs about 400-500g, so roughly €X per person" \
@@ -106,6 +106,26 @@ substitute, and is what search will then attempt to verify (see search instructi
 generic, unnamed activities with no natural business to name (a walk through a neighborhood, \
 resting at the hotel, browsing a market) are fine to leave as-is — this rule is specifically \
 about meals and interest-driven activities that stand in for a real named business.
+- LANGUAGE-INDEPENDENT FIELDS — is_flight AND venue_name: titles follow the response language \
+(see above), so nothing downstream can detect "is this a flight" or "does this name a venue" by \
+matching English words in the title. Two schema fields carry that as structured data instead, \
+regardless of what language the title is written in:
+  - "is_flight": true only for a transport item that's an actual flight leg; false for every \
+  other transport item (train, taxi, bus, ferry, walking, anything else).
+  - "venue_name": the real business's proper name exactly as it appears in the title (e.g. \
+  "Mocotó", "Vodka Tattoo", "Hotel Cosmos") for any meal, activity or accommodation item that \
+  names a specific venue per the rules above; null for items that don't name one (a walk, a \
+  transport item, or an accommodation item left deliberately generic because no specific property \
+  was supplied).
+- ACCOMMODATION: NAME THE ACTUAL PROPERTY WHEN YOU'RE GIVEN ONE. If the context supplies a \
+specific property for a destination, every accommodation item for that destination must use that \
+exact name in its title and in venue_name — "Night at Hotel Cosmos", never "Check in to a \
+mid-range hotel in central Chisinau". Accommodation is usually the single largest line item in the \
+whole trip, so leaving it as an unnamed category is exactly where a traveler is least able to \
+check the number or act on it. If NO specific property is supplied for a destination, keep the \
+accommodation generic (and venue_name null) rather than inventing a hotel — a made-up property \
+name is far worse than an honest generic one. When the price you were given is a typical city rate \
+rather than that property's own quoted price, say so plainly in the reasoning.
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON. \
 No trailing commas after the last property in an object or the last item in an array.
 - WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use \
@@ -131,6 +151,22 @@ all in the same sentence) — that reads as anxious and unsure, not honest. Say 
 knowledgeable friend actually talks: "There's no direct train, so I've got you on a flight" \
 reads confident; "I don't have confirmed data on rail links, so this is unconfirmed, a rough \
 hedge" reads like the app doesn't trust its own answer.
+- LENGTH IS ENFORCED, NOT A STYLE PREFERENCE: every item's "reasoning" is ONE sentence, 15 words \
+or fewer — the "why this, why now" the schema asks for, not a paragraph. This is a real constraint \
+on total output length (this generates dozens of these per trip), not just a tone note — going \
+over it on most items is wrong output, not just verbose output. The same 15-word cap applies to \
+things_to_skip reasoning and to each key_decisions.reasoning and .alternative_considered (that \
+last one is normally just a few words — "a night train", "the free walking tour" — never a full \
+sentence). budget_feasibility.reasoning is the one exception: it's a single trip-level field, not \
+repeated per item, and real budget math sometimes genuinely needs two sentences — keep it tight, \
+but it doesn't need to hit the 15-word mark. None of this shortens the actual DECISION or \
+information conveyed (which venue, what it costs, why it fits) — it only cuts how much prose \
+wraps around it. A short, confident sentence is the house style already asked for above; this is \
+just making the length part of that a hard number instead of a vibe. Same idea for the two \
+whole-trip arrays: key_decisions is normally 3-6 entries (the genuinely load-bearing calls — city \
+order/priority, a real tradeoff, a hard_no or infeasibility — not every minor choice in the trip), \
+things_to_skip is normally 2-4. Only go past those counts if the trip genuinely has more \
+load-bearing decisions or skips than that — don't pad either array to look thorough.
 
 Schema:
 {
@@ -141,7 +177,7 @@ Schema:
   },
   "trip_summary": "one confident, appealing sentence describing the trip itself (destinations, what it's built around, the vibe) — never mention data verification, confidence, or hedging here, that's conveyed separately by the per-item confidence indicators and trust score, and leading with it undermines trust rather than building it. Only exception: if the budget is genuinely infeasible, still say so plainly here, since that's actionable for the traveler",
   "key_decisions": [
-    {"decision": "...", "reasoning": "...", "alternative_considered": "...", "confidence": "high|medium|low"}
+    {"decision": "...", "reasoning": "<=15 words", "alternative_considered": "a few words, not a sentence", "confidence": "high|medium|low"}
   ],
   "days": [
     {
@@ -152,9 +188,11 @@ Schema:
           "time": "morning|afternoon|evening or HH:MM",
           "type": "transport|lodging|activity|meal",
           "title": "...",
+          "is_flight": true or false — only true for type=transport items that are an actual flight leg, see LANGUAGE-INDEPENDENT FIELDS above,
+          "venue_name": "exact proper name of the specific business this item names, or null — see LANGUAGE-INDEPENDENT FIELDS above",
           "location": "neighborhood/area AND the destination city, e.g. 'Kato Paphos, Paphos' not just 'Kato Paphos' — always name the actual city, never just a neighborhood, landmark, or venue name alone, so the venue can be looked up unambiguously",
           "cost_estimate_eur": 0,
-          "reasoning": "why this, why now",
+          "reasoning": "why this, why now — <=15 words, one sentence",
           "source_confidence": "grounded|inferred",
           "source_urls": ["0-2 exact URLs used to ground this — 2 if cross-checked, 1 if single-source, [] if none"],
           "source_agreement": "agree|disagree|null — only set when two cross-check searches were performed"
@@ -164,7 +202,7 @@ Schema:
     }
   ],
   "things_to_skip": [
-    {"item": "...", "reasoning": "..."}
+    {"item": "...", "reasoning": "<=15 words"}
   ]
 }`;
 
@@ -174,13 +212,39 @@ interface Fact {
 }
 
 /** Retrieval layer, v0: exact-filename lookup against a curated JSON file.
- * Deliberately dumb — fine for 5-10 cities. Mirrors engine.py's load_facts. */
+ * Deliberately dumb — fine for 5-10 cities. Mirrors engine.py's load_facts.
+ *
+ * Memoized per process, because this is SYNCHRONOUS disk I/O sitting inside
+ * a prompt builder that is called once per parallel day call. Sync reads
+ * block Node's event loop, so fourteen day calls firing at once meant
+ * fourteen stat+read+parse cycles that also stalled the HTTP responses
+ * coming back from every other in-flight request. Small today; it scales
+ * badly in exactly the direction this facts base is meant to grow.
+ *
+ * A miss is cached too — a city with no facts file is the common case on a
+ * new destination, and re-statting a path that was absent a millisecond ago
+ * is pure waste. The worker is a long-running process and the files are
+ * baked into the deploy, so nothing can change underneath this. */
+const factsCache = new Map<string, Fact[]>();
+
 export function loadFacts(city: string): Fact[] {
   const filename = `${city.toLowerCase().replace(/ /g, "_")}.json`;
+  const cached = factsCache.get(filename);
+  if (cached) return cached;
+
   const filePath = path.join(FACTS_DIR, filename);
-  if (!fs.existsSync(filePath)) return [];
-  const data = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  return data.facts ?? [];
+  let facts: Fact[] = [];
+  try {
+    if (fs.existsSync(filePath)) {
+      facts = (JSON.parse(fs.readFileSync(filePath, "utf-8")) as { facts?: Fact[] }).facts ?? [];
+    }
+  } catch (e) {
+    // A malformed facts file should degrade that city to "no curated data",
+    // which the prompt already handles explicitly, not throw mid-generation.
+    console.error(`[worker] could not read facts for ${city}:`, e);
+  }
+  factsCache.set(filename, facts);
+  return facts;
 }
 
 const LANGUAGE_LABEL: Record<TripBriefInput["language"], string> = {
@@ -267,17 +331,52 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
   if (brief.hard_no.length) {
     lines.push(`Hard constraints (must not violate): ${brief.hard_no.join(", ")}`);
   }
+  if (brief.visited_countries?.length) {
+    // Soft personalization only — deliberately NOT a rule the model must
+    // apply everywhere (unlike hard_no/dietary_constraints above): this is
+    // real signal (the traveler's own tracked travel history), but the
+    // model itself has to make the actual judgment call, since there's no
+    // reliable programmatic way here to know whether any of *today's*
+    // destinations fall in one of these countries (destinations are
+    // free-text city/place names, not ISO codes) — that cross-referencing
+    // is exactly the kind of thing the model's own geography knowledge
+    // handles better than a brittle city-to-country lookup table would.
+    lines.push(
+      `Traveler's travel history (for tone/calibration only, never to override an explicit ` +
+        `constraint or the budget): they have previously visited ${brief.visited_countries.join(", ")}. ` +
+        `If today's destination(s) fall in a country they've already been to, feel free to note ` +
+        `it's a return trip and skip over-explaining first-timer basics there unless their stated ` +
+        `interests suggest otherwise. More generally, use the breadth of this history to gauge how ` +
+        `experienced a traveler they are and calibrate how much travel-logistics hand-holding ` +
+        `(e.g. "remember your passport", explaining how airport security works) actually belongs in ` +
+        `this itinerary — but don't force a mention of their history into every line just because ` +
+        `you have it.`
+    );
+  }
   return lines.join("\n");
 }
 
-function buildContext(
+/** Exported so the two-phase generator (engine/twoPhase.ts) composes its
+ * skeleton/day prompts from the exact same trip-brief + facts context this
+ * file already builds for the single-call path — one context builder, not
+ * a second copy that can drift from it. */
+export function buildContext(
   brief: TripBriefInput,
-  cachedLodgingFacts?: Record<string, string>
+  cachedLodgingFacts?: Record<string, string>,
+  // Limits the facts block to a single destination. Used by two-phase day
+  // calls, which only ever write one city's day — sending every other
+  // destination's curated facts to each of them is pure input bloat on a
+  // multi-city trip, repeated once per day call.
+  onlyCity?: string
 ): { tripBlock: string; factsBlock: string; warning: string } {
   const factsBlocks: string[] = [];
   let anyUngrounded = false;
 
-  for (const city of brief.destinations) {
+  const cities = onlyCity
+    ? brief.destinations.filter((d) => d.toLowerCase().trim() === onlyCity.toLowerCase().trim())
+    : brief.destinations;
+
+  for (const city of cities.length > 0 ? cities : brief.destinations) {
     const facts = loadFacts(city);
     if (facts.length) {
       const factsStr = facts.map((f) => `- [${f.category}] ${f.text}`).join("\n");

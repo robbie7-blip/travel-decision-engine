@@ -109,6 +109,13 @@ const EXTRACT_EFFORT = (process.env.EXTRACT_MODEL_EFFORT ?? "low") as
 const LODGING_MAX_TOKENS = 2000;
 const REPAIR_MAX_TOKENS = 1500;
 
+// Bounds a hung request. Deliberately far above any healthy call — its job
+// is to stop a generation hanging forever, not to abandon a call that is
+// merely slow, since abandoning one costs a full retry and makes things
+// worse. A single call still running at two minutes is not slow, it is
+// stuck.
+const CALL_TIMEOUT_MS = 120_000;
+
 // Full search is the entire point of moving generation into a worker with
 // no execution-time limit — but per-item restaurant/activity searches were
 // the single biggest generation-time cost (each search round-trip is a real
@@ -466,8 +473,19 @@ async function withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promi
     try {
       return await fn();
     } catch (e) {
+      // A TIMEOUT IS NOT RETRIED. It is a subclass of APIConnectionError,
+      // so it used to fall into the retryable set — which meant a request
+      // that hung for the full two-minute timeout would be sent again, and
+      // again, turning one stuck call into six minutes of stuck calls. A
+      // call that hangs once is not likely to succeed by being repeated.
+      const timedOut = e instanceof Anthropic.APIConnectionTimeoutError;
+      const serverError =
+        e instanceof Anthropic.APIError && typeof e.status === "number" && e.status >= 500;
       const retryable =
-        e instanceof Anthropic.RateLimitError || e instanceof Anthropic.APIConnectionError;
+        !timedOut &&
+        (e instanceof Anthropic.RateLimitError ||
+          e instanceof Anthropic.APIConnectionError ||
+          serverError);
       if (!retryable || attempt >= backoffsMs.length) throw e;
       const headers = (e as { headers?: Headers }).headers;
       const headerSeconds = Number(headers?.get?.("retry-after") ?? NaN);
@@ -927,24 +945,28 @@ async function generateSkeleton(
   onUsage?: (usage: ModelUsage) => void
 ): Promise<TripSkeleton> {
   const [frame, plan] = await Promise.all([
-    withOneRetryOf(() =>
-      generatePhase1Half<TripFrame>(
+    withRateLimitRetry("trip frame", () =>
+      withOneRetryOf(() =>
+        generatePhase1Half<TripFrame>(
         client,
         "trip frame",
         getFrameSystemPrompt(),
         buildFramePrompt(brief, cachedLodgingFacts),
-        isUsableFrame,
-        onUsage
+          isUsableFrame,
+          onUsage
+        )
       )
     ),
-    withOneRetryOf(() =>
-      generatePhase1Half<TripPlan>(
+    withRateLimitRetry("day plan", () =>
+      withOneRetryOf(() =>
+        generatePhase1Half<TripPlan>(
         client,
         "day plan",
         getPlanSystemPrompt(),
         buildPlanPrompt(brief),
-        isUsablePlan,
-        onUsage
+          isUsablePlan,
+          onUsage
+        )
       )
     ),
   ]);
@@ -1429,7 +1451,25 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
 async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({
+    apiKey,
+    // The SDK defaults are a 10-MINUTE timeout and 2 automatic retries, and
+    // both were silently in play. The timeout means one hung request could
+    // hold a traveler's generation open for ten minutes with nothing in
+    // this codebase able to stop it.
+    //
+    // The retries were worse, because they NEST. A day call runs inside
+    // withRateLimitRetry (4 attempts) inside withOneRetryOf (2 attempts)
+    // inside the SDK's own 3 — up to 24 HTTP requests for one day of one
+    // itinerary, each with its own backoff. A sustained rate limit would
+    // not have surfaced as an error; it would have surfaced as a
+    // generation that took several minutes for no visible reason.
+    //
+    // Retries are owned by withRateLimitRetry now: one layer, bounded,
+    // with a log line every time it fires.
+    maxRetries: 0,
+    timeout: CALL_TIMEOUT_MS,
+  });
   const redis = getRedis();
 
   console.log(`[worker] started, ${WORKER_CONCURRENCY} concurrent consumer(s) waiting on`, JOBS_QUEUE_KEY);

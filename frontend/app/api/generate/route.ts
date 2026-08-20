@@ -72,6 +72,9 @@ export async function POST(request: NextRequest) {
   // for the public.
   const email = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   let quotaPlan: "free" | "paid" | null = null;
+  // Read alongside the account record below, rather than in its own
+  // round-trip further down.
+  let visitedCodes: string[] | null = null;
 
   if (!testMode) {
     // Global check first: if today's aggregate spend is already at budget,
@@ -86,7 +89,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (email) {
-      const user = await getUserRecord(redis, email);
+      // The account read and the visited-countries read are independent
+      // pure reads, so they go together rather than one after another.
+      // Every round-trip here is Upstash over HTTP and lands entirely on
+      // the traveler's clock BEFORE the worker has even seen the job — the
+      // enqueue path was making eight of them in sequence, which is most of
+      // a second of dead time on a budget of thirty.
+      //
+      // The visited list is fetched slightly earlier than it's needed as a
+      // result, so a quota-blocked request now pays for one read it won't
+      // use. That's a rare path, and it costs a rejected request a few
+      // milliseconds to save every accepted one a full round-trip.
+      const [user, visited] = await Promise.all([
+        getUserRecord(redis, email),
+        getVisitedCodes(redis, email).catch(() => [] as string[]),
+      ]);
+      visitedCodes = visited;
       const plan = resolvePlan(email, user?.subscriptionStatus ?? null);
       const quota = await getQuotaStatus(redis, email, plan);
       if (!quota.allowed) {
@@ -128,7 +146,9 @@ export async function POST(request: NextRequest) {
   // recordEvent below is.
   if (email) {
     try {
-      const codes = await getVisitedCodes(redis, email);
+      // Already fetched above for a non-test-mode request; only test mode,
+      // which skips that whole block, still needs its own read here.
+      const codes = visitedCodes ?? (await getVisitedCodes(redis, email));
       const names = codes.map((code) => getCountry(code)?.name).filter((name): name is string => Boolean(name));
       if (names.length > 0) {
         brief = { ...brief, visited_countries: names };
@@ -145,25 +165,21 @@ export async function POST(request: NextRequest) {
   await redis.set(jobKey(id), JSON.stringify(job), { ex: JOB_TTL_SECONDS });
   await redis.lpush(JOBS_QUEUE_KEY, id);
 
-  if (email && quotaPlan) {
-    // Consumed only now, after the job is actually enqueued — a failure
-    // above (validation, budget) shouldn't cost the traveler a slot from
-    // their monthly quota.
-    try {
-      await consumeQuota(redis, email);
-    } catch {
-      // Never block a successfully-enqueued job on the quota counter itself.
-    }
-  }
-
-  // Awaited, not fire-and-forget: a serverless function isn't guaranteed to
-  // keep running after it returns a response, so an un-awaited promise here
-  // could get silently cut off most of the time.
-  try {
-    await recordEvent(redis, "generate", brief.language);
-  } catch {
-    // Analytics must never break generation — swallow and move on.
-  }
+  // Both awaited, not fire-and-forget: a serverless function isn't
+  // guaranteed to keep running after it returns a response, so an
+  // un-awaited promise here could get silently cut off most of the time.
+  // They are independent of each other, though, so they go together — one
+  // round-trip on the traveler's clock instead of two.
+  //
+  // Quota is consumed only now, after the job is actually enqueued: a
+  // failure above (validation, budget) shouldn't cost the traveler a slot
+  // from their monthly allowance.
+  await Promise.all([
+    email && quotaPlan
+      ? consumeQuota(redis, email).catch(() => {}) // never block an enqueued job on its counter
+      : Promise.resolve(),
+    recordEvent(redis, "generate", brief.language).catch(() => {}), // analytics never breaks generation
+  ]);
 
   return NextResponse.json({ jobId: id }, { status: 202 });
 }

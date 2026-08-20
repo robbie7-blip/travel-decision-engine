@@ -212,13 +212,39 @@ interface Fact {
 }
 
 /** Retrieval layer, v0: exact-filename lookup against a curated JSON file.
- * Deliberately dumb — fine for 5-10 cities. Mirrors engine.py's load_facts. */
+ * Deliberately dumb — fine for 5-10 cities. Mirrors engine.py's load_facts.
+ *
+ * Memoized per process, because this is SYNCHRONOUS disk I/O sitting inside
+ * a prompt builder that is called once per parallel day call. Sync reads
+ * block Node's event loop, so fourteen day calls firing at once meant
+ * fourteen stat+read+parse cycles that also stalled the HTTP responses
+ * coming back from every other in-flight request. Small today; it scales
+ * badly in exactly the direction this facts base is meant to grow.
+ *
+ * A miss is cached too — a city with no facts file is the common case on a
+ * new destination, and re-statting a path that was absent a millisecond ago
+ * is pure waste. The worker is a long-running process and the files are
+ * baked into the deploy, so nothing can change underneath this. */
+const factsCache = new Map<string, Fact[]>();
+
 export function loadFacts(city: string): Fact[] {
   const filename = `${city.toLowerCase().replace(/ /g, "_")}.json`;
+  const cached = factsCache.get(filename);
+  if (cached) return cached;
+
   const filePath = path.join(FACTS_DIR, filename);
-  if (!fs.existsSync(filePath)) return [];
-  const data = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  return data.facts ?? [];
+  let facts: Fact[] = [];
+  try {
+    if (fs.existsSync(filePath)) {
+      facts = (JSON.parse(fs.readFileSync(filePath, "utf-8")) as { facts?: Fact[] }).facts ?? [];
+    }
+  } catch (e) {
+    // A malformed facts file should degrade that city to "no curated data",
+    // which the prompt already handles explicitly, not throw mid-generation.
+    console.error(`[worker] could not read facts for ${city}:`, e);
+  }
+  factsCache.set(filename, facts);
+  return facts;
 }
 
 const LANGUAGE_LABEL: Record<TripBriefInput["language"], string> = {
