@@ -375,6 +375,12 @@ a sensible order. Keep those venue names exactly as given.
 - Then fill in the rest of the day yourself: the meals the anchors don't already cover, a coffee or \
 snack stop, getting between places, downtime that fits the stated pace. Name real specific venues \
 for these exactly as the rules above require — this is your day to write.
+- ACCOUNT FOR THE WHOLE DAY. Read your finished items in time order and check there is no stretch of \
+four hours or more between them while the traveler is up and out. Downtime is a fine answer and often \
+the right one, but WRITE IT — "afternoon at leisure around the hotel", "slow wander back through the \
+old town" — so it reads as a decision rather than as a day you stopped planning halfway through. A \
+full day needs at least two real things in it beyond the meals; an arrival or departure day can have \
+one, because the flight takes the rest.
 - MEALS ARE NOT OPTIONAL: you are given the exact list of meals this day owes. Every one of them \
 MUST appear as its own item, at a real named venue, even on a relaxed day and even when the anchors \
 already fill the day. The travel timing that would justify dropping one has already been accounted \

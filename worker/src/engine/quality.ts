@@ -121,8 +121,31 @@ const MIN_GROUNDED_PERCENT = 40;
 
 /** A day with fewer real things to do than this isn't a day, it's a gap.
  * Meals are excluded from the count on purpose: three meals and nothing
- * else is still an empty day. */
-const MIN_ACTIVITIES_PER_FULL_DAY = 1;
+ * else is still an empty day.
+ *
+ * Two was one until a real Rome trip shipped a full day holding a single
+ * activity — breakfast, lunch, one walk, dinner — which passed because one
+ * activity cleared the bar. A day someone flew in for needs more than one
+ * thing in it. Arrival and departure days are exempt: a flight legitimately
+ * eats half of them. */
+const MIN_ACTIVITIES_PER_FULL_DAY = 2;
+const MIN_ACTIVITIES_PER_TRAVEL_DAY = 1;
+
+/** Hours between consecutive items, during the part of the day someone is
+ * actually awake and out, before the plan is treated as having a hole in it.
+ *
+ * This is not a demand that every hour be filled. Downtime is a legitimate
+ * and often correct choice — but it has to be WRITTEN, as "afternoon at
+ * leisure near the hotel" or similar, so the traveler knows it was a
+ * decision rather than an omission. The same Rome day had a five-hour void
+ * between breakfast and lunch and another five and a half between an
+ * afternoon walk and dinner, with nothing said about either. */
+const MAX_UNPLANNED_HOURS = 4;
+// From breakfast, not from nine. A gap that opens at 08:00 and runs to
+// lunch is five hours of someone's holiday, and starting the window at 9
+// skipped exactly that case — which is the one the Rome day actually had.
+const DAY_ACTIVE_FROM = 7;
+const DAY_ACTIVE_UNTIL = 21;
 
 /** Coarse per-person floors for what Google's price tier implies a meal
  * costs, in EUR. Deliberately well below what each tier really means, so
@@ -305,12 +328,37 @@ export function assessQuality(
   // --- days that aren't days -------------------------------------------
   for (const day of days) {
     const activities = day.items.filter((i) => i.type === "activity");
-    if (activities.length < MIN_ACTIVITIES_PER_FULL_DAY) {
+    const isTravelDay = day.items.some((i) => i.is_flight === true);
+    const floor = isTravelDay ? MIN_ACTIVITIES_PER_TRAVEL_DAY : MIN_ACTIVITIES_PER_FULL_DAY;
+    if (activities.length < floor) {
       findings.push({
         check: "day_not_empty",
         severity: "defect",
         day: day.day,
-        detail: `day ${day.day} has nothing to do (${day.items.length} item(s), no activity)`,
+        detail: `day ${day.day} has ${activities.length} thing(s) to do across ${day.items.length} item(s)`,
+      });
+    }
+  }
+
+  // --- hours nobody accounted for --------------------------------------
+  for (const day of days) {
+    const times = day.items
+      .filter((i) => i.type !== "lodging")
+      .map((i) => parseHour(i.time))
+      .filter((h): h is number => h != null)
+      .sort((a, b) => a - b);
+    for (let i = 1; i < times.length; i++) {
+      const from = times[i - 1];
+      const to = times[i];
+      if (to - from <= MAX_UNPLANNED_HOURS) continue;
+      // Only the waking, out-and-about part of the day — a gap that starts
+      // at 21:00 is called an evening.
+      if (from < DAY_ACTIVE_FROM || from > DAY_ACTIVE_UNTIL) continue;
+      findings.push({
+        check: "day_has_gap",
+        severity: "warning",
+        day: day.day,
+        detail: `day ${day.day} has ${to - from} unaccounted hours between ${from}:00 and ${to}:00`,
       });
     }
   }

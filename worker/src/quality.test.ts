@@ -67,10 +67,15 @@ function lodging(venue: string | null): ItineraryItem {
  * a bed. The baseline every fixture below deviates from by exactly one
  * thing, so a failing check names the deviation and nothing else. */
 function goodDay(n: number, date: string, withLodging = true): ItineraryDay {
+  // Two activities and no stretch over four hours — which is what a day
+  // someone travelled for actually looks like. The earlier version of this
+  // fixture had one sight and a six-hour void between lunch and dinner, and
+  // called itself the baseline; the gap check caught it on its first run.
   const items = [
     meal("Breakfast", `Cafe ${n}`, "08:30"),
     item({ title: `Sight ${n}`, venue_name: `Temple ${n}`, time: "10:30" }),
     meal("Lunch", `Warung ${n}`, "13:00"),
+    item({ title: `Afternoon walk ${n}`, venue_name: `Market ${n}`, time: "16:00" }),
     meal("Dinner", `Restaurant ${n}`, "19:30"),
   ];
   if (withLodging) items.push(lodging("Hotel Real"));
@@ -294,6 +299,55 @@ section("grounding");
   }
   const good = assessQuality(itinerary(verified), BRIEF, plan());
   check("a Places-confirmed trip reports 100%", good.groundedPercent === 100, String(good.groundedPercent));
+}
+
+section("a day with nothing in it, and hours nobody accounted for");
+{
+  // The Rome day 2: breakfast, lunch, one walk, dinner. It passed the old
+  // one-activity bar while holding a five-hour void either side of lunch.
+  const thin = baseline();
+  thin[1].items = [
+    meal("Breakfast", "Cafe X", "08:00"),
+    meal("Lunch", "Trattoria X", "13:00"),
+    item({ title: "Wander the old quarter", venue_name: null, time: "14:30", cost_estimate_eur: 0 }),
+    meal("Dinner", "Osteria X", "20:00"),
+    lodging("Hotel Real"),
+  ];
+  const fired = firedChecks(thin);
+  check("a full day with one activity is now a defect", fired.includes("day_not_empty"));
+  const report = assessQuality(itinerary(thin), BRIEF, plan());
+  check(
+    "the gap check names the hours",
+    report.findings.some((f) => f.check === "day_has_gap" && f.detail.includes("8:00")),
+    report.findings.filter((f) => f.check === "day_has_gap").map((f) => f.detail).join("; ")
+  );
+  check("gaps are warnings, not defects", report.findings.find((f) => f.check === "day_has_gap")?.severity === "warning");
+
+  // Written downtime closes the gap — the point is that the time is
+  // accounted for, not that it is filled with activity.
+  const withDowntime = baseline();
+  withDowntime[1].items = [
+    meal("Breakfast", "Cafe Y", "08:00"),
+    item({ title: "Slow morning at the market", venue_name: "Mercato Y", time: "10:30" }),
+    meal("Lunch", "Trattoria Y", "13:00"),
+    item({ title: "Afternoon at leisure near the hotel", venue_name: null, time: "15:30", cost_estimate_eur: 0 }),
+    item({ title: "Sunset walk by the river", venue_name: null, time: "18:00", cost_estimate_eur: 0 }),
+    meal("Dinner", "Osteria Y", "20:00"),
+    lodging("Hotel Real"),
+  ];
+  check("written downtime is not a gap", !firedChecks(withDowntime).includes("day_has_gap"));
+  check("and that day has enough in it", !firedChecks(withDowntime).includes("day_not_empty"));
+
+  // An arrival day is allowed to be lighter — the flight takes the rest.
+  check("the arrival day is not held to the full-day bar", !firedChecks(baseline()).includes("day_not_empty"));
+
+  // A quiet evening after dinner is an evening, not a hole.
+  const quietEvening = baseline();
+  quietEvening[1].items.push(item({ title: "Late drink", venue_name: "Bar Z", time: "23:00" }));
+  check(
+    "a gap that starts after the day is over does not fire",
+    !firedChecks(quietEvening).some((c) => c === "day_has_gap")
+  );
 }
 
 section("a flight is not a complete arrival");

@@ -71,6 +71,7 @@ export type QualityCheckId =
   | "lodging_per_night"
   | "lodging_named"
   | "day_not_empty"
+  | "day_has_gap"
   | "prices_present"
   | "lodging_price_per_night"
   | "price_matches_tier"

@@ -25,6 +25,7 @@ export const QUALITY_CHECKS: { id: QualityCheckId; label: string }[] = [
   { id: "meals_present", label: "Missing a meal" },
   { id: "no_duplicate_venues", label: "Same venue twice" },
   { id: "day_not_empty", label: "Day with nothing to do" },
+  { id: "day_has_gap", label: "Unaccounted hours in a day" },
   { id: "prices_present", label: "Missing a price" },
   { id: "lodging_price_per_night", label: "Accommodation billed per stay, not per night" },
   { id: "price_matches_tier", label: "Meal priced below its Google tier" },
