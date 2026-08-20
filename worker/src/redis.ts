@@ -15,8 +15,21 @@ export function getRedis(): Redis {
     throw new Error("REDIS_URL is not set — point it at the Upstash Redis TCP endpoint.");
   }
 
+  // maxRetriesPerRequest is NOT null here, deliberately.
+  //
+  // ioredis needs null for blocking commands, and this client was created
+  // with it because runConsumer's BRPOP runs on a duplicate of it. But null
+  // means "retry this command forever", and this same connection also
+  // serves every ordinary get and set in a job. A brief Redis blip
+  // therefore didn't fail a command, it hung it indefinitely — a generation
+  // that stops dead partway through and never finishes or errors, which
+  // from the outside is indistinguishable from the pipeline being slow.
+  //
+  // The blocking connection overrides this back to null where it's actually
+  // required (see runConsumer), so BRPOP still behaves correctly and normal
+  // commands get a bounded failure instead of an unbounded wait.
   client = new Redis(url, {
-    maxRetriesPerRequest: null, // required for blocking commands (BRPOP) with ioredis
+    maxRetriesPerRequest: 3,
   });
   return client;
 }

@@ -1376,14 +1376,21 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         missing.length > 0
           ? Promise.all(
               missing.map(async (city) => ({ city, result: await prefetchLodging(client, city, onUsage) }))
-            ).then(async (results) => {
+            ).then((results) => {
               timings.lodgingPrefetch = Date.now() - lodgingStartedAt;
-              await Promise.all(
+              // Written WITHOUT awaiting. The day calls await this promise
+              // for the accommodation figures, and the cache write is
+              // bookkeeping for some future generation — awaiting it put a
+              // Redis round-trip per destination directly in front of phase
+              // 2, delaying the trip being generated now in order to speed
+              // up one that may never happen.
+              //
+              // Only a result with a real PRICE is worth caching: the
+              // cache's whole job is to let a later generation skip the rate
+              // search, and an entry with no rate in it would just suppress
+              // that search while supplying nothing.
+              void Promise.all(
                 results.map(({ city, result }) =>
-                  // Only a result with a real PRICE is worth caching — the
-                  // cache's whole job is to let a later generation skip the
-                  // rate search, and an entry with no rate in it would just
-                  // suppress that search while supplying nothing.
                   result && result.costEstimateEur != null && result.sourceUrl
                     ? writeCachedLodgingFact(redis, city, {
                         costEstimateEur: result.costEstimateEur,
@@ -1394,7 +1401,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
                       })
                     : Promise.resolve()
                 )
-              );
+              ).catch((e) => console.error("[worker] lodging cache write failed:", e));
               return results;
             })
           : undefined;
@@ -1616,7 +1623,11 @@ const WORKER_CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 4);
  * one shared non-blocking `sharedRedis` connection instead, which is safe
  * to use concurrently since none of those calls block. */
 async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthropic): Promise<void> {
-  const queueConn = sharedRedis.duplicate();
+  // null is required for BRPOP specifically — ioredis refuses to run a
+  // blocking command on a connection with a bounded per-request retry. It's
+  // scoped to this connection so the shared one keeps its bounded retries
+  // and can't hang a job forever on a transient Redis error (see redis.ts).
+  const queueConn = sharedRedis.duplicate({ maxRetriesPerRequest: null });
   try {
     for (;;) {
       const popped = await queueConn.brpop(JOBS_QUEUE_KEY, 0); // blocks until a job arrives
