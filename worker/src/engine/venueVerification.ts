@@ -365,8 +365,10 @@ function isLodging(item: ItineraryItem): boolean {
   return item.type === "lodging";
 }
 
-/** Reverts a lodging item to its unnamed form: no venue_name (so nothing
- * downstream treats it as a confirmed venue) and no Places fields. The
+/** Reverts an item to its unnamed form: no venue_name (so nothing
+ * downstream treats it as a confirmed venue) and no Places fields. Named
+ * for its original and still-primary caller, lodging, but also used for any
+ * item the second pass must keep rather than delete (see keepUnverified). The
  * title is deliberately left alone — it's written in the trip's own
  * language, so rewriting it here would either break localization or
  * require re-calling the model for a cosmetic fix. Its confidence tier
@@ -476,6 +478,20 @@ export interface CheckVenuesOptions {
    * whole trip would spend a Places lookup per item to confirm what the
    * first pass already confirmed. */
   only?: Set<ItineraryItem>;
+  /** Downgrade a failed item to unnamed instead of deleting it.
+   *
+   * Used by the second pass, and it matters: the repairs exist to close
+   * holes, and deleting a replacement that also fails verification would
+   * reopen the exact hole the repair just closed — a day would lose its
+   * dinner twice over, once to the original venue failing and once to its
+   * replacement failing, with no third attempt coming.
+   *
+   * Keeping the item without its venue name is the honest middle: the
+   * traveler still has a dinner in their evening, it just doesn't claim to
+   * be a specific restaurant we stand behind. The gate reports it as a
+   * generic venue, which is a warning worth seeing rather than a hole
+   * nobody notices. */
+  keepUnverified?: boolean;
 }
 
 export async function checkVenues(
@@ -520,7 +536,7 @@ export async function checkVenues(
       // Lodging is downgraded to unnamed instead of dropped — see
       // isLodging/stripUnverifiedLodging for why removal isn't an option.
       const reject = (target: ItineraryItem) => {
-        if (isLodging(target)) stripUnverifiedLodging(target);
+        if (isLodging(target) || options.keepUnverified) stripUnverifiedLodging(target);
         else toRemove.add(target);
       };
 

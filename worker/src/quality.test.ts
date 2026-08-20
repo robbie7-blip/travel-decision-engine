@@ -288,6 +288,81 @@ section("grounding");
   check("a Places-confirmed trip reports 100%", good.groundedPercent === 100, String(good.groundedPercent));
 }
 
+section("what actually moves the verified percentage");
+{
+  // The Bali trip read 19% and it was fully explained by three groups of
+  // items that CANNOT be grounded, not by verification failing. Each is
+  // pinned here so the arithmetic is inspectable instead of argued about.
+
+  // Start from a trip where NOTHING is grounded, so each piece of evidence
+  // added below is actually what moves the number.
+  const verified = baseline();
+  for (const d of verified) for (const it of d.items) it.confidence_tier = "inferred";
+  const bare = assessQuality(itinerary(verified), BRIEF, plan());
+  check("with no evidence at all, 0%", bare.groundedPercent === 0, `${bare.groundedPercent}%`);
+
+  // 1. A Places-confirmed venue counts. This is the bulk of a good trip.
+  for (const d of verified) {
+    for (const it of d.items) {
+      if (it.type === "meal" || it.type === "activity") it.google_maps_url = "https://maps.google.com/x";
+    }
+  }
+  const venuesOnly = assessQuality(itinerary(verified), BRIEF, plan());
+  check(
+    "Places-confirmed venues alone do not reach 100% — flights and beds are still unbacked",
+    venuesOnly.groundedPercent > 0 && venuesOnly.groundedPercent < 100,
+    `${venuesOnly.groundedPercent}%`
+  );
+
+  // 2. A flight with a real Google Flights link counts — the scoring bug.
+  //    Flights are deliberately never web-searched BECAUSE the link is the
+  //    verification mechanism, and the score used to ignore it entirely.
+  const flight = verified[0].items.find((i) => i.is_flight);
+  if (flight) flight.flight_search_url = "https://google.com/travel/flights?x";
+  const withFlight = assessQuality(itinerary(verified), BRIEF, plan());
+  check(
+    "a checkable Google Flights link now counts as evidence",
+    withFlight.groundedPercent > venuesOnly.groundedPercent,
+    `${venuesOnly.groundedPercent}% -> ${withFlight.groundedPercent}%`
+  );
+  // 3. Grounded lodging counts, via its source_urls rather than Places.
+  for (const d of verified) {
+    for (const it of d.items) {
+      if (it.type !== "lodging") continue;
+      it.source_confidence = "grounded";
+      it.source_urls = ["https://example.com/rate"];
+      it.confidence_tier = "single_source";
+    }
+  }
+  const full = assessQuality(itinerary(verified), BRIEF, plan());
+  check(
+    "a fully-verified trip reads 100%, not capped below it",
+    full.groundedPercent === 100,
+    `${full.groundedPercent}%`
+  );
+  check("and raises no grounding warning", !full.findings.some((f) => f.check === "grounded_ratio"));
+
+  // The realistic failure that actually produced 19%: generic accommodation
+  // on every night. On a long trip that alone is a large share of the items.
+  const genericLodging = baseline();
+  for (const d of genericLodging) {
+    for (const it of d.items) {
+      if (it.type === "meal" || it.type === "activity") it.google_maps_url = "https://maps.google.com/x";
+      if (it.type === "lodging") {
+        it.venue_name = null;
+        it.source_confidence = "inferred";
+        it.confidence_tier = "inferred";
+      }
+    }
+  }
+  const g = assessQuality(itinerary(genericLodging), BRIEF, plan());
+  check(
+    "unverified accommodation is the single biggest drag on the number",
+    g.groundedPercent < full.groundedPercent,
+    `${g.groundedPercent}% vs ${full.groundedPercent}%`
+  );
+}
+
 section("a lost plan is reported, not silently skipped");
 {
   // The single-call fallback produces no day plan. The meal check cannot

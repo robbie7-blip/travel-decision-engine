@@ -1334,7 +1334,11 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // items, all in parallel.
     if (repaired.length > 0) {
       itinerary = await timed("verifyRepairs", () =>
-        checkVenues(itinerary, { only: new Set(repaired) })
+        // keepUnverified: a replacement that ALSO fails verification is
+        // downgraded to a generic item rather than deleted. Deleting it
+        // would reopen the hole the repair had just closed, and there is no
+        // third attempt coming.
+        checkVenues(itinerary, { only: new Set(repaired), keepUnverified: true })
       );
     }
 

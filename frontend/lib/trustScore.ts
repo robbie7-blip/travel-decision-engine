@@ -37,7 +37,20 @@ export function computeTrustScore(itinerary: Itinerary): TrustScore {
       // those are still fully verified as real places, which is what this
       // score actually claims to measure.
       const placesGrounded = item.google_maps_url != null || item.google_rating != null;
-      if (searchGrounded || placesGrounded) groundedCount++;
+      // A flight's Google Flights deep link is exactly what a venue's Google
+      // Maps link is: a real, checkable URL for that specific route and date,
+      // built deterministically rather than guessed. The pipeline says so in
+      // as many words — flights are deliberately not web-searched BECAUSE
+      // the link is the verification mechanism (see SEARCH_INSTRUCTIONS in
+      // worker/src/index.ts).
+      //
+      // The score counted the Maps link and ignored the Flights one, so
+      // every transport leg in a trip scored zero no matter how checkable
+      // it was. On a multi-city trip that's a meaningful slice of the line
+      // items marked unverified while carrying a link the traveler can
+      // click and confirm in one tap.
+      const flightGrounded = item.flight_search_url != null;
+      if (searchGrounded || placesGrounded || flightGrounded) groundedCount++;
     }
   }
   const percent = totalCount === 0 ? 100 : Math.round((groundedCount / totalCount) * 100);

@@ -328,7 +328,12 @@ export function groundedRatio(itinerary: Itinerary): {
       total++;
       const searchGrounded = (item.confidence_tier ?? "inferred") !== "inferred";
       const placesGrounded = item.google_maps_url != null || item.google_rating != null;
-      if (searchGrounded || placesGrounded) grounded++;
+      // Mirrors trustScore.ts — a flight's Google Flights link is the same
+      // kind of evidence as a venue's Maps link. Kept identical on purpose:
+      // this number is recorded per job and the traveler is shown the other
+      // one, and two definitions of "verified" would be worse than none.
+      const flightGrounded = item.flight_search_url != null;
+      if (searchGrounded || placesGrounded || flightGrounded) grounded++;
     }
   }
   return {
