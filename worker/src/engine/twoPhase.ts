@@ -390,6 +390,12 @@ source_urls onto it exactly. In human-readable text always call it "accommodatio
 later nights at the same place write it as another night there, never "check in" again.
 - TRANSPORT: include an arrival or departure transport item only if you're given a transport note \
 for this day, and follow it exactly, including the mode it commits to.
+- GETTING FROM AND TO THE AIRPORT IS PART OF THE DAY. A flight item is not a complete arrival: on \
+an arrival day also include the onward leg from the airport or station to the accommodation, and on \
+a departure day the leg back out to it. Name the actual mode and give it a real cost (airport \
+train, bus, taxi — whichever genuinely makes sense for that city, that hour and that much luggage). \
+Landing at an airport with no way into town written down is a hole in the plan, and it is the point \
+in a trip where a traveler is least able to work it out for themselves.
 - Do not re-explain trip-level tradeoffs here. This day's items only.`;
 
 export function getDayInstructions(): string {

@@ -34,7 +34,28 @@
 import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem } from "../types";
 
 // Below this, a venue is dropped rather than shown.
-const MIN_RATING = 4.2;
+//
+// Two floors, because the two kinds of venue are not the same decision. A
+// restaurant is SUBSTITUTABLE — there is always another good one, so the
+// bar can be set where a traveler would set it. A landmark is not: the
+// Pantheon is the Pantheon, and dropping it because its average sits at 4.1
+// would remove the reason the day exists and leave a hole nothing can fill.
+const MIN_RATING_MEAL = 4.3;
+const MIN_RATING_ACTIVITY = 4.2;
+
+// ...and above this review count, rating is not allowed to reject an
+// activity at all. A place with this many reviews is a real destination in
+// its own right — a major museum, a basilica, a ruin — and its average says
+// something about queues and crowds rather than about whether it is worth
+// seeing. This is a latent bug being closed rather than a preference: the
+// single 4.2 floor applied to landmarks too, so a heavily-reviewed sight
+// rated just under it would have been silently deleted from the itinerary
+// with no warning and no replacement.
+const LANDMARK_RATING_COUNT = 25000;
+
+function minRatingFor(item: ItineraryItem): number {
+  return item.type === "meal" ? MIN_RATING_MEAL : MIN_RATING_ACTIVITY;
+}
 
 // ...but only once the average is built on enough reviews to mean anything.
 // Without this, the rating gate was strictly backwards at the low-sample
@@ -598,9 +619,15 @@ export async function checkVenues(
         // repair stage that runs after this pass will put a different real
         // venue in the slot, so the day doesn't just lose a meal.
         reject(item);
-      } else if (hasReliableRating(place) && place.rating! < MIN_RATING) {
+      } else if (
+        hasReliableRating(place) &&
+        place.rating! < minRatingFor(item) &&
+        !(item.type === "activity" && (place.userRatingCount ?? 0) >= LANDMARK_RATING_COUNT)
+      ) {
         // Only reject on a rating solid enough to justify it — a bad
-        // average over a handful of reviews isn't evidence the place is bad.
+        // average over a handful of reviews isn't evidence the place is bad
+        // — and never on rating alone for a landmark (see
+        // LANDMARK_RATING_COUNT).
         reject(item);
       }
     })

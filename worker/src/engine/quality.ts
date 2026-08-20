@@ -124,6 +124,16 @@ const MIN_GROUNDED_PERCENT = 40;
  * else is still an empty day. */
 const MIN_ACTIVITIES_PER_FULL_DAY = 1;
 
+/** Coarse per-person floors for what Google's price tier implies a meal
+ * costs, in EUR. Deliberately well below what each tier really means, so
+ * only a clear mismatch fires — the tiers are relative to a city, and an
+ * expensive restaurant genuinely can be done cheaply at lunch. The cheap
+ * tiers are absent on purpose: there is no floor to violate. */
+const MIN_PER_PERSON_EUR: Record<string, number | undefined> = {
+  expensive: 30,
+  very_expensive: 45,
+};
+
 function isNamedVenueSlot(item: ItineraryItem): boolean {
   return item.type === "meal" || item.type === "activity";
 }
@@ -345,7 +355,47 @@ export function assessQuality(
     }
   }
 
+  // --- meal prices against what Google says the place costs ------------
+  // The model estimates a price before Places has said anything, so the two
+  // are independent — which is what makes disagreement informative. A lunch
+  // put at EUR 40 for two at a venue Google rates very expensive is not
+  // wrong exactly, but it is the direction that matters: an understated
+  // meal understates the trip total, and the total is what the traveler
+  // budgets against. Only gross mismatches fire, because the bands are
+  // coarse and a cheap dish at an expensive restaurant is a real thing.
+  for (const day of days) {
+    for (const item of day.items) {
+      if (item.type !== "meal") continue;
+      const floor = MIN_PER_PERSON_EUR[item.google_price_level ?? ""];
+      if (floor == null) continue;
+      const perPerson = item.cost_estimate_eur / Math.max(1, brief.party_size);
+      if (perPerson >= floor) continue;
+      findings.push({
+        check: "price_matches_tier",
+        severity: "warning",
+        day: day.day,
+        detail: `day ${day.day} "${item.title}" is EUR ${item.cost_estimate_eur} for ${brief.party_size} at a ${item.google_price_level?.replace("_", " ")} venue`,
+      });
+    }
+  }
+
   // --- arrival/departure legs -----------------------------------------
+  // A flight is not a complete arrival. Landing with no written way into
+  // town is the moment in a trip where a traveler is least able to improvise,
+  // and it is invisible in an itinerary that otherwise looks full.
+  for (const day of days) {
+    const hasFlight = day.items.some((i) => i.is_flight === true);
+    if (!hasFlight) continue;
+    const hasGroundLeg = day.items.some((i) => i.type === "transport" && i.is_flight !== true);
+    if (hasGroundLeg) continue;
+    findings.push({
+      check: "transport_legs",
+      severity: "warning",
+      day: day.day,
+      detail: `day ${day.day} has a flight but no way to or from the airport`,
+    });
+  }
+
   // Only checked when the brief actually asked for travel to be planned.
   if (brief.needs_flight && brief.origin && days.length > 0) {
     const hasTransport = days.some((d) => d.items.some((i) => i.type === "transport"));

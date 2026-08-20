@@ -27,6 +27,7 @@ export const QUALITY_CHECKS: { id: QualityCheckId; label: string }[] = [
   { id: "day_not_empty", label: "Day with nothing to do" },
   { id: "prices_present", label: "Missing a price" },
   { id: "lodging_price_per_night", label: "Accommodation billed per stay, not per night" },
+  { id: "price_matches_tier", label: "Meal priced below its Google tier" },
   { id: "lodging_per_night", label: "Wrong number of nights" },
   { id: "transport_legs", label: "No transport leg" },
   { id: "open_on_visit", label: "Closed when we send them" },

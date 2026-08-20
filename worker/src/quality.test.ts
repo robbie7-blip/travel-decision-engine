@@ -105,7 +105,11 @@ function itinerary(days: ItineraryDay[]): Itinerary {
 /** The clean baseline: a trip with nothing wrong with it. */
 function baseline(): ItineraryDay[] {
   const days = [goodDay(1, DATES[0]), goodDay(2, DATES[1]), goodDay(3, DATES[2], false)];
-  days[0].items.unshift(item({ type: "transport", title: "Flight to Denpasar", venue_name: null, time: "06:00", is_flight: true, cost_estimate_eur: 700 }));
+  days[0].items.unshift(
+    item({ type: "transport", title: "Flight to Denpasar", venue_name: null, time: "06:00", is_flight: true, cost_estimate_eur: 700 }),
+    // A flight alone is not an arrival — the onward leg is part of the day.
+    item({ type: "transport", title: "Car to Ubud", venue_name: null, time: "07:30", cost_estimate_eur: 25 })
+  );
   return days;
 }
 
@@ -292,6 +296,41 @@ section("grounding");
   check("a Places-confirmed trip reports 100%", good.groundedPercent === 100, String(good.groundedPercent));
 }
 
+section("a flight is not a complete arrival");
+{
+  const days = baseline();
+  days[0].items = days[0].items.filter((i) => i.type !== "transport" || i.is_flight === true);
+  const report = assessQuality(itinerary(days), BRIEF, plan());
+  const finding = report.findings.find((f) => f.check === "transport_legs");
+  check("transport_legs fires on a flight with no ground leg", !!finding);
+  check("names the day", finding?.detail === "day 1 has a flight but no way to or from the airport", finding?.detail);
+  check("a warning — some cities have one obvious link", finding?.severity === "warning");
+  check("and the baseline, which has the transfer, does not fire", !firedChecks(baseline()).includes("transport_legs"));
+}
+
+section("meal prices against Google's price tier");
+{
+  const days = baseline();
+  const dinner = days[0].items.find((i) => i.type === "meal" && i.time === "19:30") as ItineraryItem;
+  dinner.google_price_level = "very_expensive";
+  dinner.cost_estimate_eur = 40; // for two — EUR 20 each at a very expensive venue
+  const fired = firedChecks(days);
+  check("price_matches_tier fires on a clear understatement", fired.includes("price_matches_tier"));
+  check(
+    "it is a warning, not a defect — a cheap lunch at a pricey place is real",
+    assessQuality(itinerary(days), BRIEF, plan()).findings.find((f) => f.check === "price_matches_tier")?.severity === "warning"
+  );
+
+  const plausible = baseline();
+  const d2 = plausible[0].items.find((i) => i.type === "meal" && i.time === "19:30") as ItineraryItem;
+  d2.google_price_level = "very_expensive";
+  d2.cost_estimate_eur = 120; // EUR 60 each — consistent with the tier
+  check("a consistent price does not fire", !firedChecks(plausible).includes("price_matches_tier"));
+
+  const noTier = baseline();
+  check("no tier from Google means nothing to check", !firedChecks(noTier).includes("price_matches_tier"));
+}
+
 section("accommodation priced per night, not per stay");
 {
   // The Rome trip: a two-night stay at EUR 132/night written as EUR 264 on
@@ -365,9 +404,19 @@ section("what actually moves the verified percentage");
     withFlight.groundedPercent > venuesOnly.groundedPercent,
     `${venuesOnly.groundedPercent}% -> ${withFlight.groundedPercent}%`
   );
-  // 3. Grounded lodging counts, via its source_urls rather than Places.
+  // 3. Grounded lodging and transport count via source_urls rather than
+  //    Places. A ground transfer is the one item type with no automatic
+  //    verification path — no Places entry, no flight link — so including
+  //    one here proves the score has no structural ceiling rather than
+  //    quietly capping at whatever fraction happens to be verifiable.
   for (const d of verified) {
     for (const it of d.items) {
+      if (it.type === "transport" && it.is_flight !== true) {
+        it.source_confidence = "grounded";
+        it.source_urls = ["https://example.com/transfer"];
+        it.confidence_tier = "single_source";
+        continue;
+      }
       if (it.type !== "lodging") continue;
       it.source_confidence = "grounded";
       it.source_urls = ["https://example.com/rate"];

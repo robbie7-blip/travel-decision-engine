@@ -73,6 +73,7 @@ export type QualityCheckId =
   | "day_not_empty"
   | "prices_present"
   | "lodging_price_per_night"
+  | "price_matches_tier"
   | "transport_legs"
   | "open_on_visit"
   | "grounded_ratio";
