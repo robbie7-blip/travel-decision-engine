@@ -32,6 +32,7 @@ export const QUALITY_CHECKS: { id: QualityCheckId; label: string }[] = [
   { id: "lodging_per_night", label: "Wrong number of nights" },
   { id: "transport_legs", label: "No transport leg" },
   { id: "open_on_visit", label: "Closed when we send them" },
+  { id: "time_to_visit", label: "Arrives too close to closing" },
   { id: "venues_named", label: "Generic venue (no name)" },
   { id: "lodging_named", label: "Generic accommodation" },
   { id: "must_see_covered", label: "Must-see dropped silently" },

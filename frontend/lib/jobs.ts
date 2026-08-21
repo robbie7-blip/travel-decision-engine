@@ -77,6 +77,7 @@ export type QualityCheckId =
   | "price_matches_tier"
   | "transport_legs"
   | "open_on_visit"
+  | "time_to_visit"
   | "must_see_covered"
   | "budget_matches_items"
   | "grounded_ratio";

@@ -152,6 +152,12 @@ const DAY_ACTIVE_UNTIL = 21;
  * only a clear mismatch fires — the tiers are relative to a city, and an
  * expensive restaurant genuinely can be done cheaply at lunch. The cheap
  * tiers are absent on purpose: there is no floor to violate. */
+/** Below this many minutes between arrival and closing, a ticketed
+ * attraction is not really being visited. Deliberately modest — plenty of
+ * small museums are an easy hour — so it flags the genuinely rushed rather
+ * than second-guessing the pace. */
+const MIN_VISIT_MINUTES = 75;
+
 const MIN_PER_PERSON_EUR: Record<string, number | undefined> = {
   expensive: 30,
   very_expensive: 45,
@@ -555,6 +561,33 @@ export function assessQuality(
         check: "budget_matches_items",
         severity: "defect",
         detail: `marked feasible, but the items add up to EUR ${Math.round(itemTotal)} against a EUR ${stated} budget`,
+      });
+    }
+  }
+
+  // --- arriving with time to actually see it ----------------------------
+  // The open_on_visit check asks whether the doors are open. This asks
+  // whether there is any point walking through them. A real Rome trip put
+  // the Colosseum, Roman Forum and Palatine Hill — three sites on one
+  // ticket — at 15:30 against a 16:30 close, which passed as "open" and is
+  // not a visit. Paid attractions also tend to stop admitting people before
+  // they close, so an hour on the clock is usually less than an hour in
+  // practice.
+  //
+  // Only ticketed activities. A cafe half an hour before closing is a
+  // coffee, not a problem, and a free square has no closing time worth
+  // worrying about.
+  for (const day of days) {
+    for (const item of day.items) {
+      if (item.type !== "activity") continue;
+      if (!(item.cost_estimate_eur > 0)) continue;
+      const left = item.google_minutes_until_close;
+      if (left == null || left >= MIN_VISIT_MINUTES) continue;
+      findings.push({
+        check: "time_to_visit",
+        severity: "warning",
+        day: day.day,
+        detail: `day ${day.day} "${item.title}" starts ${left} min before closing`,
       });
     }
   }

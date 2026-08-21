@@ -151,6 +151,13 @@ export interface ItineraryItem {
   // Google's own human-readable weekly hours, carried through so the trip
   // page can show WHY something was flagged rather than just asserting it.
   google_opening_hours?: string[];
+  /** How long the venue stays open after the scheduled arrival. "Open at
+   * 15:30" and "worth going at 15:30" are different questions — a paid
+   * attraction reached an hour before closing is technically open and
+   * practically a wasted ticket, and most have a last-entry cutoff earlier
+   * still. Undefined when there are no published hours, no parseable time,
+   * or the place is open around the clock. */
+  google_minutes_until_close?: number;
   // Populated by attachFlightSearchLinks (worker/src/engine/flightLinks.ts)
   // for arrival/departure transport items that are actual flights — a
   // Google Flights deep link for that exact route/date, built deterministically

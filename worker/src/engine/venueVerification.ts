@@ -98,6 +98,23 @@ const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 // the worst case is one of these, not N of them.
 const PLACES_TIMEOUT_MS = 8000;
 const GEOCODE_TIMEOUT_MS = 5000;
+
+// How many Places lookups are in flight at once.
+//
+// This was unbounded, which was fine while a trip named ten venues and
+// stopped being fine the moment days filled out properly: a three-day Rome
+// trip now fires closer to twenty simultaneously, and Google rate-limits
+// per second. A 429 is indistinguishable from an outage in this code — the
+// item ships unverified — so hitting the limit quietly costs BOTH the badge
+// and up to a full timeout of wall clock, per affected venue. Confirmed in
+// practice: two cafes on one trip came back with no rating, no hours and no
+// Maps link while every other venue resolved.
+const MAX_PARALLEL_PLACES = 6;
+
+// A rate limit is worth waiting out — it means the answer exists and we
+// asked too fast. A timeout is not retried, for the same reason it isn't
+// elsewhere: a call that hung once rarely succeeds by being repeated.
+const PLACES_RETRY_BACKOFF_MS = [400, 1200];
 const FIELD_MASK =
   "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id," +
   "places.displayName,places.location,places.regularOpeningHours";
@@ -323,7 +340,8 @@ type PlaceLookup =
 async function lookupPlace(
   apiKey: string,
   query: string,
-  bias?: GeoPoint | null
+  bias?: GeoPoint | null,
+  attempt = 0
 ): Promise<PlaceLookup> {
   try {
     const res = await fetch(PLACES_SEARCH_URL, {
@@ -345,7 +363,16 @@ async function lookupPlace(
     // A 4xx/5xx is the API failing us, not a verdict on the venue — a 429
     // over quota or a 500 would otherwise read as "this restaurant does not
     // exist" for every item in the trip at once.
-    if (!res.ok) return { status: "unavailable", reason: `HTTP ${res.status}` };
+    if (!res.ok) {
+      // 429 means we asked too fast, not that the venue isn't real; 5xx is
+      // Google having a moment. Both are worth one short wait.
+      const retryable = res.status === 429 || res.status >= 500;
+      if (retryable && attempt < PLACES_RETRY_BACKOFF_MS.length) {
+        await new Promise((r) => setTimeout(r, PLACES_RETRY_BACKOFF_MS[attempt]));
+        return lookupPlace(apiKey, query, bias, attempt + 1);
+      }
+      return { status: "unavailable", reason: `HTTP ${res.status}` };
+    }
     const data = (await res.json()) as PlacesApiResponse;
     const place = data.places?.[0];
     return place ? { status: "found", place } : { status: "not_found" };
@@ -402,6 +429,46 @@ function stripUnverifiedLodging(item: ItineraryItem): void {
   item.google_price_level = undefined;
   item.google_business_status = undefined;
   item.google_maps_url = undefined;
+}
+
+/** How long the venue stays open after the scheduled arrival, in minutes.
+ *
+ * "Open at 15:30" and "worth going at 15:30" are different questions, and
+ * only the first was being asked. A real trip put the Colosseum, Roman
+ * Forum and Palatine Hill at 15:30 against a 16:30 close — technically open,
+ * practically an hour to see three sites on one ticket, and most of those
+ * have a last-entry cutoff before closing anyway.
+ *
+ * Null when it can't be answered, on the same principle as isOpenAt: no
+ * published hours, no parseable time, or open around the clock. */
+export function minutesUntilClose(
+  place: PlacesApiPlace,
+  date: string,
+  time: string | undefined
+): number | null {
+  const periods = place.regularOpeningHours?.periods;
+  if (!periods || periods.length === 0) return null;
+  if (periods.length === 1 && periods[0].open && !periods[0].close) return null; // 24h
+
+  const minutes = scheduledMinutes(time);
+  if (minutes == null) return null;
+  const parsed = Date.parse(`${date}T00:00:00Z`);
+  if (!Number.isFinite(parsed)) return null;
+  const weekday = new Date(parsed).getUTCDay();
+  const visit = weekMinute(weekday, Math.floor(minutes / 60), minutes % 60);
+
+  for (const period of periods) {
+    const o = period.open;
+    const c = period.close;
+    if (!o || o.day == null || !c || c.day == null) continue;
+    const start = weekMinute(o.day, o.hour ?? 0, o.minute ?? 0);
+    let end = weekMinute(c.day, c.hour ?? 0, c.minute ?? 0);
+    if (end <= start) end += 7 * 24 * 60;
+    if (visit >= start && visit < end) return end - visit;
+    const wrapped = visit + 7 * 24 * 60;
+    if (wrapped >= start && wrapped < end) return end - wrapped;
+  }
+  return null;
 }
 
 /** Minutes past midnight on the given weekday, as one number, so an
@@ -493,6 +560,22 @@ function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
   }
 }
 
+/** Runs `fn` over `items` with at most `limit` in flight. Same shape as the
+ * day-call limiter in index.ts, kept local so this module stays independent
+ * of the worker's entry point. */
+async function runWithLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      for (;;) {
+        const i = next++;
+        if (i >= items.length) return;
+        await fn(items[i]);
+      }
+    })
+  );
+}
+
 /** Starts the geocode lookups for a trip's destinations before anything
  * needs them, and hands back the cache checkVenues will use.
  *
@@ -561,8 +644,10 @@ export async function checkVenues(
   const geoCache = options.geoCache ?? new Map<string, Promise<GeoPoint | null>>();
   let unavailable = 0;
 
-  await Promise.all(
-    targets.map(async ({ item, date }) => {
+  // Bounded fan-out rather than Promise.all over every venue — see
+  // MAX_PARALLEL_PLACES. Six at a time still resolves a full trip in a
+  // couple of rounds while staying inside Google's per-second budget.
+  await runWithLimit(targets, MAX_PARALLEL_PLACES, async ({ item, date }) => {
       // Safe: item is only in targets because isNamedVenueItem already
       // confirmed resolveVenueName(item) is non-null.
       const venueName = resolveVenueName(item)!;
@@ -609,6 +694,7 @@ export async function checkVenues(
       const open = isOpenAt(place, date, item.time);
       item.google_open_on_visit = open;
       item.google_opening_hours = place.regularOpeningHours?.weekdayDescriptions;
+      item.google_minutes_until_close = minutesUntilClose(place, date, item.time) ?? undefined;
 
       const status = item.google_business_status;
       if (status === "closed_permanently" || status === "closed_temporarily") {
@@ -630,8 +716,7 @@ export async function checkVenues(
         // LANDMARK_RATING_COUNT).
         reject(item);
       }
-    })
-  );
+  });
 
   if (unavailable > 0) {
     // Loud on purpose. Silently shipping unverified venues is the right

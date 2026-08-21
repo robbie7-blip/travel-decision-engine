@@ -357,6 +357,37 @@ section("the budget stamp against the actual bill");
   );
 }
 
+section("arriving with time to actually see it");
+{
+  const days = baseline();
+  const sight = days[1].items.find((i) => i.type === "activity") as ItineraryItem;
+  sight.cost_estimate_eur = 36;
+  sight.google_minutes_until_close = 60; // the Colosseum at 15:30, closing 16:30
+  const report = assessQuality(itinerary(days), BRIEF, plan());
+  const finding = report.findings.find((f) => f.check === "time_to_visit");
+  check("time_to_visit fires on a ticket bought an hour before closing", !!finding);
+  check("it names the margin", finding?.detail.includes("60 min") === true, finding?.detail);
+  check("a warning — the traveler may still want to go", finding?.severity === "warning");
+
+  const roomy = baseline();
+  const ok = roomy[1].items.find((i) => i.type === "activity") as ItineraryItem;
+  ok.cost_estimate_eur = 36;
+  ok.google_minutes_until_close = 300;
+  check("plenty of time does not fire", !firedChecks(roomy).includes("time_to_visit"));
+
+  // A free square or a cafe near closing is not the same problem.
+  const freeWalk = baseline();
+  const walk = freeWalk[1].items.find((i) => i.type === "activity") as ItineraryItem;
+  walk.cost_estimate_eur = 0;
+  walk.google_minutes_until_close = 30;
+  check("a free activity is not held to this", !firedChecks(freeWalk).includes("time_to_visit"));
+
+  const noHours = baseline();
+  const unknown = noHours[1].items.find((i) => i.type === "activity") as ItineraryItem;
+  unknown.cost_estimate_eur = 20;
+  check("no published hours means nothing to check", !firedChecks(noHours).includes("time_to_visit"));
+}
+
 section("grounding");
 {
   const days = baseline();
