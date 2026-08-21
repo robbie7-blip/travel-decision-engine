@@ -37,6 +37,11 @@ jobs:
       # The acceptance gate against itineraries broken in each of the ways
       # this product has actually shipped broken.
       - run: npm run test:quality
+      # The real pipeline over a realistic fake generation, reading the
+      # finished trip. This is the one that catches the small, visible
+      # mistakes that used to be found only by paying for a generation and
+      # spotting them on the page.
+      - run: npm run test:itinerary
       # Whether the stages that must overlap actually overlap. A
       # serialization regression shows up here as a wall-clock number, with
       # no model call involved.
