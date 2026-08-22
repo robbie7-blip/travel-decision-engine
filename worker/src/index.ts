@@ -1569,21 +1569,23 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       );
     }
 
-    // Every day reads top to bottom, always.
+    itinerary = checkFeasibility(itinerary);
+    itinerary = checkBudgetIntegrity(itinerary, job.brief);
+
+    // Every day reads top to bottom, always — and AFTER checkBudgetIntegrity,
+    // not before it.
     //
-    // Until now the only thing that sorted a day was the meal repair, which
-    // meant clock order was guaranteed exactly on the days that happened to
-    // have something wrong with them. A day the model wrote out of sequence
-    // — its lodging declared before the afternoon, say — shipped in that
-    // sequence, and it is the kind of mistake that is invisible in the JSON
-    // and obvious on the page. Cheap, deterministic, and it removes the
-    // possibility rather than reducing it.
+    // Until recently the only thing that sorted a day was the meal repair,
+    // which meant clock order was guaranteed exactly on the days that
+    // happened to have something wrong with them. Sorting here fixes that,
+    // but the first attempt sorted too early: checkBudgetIntegrity clones a
+    // lodging item onto any night missing one, and that push landed after
+    // the sort had already run, dropping an accommodation line at the bottom
+    // of a day regardless of its time.
     for (const day of itinerary.days ?? []) {
       day.items.sort((a, b) => timeOrder(a.time) - timeOrder(b.time));
     }
 
-    itinerary = checkFeasibility(itinerary);
-    itinerary = checkBudgetIntegrity(itinerary, job.brief);
     itinerary = deriveConfidenceTiers(itinerary);
 
     // The acceptance gate, run LAST — after the repairs have had their

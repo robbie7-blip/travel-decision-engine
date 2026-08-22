@@ -128,8 +128,8 @@ function dayJson(dayNumber: number): string {
       // Day 1's lunch venue again.
       { time: "13:00", type: "meal", title: "Lunch at Ai Tre Scalini", venue_name: "Ai Tre Scalini", location: "Monti, Rome", cost_estimate_eur: 30, reasoning: "r", source_confidence: "inferred" },
       { time: "16:00", type: "activity", title: "Castel Sant'Angelo", venue_name: "Castel Sant'Angelo", location: "Borgo, Rome", cost_estimate_eur: 15, reasoning: "r", source_confidence: "inferred" },
-      lodgingItem(PER_NIGHT),
-      // ...and no dinner at all.
+      // ...no dinner at all, AND no bed — so checkBudgetIntegrity has to
+      // clone one in, which is where two separate bugs used to live.
     ];
   } else {
     base.items = [
@@ -269,6 +269,25 @@ async function main() {
     "only the first night reads as a check-in",
     lodging.filter((i) => /check.?in/i.test(i.title)).length === 1,
     lodging.map((i) => i.title).join(" | ")
+  );
+
+  section("a cloned accommodation night lands correctly");
+  // Day 2's stub omits its bed entirely. checkBudgetIntegrity clones one so
+  // the trip total stays honest — but it used to clone the NEAREST lodging
+  // item, which is day 1's check-in, and it pushed it on AFTER the day had
+  // been sorted. The result was "Check in to Hotel Artemide" sitting at the
+  // bottom of day 2, below dinner, on a night they were already staying.
+  const dayTwo = result.days.find((d) => d.day === 2)!;
+  const clonedBed = dayTwo.items.find((i) => i.type === "lodging");
+  check("day 2 got its bed back", clonedBed != null);
+  check("and it does not tell them to check in again", !/check.?in/i.test(clonedBed?.title ?? ""), clonedBed?.title);
+  check(
+    "and it is placed by its time, not appended after dinner",
+    (() => {
+      const times = dayTwo.items.map((i) => i.time ?? "");
+      return times.every((t, i) => i === 0 || times[i - 1] <= t);
+    })(),
+    dayTwo.items.map((i) => `${i.time} ${i.type}`).join(" | ")
   );
 
   section("meals — the Bali bug");

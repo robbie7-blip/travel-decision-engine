@@ -191,7 +191,18 @@ function mentions(haystack: string, wanted: string): boolean {
   const words = normalize(wanted);
   if (words.length === 0) return true;
   const hay = new Set(normalize(haystack));
-  return words.every((w) => hay.has(w));
+  const matched = words.filter((w) => hay.has(w)).length;
+
+  // Every word, for one- and two-word requests — those are proper nouns and
+  // dropping half of "Vatican Museums" would let any museum satisfy it.
+  // For longer phrases, allow one word to go missing: people write
+  // must-sees as descriptions ("Trevi Fountain at night", "the Colosseum
+  // underground tour") and an itinerary that delivers the place without the
+  // adjective has not dropped anything. Demanding all of it would report a
+  // silent drop that did not happen, which is the failure mode this check
+  // can least afford — a false alarm here trains you to ignore it.
+  const needed = words.length <= 2 ? words.length : words.length - 1;
+  return matched >= needed;
 }
 
 function isNamedVenueSlot(item: ItineraryItem): boolean {

@@ -18,7 +18,12 @@ import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "../
  * overpacking. Meals still count toward a generous overall ceiling, since a
  * day really can have too much in it in total. */
 const MAX_ACTIVITIES_PER_DAY = 5;
-const MAX_SCHEDULED_ITEMS_PER_DAY = 8;
+// Raised once the day prompt started demanding three meals, a written
+// afternoon and real transport between areas. A genuinely good Rome day now
+// runs to nine items — breakfast, metro, sight, sight, coffee, walk, metro,
+// gallery, dinner — and warning the traveler that it is "likely overpacked"
+// would be the product second-guessing its own instructions on the page.
+const MAX_SCHEDULED_ITEMS_PER_DAY = 10;
 
 export function checkFeasibility(itinerary: Itinerary): Itinerary {
   for (const day of itinerary.days ?? []) {
@@ -40,13 +45,20 @@ export function checkFeasibility(itinerary: Itinerary): Itinerary {
 function nearestLodgingItem(days: ItineraryDay[], targetDay: number): ItineraryItem | null {
   let best: ItineraryItem | null = null;
   let bestDistance = Infinity;
+  let bestDay = -Infinity;
   for (const day of days) {
     for (const item of day.items) {
       if (item.type !== "lodging") continue;
       const distance = Math.abs(day.day - targetDay);
-      if (distance < bestDistance) {
+      // On a tie, take the LATER night. The earliest lodging item in a trip
+      // is the arrival night, and its title says "check in" — cloning that
+      // onto night three tells the traveler to check in somewhere they are
+      // already staying. A later night's wording ("another night at...")
+      // is correct for any night it might be copied to.
+      if (distance < bestDistance || (distance === bestDistance && day.day > bestDay)) {
         best = item;
         bestDistance = distance;
+        bestDay = day.day;
       }
     }
   }
@@ -65,13 +77,46 @@ function nearestLodgingItem(days: ItineraryDay[], targetDay: number): ItineraryI
  * version of this check surfaced a big red "MISMATCH... treat with
  * suspicion" banner for exactly this case, which is a bad way to greet
  * someone excited about a trip they just planned. */
-function fillMissingLodgingNights(days: ItineraryDay[], nights: number): void {
+/** Neutral wording for a night that was cloned rather than written.
+ *
+ * Preferring a later night to copy from only helps when a later night
+ * exists. When the model writes the arrival night and nothing else — which
+ * is exactly when this repair is most needed — the only item to clone says
+ * "check in", and copying that onto night three tells the traveler to check
+ * in somewhere they are already staying.
+ *
+ * So the title is written here instead of inherited. The trip's language is
+ * known and there are two of them, which makes this a small lookup rather
+ * than a translation problem, and a plain correct line beats an inherited
+ * wrong one. */
+function clonedNightTitle(language: TripBriefInput["language"], venue: string | null | undefined): string {
+  if (language === "bg") return venue ? `Нощувка в ${venue}` : "Нощувка в хотела";
+  return venue ? `Another night at ${venue}` : "Another night at the accommodation";
+}
+
+function fillMissingLodgingNights(
+  days: ItineraryDay[],
+  nights: number,
+  language: TripBriefInput["language"]
+): void {
   const dayByNumber = new Map(days.map((d) => [d.day, d]));
+  const firstLodgingDay = Math.min(
+    ...days.filter((d) => d.items.some((i) => i.type === "lodging")).map((d) => d.day)
+  );
   for (let dayNum = 1; dayNum <= nights; dayNum++) {
     const day = dayByNumber.get(dayNum);
     if (!day || day.items.some((item) => item.type === "lodging")) continue;
     const reference = nearestLodgingItem(days, dayNum);
-    if (reference) day.items.push({ ...reference });
+    if (!reference) continue;
+    const clone: ItineraryItem = { ...reference };
+    // Any night after the first is not an arrival, whatever the item we
+    // copied happened to say. Retimed too: a 13:15 check-in cloned onto a
+    // later night would otherwise sit in the middle of that afternoon.
+    if (dayNum > firstLodgingDay) {
+      clone.title = clonedNightTitle(language, reference.venue_name);
+      clone.time = "21:00";
+    }
+    day.items.push(clone);
   }
 }
 
@@ -102,7 +147,7 @@ export function checkBudgetIntegrity(itinerary: Itinerary, brief: TripBriefInput
       `[checkBudgetIntegrity] 0 accommodation items for a ${nights}-night trip — no reference item to auto-fill from.`
     );
   } else if (nights > 0 && lodgingItems.length > 0 && lodgingItems.length < nights) {
-    fillMissingLodgingNights(days, nights);
+    fillMissingLodgingNights(days, nights, brief.language);
   }
 
   return itinerary;
