@@ -42,6 +42,9 @@ jobs:
       # mistakes that used to be found only by paying for a generation and
       # spotting them on the page.
       - run: npm run test:itinerary
+      # The trip shapes the other suites don't cover: Bulgarian, multi-city,
+      # accommodation or travel already booked, a single day.
+      - run: npm run test:edges
       # Whether the stages that must overlap actually overlap. A
       # serialization regression shows up here as a wall-clock number, with
       # no model call involved.
