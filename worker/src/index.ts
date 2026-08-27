@@ -83,7 +83,34 @@ const MAX_TOKENS = 12000;
 // "high" costs real time and real money per generation. That is the
 // intended trade. MODEL_EFFORT overrides it without a code change if the
 // balance ever needs revisiting — "low" restores the old behaviour exactly.
-const EFFORT = (process.env.MODEL_EFFORT ?? "high") as "low" | "medium" | "high" | "xhigh" | "max";
+type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
+
+/** Reads an effort setting from the environment, refusing anything the API
+ * would reject.
+ *
+ * These were blind casts, which made a typo in a dashboard field one of the
+ * most expensive mistakes available: an invalid effort is a 400 on every
+ * call that uses it, so mistyping the day-call setting would fail all of
+ * phase 2, exhaust its retries, abandon the parallel path and regenerate the
+ * whole itinerary in one serial call. Two minutes and a worse trip, with
+ * nothing on the page explaining why.
+ *
+ * Case and whitespace are forgiven because a value typed into a web form
+ * picks both up easily. Anything genuinely unrecognised falls back and says
+ * so loudly, rather than being passed through to fail later. */
+function readEffort(name: string, fallback: Effort): Effort {
+  const raw = process.env[name];
+  if (raw == null || raw.trim() === "") return fallback;
+  const normalized = raw.trim().toLowerCase() as Effort;
+  if (EFFORTS.includes(normalized)) return normalized;
+  console.error(
+    `[worker] ${name}="${raw}" is not a valid effort (${EFFORTS.join(", ")}) — falling back to "${fallback}"`
+  );
+  return fallback;
+}
+
+const EFFORT = readEffort("MODEL_EFFORT", "high");
 
 // Effort for the pipeline's small EXTRACTION calls: read a search result
 // into two JSON fields, swap one duplicated venue for another. Raising
@@ -105,12 +132,7 @@ const EFFORT = (process.env.MODEL_EFFORT ?? "high") as "low" | "medium" | "high"
 // Both halves of that are fixed: low effort where there is nothing to
 // reason about, and caps below with enough headroom that reasoning can
 // never starve the output.
-const EXTRACT_EFFORT = (process.env.EXTRACT_MODEL_EFFORT ?? "low") as
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh"
-  | "max";
+const EXTRACT_EFFORT = readEffort("EXTRACT_MODEL_EFFORT", "low");
 
 // Headroom, not a target. These calls emit ~50 tokens of JSON; the cap
 // exists to bound a runaway, and the old 400/500 values were sized when
@@ -534,12 +556,7 @@ const TWO_PHASE_ENABLED = process.env.TWO_PHASE_GENERATION !== "0";
 // stage to think less hard about prose it has already been told the shape
 // of. Whether that is an acceptable trade is a judgement about the product,
 // which is why it is a dial and not a default.
-const DAY_EFFORT = (process.env.DAY_MODEL_EFFORT ?? EFFORT) as
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh"
-  | "max";
+const DAY_EFFORT = readEffort("DAY_MODEL_EFFORT", EFFORT);
 
 // Model used for the phase-2 day calls only. Phase 1 (every real decision:
 // budget, city order, which venues anchor which day) always stays on MODEL.
