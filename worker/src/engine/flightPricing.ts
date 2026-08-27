@@ -1,3 +1,30 @@
+// ⚠️ THE AMADEUS SELF-SERVICE API CLOSED ON 17 JULY 2026.
+//
+// Everything in the fetch half of this file talks to endpoints that no
+// longer serve self-service credentials, so fetchFarePricing returns null
+// on its first line in production and always will. Flights fall back to the
+// deterministic Google Flights deep link (see engine/flightLinks.ts), which
+// is the documented, intended behaviour when no fare provider is
+// configured — not a degradation.
+//
+// This is left in place rather than deleted because the SEAM is still the
+// right one and is worth keeping if a provider is ever added: fetchFarePricing
+// does the network work at t=0 and applyFlightPricing is pure, so only the
+// fetching half is Amadeus-specific. A replacement needs to return a
+// PrefetchedFare and nothing else changes.
+//
+// What replacing it would cost, checked August 2026: there is no longer a
+// free real-fare tier for independent developers. Duffel's test mode returns
+// sandbox data (fake airline, fake schedules, fake prices) and real fares
+// need a live pay-as-you-go account; FlightAPI.io starts around $49/month;
+// Kiwi and Skyscanner are partner programmes rather than self-serve.
+//
+// Worth being clear about why that is not urgent: the Google Flights link
+// shows the traveler the REAL price in one tap, and this product already
+// learned the hard way that a confident wrong fare is worse than an honest
+// link — a live test once had the model reporting a "verified" EUR240 round
+// trip directly above a link showing EUR43 for the same route and dates.
+//
 // Real flight-price lookup for the arrival flight item — an actual current
 // fare, not a memory-based guess. The model's own guess repeatedly turned
 // out badly wrong (confirmed: a "€150, likely with one connection" guess
