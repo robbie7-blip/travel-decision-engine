@@ -234,6 +234,7 @@ export default function Home() {
             {t.howItWorks}
           </h2>
           <div
+            className="step-cards"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",

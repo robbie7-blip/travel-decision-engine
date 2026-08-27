@@ -430,8 +430,18 @@ div[id="how-it-works"] {
   box-shadow: 0 6px 24px rgba(31, 111, 138, 0.1);
 }
 
-/* Step cards - enhanced styling with colored backgrounds */
-div[style*="display: grid"] > div {
+/* Step cards - enhanced styling with colored backgrounds.
+   Scoped to .step-cards (see page.tsx). This used to be selected as
+   div[style*="display: grid"] > div — every div on the site whose INLINE
+   style contained "display: grid", and every direct div child of it. That
+   is 19 grids across 14 files, and it was quietly turning things into
+   white cards that were never meant to be cards: the date picker's
+   Mon-Sun header row rendered as seven floating white pills with borders,
+   drop shadows and a hover lift, sitting above the plain day numbers.
+   Matching on the text of an inline style attribute is not a selector,
+   it's a coincidence — a class says what it means and hits only what it
+   means. */
+.step-cards > div {
   background: white;
   border-radius: 12px;
   padding: 20px;
@@ -441,7 +451,7 @@ div[style*="display: grid"] > div {
 }
 
 /* Step 1 - teal (brand/primary) */
-div[style*="display: grid"] > div[data-step="0"] {
+.step-cards > div[data-step="0"] {
   background: linear-gradient(135deg, color-mix(in srgb, var(--color-blue) 8%, transparent), color-mix(in srgb, var(--color-blue) 3%, transparent));
   border-color: color-mix(in srgb, var(--color-blue) 20%, transparent) !important;
 }
@@ -450,18 +460,18 @@ div[style*="display: grid"] > div[data-step="0"] {
    single-source tier's purple outside the tier system itself — three
    steps need three distinct colors, and reusing an existing brand color
    here still beats introducing a 7th hue). */
-div[style*="display: grid"] > div[data-step="1"] {
+.step-cards > div[data-step="1"] {
   background: linear-gradient(135deg, color-mix(in srgb, var(--color-purple) 8%, transparent), color-mix(in srgb, var(--color-purple) 3%, transparent));
   border-color: color-mix(in srgb, var(--color-purple) 20%, transparent) !important;
 }
 
 /* Step 3 - gold (secondary accent) */
-div[style*="display: grid"] > div[data-step="2"] {
+.step-cards > div[data-step="2"] {
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent-2) 8%, transparent), color-mix(in srgb, var(--accent-2) 3%, transparent));
   border-color: color-mix(in srgb, var(--accent-2) 20%, transparent) !important;
 }
 
-div[style*="display: grid"] > div:hover {
+.step-cards > div:hover {
   border-color: var(--color-blue) !important;
   box-shadow: 0 12px 32px color-mix(in srgb, var(--color-blue) 20%, transparent);
   transform: translateY(-4px);
