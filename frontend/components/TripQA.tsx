@@ -210,7 +210,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
               key={prompt}
               type="button"
               onClick={() => useExample(prompt)}
-              className="font-mono hover-card"
+              className="font-ui hover-card"
               style={{
                 border: "1px solid var(--line)",
                 background: "var(--bg-panel-raised)",
@@ -265,7 +265,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
                   />
                 ))}
                 {isPendingAssistant ? (
-                  <span className="font-mono" style={{ color: "var(--ink-dim)" }}>
+                  <span className="font-ui" style={{ color: "var(--ink-dim)" }}>
                     {t.tripQA.thinking}
                   </span>
                 ) : (
@@ -287,7 +287,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
           <button
             type="button"
             onClick={() => setPendingImage(null)}
-            className="font-mono"
+            className="font-ui"
             style={{
               border: "1px solid var(--line)",
               background: "transparent",
@@ -304,7 +304,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
       )}
       {showProUpsell && (
         <div
-          className="font-mono"
+          className="font-ui"
           style={{
             fontSize: 12,
             lineHeight: 1.5,
@@ -344,7 +344,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
           disabled={sending}
           aria-label={t.tripQA.addPhoto}
           title={t.tripQA.addPhoto}
-          className="font-mono"
+          className="font-ui"
           style={{
             border: "1px solid var(--line)",
             background: "var(--bg-panel)",
@@ -375,7 +375,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
           onKeyDown={handleKeyDown}
           placeholder={t.tripQA.placeholder}
           rows={2}
-          className="font-mono"
+          className="font-ui"
           style={{
             flex: 1,
             resize: "vertical",
@@ -391,7 +391,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
           type="button"
           onClick={send}
           disabled={sending || (!draft.trim() && !pendingImage)}
-          className="font-mono btn-primary"
+          className="font-ui btn-primary"
           style={{
             padding: "10px 16px",
             fontWeight: 700,
@@ -406,7 +406,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
         </button>
       </div>
       {error && (
-        <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)" }}>
+        <div className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)" }}>
           {error}
         </div>
       )}

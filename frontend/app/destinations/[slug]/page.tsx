@@ -150,14 +150,14 @@ export default async function DestinationPage({
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <Link
                 href={`/destinations${langSuffix}`}
-                className="font-mono"
+                className="font-ui"
                 style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
               >
                 {dt.backToAll}
               </Link>
               <AccountControl language={language} t={t} />
               <div
-                className="font-mono lang-toggle"
+                className="font-ui lang-toggle"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
                 <Link
@@ -206,7 +206,7 @@ export default async function DestinationPage({
         <div style={{ maxWidth: 900 }}>
           <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
           {photo?.credit && (
-            <p className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
+            <p className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
               {dt.photoCredit}{" "}
               <a href={photo.credit.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
                 {photo.credit.artist}
@@ -247,7 +247,7 @@ export default async function DestinationPage({
             return (
               <div key={category} style={{ marginBottom: 32 }}>
                 <div
-                  className="font-mono"
+                  className="font-ui"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -288,7 +288,7 @@ export default async function DestinationPage({
             href={`https://en.wikipedia.org/wiki/${encodeURIComponent(destination.city)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono"
+            className="font-ui"
             style={{ fontSize: 12, color: "var(--grounded)", textDecoration: "underline" }}
           >
             {dt.readMoreWikipedia}
@@ -297,7 +297,7 @@ export default async function DestinationPage({
           <div style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--line)" }}>
             <Link
               href={`/?dest=${encodeURIComponent(destination.city)}${language === "bg" ? "&lang=bg" : ""}`}
-              className="font-mono btn-primary"
+              className="font-ui btn-primary"
               style={{
                 display: "inline-block",
                 padding: "14px 26px",
@@ -310,7 +310,7 @@ export default async function DestinationPage({
             >
               {dt.planTrip.replace("{city}", displayCity)}
             </Link>
-            <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 14, lineHeight: 1.6 }}>
+            <p className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 14, lineHeight: 1.6 }}>
               {dt.notLimitedNote}
             </p>
           </div>
@@ -318,7 +318,7 @@ export default async function DestinationPage({
           {more.length > 0 && (
             <div style={{ marginTop: 48 }}>
               <div
-                className="font-mono"
+                className="font-ui"
                 style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 14 }}
               >
                 {dt.moreGuides}

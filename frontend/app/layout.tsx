@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Fraunces, DM_Mono, Roboto_Mono } from "next/font/google";
+import { Fraunces, DM_Mono, Inter } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { AppSplash } from "@/components/AppSplash";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -14,38 +14,54 @@ const fraunces = Fraunces({
   style: ["normal", "italic"],
 });
 
-// The UI font: nav, chips, labels, prices, everything that isn't a
-// heading. DM Mono ships 300/400/500 and nothing heavier — the 600 and
-// 700 weights scattered through the components have no real face to land
-// on, so globals.css turns synthetic bolding off for .font-mono and lets
-// them settle on 500 rather than render as a smeared fake bold.
+// The interface font: nav, chips, labels, buttons, the whole generation
+// view — everything that isn't a heading and isn't a number in a column.
+//
+// This used to be a monospace, which is why the header read as a terminal
+// sitting under a warm serif headline. Swapping one mono for another only
+// moved the problem around; the typewriter feel was the monospace itself,
+// not the particular face. Inter is here rather than a more characterful
+// sans because most of this text is 11–13px chips and labels, which is
+// the exact size Inter was drawn for and the exact size a display-leaning
+// sans falls apart at.
+//
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-ui",
+  weight: ["400", "500", "600", "700"],
+});
+
+// The same typeface, Cyrillic only, so the Bulgarian site is set in the
+// interface font rather than dropping to whatever the OS picks.
+//
+// Split into its own declaration instead of just adding "cyrillic" to the
+// subsets above, because next/font preloads every declared subset: one
+// list would put a <link rel="preload"> for the Cyrillic file on every
+// English page, which downloads it for visitors who will never render a
+// Cyrillic character. Declared separately with preload off, the
+// stylesheet's unicode-range fetches it exactly on the pages that need
+// it. Both resolve to Inter, so there is no seam between them.
+const interCyrillic = Inter({
+  subsets: ["cyrillic"],
+  variable: "--font-ui-cyrillic",
+  weight: ["400", "500", "600", "700"],
+  preload: false,
+});
+
+// Kept for the places a monospace actually earns its keep — a column of
+// times down a day, the admin diagnostics numbers — where equal-width
+// digits line up and proportional ones don't. See .font-mono in
+// globals.css, which is now a deliberate, narrow choice rather than the
+// default for all interface text.
+//
+// Latin only, and that's fine: what's left in mono is digits, clock
+// times and the English-only admin pages. DM Mono has no Cyrillic, so if
+// a Bulgarian string ever lands in one of these, it'll fall through the
+// stack to the system monospace rather than render in DM Mono.
 const dmMono = DM_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
-  weight: ["300", "400", "500"],
-});
-
-// Cyrillic only, and only ever downloaded when a Cyrillic glyph is
-// actually on the page — the @font-face rules next/font emits are
-// unicode-range gated, so an English visitor pays nothing for this.
-//
-// It exists because DM Mono has no Cyrillic at all: latin and latin-ext
-// and that's it. The Bulgarian site is a real, shipped locale, and
-// without a companion face every mono label on it — the nav, the
-// confidence chips, the prices — would silently drop to Arial while the
-// same elements on the English site sat in DM Mono. Roboto Mono's
-// Cyrillic is close enough in width and colour to sit beside DM Mono
-// without reading as a different design.
-const cyrillicMono = Roboto_Mono({
-  subsets: ["cyrillic"],
-  variable: "--font-mono-cyrillic",
   weight: ["400", "500"],
-  // Not preloaded: a preload link fires on every page whether or not the
-  // page has a single Cyrillic character on it, which would make the
-  // English site pay for the Bulgarian one. Without it the file is
-  // fetched when the stylesheet says a glyph needs it, which is exactly
-  // the pages that do.
-  preload: false,
 });
 
 const siteUrl = getSiteUrl();
@@ -82,7 +98,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} ${dmMono.variable} ${cyrillicMono.variable}`}>
+      <body
+        className={`${fraunces.variable} ${inter.variable} ${interCyrillic.variable} ${dmMono.variable}`}
+      >
         <AppSplash />
         {children}
         <SiteFooter />

@@ -183,7 +183,7 @@ export default function PricingPage() {
         <div style={{ maxWidth: 1200 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
             <div style={{ background: "var(--bg-panel)", border: "1px solid var(--line)", borderRadius: 10, padding: 26, boxShadow: "var(--shadow-panel)" }}>
-              <div className="font-mono" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}>
+              <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}>
                 {t.account.freePlanName}
               </div>
               <div className="font-display" style={{ fontSize: 30, fontWeight: 600, marginBottom: 4 }}>
@@ -213,7 +213,7 @@ export default function PricingPage() {
                 boxShadow: "var(--shadow-panel)",
               }}
             >
-              <div className="font-mono" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent-green)", marginBottom: 6 }}>
+              <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent-green)", marginBottom: 6 }}>
                 {t.account.paidPlanName}
               </div>
               <div className="font-display" style={{ fontSize: 30, fontWeight: 600, marginBottom: 4 }}>
@@ -222,7 +222,7 @@ export default function PricingPage() {
               <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5, margin: "0 0 14px" }}>
                 {t.account.paidPlanBlurb.replace("{count}", String(PAID_MONTHLY_GENERATIONS))}
               </p>
-              <div className="font-mono" style={{ fontSize: 11, letterSpacing: "0.04em", color: "var(--accent-green)", fontWeight: 700, marginBottom: 8 }}>
+              <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.04em", color: "var(--accent-green)", fontWeight: 700, marginBottom: 8 }}>
                 {t.account.paidPlanFeaturesIntro}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
@@ -240,7 +240,7 @@ export default function PricingPage() {
                 ))}
               </div>
               <div style={{ marginBottom: 10 }}>
-                <div className="font-mono" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}>
+                <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}>
                   {t.account.emailLabel}
                 </div>
                 <input
@@ -260,14 +260,14 @@ export default function PricingPage() {
                     boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
                   }}
                 />
-                <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 6, lineHeight: 1.4 }}>
+                <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 6, lineHeight: 1.4 }}>
                   {t.account.emailMismatchNote}
                 </div>
               </div>
               <button
                 onClick={subscribe}
                 disabled={submitting || !email.trim()}
-                className="font-mono btn-primary"
+                className="font-ui btn-primary"
                 style={{
                   width: "100%",
                   padding: "12px 16px",
@@ -281,14 +281,14 @@ export default function PricingPage() {
                 {submitting ? t.account.subscribing : t.account.subscribeButton}
               </button>
               {error && (
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
+                <div className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
                   {error}
                 </div>
               )}
               {/* Right at the point money changes hands — the one place on
                   the site these links genuinely need to be, not buried in a
                   footer no one scrolls to before paying. */}
-              <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 12, lineHeight: 1.5, textAlign: "center" }}>
+              <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 12, lineHeight: 1.5, textAlign: "center" }}>
                 By subscribing, you agree to our{" "}
                 <Link href="/terms" style={{ color: "var(--ink-dim)" }}>
                   Terms

@@ -58,7 +58,7 @@ export function VisitedFlags({ codes, onToggle, emptyLabel, language }: VisitedF
           }}
         >
           <span style={{ fontSize: 34, lineHeight: 1 }}>{countryFlagEmoji(c.code)}</span>
-          <span className="font-mono" style={{ fontSize: 11, color: "var(--ink-soft)", textAlign: "center" }}>
+          <span className="font-ui" style={{ fontSize: 11, color: "var(--ink-soft)", textAlign: "center" }}>
             {c.displayName}
           </span>
         </button>

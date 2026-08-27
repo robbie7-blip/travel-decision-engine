@@ -100,7 +100,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="font-mono"
+        className="font-ui"
         style={{
           ...inputStyle,
           textAlign: "left",
@@ -148,7 +148,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
             </button>
           </div>
 
-          <div className="font-mono" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
+          <div className="font-ui" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
             {weekdayLabels.map((label, i) => (
               <div key={i} style={{ fontSize: 10, textAlign: "center", color: "var(--ink-dim)", padding: "4px 0", textTransform: "uppercase" }}>
                 {label}
@@ -172,7 +172,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
                     type="button"
                     onClick={() => handleDayClick(day)}
                     onMouseEnter={() => setHoverDate(day)}
-                    className="font-mono"
+                    className="font-ui"
                     style={{
                       border: isToday && !isStart && !isEnd ? "1px solid var(--line)" : "none",
                       borderRadius: 6,
@@ -192,7 +192,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
           ))}
 
           {start && !end && (
-            <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10 }}>
+            <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10 }}>
               {toLabel}
             </div>
           )}

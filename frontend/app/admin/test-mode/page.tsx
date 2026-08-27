@@ -59,7 +59,7 @@ export default function TestModeAdminPage() {
           boxShadow: "var(--shadow-panel)",
         }}
       >
-        <div className="font-mono" style={{ fontSize: 12, marginBottom: 14 }}>
+        <div className="font-ui" style={{ fontSize: 12, marginBottom: 14 }}>
           Status:{" "}
           <span style={{ color: enabled ? "var(--accent-green)" : "var(--ink-dim)", fontWeight: 700 }}>
             {enabled ? "ON" : "OFF"}
@@ -69,7 +69,7 @@ export default function TestModeAdminPage() {
         {enabled ? (
           <button
             onClick={disable}
-            className="font-mono"
+            className="font-ui"
             style={{
               border: "1px solid var(--line)",
               borderRadius: 999,
@@ -104,7 +104,7 @@ export default function TestModeAdminPage() {
             <button
               onClick={enable}
               disabled={!input.trim()}
-              className="font-mono btn-primary"
+              className="font-ui btn-primary"
               style={{
                 padding: "10px 16px",
                 fontWeight: 700,

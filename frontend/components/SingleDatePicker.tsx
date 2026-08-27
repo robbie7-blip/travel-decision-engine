@@ -66,7 +66,7 @@ export function SingleDatePicker({ date, onChange, language, placeholder, prevMo
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="font-mono"
+        className="font-ui"
         style={{
           ...inputStyle,
           textAlign: "left",
@@ -114,7 +114,7 @@ export function SingleDatePicker({ date, onChange, language, placeholder, prevMo
             </button>
           </div>
 
-          <div className="font-mono" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
+          <div className="font-ui" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
             {weekdayLabels.map((label, i) => (
               <div key={i} style={{ fontSize: 10, textAlign: "center", color: "var(--ink-dim)", padding: "4px 0", textTransform: "uppercase" }}>
                 {label}
@@ -134,7 +134,7 @@ export function SingleDatePicker({ date, onChange, language, placeholder, prevMo
                     key={di}
                     type="button"
                     onClick={() => handleDayClick(day)}
-                    className="font-mono"
+                    className="font-ui"
                     style={{
                       border: isToday && !isSelected ? "1px solid var(--line)" : "none",
                       borderRadius: 6,

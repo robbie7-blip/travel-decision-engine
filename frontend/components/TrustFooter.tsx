@@ -49,7 +49,7 @@ export function TrustFooter({ t }: { t: Dictionary }) {
               </div>
               <div>
                 <div
-                  className="font-mono"
+                  className="font-ui"
                   style={{
                     fontSize: 11,
                     fontWeight: 700,

@@ -47,7 +47,7 @@ export function VisitedChronology({ entries, undatedLabel, countLabel, language 
               <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--ink)" }}>
                 {year === "undated" ? undatedLabel : year}
               </div>
-              <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+              <div className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                 {countLabel.replace("{count}", String(items.length))}
               </div>
             </div>

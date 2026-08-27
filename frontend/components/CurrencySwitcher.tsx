@@ -47,7 +47,7 @@ export function CurrencySwitcher({
       value={currency}
       onChange={(e) => setCurrency(e.target.value as Currency)}
       aria-label={label}
-      className="font-mono currency-select"
+      className="font-ui currency-select"
       style={{
         border: "1px solid var(--line)",
         borderRadius: 999,

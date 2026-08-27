@@ -62,7 +62,7 @@ export function AddToShowcaseButton({ jobId }: { jobId: string }) {
         type="button"
         onClick={handleAdd}
         disabled={status === "loading" || status === "added"}
-        className="font-mono"
+        className="font-ui"
         style={{
           border: "1px solid var(--line)",
           borderRadius: 6,

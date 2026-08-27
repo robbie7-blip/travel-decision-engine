@@ -181,7 +181,7 @@ export default function Home() {
           {demo && (
             <Link
               href={`/trip/${demo.jobId}`}
-              className="font-mono"
+              className="font-ui"
               style={{
                 display: "inline-block",
                 marginTop: 16,
@@ -195,7 +195,7 @@ export default function Home() {
           )}
           <div
             id="confidence-legend"
-            className="font-mono scroll-row-mobile"
+            className="font-ui scroll-row-mobile"
             style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap", alignItems: "center" }}
           >
             <svg style={{ width: 20, height: 20, opacity: 0.5, marginRight: 4 }} viewBox="0 0 24 24">
@@ -307,7 +307,7 @@ export default function Home() {
                   {step.icon}
                 </div>
                 <div
-                  className="font-mono"
+                  className="font-ui"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -363,18 +363,18 @@ export default function Home() {
             t={t}
           />
           {status === "error" && (
-            <div className="font-mono" style={{ marginTop: 14, color: "var(--infeasible)", fontSize: 13 }}>
+            <div className="font-ui" style={{ marginTop: 14, color: "var(--infeasible)", fontSize: 13 }}>
               {error}
             </div>
           )}
           {status !== "loading" && (
             <div style={{ marginTop: 16 }}>
-              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: 0 }}>
+              <p className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", margin: 0 }}>
                 {t.form.reassurance}
               </p>
               <Link
                 href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
-                className="font-mono"
+                className="font-ui"
                 style={{
                   fontSize: 12,
                   color: "var(--grounded)",

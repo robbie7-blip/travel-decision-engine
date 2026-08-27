@@ -100,7 +100,7 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="font-mono"
+        className="font-ui"
         style={{
           border: "1px solid var(--line)",
           borderRadius: 999,
@@ -127,7 +127,7 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
             onChange={(e) => setText(e.target.value.slice(0, MAX_FLIGHT_IMPORT_CHARS))}
             placeholder="Paste the whole confirmation email here..."
             rows={5}
-            className="font-mono"
+            className="font-ui"
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -146,7 +146,7 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
               type="button"
               onClick={extract}
               disabled={busy || !text.trim()}
-              className="font-mono btn-primary"
+              className="font-ui btn-primary"
               style={{
                 padding: "8px 14px",
                 fontSize: 12,
@@ -158,14 +158,14 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
             >
               {busy ? "Reading..." : "Find my flights"}
             </button>
-            {done && <span className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)" }}>{done}</span>}
-            {error && <span className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)" }}>{error}</span>}
+            {done && <span className="font-ui" style={{ fontSize: 12, color: "var(--accent-green)" }}>{done}</span>}
+            {error && <span className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)" }}>{error}</span>}
           </div>
 
           {flights && (
             <div style={{ marginTop: 14 }}>
               <div
-                className="font-mono"
+                className="font-ui"
                 style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 8 }}
               >
                 Found {flights.length} flight{flights.length === 1 ? "" : "s"} — check what to add
@@ -199,16 +199,16 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
                     <span>{countryFlagEmoji(f.arrivalCountryCode)}</span>
                     <span style={{ flex: 1 }}>
                       {f.departureCity || f.departureIata} → {f.arrivalCity}{" "}
-                      <span className="font-mono" style={{ color: "var(--ink-dim)", fontSize: 11 }}>
+                      <span className="font-ui" style={{ color: "var(--ink-dim)", fontSize: 11 }}>
                         {f.date}
                         {f.airline ? ` · ${f.airline}` : ""}
                       </span>
                     </span>
-                    <span className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                    <span className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
                       {getCountryName(f.arrivalCountryCode, language)}
                     </span>
                     {!f.isPast && (
-                      <span className="font-mono" style={{ fontSize: 10, color: "var(--unverified)" }}>
+                      <span className="font-ui" style={{ fontSize: 10, color: "var(--unverified)" }}>
                         upcoming
                       </span>
                     )}
@@ -219,7 +219,7 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
                 type="button"
                 onClick={confirm}
                 disabled={selected.size === 0}
-                className="font-mono btn-primary"
+                className="font-ui btn-primary"
                 style={{
                   marginTop: 10,
                   padding: "8px 14px",

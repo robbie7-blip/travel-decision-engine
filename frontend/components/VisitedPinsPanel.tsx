@@ -105,7 +105,7 @@ export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t, language }
         }}
       >
         <label style={{ gridColumn: "1 / -1" }}>
-          <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
             {v.pinFormCountryLabel}
           </div>
           <select value={country} onChange={(e) => setCountry(e.target.value)} style={inputStyle}>
@@ -118,38 +118,38 @@ export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t, language }
           </select>
         </label>
         <label style={{ gridColumn: "1 / -1" }}>
-          <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
             {v.pinFormLabelLabel}
           </div>
           <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={v.pinFormLabelPlaceholder} style={inputStyle} />
         </label>
         <label>
-          <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
             {v.pinFormLatLabel}
           </div>
           <input value={lat} onChange={(e) => setLat(e.target.value)} inputMode="decimal" placeholder="35.6595" style={inputStyle} />
         </label>
         <label>
-          <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
             {v.pinFormLngLabel}
           </div>
           <input value={lng} onChange={(e) => setLng(e.target.value)} inputMode="decimal" placeholder="139.7005" style={inputStyle} />
         </label>
         <label style={{ gridColumn: "1 / -1" }}>
-          <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 4 }}>
             {v.pinFormNoteLabel}
           </div>
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={v.pinFormNotePlaceholder} style={inputStyle} />
         </label>
         {error && (
-          <div className="font-mono" style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--infeasible)" }}>
+          <div className="font-ui" style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--infeasible)" }}>
             {v.pinFormInvalid}
           </div>
         )}
         <button
           type="button"
           onClick={submit}
-          className="font-mono btn-primary"
+          className="font-ui btn-primary"
           style={{
             gridColumn: "1 / -1",
             padding: "10px 16px",
@@ -182,7 +182,7 @@ export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t, language }
                 <span style={{ fontSize: 18 }}>{countryFlagEmoji(pin.code)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>{pin.label}</div>
-                  <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                  <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
                     {c ? getCountryName(c.code, language) : ""} · {pin.lat.toFixed(2)}, {pin.lng.toFixed(2)}
                     {pin.note ? ` · ${pin.note}` : ""}
                   </div>
@@ -190,7 +190,7 @@ export function VisitedPinsPanel({ entries, onAddPin, onRemovePin, t, language }
                 <button
                   type="button"
                   onClick={() => onRemovePin(pin.code, pin.id)}
-                  className="font-mono"
+                  className="font-ui"
                   style={{
                     border: "1px solid var(--line)",
                     borderRadius: 999,

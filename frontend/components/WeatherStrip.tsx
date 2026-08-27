@@ -131,7 +131,7 @@ export function WeatherStrip({
       {Object.entries(weather).map(([city, days]) => (
         <div key={city} style={{ marginBottom: 12 }}>
           {Object.keys(weather).length > 1 && (
-            <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 6 }}>
+            <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 6 }}>
               {city.toUpperCase()}
             </div>
           )}
@@ -149,7 +149,7 @@ export function WeatherStrip({
                   textAlign: "center",
                 }}
               >
-                <div className="font-mono" style={{ fontSize: 10, color: "var(--ink-dim)", marginBottom: 4 }}>
+                <div className="font-ui" style={{ fontSize: 10, color: "var(--ink-dim)", marginBottom: 4 }}>
                   {weekdayFormatter.format(new Date(`${day.date}T12:00:00Z`))}
                 </div>
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
@@ -158,7 +158,7 @@ export function WeatherStrip({
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
                   {day.tempMaxC}° <span style={{ fontWeight: 400, color: "var(--ink-dim)" }}>{day.tempMinC}°</span>
                 </div>
-                <div className="font-mono" style={{ fontSize: 10, color: "var(--grounded)", marginTop: 2 }}>
+                <div className="font-ui" style={{ fontSize: 10, color: "var(--grounded)", marginTop: 2 }}>
                   {day.precipitationChance != null
                     ? `${t.result.weather.rainChance}: ${day.precipitationChance}%`
                     : day.precipitationMm != null

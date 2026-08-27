@@ -31,7 +31,7 @@ export function Stamp({ ok, color, children }: { ok: boolean; color?: string; ch
   const resolved = color ?? (ok ? "var(--feasible)" : "var(--infeasible)");
   return (
     <div
-      className="font-mono"
+      className="font-ui"
       style={{
         display: "inline-block",
         background: resolved,
@@ -58,7 +58,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   return (
     <label style={{ display: "block", marginBottom: 16 }}>
       <div
-        className="font-mono"
+        className="font-ui"
         style={{
           fontSize: 11,
           letterSpacing: "0.08em",
@@ -77,7 +77,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <div
-      className="font-mono"
+      className="font-ui"
       style={{
         fontSize: 11,
         letterSpacing: "0.1em",

@@ -142,7 +142,7 @@ export function TripView({ jobId }: { jobId: string }) {
             <LoadingScreen message={statusMessage ?? t.trip.loading} destinations={lastBrief?.destinations} t={t} />
           )}
           {loadError && (
-            <div className="font-mono" style={{ fontSize: 14, color: "var(--infeasible)" }}>
+            <div className="font-ui" style={{ fontSize: 14, color: "var(--infeasible)" }}>
               {loadError}{" "}
               <Link href="/" style={{ color: "var(--infeasible)" }}>
                 {t.trip.planAnother} →

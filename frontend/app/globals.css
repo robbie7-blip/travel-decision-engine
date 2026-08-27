@@ -122,18 +122,32 @@ button {
   font-family: var(--font-display), Georgia, serif;
 }
 
+/* The interface class: nav, chips, labels, buttons, form controls, the
+   generation view. Nearly everything that isn't a heading wears this.
+   It was monospace until now, which is what made the whole chrome read
+   as a terminal underneath a warm serif headline. */
+.font-ui {
+  /* Two entries, one typeface: the second carries the Cyrillic cuts and
+     is fetched only on pages that render them — see layout.tsx. */
+  font-family: var(--font-ui), var(--font-ui-cyrillic), -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  /* Digits still line up in a column even in the proportional face —
+     which is most of what the monospace was really being used for. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Deliberately narrow now. Reach for this only where equal-width
+   characters do real work: a column of clock times down a day, the admin
+   diagnostics numbers. Using it for ordinary interface text is the thing
+   that was just undone — put that in .font-ui. */
 .font-mono {
-  /* Two families on purpose, not a typo. The first has no Cyrillic, so on
-     the Bulgarian site the browser falls through to the second for
-     exactly those glyphs and nothing else — see layout.tsx. */
-  font-family: var(--font-mono), var(--font-mono-cyrillic), ui-monospace, monospace;
-  /* DM Mono's heaviest weight is 500. Plenty of components ask for 600 or
-     700, and the browser's default answer to a weight it doesn't have is
-     to smear the 500 face wider itself — which at 11px reads as blurry
-     rather than bold. Turning synthesis off makes those requests land on
-     the real 500 cut instead. Set here rather than by rewriting ~100
-     inline fontWeight values, and it works despite them: this is a
-     different property, so an inline weight can't override it. */
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  /* DM Mono's heaviest weight is 500, and the browser's answer to a
+     weight it doesn't have is to smear the widest face it does — which at
+     11px reads blurry rather than bold. This sends those requests to the
+     real 500 cut instead, and works despite the inline fontWeight values
+     scattered through the components since it's a different property. */
   font-synthesis-weight: none;
 }
 

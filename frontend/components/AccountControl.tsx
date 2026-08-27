@@ -31,7 +31,7 @@ export function AccountControl({ language, t }: { language: Language; t: Diction
   return (
     <Link
       href={`/account${langSuffix}`}
-      className="font-mono account-control"
+      className="font-ui account-control"
       data-signed-in={signedIn}
       style={{
         display: "inline-flex",

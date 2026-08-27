@@ -62,16 +62,16 @@ function StatsCard({
         boxShadow: "var(--shadow-panel)",
       }}
     >
-      <div className="font-mono" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 12 }}>
+      <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 12 }}>
         {label}
       </div>
       {fetched.status === "loading" && (
-        <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)" }}>
+        <div className="font-ui" style={{ fontSize: 13, color: "var(--ink-dim)" }}>
           ...
         </div>
       )}
       {fetched.status === "error" && (
-        <div className="font-mono" style={{ fontSize: 13, color: "var(--infeasible)" }}>
+        <div className="font-ui" style={{ fontSize: 13, color: "var(--infeasible)" }}>
           {t.compareStats.invalidLink}
         </div>
       )}
@@ -82,7 +82,7 @@ function StatsCard({
               <div className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1 }}>
                 {fetched.stats.countriesVisited}
               </div>
-              <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
+              <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
                 {t.visited.statsCountries.replace("{count}", String(fetched.stats.countriesVisited))}
               </div>
             </div>
@@ -90,7 +90,7 @@ function StatsCard({
               <div className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1 }}>
                 {fetched.stats.percentOfWorld}%
               </div>
-              <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
+              <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
                 {t.visited.statsPercent.replace("{percent}", String(fetched.stats.percentOfWorld))}
               </div>
             </div>
@@ -98,7 +98,7 @@ function StatsCard({
               <div className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1 }}>
                 {fetched.stats.continentsVisited.length}/{fetched.stats.continentsTotal}
               </div>
-              <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
+              <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
                 {t.visited.statsContinents
                   .replace("{count}", String(fetched.stats.continentsVisited.length))
                   .replace("{total}", String(fetched.stats.continentsTotal))}
@@ -110,7 +110,7 @@ function StatsCard({
               {fetched.stats.earnedBadgeIds.map((id) => (
                 <span
                   key={id}
-                  className="font-mono"
+                  className="font-ui"
                   style={{
                     fontSize: 10,
                     border: "1px solid var(--accent-green)",
@@ -169,7 +169,7 @@ export function CompareStatsView() {
       <div style={{ minHeight: "100%" }}>
         {header}
         <div style={{ padding: "36px 24px" }}>
-          <div className="font-mono" style={{ maxWidth: 860, margin: "0 auto", fontSize: 14, color: "var(--infeasible)" }}>
+          <div className="font-ui" style={{ maxWidth: 860, margin: "0 auto", fontSize: 14, color: "var(--infeasible)" }}>
             {t.compareStats.missingLink}{" "}
             <Link href="/account/visited" style={{ color: "var(--infeasible)" }}>
               {t.compareStats.getYourLink}

@@ -152,7 +152,7 @@ export default function AccountPage() {
 
           <div style={{ background: "var(--bg-panel)", border: "1px solid var(--line)", borderRadius: 8, padding: 24, boxShadow: "var(--shadow-panel)" }}>
             {account === null ? (
-              <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)" }}>
+              <div className="font-ui" style={{ fontSize: 13, color: "var(--ink-dim)" }}>
                 ...
               </div>
             ) : account.signedIn ? (
@@ -181,7 +181,7 @@ export default function AccountPage() {
                 {account.quota && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <div
-                      className="font-mono"
+                      className="font-ui"
                       style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--ink-soft)" }}
                     >
                       <span>
@@ -194,7 +194,7 @@ export default function AccountPage() {
                       <div className="account-progress-fill" style={{ width: `${quotaPercent}%`, background: quotaColor }} />
                     </div>
                     {account.plan === "paid" && account.currentPeriodEnd && (
-                      <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                      <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
                         {t.account.renewsOn.replace(
                           "{date}",
                           new Date(account.currentPeriodEnd * 1000).toLocaleDateString(language === "bg" ? "bg-BG" : "en-GB")
@@ -222,7 +222,7 @@ export default function AccountPage() {
                     <button
                       onClick={openBillingPortal}
                       disabled={openingPortal}
-                      className="font-mono"
+                      className="font-ui"
                       style={{
                         background: "transparent",
                         border: "1px solid var(--line)",
@@ -238,7 +238,7 @@ export default function AccountPage() {
                   )}
                   <button
                     onClick={signOut}
-                    className="font-mono"
+                    className="font-ui"
                     style={{
                       background: "transparent",
                       border: "1px solid var(--line)",
@@ -258,7 +258,7 @@ export default function AccountPage() {
                 <div className="account-avatar" style={{ background: "var(--bg-panel-raised)", color: "var(--ink-dim)", marginBottom: 4 }}>
                   ?
                 </div>
-                <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)" }}>
+                <div className="font-ui" style={{ fontSize: 13, color: "var(--ink-dim)" }}>
                   {t.account.notSignedIn}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -283,7 +283,7 @@ export default function AccountPage() {
                   <button
                     onClick={requestLink}
                     disabled={sending || !email.trim()}
-                    className="font-mono btn-primary"
+                    className="font-ui btn-primary"
                     style={{
                       padding: "10px 16px",
                       fontWeight: 700,
@@ -298,14 +298,14 @@ export default function AccountPage() {
                   </button>
                 </div>
                 {message && (
-                  <div className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)" }}>
+                  <div className="font-ui" style={{ fontSize: 12, color: "var(--accent-green)" }}>
                     {message}
                   </div>
                 )}
               </div>
             )}
             {error && (
-              <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
+              <div className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
                 {error}
               </div>
             )}

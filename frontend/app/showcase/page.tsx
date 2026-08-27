@@ -115,7 +115,7 @@ export default async function ShowcasePage({
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <AccountControl language={language} t={t} />
               <div
-                className="font-mono lang-toggle"
+                className="font-ui lang-toggle"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
                 <Link
@@ -193,7 +193,7 @@ export default async function ShowcasePage({
                 <div className="font-display" style={{ fontSize: 19, fontWeight: 600, marginBottom: 8, color: "var(--ink)" }}>
                   {card.destinations.join(" · ")}
                 </div>
-                <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 12 }}>
+                <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginBottom: 12 }}>
                   {t.showcase.daysLabel.replace("{count}", String(card.dayCount))}
                 </div>
                 <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--ink-soft)", margin: "0 0 14px" }}>
@@ -207,7 +207,7 @@ export default async function ShowcasePage({
                     {card.trustPercent}% {t.result.trustScoreLabel}
                   </Stamp>
                 </div>
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--grounded)" }}>
+                <div className="font-ui" style={{ fontSize: 12, color: "var(--grounded)" }}>
                   {t.showcase.viewTrip}
                 </div>
               </Link>

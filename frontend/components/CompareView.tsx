@@ -153,7 +153,7 @@ export function CompareView() {
       <div style={{ minHeight: "100%" }}>
         {header}
         <div style={{ padding: "36px 24px" }}>
-          <div className="font-mono" style={{ maxWidth: 960, margin: "0 auto", fontSize: 14, color: "var(--infeasible)" }}>
+          <div className="font-ui" style={{ maxWidth: 960, margin: "0 auto", fontSize: 14, color: "var(--infeasible)" }}>
             {t.compare.missingJobs}{" "}
             <Link href="/" style={{ color: "var(--infeasible)" }}>
               {t.compare.planAnother} →
@@ -211,7 +211,7 @@ export function CompareView() {
                         </Stamp>
                       )}
                     </div>
-                    <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+                    <div className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                       {t.compare.totalCost}: {formatMoney(totalCost(col.result), currency, rates)}
                     </div>
                   </div>
@@ -227,7 +227,7 @@ export function CompareView() {
                   <LoadingScreen message={statusMessage ?? t.trip.loading} destinations={col.brief?.destinations} t={t} />
                 )}
                 {col.loadError && (
-                  <div className="font-mono" style={{ fontSize: 14, color: "var(--infeasible)" }}>
+                  <div className="font-ui" style={{ fontSize: 14, color: "var(--infeasible)" }}>
                     {col.loadError}
                   </div>
                 )}

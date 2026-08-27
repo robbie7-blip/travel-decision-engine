@@ -52,7 +52,7 @@ export function DestinationHero({
       />
       {!compact && (
         <div
-          className="font-mono"
+          className="font-ui"
           style={{
             position: "absolute",
             top: 24,

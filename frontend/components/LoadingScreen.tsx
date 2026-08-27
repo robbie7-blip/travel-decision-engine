@@ -94,7 +94,7 @@ export function LoadingScreen({
         }}
       />
       <div
-        className="font-mono"
+        className="font-ui"
         style={{ fontSize: 14, color: "var(--ink-dim)", textAlign: "center" }}
       >
         {message}
@@ -110,7 +110,7 @@ export function LoadingScreen({
           }}
         >
           <div
-            className="font-mono"
+            className="font-ui"
             style={{ fontSize: 11, letterSpacing: "0.04em", color: "var(--ink-soft)", marginBottom: 6 }}
           >
             {t.trip.didYouKnow}

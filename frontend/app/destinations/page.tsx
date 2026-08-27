@@ -66,7 +66,7 @@ export default async function DestinationsIndexPage({
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <AccountControl language={language} t={t} />
               <div
-                className="font-mono lang-toggle"
+                className="font-ui lang-toggle"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
                 <Link
@@ -125,7 +125,7 @@ export default async function DestinationsIndexPage({
           <p style={{ color: "var(--ink-dim)", fontSize: "clamp(13.5px, 3.4vw, 15px)", lineHeight: 1.6, maxWidth: 620, margin: "0 0 12px" }}>
             {dt.pageDescription.replace("{count}", String(destinations.length))}
           </p>
-          <p className="font-mono" style={{ color: "var(--ink-dim)", fontSize: 12, lineHeight: 1.6, marginBottom: 36 }}>
+          <p className="font-ui" style={{ color: "var(--ink-dim)", fontSize: 12, lineHeight: 1.6, marginBottom: 36 }}>
             {dt.notOnListNote}
           </p>
 
@@ -146,7 +146,7 @@ export default async function DestinationsIndexPage({
               >
                 <DestinationHero city={d.displayCity} slug={d.slug} compact eyebrow={dt.eyebrow} />
                 <div style={{ padding: "10px 14px 14px" }}>
-                  <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                  <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
                     {dt.localNotesCount.replace("{count}", String(d.facts.length))}
                   </div>
                 </div>
@@ -162,7 +162,7 @@ export default async function DestinationsIndexPage({
           <div style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--line)", textAlign: "center" }}>
             <Link
               href={`/${langSuffix}`}
-              className="font-mono btn-primary"
+              className="font-ui btn-primary"
               style={{
                 display: "inline-block",
                 padding: "14px 26px",

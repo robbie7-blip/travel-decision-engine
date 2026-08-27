@@ -78,7 +78,7 @@ export function VisitedTimeline({ entries, onSetDate, emptyLabel, dateUnknownLab
                   if (e.key === "Enter") e.currentTarget.blur();
                   if (e.key === "Escape") setEditingCode(null);
                 }}
-                className="font-mono"
+                className="font-ui"
                 style={{
                   marginTop: 4,
                   fontSize: 12,
@@ -93,7 +93,7 @@ export function VisitedTimeline({ entries, onSetDate, emptyLabel, dateUnknownLab
               <button
                 type="button"
                 onClick={() => setEditingCode(entry.code)}
-                className="font-mono"
+                className="font-ui"
                 style={{
                   marginTop: 2,
                   fontSize: 12,

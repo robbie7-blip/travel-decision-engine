@@ -61,7 +61,7 @@ export function VisitedZoomableMap({ visitedCodes, onToggle, visitedLabel, notVi
           </TransformComponent>
         </TransformWrapper>
       </div>
-      <p className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8, textAlign: "center" }}>
+      <p className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8, textAlign: "center" }}>
         {hint}
       </p>
     </div>

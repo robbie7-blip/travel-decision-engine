@@ -85,7 +85,7 @@ function ItemFeedback({
 
   if (state === "done") {
     return (
-      <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
+      <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
         {t.result.feedbackThanks}
       </div>
     );
@@ -98,7 +98,7 @@ function ItemFeedback({
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           placeholder={t.result.feedbackPlaceholder}
-          className="font-mono"
+          className="font-ui"
           style={{
             fontSize: 11,
             background: "var(--bg-panel-raised)",
@@ -110,7 +110,7 @@ function ItemFeedback({
             minWidth: 160,
           }}
         />
-        <button type="button" onClick={() => send("wrong", comment)} className="font-mono" style={feedbackButtonStyle}>
+        <button type="button" onClick={() => send("wrong", comment)} className="font-ui" style={feedbackButtonStyle}>
           {t.result.feedbackSubmit}
         </button>
       </div>
@@ -123,7 +123,7 @@ function ItemFeedback({
         type="button"
         onClick={() => send("helpful")}
         disabled={state === "submitting"}
-        className="font-mono"
+        className="font-ui"
         style={feedbackButtonStyle}
       >
         {t.result.feedbackHelpful}
@@ -132,13 +132,13 @@ function ItemFeedback({
         type="button"
         onClick={() => setState("commenting")}
         disabled={state === "submitting"}
-        className="font-mono"
+        className="font-ui"
         style={feedbackButtonStyle}
       >
         {t.result.feedbackWrong}
       </button>
       {state === "error" && (
-        <span className="font-mono" style={{ fontSize: 11, color: "var(--infeasible)" }}>
+        <span className="font-ui" style={{ fontSize: 11, color: "var(--infeasible)" }}>
           {t.result.feedbackFailed}
         </span>
       )}
@@ -180,14 +180,14 @@ function ItemEvidence({ item, t }: { item: ItineraryItem; t: Dictionary }) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono"
+              className="font-ui"
               style={{ fontSize: 11, color: "var(--grounded)", textDecoration: "underline" }}
             >
               {item.source_urls!.length > 1 ? `${t.result.source} ${si + 1}` : t.result.source} ↗
             </a>
           ))}
           {item.source_agreement === "disagree" && (
-            <span className="font-mono" style={{ fontSize: 11, color: "var(--unverified)" }}>
+            <span className="font-ui" style={{ fontSize: 11, color: "var(--unverified)" }}>
               ⚠ {t.result.sourcesDisagree}
             </span>
           )}
@@ -288,7 +288,7 @@ export function ItineraryResult({
         <button
           type="button"
           onClick={() => downloadItineraryIcs(result, jobId)}
-          className="font-mono"
+          className="font-ui"
           style={{
             marginBottom: 20,
             background: "none",
@@ -369,7 +369,7 @@ export function ItineraryResult({
               }}
             >
               <div
-                className="font-mono"
+                className="font-ui"
                 style={{
                   fontSize: 10,
                   textTransform: "uppercase",
@@ -407,11 +407,11 @@ export function ItineraryResult({
               <span className="font-display" style={{ fontSize: 18, fontWeight: 600 }}>
                 {t.result.day} {String(day.day).padStart(2, "0")}
               </span>
-              <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+              <span className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                 {day.date}
               </span>
               {day.feasibility_flag && (
-                <span className="font-mono" style={{ fontSize: 11, color: "var(--unverified)" }}>
+                <span className="font-ui" style={{ fontSize: 11, color: "var(--unverified)" }}>
                   ⚠ {day.feasibility_flag}
                 </span>
               )}
@@ -443,7 +443,7 @@ export function ItineraryResult({
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
-                      <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+                      <span className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                         {item.flight_search_url && item.cost_estimate_eur > 0 && item.source_confidence !== "grounded" ? (
                           // A flight's own guessed fare has repeatedly turned out badly wrong
                           // in practice (a model estimate is not a live price check) — rather
@@ -482,7 +482,7 @@ export function ItineraryResult({
                         claim is checkable rather than asserted. */}
                     {item.fare_price_context && (
                       <div
-                        className="font-mono"
+                        className="font-ui"
                         style={{
                           fontSize: 11,
                           marginTop: 4,
@@ -503,7 +503,7 @@ export function ItineraryResult({
                       </div>
                     )}
                     {item.google_business_status && item.google_business_status !== "operational" ? (
-                      <div className="font-mono" style={{ fontSize: 11, color: "var(--infeasible)", marginTop: 4 }}>
+                      <div className="font-ui" style={{ fontSize: 11, color: "var(--infeasible)", marginTop: 4 }}>
                         ⚠{" "}
                         {item.google_business_status === "closed_permanently"
                           ? t.result.closedPermanently
@@ -511,7 +511,7 @@ export function ItineraryResult({
                       </div>
                     ) : (
                       item.google_rating != null && (
-                        <div className="font-mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
+                        <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 4 }}>
                           ★ {item.google_rating.toFixed(1)}
                           {item.google_rating_count != null &&
                             ` (${t.result.googleRatingCount.replace("{count}", String(item.google_rating_count))})`}
@@ -531,7 +531,7 @@ export function ItineraryResult({
                         hours matters: it's the visible half of a promise
                         the traveler otherwise has to take on trust. */}
                     {item.google_open_on_visit === true && item.google_opening_hours && (
-                      <div className="font-mono" style={{ fontSize: 11, color: "var(--grounded)", marginTop: 4 }}>
+                      <div className="font-ui" style={{ fontSize: 11, color: "var(--grounded)", marginTop: 4 }}>
                         {t.result.openOnThisDay}
                         {(() => {
                           // weekdayDescriptions is Monday-first from Google;
@@ -552,7 +552,7 @@ export function ItineraryResult({
                         href={item.google_maps_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-mono"
+                        className="font-ui"
                         style={{ fontSize: 11, color: "var(--grounded)", textDecoration: "underline", marginTop: 4, display: "inline-block" }}
                       >
                         {t.result.viewOnGoogleMaps} ↗
@@ -569,7 +569,7 @@ export function ItineraryResult({
                         href={item.flight_search_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-mono"
+                        className="font-ui"
                         style={{ fontSize: 11, color: "var(--grounded)", textDecoration: "underline", marginTop: 4, display: "inline-block" }}
                       >
                         {t.result.checkFlightPrices} ↗
@@ -579,7 +579,7 @@ export function ItineraryResult({
                     <button
                       type="button"
                       onClick={() => toggleEvidence(key)}
-                      className="font-mono"
+                      className="font-ui"
                       style={{
                         marginTop: 6,
                         background: "none",
@@ -632,7 +632,7 @@ export function ItineraryResult({
             type="button"
             onClick={submitQuestion}
             disabled={refining || !question.trim()}
-            className="font-mono btn-primary"
+            className="font-ui btn-primary"
             style={{
               padding: "10px 22px",
               fontWeight: 700,
@@ -646,12 +646,12 @@ export function ItineraryResult({
           </button>
         </div>
         {refining && refiningLabel && (
-          <div className="font-mono" style={{ marginTop: 8, fontSize: 12, color: "var(--ink-dim)" }}>
+          <div className="font-ui" style={{ marginTop: 8, fontSize: 12, color: "var(--ink-dim)" }}>
             {refiningLabel}
           </div>
         )}
         {refineError && (
-          <div className="font-mono" style={{ marginTop: 8, fontSize: 12, color: "var(--infeasible)" }}>
+          <div className="font-ui" style={{ marginTop: 8, fontSize: 12, color: "var(--infeasible)" }}>
             {refineError}
           </div>
         )}
@@ -667,7 +667,7 @@ export function ItineraryResult({
           >
             {lastQuestion && (
               <div
-                className="font-mono"
+                className="font-ui"
                 style={{
                   fontSize: 11,
                   letterSpacing: "0.06em",

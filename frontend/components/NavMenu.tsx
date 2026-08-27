@@ -88,7 +88,7 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
       <button
         type="button"
         onClick={() => setMenuOpen((open) => !open)}
-        className="nav-menu-toggle font-mono"
+        className="nav-menu-toggle font-ui"
         aria-expanded={menuOpen}
         style={{
           border: "1px solid var(--line)",
@@ -111,7 +111,7 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
           <Link
             key={link.href}
             href={link.href}
-            className="font-mono nav-link"
+            className="font-ui nav-link"
             data-active={isActive(link.href)}
             style={{ fontSize: 12, letterSpacing: "0.04em", textDecoration: "none", gap: 6 }}
           >

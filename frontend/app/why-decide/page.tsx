@@ -65,7 +65,7 @@ export default async function WhyDecidePage({
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <AccountControl language={language} t={t} />
               <div
-                className="font-mono lang-toggle"
+                className="font-ui lang-toggle"
                 style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
                 <Link
@@ -156,7 +156,7 @@ export default async function WhyDecidePage({
               "GENERIC" vs "DECIDE" framing is carried by each cell's own
               styling at that width instead. */}
           <div
-            className="font-mono why-decide-columns"
+            className="font-ui why-decide-columns"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -222,7 +222,7 @@ export default async function WhyDecidePage({
           </h2>
           <Link
             href={`/${langSuffix}`}
-            className="font-mono btn-primary"
+            className="font-ui btn-primary"
             style={{
               display: "inline-block",
               textDecoration: "none",

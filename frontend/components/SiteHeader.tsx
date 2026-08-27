@@ -107,7 +107,7 @@ export function SiteHeader({
               </div>
               {large && (
                 <div
-                  className="font-mono"
+                  className="font-ui"
                   style={{
                     fontSize: "clamp(10px, 2.6vw, 14px)",
                     fontWeight: 500,
@@ -126,13 +126,13 @@ export function SiteHeader({
 
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
             {contextLink && (
-              <Link href={contextLink.href} className="font-mono header-context-link" style={linkStyle}>
+              <Link href={contextLink.href} className="font-ui header-context-link" style={linkStyle}>
                 {contextLink.label}
               </Link>
             )}
             {extraControls}
             <AccountControl language={language} t={t} />
-            <div className="font-mono lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
+            <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
               {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
                 <button
                   key={lang}

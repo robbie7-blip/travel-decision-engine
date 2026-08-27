@@ -39,7 +39,7 @@ const VisitedPinsPanel = dynamic(() => import("@/components/VisitedPinsPanel").t
 function GlobeLoadingPlaceholder() {
   return (
     <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-dim)", fontSize: 13 }}>
-      <div className="font-mono">···</div>
+      <div className="font-ui">···</div>
     </div>
   );
 }
@@ -357,7 +357,7 @@ export default function VisitedPage() {
                 <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-teal)" }}>
                   {stats.countriesVisited}
                 </div>
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                <div className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
                   {t.visited.statsCountries.replace("{count}", String(stats.countriesVisited))}
                 </div>
               </div>
@@ -365,7 +365,7 @@ export default function VisitedPage() {
                 <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-gold)" }}>
                   {stats.percentOfWorld}%
                 </div>
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                <div className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
                   {t.visited.statsPercent.replace("{percent}", String(stats.percentOfWorld))}
                 </div>
               </div>
@@ -373,7 +373,7 @@ export default function VisitedPage() {
                 <div className="font-display" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: "var(--brand-purple)" }}>
                   {stats.continentsVisited.length}/{stats.continentsTotal}
                 </div>
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
+                <div className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
                   {t.visited.statsContinents
                     .replace("{count}", String(stats.continentsVisited.length))
                     .replace("{total}", String(stats.continentsTotal))}
@@ -385,7 +385,7 @@ export default function VisitedPage() {
                 {stats.earnedBadgeIds.map((id) => (
                   <span
                     key={id}
-                    className="font-mono"
+                    className="font-ui"
                     style={{
                       fontSize: 11,
                       border: `1px solid ${BADGE_COLORS[id] ?? "var(--accent-green)"}`,
@@ -406,7 +406,7 @@ export default function VisitedPage() {
           <FlightImport signedIn={signedIn} language={language} onImport={importVisits} />
 
           {/* Visualize tab row — same underlying entries, different view. */}
-          <div className="font-mono scroll-row-mobile" style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+          <div className="font-ui scroll-row-mobile" style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
             {TABS.map((tabDef) => (
               <button
                 key={tabDef.id}
@@ -490,14 +490,14 @@ export default function VisitedPage() {
 
           {tab === "map" && (
             <>
-              <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 16px", lineHeight: 1.5 }}>
+              <p className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 16px", lineHeight: 1.5 }}>
                 {t.visited.mapSmallCountriesNote}
               </p>
 
               {CONTINENTS.map((continent) => (
                 <div key={continent} style={{ marginBottom: 28 }}>
                   <div
-                    className="font-mono"
+                    className="font-ui"
                     style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 10 }}
                   >
                     {getContinentName(continent, language)}
@@ -510,7 +510,7 @@ export default function VisitedPage() {
                           key={c.code}
                           type="button"
                           onClick={() => toggle(c.code)}
-                          className="font-mono"
+                          className="font-ui"
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -547,7 +547,7 @@ export default function VisitedPage() {
                   marginTop: 12,
                 }}
               >
-                <div className="font-mono" style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
+                <div className="font-ui" style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
                   {t.visited.shareHeading}
                 </div>
                 <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: "0 0 14px", lineHeight: 1.5 }}>{t.visited.shareBlurb}</p>
@@ -556,7 +556,7 @@ export default function VisitedPage() {
                   <button
                     onClick={getShareLink}
                     disabled={shareLoading}
-                    className="font-mono btn-primary"
+                    className="font-ui btn-primary"
                     style={{
                       padding: "10px 16px",
                       fontWeight: 700,
@@ -575,7 +575,7 @@ export default function VisitedPage() {
                         readOnly
                         value={shareUrl}
                         onFocus={(e) => e.currentTarget.select()}
-                        className="font-mono"
+                        className="font-ui"
                         style={{
                           flex: 1,
                           minWidth: 220,
@@ -590,7 +590,7 @@ export default function VisitedPage() {
                       />
                       <button
                         onClick={copyShareLink}
-                        className="font-mono"
+                        className="font-ui"
                         style={{
                           border: "1px solid var(--line)",
                           borderRadius: 999,
@@ -607,7 +607,7 @@ export default function VisitedPage() {
                     </div>
 
                     <div
-                      className="font-mono"
+                      className="font-ui"
                       style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
                     >
                       {t.visited.compareInputLabel}
@@ -617,7 +617,7 @@ export default function VisitedPage() {
                         value={friendLink}
                         onChange={(e) => setFriendLink(e.target.value)}
                         placeholder={t.visited.compareInputPlaceholder}
-                        className="font-mono"
+                        className="font-ui"
                         style={{
                           flex: 1,
                           minWidth: 220,
@@ -634,7 +634,7 @@ export default function VisitedPage() {
                       <button
                         onClick={compareWithFriend}
                         disabled={!friendLink.trim()}
-                        className="font-mono btn-primary"
+                        className="font-ui btn-primary"
                         style={{
                           padding: "10px 16px",
                           fontWeight: 700,
@@ -668,7 +668,7 @@ export default function VisitedPage() {
                 marginTop: 12,
               }}
             >
-              <div className="font-mono" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
+              <div className="font-ui" style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 12 }}>
                 {t.visited.signInPrompt}
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -693,7 +693,7 @@ export default function VisitedPage() {
                 <button
                   onClick={requestSignIn}
                   disabled={signInSending || !signInEmail.trim()}
-                  className="font-mono btn-primary"
+                  className="font-ui btn-primary"
                   style={{
                     padding: "10px 16px",
                     fontWeight: 700,
@@ -708,12 +708,12 @@ export default function VisitedPage() {
                 </button>
               </div>
               {signInMessage && (
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
+                <div className="font-ui" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
                   {signInMessage}
                 </div>
               )}
               {signInError && (
-                <div className="font-mono" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
+                <div className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
                   {signInError}
                 </div>
               )}

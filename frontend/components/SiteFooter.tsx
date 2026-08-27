@@ -19,7 +19,7 @@ const YEAR = new Date().getFullYear();
 export function SiteFooter() {
   return (
     <div
-      className="font-mono"
+      className="font-ui"
       style={{
         padding: "20px clamp(32px, 8%, 180px)",
         borderTop: "1px solid var(--line)",

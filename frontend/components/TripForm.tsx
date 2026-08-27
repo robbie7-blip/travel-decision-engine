@@ -161,7 +161,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               onChange={(e) => update("compareEnabled", e.target.checked)}
               style={{ width: 16, height: 16, accentColor: "var(--grounded)", flexShrink: 0 }}
             />
-            <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+            <span className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
               {t.form.compareToggleLabel}
             </span>
           </label>
@@ -183,14 +183,14 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                 onChange={(e) => update("compareUseDifferentDates", e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: "var(--grounded)", flexShrink: 0 }}
               />
-              <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+              <span className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                 {t.form.compareDifferentDatesLabel}
               </span>
             </label>
             {value.compareUseDifferentDates && (
               <div style={{ marginTop: 12 }}>
                 <div
-                  className="font-mono"
+                  className="font-ui"
                   style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
                 >
                   {t.form.compareDates}
@@ -228,7 +228,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                 onChange={(e) => update("needs_flight", !e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: "var(--grounded)", flexShrink: 0 }}
               />
-              <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+              <span className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                 {t.form.skipFlightLabel}
               </span>
             </label>
@@ -241,7 +241,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                   DATES field below — a plain <div> replicates Field's label
                   styling without a popover-reopening side effect. */}
               <div
-                className="font-mono"
+                className="font-ui"
                 style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
               >
                 {t.form.arrivalDate}
@@ -273,7 +273,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               onChange={(e) => update("needs_lodging", !e.target.checked)}
               style={{ width: 16, height: 16, accentColor: "var(--grounded)", flexShrink: 0 }}
             />
-            <span className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+            <span className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
               {t.form.skipLodgingLabel}
             </span>
           </label>
@@ -298,7 +298,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               replicates Field's label styling without that label-click
               side effect. */}
           <div
-            className="font-mono"
+            className="font-ui"
             style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
           >
             {t.form.dates}
@@ -416,7 +416,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
       <button
         onClick={onSubmit}
         disabled={submitting}
-        className="font-mono btn-primary"
+        className="font-ui btn-primary"
         style={{
           marginTop: 12,
           width: "100%",

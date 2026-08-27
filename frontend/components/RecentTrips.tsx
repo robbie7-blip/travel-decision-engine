@@ -42,7 +42,7 @@ export function RecentTrips({ t }: { t: Dictionary }) {
           >
             <Link
               href={`/trip/${trip.jobId}`}
-              className="font-mono"
+              className="font-ui"
               style={{ fontSize: 12, color: "var(--ink)", textDecoration: "none" }}
             >
               {trip.destinations.join(" · ")}{" "}

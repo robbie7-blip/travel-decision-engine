@@ -51,7 +51,7 @@ export default async function CookiesPage({
             </Link>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <AccountControl language={language} t={t} />
-              <div className="font-mono lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
+              <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
                 <Link href="/cookies" data-active={language === "en"} style={{ padding: "6px 12px", fontSize: 11, letterSpacing: "0.04em", textDecoration: "none", background: "transparent", color: "var(--ink-dim)" }}>
                   EN
                 </Link>
@@ -73,7 +73,7 @@ export default async function CookiesPage({
           <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 6px", color: "var(--brand-teal)" }}>
             Cookie Policy
           </h1>
-          <p className="font-mono" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 8px" }}>
+          <p className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 8px" }}>
             Last updated: {LAST_UPDATED}
           </p>
           <p style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.6, margin: "0 0 36px", fontStyle: "italic" }}>
