@@ -66,7 +66,15 @@ export function DestinationBanner({
         <text
           x={56}
           y={70}
-          style={{ fontFamily: "var(--font-mono), monospace", fontSize: 20, letterSpacing: 4, fill: "rgba(255,253,248,0.75)" }}
+          style={{
+            // Same two-family stack as .font-mono in globals.css — the
+            // eyebrow is Cyrillic on the Bulgarian guides, and the first
+            // family has no Cyrillic in it.
+            fontFamily: "var(--font-mono), var(--font-mono-cyrillic), monospace",
+            fontSize: 20,
+            letterSpacing: 4,
+            fill: "rgba(255,253,248,0.75)",
+          }}
         >
           {eyebrow}
         </text>

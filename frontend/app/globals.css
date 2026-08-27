@@ -123,7 +123,18 @@ button {
 }
 
 .font-mono {
-  font-family: var(--font-mono), ui-monospace, monospace;
+  /* Two families on purpose, not a typo. The first has no Cyrillic, so on
+     the Bulgarian site the browser falls through to the second for
+     exactly those glyphs and nothing else — see layout.tsx. */
+  font-family: var(--font-mono), var(--font-mono-cyrillic), ui-monospace, monospace;
+  /* DM Mono's heaviest weight is 500. Plenty of components ask for 600 or
+     700, and the browser's default answer to a weight it doesn't have is
+     to smear the 500 face wider itself — which at 11px reads as blurry
+     rather than bold. Turning synthesis off makes those requests land on
+     the real 500 cut instead. Set here rather than by rewriting ~100
+     inline fontWeight values, and it works despite them: this is a
+     different property, so an inline weight can't override it. */
+  font-synthesis-weight: none;
 }
 
 .gradient-text {
