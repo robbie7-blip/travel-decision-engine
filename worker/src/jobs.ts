@@ -151,6 +151,29 @@ export const JOBS_QUEUE_KEY = "jobs:queue";
 // session by a lot, not just cover the few minutes generation takes.
 export const JOB_TTL_SECONDS = 60 * 60 * 24 * 30;
 
+/** After this long with no update, a "running" job is treated as dead.
+ *
+ * BRPOP removes a job from the queue the moment a worker takes it, and
+ * nothing puts it back. So a worker that restarts mid-job — which happens on
+ * every deploy and every environment-variable change — leaves a record stuck
+ * at "running" that no one will ever finish. The page then spins for the
+ * full polling timeout and fails with a generic message, which is the worst
+ * possible version of this: the traveler waits the longest and learns the
+ * least.
+ *
+ * Generous enough that a slow generation is never mistaken for a dead one —
+ * the longest real run measured is comfortably under two minutes — and short
+ * enough to say something useful well before the poll gives up. */
+export const STALE_RUNNING_MS = 4 * 60 * 1000;
+
+/** True when a job claims to be running but hasn't been touched since
+ * STALE_RUNNING_MS ago. The worker writes the record when it picks a job up
+ * and again when it finishes, so a gap this long means nothing is holding
+ * it. */
+export function isStalledJob(job: Job): boolean {
+  return job.status === "running" && Date.now() - job.updatedAt > STALE_RUNNING_MS;
+}
+
 export function jobKey(id: string): string {
   return `job:${id}`;
 }

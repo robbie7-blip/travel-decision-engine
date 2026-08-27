@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { jobKey, type Job } from "@/lib/jobs";
+import { isStalledJob, jobKey, type Job } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 
@@ -32,6 +32,20 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   // Upstash's client auto-deserializes JSON-looking strings, so this may
   // already be an object rather than a string depending on how it was set.
   const job: Job = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+  // A job whose worker died mid-generation stays "running" forever — see
+  // isStalledJob. Reporting it as an error here is what turns a five-minute
+  // spinner into something the traveler can act on. Deliberately not
+  // written back to Redis: this route is a reader, and if the worker is
+  // somehow still alive it should keep its own record.
+  if (isStalledJob(job)) {
+    return NextResponse.json({
+      ...job,
+      status: "error",
+      error:
+        "This generation stopped unexpectedly — the server restarted while it was running. Nothing was charged for the unfinished part. Please try again.",
+    } satisfies Job);
+  }
 
   return NextResponse.json(job);
 }
