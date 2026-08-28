@@ -89,7 +89,14 @@
   --accent-green: var(--brand-green);
   --accent-green-light: #6fae6c;
 
-  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Body copy now sets in the same face as the interface. It was a bare
+     system stack, which meant the page rendered in SF on a Mac and Segoe
+     UI on Windows while the chrome beside it was Inter — two different
+     sans faces on the same line of sight, and a layout that measured
+     differently on each platform. The system stack stays as the fallback
+     for the moment before the webfont lands. */
+  --font-body: var(--font-ui), var(--font-ui-cyrillic), -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
 
   /* Decorative slot names kept from an earlier pass so component files
      didn't need touching for this consolidation — each is an alias onto
@@ -823,4 +830,99 @@ p {
   border-radius: 16px;
   border: 2px solid color-mix(in srgb, var(--color-blue) 25%, transparent);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--color-blue) 12%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-blue) 5%, transparent);
+}
+
+/* ============================================================
+   TOUCH TARGETS
+
+   Everything below fires only under (pointer: coarse) — a device whose
+   PRIMARY input is imprecise, i.e. a finger. That's the right gate rather
+   than a width breakpoint: a narrow desktop window is still a mouse and
+   doesn't need 44px controls, while a large tablet is still a thumb and
+   does. Desktop is untouched by every rule in this block.
+
+   44px is the Apple HIG / WCAG 2.5.5 figure. Measured at 390px before
+   this existed, the homepage had 15 controls under it with the menu
+   closed and 52 with the date picker open — the calendar's day cells were
+   36x29 and its month arrows 24x26, which is a coin toss with a thumb.
+
+   Sizes are raised with min-height, not padding, so nothing reflows on
+   desktop and nothing here changes what any control looks like where a
+   mouse is driving it.
+   ============================================================ */
+
+/* Base width, moved off the inline style in both pickers so the rule
+   below can widen it without !important. */
+.date-popover {
+  width: 300px;
+}
+
+@media (pointer: coarse) {
+  .nav-link,
+  .nav-menu-toggle,
+  .account-control,
+  .currency-select {
+    min-height: 44px;
+  }
+
+  .lang-toggle a,
+  .lang-toggle button {
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  /* The label already wraps the box and its text, so it is the target —
+     it was just 16px tall. */
+  .check-row {
+    min-height: 44px;
+  }
+
+  .check-row input[type="checkbox"] {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* Seven columns at 44px, plus the 1px margin each day cell carries and
+     the popover's own 16px padding either side: 7 * 46 + 32 = 354.
+     Clamped so it can never push past a narrow screen — below about a
+     380px viewport the cells give up a little width and keep their
+     height, which is the half that matters for a thumb. */
+  .date-popover {
+    width: min(354px, calc(100vw - 24px));
+  }
+
+  .cal-day {
+    min-height: 44px;
+  }
+
+  .cal-nav {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .trip-form-grid input,
+  .trip-form-grid select,
+  .trip-form-grid textarea,
+  .trip-form-grid button {
+    min-height: 44px;
+  }
+
+  /* Inline text links sitting on their own line, where the line-height is
+     the whole target. inline-flex rather than padding so the extra height
+     is centred on the text instead of pushing the layout down. */
+  .footer-links a,
+  .inline-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Short words like "Terms" are wide enough to read and too narrow to
+     hit. Centred inside a 44px box rather than padded, so the footer row
+     keeps its even 16px rhythm. */
+  .footer-links a {
+    min-width: 44px;
+    justify-content: center;
+  }
 }

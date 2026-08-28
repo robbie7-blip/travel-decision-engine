@@ -33,7 +33,7 @@ export function SiteFooter() {
       }}
     >
       <span>© {YEAR} decide. All rights reserved.</span>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+      <div className="footer-links" style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
         <Link href="/terms" style={{ color: "var(--ink-dim)" }}>
           Terms
         </Link>

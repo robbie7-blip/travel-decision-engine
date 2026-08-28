@@ -97,10 +97,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        className={`${fraunces.variable} ${inter.variable} ${interCyrillic.variable} ${dmMono.variable}`}
-      >
+    // The font variables go on <html>, not <body>, so they are defined on
+    // the same element as the :root block in globals.css. --font-body is
+    // declared there as var(--font-ui), ... — and a custom property is
+    // substituted against the element it is declared on, so with the
+    // classes down on <body> that reference would resolve to nothing and
+    // silently take the whole declaration with it.
+    <html
+      lang="en"
+      className={`${fraunces.variable} ${inter.variable} ${interCyrillic.variable} ${dmMono.variable}`}
+    >
+      <body>
         <AppSplash />
         {children}
         <SiteFooter />

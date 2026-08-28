@@ -123,14 +123,15 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
             borderRadius: 10,
             padding: 16,
             boxShadow: "0 8px 24px -8px rgba(43, 36, 28, 0.25)",
-            width: 300,
           }}
+          className="date-popover"
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <button
               type="button"
               onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
               aria-label={prevMonthLabel}
+              className="cal-nav"
               style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "var(--ink-soft)", padding: 4 }}
             >
               ←
@@ -142,6 +143,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
               type="button"
               onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
               aria-label={nextMonthLabel}
+              className="cal-nav"
               style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "var(--ink-soft)", padding: 4 }}
             >
               →
@@ -172,7 +174,7 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
                     type="button"
                     onClick={() => handleDayClick(day)}
                     onMouseEnter={() => setHoverDate(day)}
-                    className="font-ui"
+                    className="font-ui cal-day"
                     style={{
                       border: isToday && !isStart && !isEnd ? "1px solid var(--line)" : "none",
                       borderRadius: 6,

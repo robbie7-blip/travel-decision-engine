@@ -154,7 +154,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
           </Field>
         </div>
         <div style={{ gridColumn: "1 / -1", marginBottom: value.compareEnabled ? 0 : 16 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <label className="check-row" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
             <input
               type="checkbox"
               checked={value.compareEnabled}
@@ -176,7 +176,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                 placeholder={t.form.compareDestinationsPlaceholder}
               />
             </Field>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginTop: 8 }}>
+            <label className="check-row" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginTop: 8 }}>
               <input
                 type="checkbox"
                 checked={value.compareUseDifferentDates}
@@ -221,7 +221,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         </div>
         {value.origin.trim() && (
           <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <label className="check-row" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={!value.needs_flight}
@@ -266,7 +266,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
           </>
         )}
         <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <label className="check-row" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
             <input
               type="checkbox"
               checked={!value.needs_lodging}

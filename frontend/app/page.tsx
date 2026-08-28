@@ -375,7 +375,7 @@ export default function Home() {
               </p>
               <Link
                 href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
-                className="font-ui"
+                className="font-ui inline-link"
                 style={{
                   fontSize: 12,
                   color: "var(--grounded)",
