@@ -166,12 +166,48 @@ export const JOB_TTL_SECONDS = 60 * 60 * 24 * 30;
  * enough to say something useful well before the poll gives up. */
 export const STALE_RUNNING_MS = 4 * 60 * 1000;
 
+/** After this long still queued, nothing is consuming the queue.
+ *
+ * This is the other half of the problem STALE_RUNNING_MS covers, and it was
+ * missed the first time. That constant catches a worker that died PART WAY
+ * THROUGH a job. It cannot catch a worker that was never there to take the
+ * job at all, because a job nobody picked up never leaves "pending", and
+ * isStalledJob only ever looked at "running".
+ *
+ * Which is not a hypothetical: the worker is paused whenever the hosting
+ * plan lapses, and a queue with no consumer looks exactly like a very slow
+ * generation from the page — the traveler waits out the full poll and is
+ * told nothing useful, which is the precise failure the running-job check
+ * was written to end.
+ *
+ * Much shorter than STALE_RUNNING_MS because the signal is unambiguous. A
+ * live worker sits blocked in BRPOP and takes a job within milliseconds of
+ * it being pushed, so "still pending" is never a sign of a slow trip the
+ * way "still running" legitimately can be. 90s is far past any normal
+ * pickup and still well inside the poll. */
+export const STALE_PENDING_MS = 90 * 1000;
+
+export type StallReason = "worker_restarted" | "worker_offline";
+
+/** Why this job is never going to finish, or null if it still might.
+ *
+ * The two cases need different words in front of the traveler: one is "your
+ * generation was interrupted, try again" and the other is "the planner is
+ * down, this is on us". Collapsing them into one boolean would mean telling
+ * someone to retry into a queue that nothing is reading. */
+export function stallReason(job: Job): StallReason | null {
+  const age = Date.now() - job.updatedAt;
+  if (job.status === "running" && age > STALE_RUNNING_MS) return "worker_restarted";
+  if (job.status === "pending" && age > STALE_PENDING_MS) return "worker_offline";
+  return null;
+}
+
 /** True when a job claims to be running but hasn't been touched since
  * STALE_RUNNING_MS ago. The worker writes the record when it picks a job up
  * and again when it finishes, so a gap this long means nothing is holding
  * it. */
 export function isStalledJob(job: Job): boolean {
-  return job.status === "running" && Date.now() - job.updatedAt > STALE_RUNNING_MS;
+  return stallReason(job) !== null;
 }
 
 export function jobKey(id: string): string {

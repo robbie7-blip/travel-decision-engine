@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { isStalledJob, jobKey, type Job } from "@/lib/jobs";
+import { jobKey, stallReason, type Job } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 
@@ -33,17 +33,26 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   // already be an object rather than a string depending on how it was set.
   const job: Job = typeof raw === "string" ? JSON.parse(raw) : raw;
 
-  // A job whose worker died mid-generation stays "running" forever — see
-  // isStalledJob. Reporting it as an error here is what turns a five-minute
-  // spinner into something the traveler can act on. Deliberately not
-  // written back to Redis: this route is a reader, and if the worker is
-  // somehow still alive it should keep its own record.
-  if (isStalledJob(job)) {
+  // A job that nothing is going to finish — either its worker died
+  // mid-generation and left it at "running", or no worker ever took it off
+  // the queue and it is still "pending". Reporting it as an error here is
+  // what turns a five-minute spinner into something the traveler can act
+  // on. Deliberately not written back to Redis: this route is a reader, and
+  // if the worker is somehow still alive it should keep its own record.
+  //
+  // The two cases get different words on purpose. Telling someone to try
+  // again is good advice after an interrupted run and useless advice when
+  // the queue has no consumer — a retry there just buys them another five
+  // minutes of spinner.
+  const stall = stallReason(job);
+  if (stall) {
     return NextResponse.json({
       ...job,
       status: "error",
       error:
-        "This generation stopped unexpectedly — the server restarted while it was running. Nothing was charged for the unfinished part. Please try again.",
+        stall === "worker_restarted"
+          ? "This generation stopped unexpectedly — the server restarted while it was running. Nothing was charged for the unfinished part. Please try again."
+          : "The trip planner is offline right now, so this never started. Nothing was charged. We're on it — please try again shortly.",
     } satisfies Job);
   }
 
