@@ -179,6 +179,13 @@ const REQUEST_STOPWORDS = new Set([
   "want", "would", "like", "must", "really", "definitely", "maybe",
 ]);
 
+/** "a expensive venue" was appearing on the admin quality panel. Only the
+ * five price-level words ever reach this, so vowel-initial is the whole
+ * rule. */
+function article(word: string): string {
+  return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
+}
+
 function mentions(haystack: string, wanted: string): boolean {
   const normalize = (v: string) =>
     v
@@ -470,7 +477,7 @@ export function assessQuality(
         check: "price_matches_tier",
         severity: "warning",
         day: day.day,
-        detail: `day ${day.day} "${item.title}" is EUR ${item.cost_estimate_eur} for ${brief.party_size} at a ${item.google_price_level?.replace("_", " ")} venue`,
+        detail: `day ${day.day} "${item.title}" is EUR ${item.cost_estimate_eur} for ${brief.party_size} at ${article(item.google_price_level?.replace("_", " ") ?? "")} venue`,
       });
     }
   }
@@ -539,8 +546,18 @@ export function assessQuality(
     ...(itinerary.key_decisions ?? []).flatMap((d) => [d.decision, d.reasoning]),
     ...(itinerary.things_to_skip ?? []).flatMap((s) => [s.item, s.reasoning]),
   ].join(" ");
+  // location is in here because that is where a place name usually lands.
+  // A real Rome trip asked for "Vatican City" and got the Vatican Museums,
+  // the Sistine Chapel and St. Peter's Basilica, each with location
+  // "Vatican City" — and this reported the must-see as dropped, because
+  // "Vatican" was in the titles and "City" was only in the field it wasn't
+  // reading. The traveler's own requirement was met three times over and
+  // the gate called it the run's only defect.
+  //
+  // That is the exact failure this check says it can least afford: a false
+  // alarm here trains you to ignore it.
   const itemText = days
-    .flatMap((d) => d.items.flatMap((i) => [i.title, i.venue_name ?? "", i.reasoning]))
+    .flatMap((d) => d.items.flatMap((i) => [i.title, i.venue_name ?? "", i.location, i.reasoning]))
     .join(" ");
   for (const wanted of brief.must_see ?? []) {
     if (mentions(itemText, wanted) || mentions(narrative, wanted)) continue;

@@ -407,7 +407,7 @@ function isNamedVenueItem(item: { type: string; title: string; venue_name?: stri
  * checkBudgetIntegrity's night count are both built on, and a trip that
  * quietly loses a night's accommodation cost understates its own budget.
  * An unconfirmable hotel therefore keeps its item and simply loses its
- * name (see stripUnverifiedLodging), which downgrades it to the honest
+ * name (see stripToUnverified), which downgrades it to the honest
  * generic accommodation it would have been anyway. */
 function isLodging(item: ItineraryItem): boolean {
   return item.type === "lodging";
@@ -422,13 +422,30 @@ function isLodging(item: ItineraryItem): boolean {
  * require re-calling the model for a cosmetic fix. Its confidence tier
  * still reflects the price grounding, which is unaffected by whether the
  * property itself checked out. */
-function stripUnverifiedLodging(item: ItineraryItem): void {
+export function stripToUnverified(item: ItineraryItem): void {
   item.venue_name = null;
   item.google_rating = undefined;
   item.google_rating_count = undefined;
   item.google_price_level = undefined;
   item.google_business_status = undefined;
   item.google_maps_url = undefined;
+  // The opening hours go too, and they are the important ones.
+  //
+  // They are written onto the item BEFORE the reject conditions below run
+  // (deliberately — see the comment at that assignment), so an item
+  // rejected for a low rating, a permanent closure or being shut that day
+  // used to keep them. On the page that renders as "✓ Open on this day ·
+  // 7:00 AM – 9:00 PM" in the verified colour, which is the strongest
+  // confidence signal the product has, sitting on a line whose name was
+  // just stripped precisely because it could not be stood behind.
+  //
+  // It is also a claim about the wrong thing. Once venue_name is gone the
+  // item no longer says it is that business, so that business's hours are
+  // not a fact about it — and if the lookup matched something similarly
+  // named, they never were.
+  item.google_open_on_visit = undefined;
+  item.google_opening_hours = undefined;
+  item.google_minutes_until_close = undefined;
 }
 
 /** How long the venue stays open after the scheduled arrival, in minutes.
@@ -665,9 +682,9 @@ export async function checkVenues(
       const matched = place && placeName && namesLikelyMatch(venueName, placeName);
 
       // Lodging is downgraded to unnamed instead of dropped — see
-      // isLodging/stripUnverifiedLodging for why removal isn't an option.
+      // isLodging/stripToUnverified for why removal isn't an option.
       const reject = (target: ItineraryItem) => {
-        if (isLodging(target) || options.keepUnverified) stripUnverifiedLodging(target);
+        if (isLodging(target) || options.keepUnverified) stripToUnverified(target);
         else toRemove.add(target);
       };
 

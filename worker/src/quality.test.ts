@@ -327,6 +327,36 @@ section("the things the traveler actually asked for");
     "'the colosseum' matches 'Colosseum, Roman Forum and Palatine Hill'",
     !firedChecks2(loose, { ...BRIEF, must_see: ["the colosseum"] }).includes("must_see_covered")
   );
+
+  // A real Rome run reported "Vatican City" as dropped while the itinerary
+  // contained the Vatican Museums, the Sistine Chapel and St. Peter's
+  // Basilica — all three located in Vatican City. The word "City" lives in
+  // the location field, which the check wasn't reading.
+  const inLocation = baseline();
+  inLocation[1].items.push(
+    item({
+      title: "Vatican Museums & Sistine Chapel",
+      venue_name: "Vatican Museums",
+      location: "Vatican City",
+      time: "09:00",
+    })
+  );
+  check(
+    "a must-see named only in the location field is covered",
+    !firedChecks2(inLocation, { ...BRIEF, must_see: ["Vatican City"] }).includes("must_see_covered")
+  );
+
+  // The other half of the same guard: location must not become a way for
+  // anything to satisfy anything. A meal near the Pantheon is not the
+  // Trevi Fountain.
+  const unrelated = baseline();
+  unrelated[1].items.push(
+    item({ title: "Lunch at Armando", venue_name: "Armando", location: "Near the Pantheon, Rome", time: "13:00" })
+  );
+  check(
+    "an unrelated location does not satisfy a different must-see",
+    firedChecks2(unrelated, { ...BRIEF, must_see: ["Trevi Fountain"] }).includes("must_see_covered")
+  );
 }
 
 section("the budget stamp against the actual bill");

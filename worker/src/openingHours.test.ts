@@ -11,7 +11,7 @@
 //
 // Run: npm run test:hours
 
-import { isOpenAt, type PlacesApiPlace, type PlacesOpeningPeriod } from "./engine/venueVerification";
+import { isOpenAt, stripToUnverified, type PlacesApiPlace, type PlacesOpeningPeriod } from "./engine/venueVerification";
 import { check, finish, heading, section } from "./testutil";
 
 // Google's day numbering: 0 = Sunday ... 6 = Saturday.
@@ -143,6 +143,57 @@ section("boundaries");
   check("open exactly at opening time", isOpenAt(nineToFive, DATES.monday, "09:00") === true);
   check("closed exactly at closing time", isOpenAt(nineToFive, DATES.monday, "17:00") === false);
   check("open one minute before closing", isOpenAt(nineToFive, DATES.monday, "16:59") === true);
+}
+
+
+section("an item that fails verification keeps none of the evidence");
+{
+  // The opening hours are written onto the item BEFORE the reject
+  // conditions run, so a venue rejected for a low rating, a closure, or
+  // being shut that day used to keep them — and the page renders
+  // google_open_on_visit === true as "✓ Open on this day · 7:00 AM – 9:00
+  // PM" in the verified colour.
+  //
+  // Confirmed on a real Rome run: two meals showed that line with no
+  // rating and no Maps link, because their names had been stripped for
+  // failing the rating bar while their hours survived. The strongest
+  // confidence signal in the product, sitting on the lines that earned it
+  // least.
+  const rejected = {
+    type: "meal",
+    title: "Breakfast at Faggiani",
+    venue_name: "Faggiani",
+    location: "Borgo Pio, Rome",
+    time: "07:45",
+    cost_estimate_eur: 8,
+    reasoning: "r",
+    source_confidence: "inferred",
+    google_rating: 4.1,
+    google_rating_count: 900,
+    google_price_level: "moderate",
+    google_business_status: "operational",
+    google_maps_url: "https://maps.google.com/?cid=1",
+    google_open_on_visit: true,
+    google_opening_hours: ["Monday: 7:00 AM – 9:00 PM"],
+    google_minutes_until_close: 800,
+  } as unknown as Parameters<typeof stripToUnverified>[0];
+
+  stripToUnverified(rejected);
+
+  check("the name goes", rejected.venue_name === null);
+  check("the rating goes", rejected.google_rating === undefined);
+  check("the Maps link goes", rejected.google_maps_url === undefined);
+  check(
+    "the open-on-this-day badge goes",
+    rejected.google_open_on_visit === undefined,
+    String(rejected.google_open_on_visit)
+  );
+  check(
+    "the opening hours go with it",
+    rejected.google_opening_hours === undefined,
+    JSON.stringify(rejected.google_opening_hours)
+  );
+  check("the closing countdown goes too", rejected.google_minutes_until_close === undefined);
 }
 
 finish();
