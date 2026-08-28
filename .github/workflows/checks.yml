@@ -65,6 +65,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      # Every text color in the palette against the backgrounds it's
+      # actually painted on. --ink-dim — the color of nearly every label,
+      # date and helper line in the product — shipped for months at
+      # 3.28:1, under the 4.5:1 WCAG AA needs for body text, and the only
+      # thing that would have caught it was someone noticing. Pure
+      # arithmetic over the stylesheet: no browser, no network, runs in
+      # milliseconds.
+      - run: npm run check:contrast
       # Catches what typecheck alone misses — a server component importing
       # something client-only, a bad route export, a failed page render.
       - run: npm run build

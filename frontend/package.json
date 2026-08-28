@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "check:contrast": "node scripts/checkContrast.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

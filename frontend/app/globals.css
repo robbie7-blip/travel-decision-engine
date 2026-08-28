@@ -36,7 +36,17 @@
 
   --ink: #2b241c;
   --ink-soft: #4a4136;
-  --ink-dim: #8a7d68;
+  /* Was #8a7d68, which measured 3.28:1 against --bg-panel-raised and
+     3.57:1 against --bg — under the 4.5:1 WCAG AA needs for body text.
+     This is the color of nearly all secondary text in the product (form
+     labels, helper copy, dates, ratings, opening hours, the sub-lines
+     under itinerary items), so it was the single most widespread
+     accessibility problem on the site and a one-token fix. Same warm
+     neutral, enough darker to clear AA on every background it lands on:
+     4.78:1 on the raised panel, 5.21:1 on the page, higher on white.
+     scripts/checkContrast.mjs asserts this and fails the build if it
+     ever drifts back up. */
+  --ink-dim: #6f6350;
   --bg: #f7f1e2;
   --bg-panel: #fffdf8;
   --bg-panel-raised: #f1e7d2;
@@ -64,6 +74,15 @@
      drift from the mark next to it, independent of whatever else
      --brand-teal ends up meaning. */
   --logo-teal: var(--brand-teal);
+
+  /* The same coral, dark enough to be read as text rather than seen as
+     decoration. Not a seventh hue — it's the one brand coral, at the
+     value it has to sit at to clear 4.5:1 on the warm backgrounds.
+     --brand-coral itself measured 2.93:1 behind the header tagline, the
+     worst contrast anywhere on the page. Use --brand-coral for fills,
+     borders, icons and headline-sized type; use this for anything that
+     is actually being read at body size. */
+  --brand-coral-ink: #a8432c;
 
   --accent-1: var(--brand-coral);
   --accent-2: var(--brand-gold);
@@ -407,10 +426,16 @@ button {
 
 /* VISUAL ENHANCEMENTS */
 
-/* Page sections with visual interest */
-div[style*="padding: 32px 24px"] {
-  position: relative;
-}
+/* Removed: div[style*="padding: 32px 24px"] { position: relative }.
+
+   It matched only the six admin page wrappers, and only ever would have
+   matched them on a client re-render — React serialises inline styles
+   with no space after the colon ("padding:32px 24px"), so the selector
+   misses server-rendered markup entirely and hits the same element once
+   the browser normalises the attribute. Styling that switches on and off
+   depending on the render path is worse than no styling. It also set
+   nothing that mattered: position:relative on a centred admin wrapper
+   with no absolutely-positioned children. */
 
 /* How It Works section - colored background. Teal + coral, the two
    colors that already anchor the rest of the page (brand/trust and
@@ -514,26 +539,21 @@ span[data-tier]:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
-/* Demo link - styled button, teal (trust/brand), not teal-into-purple */
-a[style*="color: var(--grounded)"] {
-  transition: all 0.2s ease;
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-blue) 12%, transparent);
-  color: var(--color-blue) !important;
-  border: 1.5px solid var(--color-blue);
-  text-decoration: none !important;
-  display: inline-block;
-  font-weight: 600;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-blue) 15%, transparent);
-}
+/* Removed: a[style*="color: var(--grounded)"], which turned any link
+   carrying that inline color into a padded, bordered, shadowed button
+   with a hover lift.
 
-a[style*="color: var(--grounded)"]:hover {
-  background: var(--color-blue);
-  color: white !important;
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-blue) 35%, transparent);
-  transform: translateY(-2px);
-}
+   Written for one demo link, it reached nineteen — every admin nav link
+   and the "check flight prices" link inside an itinerary row. And it
+   reached them inconsistently, for the same reason as the rule above:
+   React writes color:var(--grounded) with no space, so server-rendered
+   links never matched and client-rendered ones did.
+
+   It also fought the components themselves. The itinerary link sets
+   textDecoration: "underline" on the element and this overrode it with
+   text-decoration: none !important — the markup asked for an underlined
+   link and the stylesheet made it a button. Deleting restores what each
+   element already says it wants. */
 
 /* Better link hover states */
 a {
@@ -780,21 +800,21 @@ p {
   line-height: 1.7;
 }
 
-/* Form container styling */
-div[style*="padding: 36px 24px"] {
-  background: linear-gradient(180deg, #f7f1e2, #f0e8d8);
-  position: relative;
-}
+/* Removed: div[style*="padding: 36px 24px"] and its ::before top bar.
 
-div[style*="padding: 36px 24px"]::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--color-blue), var(--color-coral));
-}
+   The comment said "form container styling", and that was true once —
+   the homepage form section now uses padding: 36px clamp(32px, 8%,
+   180px), so the rule lost its target. What it actually decorated by the
+   time it was found were the two error states in CompareView and
+   CompareStatsView ("we couldn't find those trips", "we need your
+   link"), which are the only remaining divs padded 36px 24px. A gradient
+   band and a 4px brand-colored rule across the top of an error message
+   is not a design decision anyone made.
+
+   Not re-pointed at the form section, because putting it back there
+   would be a visual change nobody asked for rather than a fix. If that
+   band is wanted again it should be a class on the element that wants
+   it. */
 
 /* Decorative background elements */
 .trip-form-grid {

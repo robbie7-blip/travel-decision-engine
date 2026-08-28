@@ -112,7 +112,10 @@ export function SiteHeader({
                     fontSize: "clamp(10px, 2.6vw, 14px)",
                     fontWeight: 500,
                     letterSpacing: "0.06em",
-                    color: "var(--accent-1)",
+                    // The readable cut of the brand coral, not the
+                    // display one — this is 14px text on the warm header,
+                    // where --accent-1 measured 2.93:1.
+                    color: "var(--brand-coral-ink)",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
                     marginTop: 8,
