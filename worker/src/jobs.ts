@@ -127,6 +127,16 @@ export interface JobTimings {
    * on the critical path. A run showing true is a run where fixing lodging
    * would also make generation faster. */
   waitedForFrame?: boolean;
+  /** Which half of the lodging lookup came back empty, per city, after its
+   * retry. Empty when every lookup answered in full.
+   *
+   * waitedForFrame says the frame was on the critical path; this says why,
+   * and the two failures behind it are not the same size. A missing
+   * property costs a named hotel. A missing rate costs the frame wait —
+   * about twenty seconds on the run this was added for. Without the
+   * distinction the only way to tell them apart was to pay for another
+   * generation and read the worker's stderr. */
+  lodgingShort?: { city: string; missing: "rate" | "property" }[];
   /** Duplicate-venue and missing-meal repairs, which share one stage. */
   repairsMs?: number;
   /** Google Places verification + Amadeus, which run concurrently with each

@@ -331,6 +331,18 @@ interface LodgingLookupResult {
   sourceUrl: string | null;
   name: string | null;
   area: string | null;
+  /** Which half came back empty after its retry, if either did.
+   *
+   * Recorded rather than merely logged because the two have very different
+   * consequences and, until now, one indistinguishable symptom. A missing
+   * PROPERTY costs a named hotel: the traveler gets "a mid-range hotel",
+   * which is a quality loss and nothing more. A missing RATE costs
+   * twenty-odd seconds of wall clock, because the frame's price estimate
+   * becomes the only figure available and phase 2 cannot start without it
+   * (see accommodationFromLodging). "Lodging came back short" was the
+   * whole diagnosis for both, which meant the expensive one could only be
+   * distinguished from the cheap one by paying for another generation. */
+  missing: "rate" | "property" | null;
 }
 
 /** Rate and property are two genuinely different questions — "what does a
@@ -384,9 +396,45 @@ async function prefetchLodging(
     }
   }
 
+  /** One retry when a half comes back with nothing.
+   *
+   * These are small, low-effort calls, and they run CONCURRENTLY WITH
+   * PHASE 1 — measured at 16.5s of prefetch against 24.0s of phase 1, so
+   * there is real slack before a retry costs the generation anything at
+   * all. Against that: a missing rate forces phase 2 to wait for the trip
+   * frame, which on the same run was the difference between gating on the
+   * fast half of phase 1 and gating on the slow one.
+   *
+   * So the trade is a few seconds of a lookup that is already hidden,
+   * against twenty-odd seconds that are not. Worth taking even at a
+   * middling success rate, and the search half of these is
+   * non-deterministic enough that a second attempt is a real second
+   * attempt rather than a repeat of the same answer. */
+  async function askTwice<T>(
+    system: string,
+    maxUses: number,
+    empty: (v: T | null) => boolean,
+    label: string
+  ): Promise<T | null> {
+    const first = await ask<T>(system, maxUses);
+    if (!empty(first)) return first;
+    console.warn(`[worker] lodging ${label} for ${city} came back empty — retrying once`);
+    return await ask<T>(system, maxUses);
+  }
+
   const [rate, property] = await Promise.all([
-    ask<{ cost_estimate_eur: number | null; source_url: string | null }>(LODGING_RATE_SYSTEM, 2),
-    ask<{ name: string | null; area: string | null }>(LODGING_PROPERTY_SYSTEM, 2),
+    askTwice<{ cost_estimate_eur: number | null; source_url: string | null }>(
+      LODGING_RATE_SYSTEM,
+      2,
+      (v) => v?.cost_estimate_eur == null,
+      "rate"
+    ),
+    askTwice<{ name: string | null; area: string | null }>(
+      LODGING_PROPERTY_SYSTEM,
+      2,
+      (v) => !v?.name?.trim(),
+      "property"
+    ),
   ]);
 
   const costEstimateEur = rate?.cost_estimate_eur ?? null;
@@ -400,8 +448,20 @@ async function prefetchLodging(
   // — and the property is the half the traveler actually sees. A named
   // hotel with the frame's own hedged price estimate is a strictly better
   // line than "a mid-range hotel" at the same price.
-  if (costEstimateEur == null && !name) return null;
-  return { costEstimateEur, sourceUrl, name, area };
+  if (costEstimateEur == null && !name) {
+    console.error(`[worker] lodging lookup for ${city} found neither a rate nor a property`);
+    return null;
+  }
+  const missing = costEstimateEur == null ? "rate" : name ? null : "property";
+  if (missing === "rate") {
+    console.warn(
+      `[worker] lodging for ${city}: found "${name}" but no rate — phase 2 will have to wait ` +
+        `for the trip frame to price it`
+    );
+  } else if (missing === "property") {
+    console.warn(`[worker] lodging for ${city}: priced at EUR ${costEstimateEur} but no property named`);
+  }
+  return { costEstimateEur, sourceUrl, name, area, missing };
 }
 
 async function callModel(
@@ -1427,6 +1487,14 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
               missing.map(async (city) => ({ city, result: await prefetchLodging(client, city, onUsage) }))
             ).then((results) => {
               timings.lodgingPrefetch = Date.now() - lodgingStartedAt;
+              // Carried onto the job so a short lookup names its own half
+              // on the trip page, instead of being a thing only the
+              // worker's stderr knows and only for as long as the logs
+              // are kept.
+              const short = results
+                .filter((r) => r.result?.missing)
+                .map((r) => ({ city: r.city, missing: r.result!.missing! }));
+              if (short.length > 0) jobTimings.lodgingShort = short;
               // Written WITHOUT awaiting. The day calls await this promise
               // for the accommodation figures, and the cache write is
               // bookkeeping for some future generation — awaiting it put a
