@@ -10,6 +10,7 @@ import "./env"; // must run before the engine import below reads FACTS_DIR
 import Anthropic from "@anthropic-ai/sdk";
 import type Redis from "ioredis";
 import { getRedis } from "./redis";
+import { createAnthropicClient, isMissingWorkspaceIdError, workspaceId } from "./anthropicClient";
 // Local copies of the shared engine/job code, not "../../frontend/..." —
 // Railway's "Root Directory: worker" setting deploys only this directory,
 // so a cross-directory import into frontend/ has nothing to resolve
@@ -1627,7 +1628,9 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     console.error(`[worker] job ${id} failed:`, e);
     job.status = "error";
     job.error =
-      e instanceof Anthropic.AuthenticationError
+      isMissingWorkspaceIdError(e)
+        ? "Server is misconfigured (the API key needs ANTHROPIC_WORKSPACE_ID set)."
+        : e instanceof Anthropic.AuthenticationError
         ? "Server is misconfigured (invalid API key)."
         : e instanceof Anthropic.RateLimitError
           ? "Rate limited by the model provider. Try again shortly."
@@ -1718,7 +1721,7 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
 async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
-  const client = new Anthropic({
+  const client = createAnthropicClient({
     apiKey,
     // The SDK defaults are a 10-MINUTE timeout and 2 automatic retries, and
     // both were silently in play. The timeout means one hung request could
@@ -1739,7 +1742,15 @@ async function main() {
   });
   const redis = getRedis();
 
-  console.log(`[worker] started, ${WORKER_CONCURRENCY} concurrent consumer(s) waiting on`, JOBS_QUEUE_KEY);
+  // Said at startup rather than discovered at the first model call. An
+  // identity-linked key with no workspace id fails on every request with a
+  // 400 that reads like a malformed request, which is a long way from
+  // "this credential needs one more setting" — see anthropicClient.ts.
+  console.log(
+    `[worker] started, ${WORKER_CONCURRENCY} concurrent consumer(s) waiting on`,
+    JOBS_QUEUE_KEY,
+    workspaceId() ? `— workspace ${workspaceId()}` : "— no ANTHROPIC_WORKSPACE_ID set"
+  );
   await Promise.all(
     Array.from({ length: WORKER_CONCURRENCY }, (_, i) => runConsumer(i, redis, client))
   );

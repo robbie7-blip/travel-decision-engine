@@ -22,6 +22,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/anthropicClient";
 import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
@@ -314,7 +315,7 @@ export async function POST(request: NextRequest) {
     ];
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = createAnthropicClient({ apiKey });
   const encoder = new TextEncoder();
   const modelParams = {
     model: MODEL,

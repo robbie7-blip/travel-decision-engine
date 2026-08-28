@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/anthropicClient";
 import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, FLIGHT_IMPORT_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const client = new Anthropic({ apiKey });
+    const client = createAnthropicClient({ apiKey });
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
