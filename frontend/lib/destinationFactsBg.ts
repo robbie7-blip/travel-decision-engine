@@ -1,4 +1,4 @@
-// Bulgarian translations of the curated facts in facts/*.json — kept
+// Bulgarian translations of the curated facts in facts/*.json - kept
 // entirely separate from that directory (never mirrored to the worker,
 // never touches the generation engine) since this content exists only for
 // the public /destinations guide pages, not for the model prompt. Falls

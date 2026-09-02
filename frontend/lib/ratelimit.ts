@@ -4,7 +4,7 @@
 // anyone who finds the URL can run up the bill indefinitely. /api/feedback
 // costs nothing per-call but writes to a durable (no-TTL) Redis list, so an
 // unbounded stream of spam would still grow storage forever. Both share the
-// same Upstash Redis instance the job queue already runs on — no new infra.
+// same Upstash Redis instance the job queue already runs on - no new infra.
 //
 // This bounds worst-case cost per client; it is not a substitute for a
 // bigger cost-control layer (auth, payments, Cloudflare-level bot
@@ -34,7 +34,7 @@ export const FEEDBACK_RATE_LIMIT: RateLimitConfig = {
 
 // /api/trip-questions costs real Anthropic money too, but far less per call
 // than /api/generate (no web_search, a short reply, no large schema to
-// fill) — a more generous limit reflects that real per-call cost, not a
+// fill) - a more generous limit reflects that real per-call cost, not a
 // looser attitude toward abuse.
 export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
   perHour: Number(process.env.TRIP_QUESTIONS_RATE_LIMIT_PER_HOUR ?? 20),
@@ -43,7 +43,7 @@ export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
 };
 
 // Flight-history import is one Anthropic call per pasted confirmation, with
-// a bounded input and a small structured output — closer in cost to a trip
+// a bounded input and a small structured output - closer in cost to a trip
 // question than a full generation. Someone importing a backlog will
 // legitimately paste a run of these in one sitting, so the hourly allowance
 // is deliberately generous; the daily cap is what actually bounds abuse.
@@ -56,7 +56,7 @@ export const FLIGHT_IMPORT_RATE_LIMIT: RateLimitConfig = {
 // Magic-link requests cost nothing per-call in Anthropic terms, but an
 // unbounded stream would spam a stranger's inbox (anyone can type any email
 // in) and burn through the transactional-email provider's quota. Keyed by
-// IP below, same as the other limiters — deliberately not also keyed by the
+// IP below, same as the other limiters - deliberately not also keyed by the
 // target email, since that would need its own separate check to avoid
 // leaking "this email has requested N links" as a side channel.
 export const AUTH_RATE_LIMIT: RateLimitConfig = {

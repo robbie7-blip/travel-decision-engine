@@ -56,7 +56,7 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
         return;
       }
       setFlights(result.flights);
-      // Past flights only — see the header comment.
+      // Past flights only - see the header comment.
       setSelected(new Set(result.flights.map((f, i) => (f.isPast ? i : -1)).filter((i) => i >= 0)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't read that email.");
@@ -118,7 +118,7 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
         <div style={{ ...box, marginTop: 10 }}>
           <p style={{ fontSize: 12.5, color: "var(--ink-dim)", lineHeight: 1.6, margin: "0 0 10px" }}>
             Paste a flight confirmation email and we&apos;ll pull out the trips and tick off the countries. Only
-            your own bookings, and nothing is added until you confirm below. We don&apos;t store the email — it&apos;s
+            your own bookings, and nothing is added until you confirm below. We don&apos;t store the email - it&apos;s
             used to read the flights and then it&apos;s gone.
           </p>
 
@@ -168,7 +168,7 @@ export function FlightImport({ signedIn, language, onImport }: Props) {
                 className="font-ui"
                 style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 8 }}
               >
-                Found {flights.length} flight{flights.length === 1 ? "" : "s"} — check what to add
+                Found {flights.length} flight{flights.length === 1 ? "" : "s"} - check what to add
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {flights.map((f, i) => (

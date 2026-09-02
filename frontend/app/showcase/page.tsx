@@ -1,4 +1,4 @@
-// Public gallery of real, already-generated trips (see lib/showcase.ts) —
+// Public gallery of real, already-generated trips (see lib/showcase.ts) -
 // curated via /admin/showcase, same "grounded, not fabricated" reasoning as
 // the single homepage demo link (lib/demoTrip.ts): only real generations
 // ever appear here, never a mocked-up example. Reads Redis directly (no
@@ -76,7 +76,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await searchParams;
   const st = TRANSLATIONS[resolveLanguage(lang)].showcase;
-  const title = `${st.pageTitle} — decide`;
+  const title = `${st.pageTitle} - decide`;
   return {
     title,
     description: st.pageDescription,
@@ -100,9 +100,9 @@ export default async function ShowcasePage({
   return (
     <div style={{ minHeight: "100%" }}>
       <div style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
-        {/* 1450, not this page's own 960px content width below — see the
+        {/* 1450, not this page's own 960px content width below - see the
             comment on ask/page.tsx's SiteHeader call for why. Two rows,
-            matching SiteHeader.tsx — see that file's header comment. */}
+            matching SiteHeader.tsx - see that file's header comment. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
             <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
@@ -157,7 +157,7 @@ export default async function ShowcasePage({
 
       <div style={{ padding: "40px clamp(32px, 8%, 180px) 72px" }}>
         {/* Outer 1450 matches the header above so this page's content
-            starts at the same left edge as every other page's — see the
+            starts at the same left edge as every other page's - see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1300 }}>

@@ -1,9 +1,9 @@
-// Builds a downloadable .ics calendar from a generated itinerary — one
+// Builds a downloadable .ics calendar from a generated itinerary - one
 // event per line item. Zero new dependencies: the iCalendar format (RFC
 // 5545) is plain text, so this is just careful string-building rather than
 // a library. Uses each destination's local wall-clock time (floating, no
 // timezone) since that's what a traveler actually means by "9am" on a
-// trip — looking up each destination's real IANA timezone isn't worth the
+// trip - looking up each destination's real IANA timezone isn't worth the
 // complexity for a first version of this.
 
 import type { Itinerary, ItineraryItem } from "./types";
@@ -37,7 +37,7 @@ function formatIcsUtc(date: Date): string {
   );
 }
 
-/** Escapes text per RFC 5545 §3.3.11 — backslash first, then comma,
+/** Escapes text per RFC 5545 §3.3.11 - backslash first, then comma,
  * semicolon, and newline, in that order (escaping commas before the
  * backslash pass would double-escape the backslash just inserted). */
 function escapeIcsText(text: string): string {
@@ -48,7 +48,7 @@ function escapeIcsText(text: string): string {
     .replace(/\r\n|\n|\r/g, "\\n");
 }
 
-/** Folds a content line to <=75 octets per RFC 5545 §3.1 — some calendar
+/** Folds a content line to <=75 octets per RFC 5545 §3.1 - some calendar
  * clients reject or mis-render unfolded long lines, which a DESCRIPTION
  * built from the model's reasoning text easily exceeds. */
 function foldIcsLine(line: string): string {
@@ -76,7 +76,7 @@ function parseTimeOfDay(time: string): { hour: number; minute: number } {
   if (lower === "morning") return { hour: 9, minute: 0 };
   if (lower === "afternoon") return { hour: 14, minute: 0 };
   if (lower === "evening") return { hour: 19, minute: 0 };
-  return { hour: 12, minute: 0 }; // unrecognized format — midday is a safe, visible default
+  return { hour: 12, minute: 0 }; // unrecognized format - midday is a safe, visible default
 }
 
 const EVENT_DURATION_MINUTES = 60;
@@ -91,7 +91,7 @@ const TIER_LABEL: Record<string, string> = {
 
 function buildEvent(item: ItineraryItem, dayDate: string, uid: string): string | null {
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayDate);
-  if (!dateMatch) return null; // malformed date from the model — skip rather than emit a broken event
+  if (!dateMatch) return null; // malformed date from the model - skip rather than emit a broken event
   const [, y, m, d] = dateMatch;
   const { hour, minute } = parseTimeOfDay(item.time);
   const start = new Date(Number(y), Number(m) - 1, Number(d), hour, minute, 0);
@@ -119,7 +119,7 @@ function buildEvent(item: ItineraryItem, dayDate: string, uid: string): string |
     .join("\r\n");
 }
 
-/** One .ics per generated itinerary — no top-level "destinations" field on
+/** One .ics per generated itinerary - no top-level "destinations" field on
  * Itinerary itself, so the calendar name is derived from the unique
  * locations actually used across items rather than requiring a separate
  * TripBriefInput to be threaded in just for this. */
@@ -148,7 +148,7 @@ export function buildItineraryIcs(itinerary: Itinerary, jobId: string): string {
   return [header, ...events, "END:VCALENDAR"].join("\r\n") + "\r\n";
 }
 
-/** Triggers a browser download of the built .ics — a Blob + throwaway
+/** Triggers a browser download of the built .ics - a Blob + throwaway
  * anchor element, no server round-trip needed since everything required is
  * already in the client's own itinerary state. */
 export function downloadItineraryIcs(itinerary: Itinerary, jobId: string): void {

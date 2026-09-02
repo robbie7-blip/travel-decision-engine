@@ -23,7 +23,7 @@ import {
 import type { Language } from "@/lib/types";
 
 // The globe renders to a WebGL canvas via three.js, which touches
-// `document`/`window` at construction time — fatal during SSR. Both of
+// `document`/`window` at construction time - fatal during SSR. Both of
 // these load it (VisitedPinsPanel embeds a VisitedGlobe internally), so
 // both are loaded client-only, with a plain placeholder while the chunk
 // downloads instead of nothing.
@@ -47,7 +47,7 @@ function GlobeLoadingPlaceholder() {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // A distinct brand color per badge instead of one uniform green for every
-// milestone — same wider-use-of-the-existing-palette idea as TABS' colors
+// milestone - same wider-use-of-the-existing-palette idea as TABS' colors
 // below. Falls back to --accent-green for any future badge id that isn't
 // listed here yet, so a new badge never renders with an undefined color.
 const BADGE_COLORS: Record<string, string> = {
@@ -62,13 +62,13 @@ const BADGE_COLORS: Record<string, string> = {
 type Tab = "map" | "globe" | "zoomable" | "flags" | "timeline" | "chronology" | "pins";
 
 /** The Been-style visited-countries tracker. Local-storage-first, same as
- * the Been app itself — marking a country visited needs no account, it
+ * the Been app itself - marking a country visited needs no account, it
  * just needs to persist on this device (lib/localVisited.ts). Signing in
  * (handled inline, not a redirect to /account and back) is an optional
  * upgrade that syncs the same list to /api/visited so it also follows you
- * to another device — never a requirement to use the feature at all.
+ * to another device - never a requirement to use the feature at all.
  *
- * Also the home of the "Visualize" tab row — Been-style alternate views
+ * Also the home of the "Visualize" tab row - Been-style alternate views
  * (Globe, Zoomable, Flags, Timeline, Chronology, Map Pins) of the exact
  * same underlying entries, not separate data. */
 export default function VisitedPage() {
@@ -91,7 +91,7 @@ export default function VisitedPage() {
     const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (saved === "en" || saved === "bg") setLanguageState(saved);
 
-    // This device's list renders immediately — no network wait, since it's
+    // This device's list renders immediately - no network wait, since it's
     // the source of truth for anyone who never signs in. Checking for a
     // signed-in account is a background upgrade: if one exists, its
     // entries win on any code both sides know (an existing account is
@@ -103,7 +103,7 @@ export default function VisitedPage() {
 
     fetch("/api/visited")
       .then(async (r) => {
-        if (!r.ok) return; // 401 not signed in, 500 misconfigured — either way, stay in local-only mode
+        if (!r.ok) return; // 401 not signed in, 500 misconfigured - either way, stay in local-only mode
         const data = await r.json();
         const serverEntries: VisitedEntry[] = data.entries ?? [];
         const serverByCode = Object.fromEntries(serverEntries.map((e) => [e.code, e]));
@@ -136,7 +136,7 @@ export default function VisitedPage() {
   }
 
   /** Every mutation below funnels through here: update state, persist
-   * locally, and best-effort sync (account or anonymous share snapshot) —
+   * locally, and best-effort sync (account or anonymous share snapshot) -
    * one place for that fan-out instead of repeating it per action. */
   function applyEntries(next: Record<string, VisitedEntry>, changedCode: string) {
     setEntries(next);
@@ -172,7 +172,7 @@ export default function VisitedPage() {
 
   /** Bulk-applies an imported booking. Each country is written through the
    * same per-code sync applyEntries uses, so there's no second write path
-   * to keep in step with it — only the batching differs. A country already
+   * to keep in step with it - only the batching differs. A country already
    * on the map keeps its existing date rather than being overwritten by
    * whatever this particular booking happened to say. */
   function importVisits(visits: { code: string; visitedAt: string }[]) {
@@ -271,13 +271,13 @@ export default function VisitedPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard access can fail (permissions, insecure context) — the
+      // Clipboard access can fail (permissions, insecure context) - the
       // link is still visible and selectable, so this just skips the
       // "Copied!" confirmation rather than erroring.
     }
   }
 
-  // Accepts either a full compare-stats URL or a bare token — whichever
+  // Accepts either a full compare-stats URL or a bare token - whichever
   // someone happens to paste in.
   function extractToken(input: string): string {
     const trimmed = input.trim();
@@ -298,7 +298,7 @@ export default function VisitedPage() {
 
   // A distinct brand color per tab (Been-app-style playful tab row, per the
   // original inspiration for this whole visualize feature) rather than one
-  // uniform green for every active state — cycles through the same 6 brand
+  // uniform green for every active state - cycles through the same 6 brand
   // colors already used for the logo/confidence tiers elsewhere, so it's a
   // wider use of the existing palette, not a new one invented just for this.
   const TABS: { id: Tab; label: string; color: string }[] = [
@@ -315,7 +315,7 @@ export default function VisitedPage() {
     <div style={{ minHeight: "100%" }}>
       {/* Explicit 1450 (was implicitly using SiteHeader's 860 default) so
           this matches the rest of the site's header width exactly instead
-          of by coincidence — see the comment on ask/page.tsx's SiteHeader
+          of by coincidence - see the comment on ask/page.tsx's SiteHeader
           call for why headers don't need to match their own page's
           narrower content column. */}
       <SiteHeader
@@ -328,13 +328,13 @@ export default function VisitedPage() {
 
       <div style={{ padding: "36px clamp(32px, 8%, 180px) 64px" }}>
         {/* Outer 1450 matches the header above so this page's content
-            starts at the same left edge as every other page's — see the
+            starts at the same left edge as every other page's - see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1100 }}>
           {/* Page H1 uses the brand teal (same color as the "decide"
            * wordmark in SiteHeader) as a consistent signature accent across
-           * every page's title — body copy/labels below stay --ink-dim/
+           * every page's title - body copy/labels below stay --ink-dim/
            * --ink for readability, color is deliberately scoped to just
            * the heading. */}
           <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 8px", color: "var(--brand-teal)" }}>
@@ -402,10 +402,10 @@ export default function VisitedPage() {
           </div>
 
           {/* Sits above the visualize tabs because it FILLS the thing they
-              visualize — the fastest way from an empty map to a full one. */}
+              visualize - the fastest way from an empty map to a full one. */}
           <FlightImport signedIn={signedIn} language={language} onImport={importVisits} />
 
-          {/* Visualize tab row — same underlying entries, different view. */}
+          {/* Visualize tab row - same underlying entries, different view. */}
           <div className="font-ui scroll-row-mobile" style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
             {TABS.map((tabDef) => (
               <button
@@ -534,7 +534,7 @@ export default function VisitedPage() {
               ))}
 
               {/* Below the full checklist, not competing with it for
-               * attention at the top of the tab — comparing with a friend
+               * attention at the top of the tab - comparing with a friend
                * is a nice-to-have on top of the tracker, not part of using
                * it. */}
               <div
@@ -655,7 +655,7 @@ export default function VisitedPage() {
           )}
 
           {/* Sync is an optional upgrade, not a requirement to use any of
-           * the above — kept at the bottom, out of the way, rather than
+           * the above - kept at the bottom, out of the way, rather than
            * gating the page like a login wall. */}
           {!signedIn && (
             <div

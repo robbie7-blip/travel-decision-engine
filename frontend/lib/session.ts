@@ -1,13 +1,13 @@
-// Signed session cookie for the magic-link auth system — deliberately no
+// Signed session cookie for the magic-link auth system - deliberately no
 // server-side session store (no new infra beyond the Redis already in use
 // for jobs/rate-limits/user records). The cookie itself carries the email +
 // expiry, HMAC-signed with SESSION_SECRET so a client can't forge or extend
-// it. Verifying is a pure function of the cookie + the secret — no Redis
+// it. Verifying is a pure function of the cookie + the secret - no Redis
 // round-trip needed on every request that just needs "who is this."
 //
 // Node-only (crypto.timingSafeEqual/createHmac): every route that reads or
 // writes this cookie must run on the Node runtime (`export const runtime =
-// "nodejs"`), not Edge — same reasoning /api/generate already documents for
+// "nodejs"`), not Edge - same reasoning /api/generate already documents for
 // why it isn't Edge.
 
 import { createHmac, timingSafeEqual } from "crypto";
@@ -23,7 +23,7 @@ interface SessionPayload {
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (!secret) {
-    throw new Error("SESSION_SECRET is not set — accounts/subscriptions are unconfigured.");
+    throw new Error("SESSION_SECRET is not set - accounts/subscriptions are unconfigured.");
   }
   return secret;
 }
@@ -42,7 +42,7 @@ export function createSessionCookieValue(email: string): string {
 }
 
 /** Verifies a cookie value and returns the email, or null if missing,
- * malformed, expired, or tampered with. Never throws on bad input — this is
+ * malformed, expired, or tampered with. Never throws on bad input - this is
  * called on every request that touches account state, so a garbage cookie
  * (stale format, cleared secret) should read as "logged out," not 500. */
 export function verifySessionCookieValue(value: string | undefined | null): string | null {

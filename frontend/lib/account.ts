@@ -1,11 +1,11 @@
-// Redis-backed user + subscription records — no new database, same Upstash
+// Redis-backed user + subscription records - no new database, same Upstash
 // instance everything else already uses. A "user" only exists once an email
 // has either requested a magic link or completed Stripe checkout; there's no
 // separate signup step.
 //
 // Quota model: signing in swaps a client OFF the anonymous per-IP abuse
 // limiter (see ratelimit.ts) and ONTO a per-email monthly generation count,
-// sized by plan — this is the actual product tier, not just an abuse guard.
+// sized by plan - this is the actual product tier, not just an abuse guard.
 // FREE_MONTHLY_GENERATIONS and PAID_MONTHLY_GENERATIONS are starting
 // numbers, deliberately env-overridable: tune them against real cost data
 // (see costBudget.ts) once there's usage to look at.
@@ -23,7 +23,7 @@ export interface UserRecord {
   stripeSubscriptionId: string | null;
   // Mirrors Stripe's own subscription.status values directly (active,
   // past_due, canceled, unpaid, incomplete, ...) rather than inventing a
-  // parallel vocabulary — see isPaidStatus below for which ones count as
+  // parallel vocabulary - see isPaidStatus below for which ones count as
   // "still has access."
   subscriptionStatus: string | null;
   currentPeriodEnd: number | null; // epoch seconds
@@ -38,7 +38,7 @@ function stripeCustomerKey(customerId: string): string {
 }
 
 /** Stripe's subscription/invoice webhook events carry a customer ID, not an
- * email — this reverse index (written once at checkout.session.completed)
+ * email - this reverse index (written once at checkout.session.completed)
  * is how customer.subscription.updated/deleted later find the right
  * user:<email> record to update. */
 export async function linkStripeCustomerToEmail(redis: Redis, customerId: string, email: string): Promise<void> {
@@ -58,7 +58,7 @@ function quotaKey(email: string, month: string): string {
 }
 
 // A canceled/past-due subscription still shows on the account until Stripe
-// actually revokes it, but only these statuses should grant paid quota —
+// actually revokes it, but only these statuses should grant paid quota -
 // "past_due" keeps access during Stripe's own retry/grace window (its
 // default Smart Retries schedule), everything past that (canceled, unpaid,
 // incomplete_expired) falls back to free.
@@ -69,13 +69,13 @@ export function isPaidStatus(status: string | null): boolean {
 }
 
 // Lets the site owner (and anyone else added here) use Pro features on
-// their own account without an actual Stripe subscription behind it —
+// their own account without an actual Stripe subscription behind it -
 // dogfooding decide, or just testing Ask a Local's web_search gating,
 // shouldn't require paying yourself €9/month. Comma-separated env var
 // (unset = nobody, same "off by default" shape as ADMIN_PASSWORD) rather
 // than a hardcoded email, so the allowlist is a Vercel dashboard edit, not
 // a code change + redeploy. This only ever widens free->paid for the
-// emails listed — never narrows a real paying customer's access, and
+// emails listed - never narrows a real paying customer's access, and
 // never grants a stripeCustomerId, so billing-portal correctly has
 // nothing to manage for an override-only account (see account/page.tsx's
 // hasStripeSubscription check).
@@ -86,7 +86,7 @@ const PRO_OVERRIDE_EMAILS = new Set(
     .filter(Boolean)
 );
 
-/** The plan every route should actually gate features on — layers the
+/** The plan every route should actually gate features on - layers the
  * owner override on top of isPaidStatus rather than each call site
  * checking both separately. */
 export function resolvePlan(email: string, subscriptionStatus: string | null): Plan {
@@ -107,7 +107,7 @@ export async function getUserRecord(redis: Redis, email: string): Promise<UserRe
 }
 
 /** Merges fields into a user's record (creates it if it doesn't exist yet).
- * Used by the Stripe webhook and the checkout route — never by anything
+ * Used by the Stripe webhook and the checkout route - never by anything
  * client-controlled, since this is what grants paid access. */
 export async function upsertUserRecord(
   redis: Redis,
@@ -131,7 +131,7 @@ export interface QuotaResult {
 }
 
 /** Checks this month's usage against the caller's plan limit WITHOUT
- * consuming a slot — used to decide whether to even attempt the increment,
+ * consuming a slot - used to decide whether to even attempt the increment,
  * and to show remaining quota in the account UI. */
 export async function getQuotaStatus(redis: Redis, email: string, plan: Plan): Promise<QuotaResult> {
   const limit = plan === "paid" ? PAID_MONTHLY_GENERATIONS : FREE_MONTHLY_GENERATIONS;
@@ -145,7 +145,7 @@ export async function getQuotaStatus(redis: Redis, email: string, plan: Plan): P
 const QUOTA_KEY_TTL_SECONDS = 60 * 60 * 24 * 40;
 
 /** Records one generation against this month's count. Called only after
- * getQuotaStatus already confirmed room — this is a plain increment, not a
+ * getQuotaStatus already confirmed room - this is a plain increment, not a
  * check-and-increment, so it accepts the same small race-condition
  * tolerance as the existing daily spend cap (spendCheck.ts) rather than
  * reaching for Redis transactions at this scale. */

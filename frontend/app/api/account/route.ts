@@ -1,4 +1,4 @@
-// Current account state for the signed-in visitor (if any) — plan, quota
+// Current account state for the signed-in visitor (if any) - plan, quota
 // used this month, subscription status. Reads a plain browser cookie, so
 // this can't be cached/shared across users the way a public GET normally
 // could be; that's fine, it's always a same-origin fetch from the account
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     quota: { used: quota.used, limit: quota.limit },
     // Pro from a real Stripe subscription has something for the billing
     // portal to manage; Pro from the owner-override allowlist (see
-    // lib/account.ts's PRO_OVERRIDE_EMAILS) doesn't — no stripeCustomerId
+    // lib/account.ts's PRO_OVERRIDE_EMAILS) doesn't - no stripeCustomerId
     // ever gets created for it. account/page.tsx uses this to decide
     // whether "Manage subscription" would have anything to do.
     hasStripeSubscription: Boolean(user?.stripeCustomerId),

@@ -1,13 +1,13 @@
-// Public, unauthenticated read of the visited-stats behind a share token —
+// Public, unauthenticated read of the visited-stats behind a share token -
 // same trust model as GET /api/job/[id] for a shareable trip link: the
 // token IS the access control, no session needed. Deliberately never
-// returns the email behind a signed-in token (see lib/statsShare.ts) — only
+// returns the email behind a signed-in token (see lib/statsShare.ts) - only
 // the computed stats, which is all a comparison view needs.
 //
 // A token is either the signed-in kind (looked up to an email, whose live
 // list is read fresh every time) or the anonymous kind (a stored snapshot,
-// refreshed by the sharer's device on each toggle — see app/api/visited/
-// share) — tried in that order since they're different Redis keys and a
+// refreshed by the sharer's device on each toggle - see app/api/visited/
+// share) - tried in that order since they're different Redis keys and a
 // given token can only ever be one or the other.
 
 import { NextRequest, NextResponse } from "next/server";

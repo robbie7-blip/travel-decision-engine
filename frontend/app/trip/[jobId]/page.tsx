@@ -12,11 +12,11 @@ export async function generateMetadata({
   const { jobId } = await params;
   const job = await loadJob(jobId);
 
-  // Not found, still generating, or failed — fall back to the root layout's
+  // Not found, still generating, or failed - fall back to the root layout's
   // generic site metadata rather than describing a trip that isn't there.
   if (!job || job.status !== "done" || !job.result) return {};
 
-  const title = `${job.brief.destinations.join(" · ")} — decide`;
+  const title = `${job.brief.destinations.join(" · ")} - decide`;
   const summary = job.result.trip_summary;
   const description =
     summary.length > MAX_DESCRIPTION_LENGTH ? `${summary.slice(0, MAX_DESCRIPTION_LENGTH - 1)}…` : summary;

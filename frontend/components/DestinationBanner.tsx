@@ -1,21 +1,21 @@
-// Generative hero banner for the /destinations guides — there's no photo
+// Generative hero banner for the /destinations guides - there's no photo
 // budget (no external network access to fetch real photography in this
-// session — see the accompanying scripts/fetch-destination-photos.mjs for
+// session - see the accompanying scripts/fetch-destination-photos.mjs for
 // a real-photo path), so each city gets a distinct-but-on-brand banner
 // instead: one of a handful of gradient pairs built entirely from the app's
 // existing palette, plus a faint great-circle arc motif that echoes the
 // "one committed route" idea behind the logo.
 //
 // Both variants share one viewBox aspect ratio and scale uniformly (no
-// preserveAspectRatio="none", no fixed pixel height) — forcing a mismatched
+// preserveAspectRatio="none", no fixed pixel height) - forcing a mismatched
 // height previously squished the text horizontally whenever the rendered
 // width didn't match the 1200-unit coordinate space, which is exactly what
 // happened on the index page's narrower cards.
 
 const PALETTES: [string, string][] = [
   ["#1b3a2c", "#4f9a72"], // the hero band's deep green, opening up
-  ["#d9643f", "#e8a23f"], // terracotta -> gold — the headline gradient
-  ["#2b241c", "#4a4136"], // ink -> ink-soft — a moodier night variant
+  ["#d9643f", "#e8a23f"], // terracotta -> gold - the headline gradient
+  ["#2b241c", "#4a4136"], // ink -> ink-soft - a moodier night variant
   ["#7d5ba6", "#4f9a72"], // single-source purple -> green
   ["#e8a23f", "#d9643f"], // gold -> terracotta, reversed
   ["#2c6a4c", "#7d5ba6"], // brand green -> purple
@@ -70,7 +70,7 @@ export function DestinationBanner({
             // Matches .font-ui in globals.css. Written out rather than
             // classed because this is an SVG <text> inside a generated
             // banner, and the eyebrow is Cyrillic on the Bulgarian guides
-            // — which the interface font covers.
+            // - which the interface font covers.
             fontFamily: "var(--font-ui), var(--font-ui-cyrillic), -apple-system, sans-serif",
             fontSize: 20,
             letterSpacing: 4,

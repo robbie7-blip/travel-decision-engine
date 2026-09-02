@@ -1,10 +1,10 @@
 {
   "city": "Amsterdam",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
-      "text": "Cycling is the dominant mode of local transport and rental bikes are cheap and practical for visitors, but pedestrians who wander into the reddish-paved bike lanes are a genuine hazard/annoyance to locals — stay off them."
+      "text": "Cycling is the dominant mode of local transport and rental bikes are cheap and practical for visitors, but pedestrians who wander into the reddish-paved bike lanes are a genuine hazard/annoyance to locals - stay off them."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,11 +16,11 @@
     },
     {
       "category": "activity",
-      "text": "The Anne Frank House requires online advance booking, often weeks ahead in peak season — there is very limited or no walk-up availability."
+      "text": "The Anne Frank House requires online advance booking, often weeks ahead in peak season - there is very limited or no walk-up availability."
     },
     {
       "category": "practical",
-      "text": "Many canal-house staircases are extremely steep and narrow (a historic quirk, not a renovation gap) — worth knowing for travelers with mobility constraints or heavy luggage."
+      "text": "Many canal-house staircases are extremely steep and narrow (a historic quirk, not a renovation gap) - worth knowing for travelers with mobility constraints or heavy luggage."
     },
     {
       "category": "dietary",

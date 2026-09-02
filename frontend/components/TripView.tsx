@@ -17,7 +17,7 @@ import type { Job, JobTimings as Timings, QualityReport } from "@/lib/jobs";
 import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
 
 /** The page behind a shared/bookmarked /trip/[jobId] link. Loads a job cold
- * from its id — no client-side form state to fall back on — so everything
+ * from its id - no client-side form state to fall back on - so everything
  * needed to render (the brief, for pushback; the itinerary; its language)
  * comes from the job record itself once it's fetched. */
 export function TripView({ jobId }: { jobId: string }) {
@@ -65,7 +65,7 @@ export function TripView({ jobId }: { jobId: string }) {
         const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
         if (saved !== "en" && saved !== "bg") setLanguageState(brief.language);
         // Bookmarks this visit so a returning visitor can find their way
-        // back from the homepage (see lib/recentTrips.ts) — no accounts,
+        // back from the homepage (see lib/recentTrips.ts) - no accounts,
         // just this browser's own localStorage.
         saveRecentTrip({
           jobId,
@@ -101,7 +101,7 @@ export function TripView({ jobId }: { jobId: string }) {
       setResult(itinerary);
       setLastBrief(brief);
       setLastQuestion(question);
-      // The refined itinerary lives at a new job id — swap the bookmarked
+      // The refined itinerary lives at a new job id - swap the bookmarked
       // entry over rather than leaving a stale duplicate pointing at the
       // pre-refinement version.
       removeRecentTrip(currentJobId);
@@ -123,7 +123,7 @@ export function TripView({ jobId }: { jobId: string }) {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      {/* 1450, not this page's own 960px content width below — matches the
+      {/* 1450, not this page's own 960px content width below - matches the
           header width used site-wide (see ask/page.tsx's SiteHeader call);
           this page's contextLink + full nav + lang toggle needed more than
           960 to avoid wrapping. */}

@@ -1,16 +1,16 @@
 :root {
   /* ============================================================
-     COLOR SYSTEM — exactly 6 brand colors, chosen from and anchored to
+     COLOR SYSTEM - exactly 6 brand colors, chosen from and anchored to
      logo-icon.svg's own palette, plus the ink/bg neutrals below. Every
      other --variable in this file is an ALIAS onto one of these six,
-     reused by MEANING rather than introduced fresh — the app should
+     reused by MEANING rather than introduced fresh - the app should
      never need a 7th hue. If something needs to stand out, reuse one
      of these six more deliberately (or more sparingly); don't reach
      for a new color.
 
        1. GREEN  brand / trust / primary interactive. Was a teal, and
           the name --brand-teal is kept only because renaming it would
-          touch a hundred call sites for no behavioural gain — read it
+          touch a hundred call sites for no behavioural gain - read it
           as "the brand colour". Matches logo-icon.svg's line color
           exactly, so the wordmark and every "verified" /
           primary-button / focus moment reads as one identity with the
@@ -32,7 +32,7 @@
        3. GOLD   the "sources disagree" confidence tier, and the logo's
           own upper strokes. No longer half of a headline gradient.
        4. PURPLE narrow and deliberate: the "single source" confidence
-          tier ONLY. Not reused decoratively elsewhere — the one time
+          tier ONLY. Not reused decoratively elsewhere - the one time
           it shows up, it means something specific instead of just
           being another color in the mix.
        5. GREEN  success / feasible / upgrade.
@@ -41,7 +41,7 @@
   --brand-teal: #2c6a4c;
   --brand-coral: #d9643f;
   --brand-gold: #e8a23f;
-  /* The gold at a value that can be read rather than only seen — the
+  /* The gold at a value that can be read rather than only seen - the
      numerals and section rules use this, the tier chip keeps the brighter
      one. */
   --brand-gold-ink: #8a6412;
@@ -52,7 +52,7 @@
   --ink: #1b1a17;
   --ink-soft: #45423c;
   /* Was #8a7d68, which measured 3.28:1 against --bg-panel-raised and
-     3.57:1 against --bg — under the 4.5:1 WCAG AA needs for body text.
+     3.57:1 against --bg - under the 4.5:1 WCAG AA needs for body text.
      This is the color of nearly all secondary text in the product (form
      labels, helper copy, dates, ratings, opening hours, the sub-lines
      under itinerary items), so it was the single most widespread
@@ -65,7 +65,7 @@
   --ink-dim: #605c54;
   /* Cool paper, not parchment.
      ...
-     The old ground was #f7f1e2 — a warm cream — under a coral accent and a
+     The old ground was #f7f1e2 - a warm cream - under a coral accent and a
      serif. That combination is the thing reviewers kept recognising: it is
      the same small corner of colour space as the Anthropic identity, and no
      amount of changing the dots was going to move it. Warmth now comes from
@@ -80,7 +80,7 @@
   /* The deep end of the palette, and the reason the page has a pulse.
      ...
      A first pass at this redesign took the parchment out and put nothing
-     back, which read as grey and, fairly, as depressing — the wrong note
+     back, which read as grey and, fairly, as depressing - the wrong note
      entirely for a product whose whole job is to make someone want to go
      somewhere. The fix is not more colour everywhere; it is somewhere for
      the eye to fall. This is a deep sea blue for the hero band, with the
@@ -99,7 +99,7 @@
   --deep-line: rgba(244, 241, 228, 0.32);
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
 
-  /* Confidence-tier colors — aliases onto the six above, not separate
+  /* Confidence-tier colors - aliases onto the six above, not separate
      hues, so the tier system and the rest of the UI draw from the same
      palette instead of running two color systems side by side. */
   --grounded: var(--brand-teal);
@@ -107,21 +107,21 @@
   --unverified: var(--brand-gold);
   --infeasible: var(--brand-red);
   --tier-single-source: var(--brand-purple);
-  /* Deliberately its own literal value, not an alias — this tier means
+  /* Deliberately its own literal value, not an alias - this tier means
      "lowest-confidence guess," and a punchy brand color here would fight
      that meaning by making an inferred line look as trustworthy as a
      verified one. */
   --tier-inferred: #8f8b82;
 
   /* logo-icon.svg is a static asset that can't read this file's
-     variables — --brand-teal above IS that exact hex already, this just
+     variables - --brand-teal above IS that exact hex already, this just
      names that fact so the wordmark (which reads --logo-teal) can never
      drift from the mark next to it, independent of whatever else
      --brand-teal ends up meaning. */
   --logo-teal: var(--brand-teal);
 
   /* The same coral, dark enough to be read as text rather than seen as
-     decoration. Not a seventh hue — it's the one brand coral, at the
+     decoration. Not a seventh hue - it's the one brand coral, at the
      value it has to sit at to clear 4.5:1 on the page grounds.
      --brand-coral itself measured 2.93:1 behind the header tagline, the
      worst contrast anywhere on the page. Use --brand-coral for fills,
@@ -136,7 +136,7 @@
 
   /* Body copy now sets in the same face as the interface. It was a bare
      system stack, which meant the page rendered in SF on a Mac and Segoe
-     UI on Windows while the chrome beside it was Inter — two different
+     UI on Windows while the chrome beside it was Inter - two different
      sans faces on the same line of sight, and a layout that measured
      differently on each platform. The system stack stays as the fallback
      for the moment before the webfont lands. */
@@ -144,12 +144,12 @@
     "Segoe UI", sans-serif;
 
   /* Decorative slot names kept from an earlier pass so component files
-     didn't need touching for this consolidation — each is an alias onto
+     didn't need touching for this consolidation - each is an alias onto
      one of the six brand colors above, picked so the three "How It
      Works" step icons (blue slot / purple slot / teal slot) stay
      visually distinct from each other. --color-teal is retired outright
      (not aliased) because pointing it at --brand-teal would have made
-     it collide with --color-blue — see page.tsx's step-3 icon, which
+     it collide with --color-blue - see page.tsx's step-3 icon, which
      now reads var(--accent-2) [gold] directly instead. */
   --color-blue: var(--brand-teal);
   --color-purple: var(--brand-purple);
@@ -189,7 +189,7 @@ button {
   font-family: inherit;
 }
 
-/* Two entries, one typeface — the second carries the Cyrillic cuts and is
+/* Two entries, one typeface - the second carries the Cyrillic cuts and is
    fetched only on pages that render them, same arrangement as .font-ui.
    Before this, the display face had no Cyrillic at all and every Bulgarian
    heading dropped to Georgia. */
@@ -203,10 +203,10 @@ button {
    as a terminal underneath a warm serif headline. */
 .font-ui {
   /* Two entries, one typeface: the second carries the Cyrillic cuts and
-     is fetched only on pages that render them — see layout.tsx. */
+     is fetched only on pages that render them - see layout.tsx. */
   font-family: var(--font-ui), var(--font-ui-cyrillic), -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
-  /* Digits still line up in a column even in the proportional face —
+  /* Digits still line up in a column even in the proportional face -
      which is most of what the monospace was really being used for. */
   font-variant-numeric: tabular-nums;
 }
@@ -214,12 +214,12 @@ button {
 /* Deliberately narrow now. Reach for this only where equal-width
    characters do real work: a column of clock times down a day, the admin
    diagnostics numbers. Using it for ordinary interface text is the thing
-   that was just undone — put that in .font-ui. */
+   that was just undone - put that in .font-ui. */
 .font-mono {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   /* DM Mono's heaviest weight is 500, and the browser's answer to a
-     weight it doesn't have is to smear the widest face it does — which at
+     weight it doesn't have is to smear the widest face it does - which at
      11px reads blurry rather than bold. This sends those requests to the
      real 500 cut instead, and works despite the inline fontWeight values
      scattered through the components since it's a different property. */
@@ -239,7 +239,7 @@ button {
   color: var(--ink);
 }
 
-/* Solid teal (brand/trust — see the COLOR SYSTEM block above), not
+/* Solid teal (brand/trust - see the COLOR SYSTEM block above), not
    coral. Coral read too "warning-orange" for the main CTA in practice;
    teal ties the button directly to the same trust color used for the
    wordmark and the verified/feasible confidence tier, which fits a
@@ -279,7 +279,7 @@ button {
    ...
    This is the product. Everything else on the page is an argument for
    using it, and it is the one surface where restraint is the wrong
-   instinct — a previous pass stripped the fields to a single hairline
+   instinct - a previous pass stripped the fields to a single hairline
    underneath, which is handsome on a printed page and, on screen, reads
    as loose text rather than as somewhere to type. An input has to look
    fillable before it looks tasteful.
@@ -288,7 +288,7 @@ button {
    dark enough to see without being shouted, 48px of height so the field
    is a target rather than a line, and a focus state that changes two
    things at once (colour and weight) so it is unmistakable. The chrome
-   that went away and is not coming back is the decoration — the tinted
+   that went away and is not coming back is the decoration - the tinted
    gradients, the 4px coloured left edges, the coral halo. */
 .trip-form-grid input,
 .trip-form-grid select,
@@ -316,8 +316,8 @@ button {
   border-color: var(--ink-dim) !important;
 }
 
-/* Two changes at once — the border goes to the brand colour AND gains a
-   ring — so focus is legible for someone who can't separate the two hues.
+/* Two changes at once - the border goes to the brand colour AND gains a
+   ring - so focus is legible for someone who can't separate the two hues.
    No offset outline on top of it; the ring is the outline. */
 .trip-form-grid input:focus,
 .trip-form-grid select:focus,
@@ -345,8 +345,8 @@ button {
   }
 }
 
-/* The panel the form sits in. Not the old card — no drop shadow, no
-   coloured border — but a real surface: white against the warm ground,
+/* The panel the form sits in. Not the old card - no drop shadow, no
+   coloured border - but a real surface: white against the warm ground,
    one hairline, and enough padding that the fields have room to be
    fields. The page needs to show where the product starts. */
 .form-panel {
@@ -357,7 +357,7 @@ button {
 }
 
 /* The form's own title. Serif, sized like a section heading, over a rule
-   in the brand green — the panel announces itself instead of opening on a
+   in the brand green - the panel announces itself instead of opening on a
    field label. */
 .form-heading {
   font-size: 26px;
@@ -391,7 +391,7 @@ button {
 }
 
 /* Default (desktop) state: a normal inline flex row. The mobile media query
-   below overrides this to display:none — same specificity, so the later,
+   below overrides this to display:none - same specificity, so the later,
    condition-gated rule wins whenever it actually matches, no !important
    needed. Deliberately NOT set inline in page.tsx, since an inline style
    would out-rank this override on mobile regardless of the media query. */
@@ -404,14 +404,14 @@ button {
    give it its own clearly separated line instead of sitting right under
    with barely any gap.
 
-   1000px, not the 1600px this briefly became — SiteHeader.tsx now puts
+   1000px, not the 1600px this briefly became - SiteHeader.tsx now puts
    the nav on its own dedicated row (row 2, below logo+account+language on
    row 1, matching Booking.com's own two-row header) instead of competing
    with those for space in one combined row. Measured directly: the 7 nav
    links alone need ~893px unwrapped, so 1000px leaves real margin without
    collapsing to the hamburger toggle nearly as early as the old
    single-row layout needed to. (Before the two-row split, this was 700px,
-   which — fighting logo+account+language for the same row — left a dead
+   which - fighting logo+account+language for the same row - left a dead
    zone between ~700 and ~1550px where the combined row was forced to
    cram; that's fixed by row 2 no longer sharing space with row 1 at all,
    not by this number specifically.) */
@@ -427,7 +427,7 @@ button {
   /* contextLink now renders as its own sibling next to the logo (see
      SiteHeader.tsx) instead of as header-nav-row's first child, so it no
      longer automatically gets that row's "full width, own line" mobile
-     treatment above — give it the same forced-own-line behavior directly
+     treatment above - give it the same forced-own-line behavior directly
      so it doesn't squeeze onto the logo's row on narrow screens. */
   .header-context-link {
     width: 100%;
@@ -435,7 +435,7 @@ button {
   }
 
   /* The links/controls groups already wrap onto separate lines at this
-     width, which separates them on its own — the vertical rule between
+     width, which separates them on its own - the vertical rule between
      them would just float oddly at the start of a wrapped line instead. */
   .nav-divider {
     display: none;
@@ -444,7 +444,7 @@ button {
   /* Six nav links (How it works / Destination guides / Real examples /
      Ask a Local / Places you've been / Pricing) wrapping onto 2-3 rows was
      confirmed to read as "stuffed" on mobile vs. a reference like Booking's
-     app, which shows none of this inline at all — collapsed into a single
+     app, which shows none of this inline at all - collapsed into a single
      tappable "Menu" toggle instead (see .nav-menu-toggle below), same
      information, one row instead of several. Desktop is untouched: this
      rule only fires under the breakpoint, and .nav-menu-toggle stays
@@ -468,14 +468,14 @@ button {
   }
 }
 
-/* Hidden on desktop — only meaningful once the rule above turns it on
+/* Hidden on desktop - only meaningful once the rule above turns it on
    under the mobile breakpoint.
 
    align-items matters here even though the button looks like plain text:
    the mobile rule turns it into an inline-flex, and the touch-target
    block below gives it min-height 44px on a finger device. A flex box
    taller than its content, with no alignment set, leaves "Menu ☰" sitting
-   at the top of the pill rather than in the middle of it — which is
+   at the top of the pill rather than in the middle of it - which is
    exactly how it rendered on a phone. */
 .nav-menu-toggle {
   display: none;
@@ -483,7 +483,7 @@ button {
   justify-content: center;
 }
 
-/* Hero subhead's forced break between its two sentences (see page.tsx) —
+/* Hero subhead's forced break between its two sentences (see page.tsx) -
    off by default (mobile: falls back to natural space-joined wrap, which
    is what avoids stranding "guess." on its own line there) and turned on
    once the paragraph's 820px column has room to fully apply, where the
@@ -498,7 +498,7 @@ button {
   }
 }
 
-/* /why-decide's two-column "generic chatbot vs decide" comparison rows —
+/* /why-decide's two-column "generic chatbot vs decide" comparison rows -
    side by side on desktop, stacked on mobile where two ~150px-wide columns
    would otherwise squeeze both cells' text down to nearly unreadable. */
 @media (max-width: 600px) {
@@ -508,7 +508,7 @@ button {
 }
 
 /* Confidence-legend pills and the recent-trips chip list both used to wrap
-   onto 2-3 rows on mobile (5 legend pills, one row per saved trip) — same
+   onto 2-3 rows on mobile (5 legend pills, one row per saved trip) - same
    "stuffed" complaint as the nav above, but these are secondary/
    informational rather than navigation, so a single horizontally
    scrollable row (Booking's own card carousels use the same pattern) fits
@@ -565,7 +565,7 @@ button {
 /* Removed: div[style*="padding: 32px 24px"] { position: relative }.
 
    It matched only the six admin page wrappers, and only ever would have
-   matched them on a client re-render — React serialises inline styles
+   matched them on a client re-render - React serialises inline styles
    with no space after the colon ("padding:32px 24px"), so the selector
    misses server-rendered markup entirely and hits the same element once
    the browser normalises the attribute. Styling that switches on and off
@@ -577,15 +577,15 @@ button {
    colors that already anchor the rest of the page (brand/trust and
    action), instead of a third hue introduced just for this section.
    Mixed against --bg-panel (the cool near-white, not the warm beige
-   --bg-panel-raised or transparent-over-page-bg) — mixing teal into a warm
+   --bg-panel-raised or transparent-over-page-bg) - mixing teal into a warm
    beige backdrop muddies it toward gray, since beige's own blue channel
    fights the teal hue; --bg-panel's near-white base keeps both colors
    clean. At 6%/10% (the original strength) this sat close enough to the
    page's own --bg to barely read as distinct from the plain background
-   around it — pushed up well past that here. */
+   around it - pushed up well past that here. */
 
 /* The hero band. One deep surface at the top of the page, everything
-   below it on paper — the contrast is the whole point, and it is doing the
+   below it on paper - the contrast is the whole point, and it is doing the
    job the decorative circles used to pretend to do. */
 .hero {
   background: var(--deep);
@@ -602,7 +602,7 @@ button {
 }
 
 /* The tier rules, lifted for the dark ground. Brand teal on deep sea blue
-   is very nearly the same colour, so the legend's markers vanished — a
+   is very nearly the same colour, so the legend's markers vanished - a
    cosmetic loss rather than a meaning one now that each entry carries its
    own words, but a row of invisible marks looks broken. Same hues, raised
    to where they read against the band. */
@@ -625,7 +625,7 @@ button {
 
 /* The How-it-works steps, as columns divided by rules rather than cards.
    The tinted panel, the white card backgrounds, the coloured borders and
-   the hover-lift are all gone — see the note in page.tsx. What is left is
+   the hover-lift are all gone - see the note in page.tsx. What is left is
    a rule, a numeral and two sizes of type, which is how a printed guide
    does this and needs no decoration to read as deliberate. */
 .step-rows {
@@ -640,7 +640,7 @@ button {
 }
 
 /* Gold, not grey. The numerals were --line-strong, which is the colour of
-   a hairline and reads as one — three faint marks doing nothing. At the
+   a hairline and reads as one - three faint marks doing nothing. At the
    gold they become the second colour on the light half of the page and
    the eye has somewhere to go after the hero. */
 .step-row > :first-child {
@@ -675,7 +675,7 @@ button {
   }
 }
 
-/* The tinted How-it-works panel is gone with the cards — the section now
+/* The tinted How-it-works panel is gone with the cards - the section now
    sits on the page ground like every other, separated by the same hairline
    rules the rest of the layout uses. */
 /* Confidence legend pills - each one now colored by its own tier instead
@@ -698,7 +698,7 @@ span[data-tier] {
    carrying that inline color into a padded, bordered, shadowed button
    with a hover lift.
 
-   Written for one demo link, it reached nineteen — every admin nav link
+   Written for one demo link, it reached nineteen - every admin nav link
    and the "check flight prices" link inside an itinerary row. And it
    reached them inconsistently, for the same reason as the rule above:
    React writes color:var(--grounded) with no space, so server-rendered
@@ -706,7 +706,7 @@ span[data-tier] {
 
    It also fought the components themselves. The itinerary link sets
    textDecoration: "underline" on the element and this overrode it with
-   text-decoration: none !important — the markup asked for an underlined
+   text-decoration: none !important - the markup asked for an underlined
    link and the stylesheet made it a button. Deleting restores what each
    element already says it wants. */
 
@@ -715,12 +715,12 @@ a {
   transition: all 0.2s ease;
 }
 
-/* Header nav links — was plain black text with a divider between items
+/* Header nav links - was plain black text with a divider between items
    and only a hover underline, which read as flat/generic (no sense of
    "where am I" and nothing but a color change to notice on hover). Pill-
    shaped chips instead: a soft tinted background on hover, a solid brand-
    teal fill for whichever page you're actually on (data-active, set in
-   NavMenu.tsx via usePathname()) — so the nav carries real wayfinding
+   NavMenu.tsx via usePathname()) - so the nav carries real wayfinding
    information instead of being a flat list of same-weight links. */
 .nav-link {
   position: relative;
@@ -783,7 +783,7 @@ a {
   color: var(--color-blue) !important;
 }
 
-/* Global "Sign in" / "Account" header pill (AccountControl.tsx) — teal
+/* Global "Sign in" / "Account" header pill (AccountControl.tsx) - teal
    while signed out (same brand/primary color as the rest of the header
    controls), green once signed in (the "feasible/success" color, reused
    here for "this is in a good state" rather than introducing a 7th hue). */
@@ -816,7 +816,7 @@ a {
   flex-shrink: 0;
 }
 
-/* account/page.tsx — the signed-in summary card. Reuses colors that
+/* account/page.tsx - the signed-in summary card. Reuses colors that
    already carry meaning elsewhere rather than inventing new ones: teal
    for identity (matches the header's own signed-out "Sign in" pill and
    the wordmark), green for "you're on this plan / this is the good
@@ -908,7 +908,7 @@ a {
 }
 
 /* The upgrade row gets the "this is the good next step" green treatment
-   instead of the neutral gray every other row uses — it's the one row
+   instead of the neutral gray every other row uses - it's the one row
    on this page meant to actually be clicked. */
 .account-upgrade-row {
   border-color: color-mix(in srgb, var(--accent-green) 35%, transparent);
@@ -944,7 +944,7 @@ p {
 
 /* Removed: div[style*="padding: 36px 24px"] and its ::before top bar.
 
-   The comment said "form container styling", and that was true once —
+   The comment said "form container styling", and that was true once -
    the homepage form section now uses padding: 36px clamp(32px, 8%,
    180px), so the rule lost its target. What it actually decorated by the
    time it was found were the two error states in CompareView and
@@ -958,14 +958,14 @@ p {
    band is wanted again it should be a class on the element that wants
    it. */
 
-/* The card the form used to sit in — white on the page ground, 2px teal
-   border, 24px coloured shadow — is gone. The section already has rules
+/* The card the form used to sit in - white on the page ground, 2px teal
+   border, 24px coloured shadow - is gone. The section already has rules
    above and below it; a second frame inside those was pure decoration. */
 
 /* ============================================================
    TOUCH TARGETS
 
-   Everything below fires only under (pointer: coarse) — a device whose
+   Everything below fires only under (pointer: coarse) - a device whose
    PRIMARY input is imprecise, i.e. a finger. That's the right gate rather
    than a width breakpoint: a narrow desktop window is still a mouse and
    doesn't need 44px controls, while a large tablet is still a thumb and
@@ -973,7 +973,7 @@ p {
 
    44px is the Apple HIG / WCAG 2.5.5 figure. Measured at 390px before
    this existed, the homepage had 15 controls under it with the menu
-   closed and 52 with the date picker open — the calendar's day cells were
+   closed and 52 with the date picker open - the calendar's day cells were
    36x29 and its month arrows 24x26, which is a coin toss with a thumb.
 
    Sizes are raised with min-height, not padding, so nothing reflows on
@@ -1002,7 +1002,7 @@ p {
     justify-content: center;
   }
 
-  /* The label already wraps the box and its text, so it is the target —
+  /* The label already wraps the box and its text, so it is the target -
      it was just 16px tall. */
   .check-row {
     min-height: 44px;
@@ -1015,7 +1015,7 @@ p {
 
   /* Seven columns at 44px, plus the 1px margin each day cell carries and
      the popover's own 16px padding either side: 7 * 46 + 32 = 354.
-     Clamped so it can never push past a narrow screen — below about a
+     Clamped so it can never push past a narrow screen - below about a
      380px viewport the cells give up a little width and keep their
      height, which is the half that matters for a thumb. */
   .date-popover {

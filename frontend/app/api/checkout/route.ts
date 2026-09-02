@@ -1,11 +1,11 @@
 // Creates a Stripe Checkout session for the subscription. Stripe collects
 // payment details itself (this app never touches a card number) and the
 // checkout.session.completed webhook (see app/api/stripe/webhook) is what
-// actually grants paid access — the redirect back here is just where the
+// actually grants paid access - the redirect back here is just where the
 // traveler ends up, not a trust boundary. The email typed on the pricing
 // page becomes both the Stripe customer's email and the key the webhook
 // upserts user:<email> under, so it MUST match whatever email the traveler
-// later requests a magic link with — the pricing page copy says this.
+// later requests a magic link with - the pricing page copy says this.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, getSubscriptionPriceId } from "@/lib/stripe";
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Couldn't start checkout. Try again." }, { status: 502 });
     }
 
-    // Funnel visibility — best-effort, must never block a real checkout.
+    // Funnel visibility - best-effort, must never block a real checkout.
     try {
       await recordFunnelEvent(getRedis(), "checkout_started");
     } catch {

@@ -1,6 +1,6 @@
 {
   "city": "Singapore",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,7 +8,7 @@
     },
     {
       "category": "cost",
-      "text": "A hawker centre meal runs roughly S$5-10 (~$4-7); a mid-range hotel is closer to S$150-250/night (~$110-185) — the gap between eating well at a hawker centre and a proper sit-down restaurant is large, not marginal."
+      "text": "A hawker centre meal runs roughly S$5-10 (~$4-7); a mid-range hotel is closer to S$150-250/night (~$110-185) - the gap between eating well at a hawker centre and a proper sit-down restaurant is large, not marginal."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,7 +16,7 @@
     },
     {
       "category": "activity",
-      "text": "Gardens by the Bay and Marina Bay Sands SkyPark sell timed tickets, and sunset slots sell out — book ahead rather than assuming walk-up entry."
+      "text": "Gardens by the Bay and Marina Bay Sands SkyPark sell timed tickets, and sunset slots sell out - book ahead rather than assuming walk-up entry."
     },
     {
       "category": "practical",

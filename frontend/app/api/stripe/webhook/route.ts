@@ -1,8 +1,8 @@
 // Note: this Stripe API version keeps current_period_end on each
 // subscription ITEM, not on the subscription object itself (older API
-// versions had it top-level) — see currentPeriodEndOf below.
+// versions had it top-level) - see currentPeriodEndOf below.
 //
-// Stripe webhook — the ONLY place that grants or revokes paid access.
+// Stripe webhook - the ONLY place that grants or revokes paid access.
 // Everything else (checkout route, account page) just reads what this has
 // already written to Redis. Verifies the signature against the raw request
 // body (must read via request.text(), never request.json() first, or the
@@ -22,7 +22,7 @@ import { recordFunnelEvent } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
-/** This subscription's period end — a single-price subscription (which is
+/** This subscription's period end - a single-price subscription (which is
  * all this app creates) always has exactly one item, so its period end IS
  * the subscription's period end for display purposes. */
 function currentPeriodEndOf(subscription: Stripe.Subscription): number | null {
@@ -59,7 +59,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
   const email = await getEmailForStripeCustomer(redis, customerId);
   // No reverse-index entry yet (e.g. this event raced ahead of
-  // checkout.session.completed) — nothing to update; the completed handler
+  // checkout.session.completed) - nothing to update; the completed handler
   // will write the initial status shortly after.
   if (!email) return;
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(stripe, event.data.object as Stripe.Checkout.Session);
-        // Funnel visibility (see lib/analytics.ts) — the actual conversion
+        // Funnel visibility (see lib/analytics.ts) - the actual conversion
         // event, not just a checkout attempt. Deliberately after the real
         // work above, not before: never counted if granting access itself
         // failed and this handler threw.
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         await recordFunnelEvent(getRedis(), "subscription_canceled").catch(() => {});
         break;
       default:
-        // Every other event type is irrelevant to access control — Stripe
+        // Every other event type is irrelevant to access control - Stripe
         // sends 200+ types and expects a 2xx for whichever ones a webhook
         // didn't ask about, so silently accepting the rest is correct, not
         // an oversight.
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
   } catch {
     // Returning 500 makes Stripe retry this event later (it retries
-    // non-2xx responses on a backoff schedule) — better than swallowing a
+    // non-2xx responses on a backoff schedule) - better than swallowing a
     // transient Redis/Stripe-API hiccup and silently never granting access.
     return NextResponse.json({ detail: "Failed to process event." }, { status: 500 });
   }

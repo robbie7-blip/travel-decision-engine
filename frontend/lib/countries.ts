@@ -1,11 +1,11 @@
-// Country reference data for the visited-places tracker (lib/visited.ts) —
+// Country reference data for the visited-places tracker (lib/visited.ts) -
 // 197 entries: the 193 UN member states plus the Holy See, Palestine,
 // Taiwan, and Kosovo (all four widely tracked by travel apps despite
-// contested/partial recognition — deliberately included rather than
+// contested/partial recognition - deliberately included rather than
 // omitted, since "have you been there" doesn't hinge on UN membership).
 // Grouped by continent for the stats breakdown and the tracker UI's
 // section headings. ISO 3166-1 (or, for Kosovo, the commonly-used
-// provisional "XK") alpha-2 codes throughout — the code, not the name
+// provisional "XK") alpha-2 codes throughout - the code, not the name
 // string, is the stored/keyed value everywhere else in this feature
 // (lib/visited.ts, the API routes) so renaming a country never touches
 // stored data.
@@ -13,7 +13,7 @@
 // nameBg carries the Bulgarian country name alongside the English one.
 // Added after a real bug: the map/checklist/flags/timeline views used to
 // show English country names unconditionally even when the rest of the UI
-// (tab labels, headings) was switched to Bulgarian — a jarring mixed-
+// (tab labels, headings) was switched to Bulgarian - a jarring mixed-
 // language experience. getCountryName()/getContinentName() below pick the
 // right one from a single Language value, the same pattern lib/i18n.ts
 // already uses for every other user-facing string.
@@ -30,7 +30,7 @@ export interface Country {
 }
 
 /** Flag emoji derived from the ISO code algorithmically (each letter maps to
- * a Unicode "regional indicator symbol") rather than stored per-country —
+ * a Unicode "regional indicator symbol") rather than stored per-country -
  * one formula instead of 195 hand-copied emoji to keep in sync. */
 export function countryFlagEmoji(code: string): string {
   return String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1e6 - 65 + c.charCodeAt(0)));
@@ -260,7 +260,7 @@ const CONTINENT_NAME_BG: Record<Continent, string> = {
   "South America": "Южна Америка",
 };
 
-/** Continent section-heading text for the given language — same
+/** Continent section-heading text for the given language - same
  * "resolve per-render, don't store a locale-specific copy" pattern as
  * getCountryName below. */
 export function getContinentName(continent: Continent, language: Language): string {
@@ -274,7 +274,7 @@ export function getCountry(code: string): Country | undefined {
 }
 
 /** The country's display name in the given language, falling back to the
- * English name if the code isn't tracked (defensive — callers that already
+ * English name if the code isn't tracked (defensive - callers that already
  * checked getCountry() won't hit this, but it keeps the signature simple
  * for call sites that just want a string for a known-tracked code). */
 export function getCountryName(code: string, language: Language): string {

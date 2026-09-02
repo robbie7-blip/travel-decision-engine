@@ -1,16 +1,16 @@
-// "Did you know?" trivia for the loading screen — shown while a trip
+// "Did you know?" trivia for the loading screen - shown while a trip
 // generates so the wait feels like it's teaching you something about the
 // place rather than just spinning. Two sources, tried in order:
 //   1. The curated facts/*.json base (loadFacts, same file the model itself
-//      is grounded on) — used as-is when the destination is one of the
+//      is grounded on) - used as-is when the destination is one of the
 //      curated cities, so this reuses data we've already hand-verified.
-//   2. Wikipedia's free REST summary API (no key, no signup — consistent
+//   2. Wikipedia's free REST summary API (no key, no signup - consistent
 //      with Open-Meteo elsewhere in this app) for every other destination,
 //      so every possible city has *something* rather than only the ~24
 //      curated ones. The summary extract is split into sentences to get a
 //      handful of independent facts instead of one big paragraph.
 // Facts don't change meaningfully day to day, so results are cached in
-// Redis per-city (not per-request-combo) with a long TTL — a much better
+// Redis per-city (not per-request-combo) with a long TTL - a much better
 // cache hit rate than keying on the full destinations list the way
 // /api/weather does, since individual cities repeat across many trips.
 
@@ -20,7 +20,7 @@ import { loadFacts } from "@/lib/engine/prompt";
 
 export const runtime = "nodejs";
 
-const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days — facts are effectively static
+const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days - facts are effectively static
 const MAX_FACTS_PER_CITY = 6;
 const MIN_SENTENCE_LENGTH = 25; // drops fragments ("She was born in 1990.") that read oddly alone
 

@@ -1,4 +1,4 @@
-// Redirects a signed-in Pro traveler to Stripe's hosted Customer Portal —
+// Redirects a signed-in Pro traveler to Stripe's hosted Customer Portal -
 // the self-service "manage/cancel my subscription" flow this app didn't
 // have before (see /terms's "Subscriptions and billing" section, which
 // used to say cancellation was email-only). Stripe's portal handles
@@ -7,7 +7,7 @@
 // of a real Stripe customer before handing out a portal session for it.
 //
 // Requires the Customer Portal to be turned on once in the Stripe
-// dashboard (Settings -> Billing -> Customer portal) — same one-time
+// dashboard (Settings -> Billing -> Customer portal) - same one-time
 // dashboard setup as the Product/Price and webhook, not something this
 // route can configure itself.
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const user = await getUserRecord(redis, email);
   if (!user?.stripeCustomerId) {
     // Signed in, but never actually subscribed (or the webhook hasn't
-    // linked the customer yet) — nothing for the portal to manage.
+    // linked the customer yet) - nothing for the portal to manage.
     return NextResponse.json({ detail: "No subscription found for this account." }, { status: 404 });
   }
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: portalSession.url });
   } catch {
     // Most common real-world cause: the Customer Portal hasn't been
-    // enabled yet in the Stripe dashboard for this account/mode — a
+    // enabled yet in the Stripe dashboard for this account/mode - a
     // config gap, not something to leak as a raw provider error.
     return NextResponse.json(
       { detail: "Couldn't open the billing portal. Try again, or contact support." },

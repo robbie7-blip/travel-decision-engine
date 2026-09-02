@@ -6,7 +6,7 @@ import { getTestModeKey, TEST_MODE_HEADER } from "./testMode";
 export class ApiError extends Error {}
 
 // 800ms, not 2s: this is dead time bolted onto the END of every generation
-// — the job can finish a full interval before the next poll notices, so a
+// - the job can finish a full interval before the next poll notices, so a
 // 2s interval was adding up to 2s of pure waiting to a number that's
 // already the thing travelers complain about. A poll is a single cheap
 // Redis read, so the extra requests cost far less than the latency they
@@ -16,20 +16,20 @@ export class ApiError extends Error {}
 // that averaged ~400ms of pure lag on the traveler's clock for no reason
 // beyond saving a handful of Upstash reads per run.
 const POLL_INTERVAL_MS = 400;
-const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes — generous now that generation runs in the worker, unconstrained by a serverless timeout
+const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes - generous now that generation runs in the worker, unconstrained by a serverless timeout
 
 async function readErrorDetail(response: Response, fallback: string): Promise<string> {
   try {
     const body = await response.json();
     if (typeof body?.detail === "string") return body.detail;
   } catch {
-    // response body wasn't JSON — keep the fallback message
+    // response body wasn't JSON - keep the fallback message
   }
   return fallback;
 }
 
 /** Polls GET /api/job/[id] until it's done. `onStatus` is called on every
- * poll so the UI can show progress ("queued" / "generating...") — it also
+ * poll so the UI can show progress ("queued" / "generating...") - it also
  * receives the job's brief on every call (not just once done), since the
  * brief is written at job-creation time and is available from the very
  * first poll. This lets the loading screen show destination-aware content
@@ -37,7 +37,7 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
  * just after. Shared by refineItinerary below and by the /trip/[jobId] page,
  * which polls a job it didn't create itself (loaded straight from a shared
  * link). Also returns the brief alongside the final result since a page
- * loading a job cold — rather than holding the brief in form state already —
+ * loading a job cold - rather than holding the brief in form state already -
  * needs it to submit a pushback. */
 export async function pollJob(
   jobId: string,
@@ -66,14 +66,14 @@ export async function pollJob(
     }
 
     if (Date.now() - start > MAX_WAIT_MS) {
-      throw new ApiError("This is taking much longer than expected — try again shortly.");
+      throw new ApiError("This is taking much longer than expected - try again shortly.");
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
 }
 
 /** Enqueues a generation job and returns its id immediately, without
- * polling — the caller (the trip form) navigates to /trip/[jobId] right
+ * polling - the caller (the trip form) navigates to /trip/[jobId] right
  * away and lets that page own polling, so the result has a shareable,
  * bookmarkable URL from the moment generation starts. */
 export async function createGenerateJob(brief: TripBriefInput): Promise<string> {
@@ -99,8 +99,8 @@ export async function createGenerateJob(brief: TripBriefInput): Promise<string> 
 
 /** Submits a pushback/follow-up question about an already-generated
  * itinerary and polls until the model's revision (or justified refusal)
- * comes back. The returned itinerary replaces the caller's current one —
- * including its own pushback_response — so a second pushback builds on the
+ * comes back. The returned itinerary replaces the caller's current one -
+ * including its own pushback_response - so a second pushback builds on the
  * latest revision rather than the original. */
 export async function refineItinerary(
   brief: TripBriefInput,
@@ -124,7 +124,7 @@ export async function refineItinerary(
   return pollJob(jobId, onStatus);
 }
 
-/** Submits feedback on one itinerary line item. Swallows nothing — throws
+/** Submits feedback on one itinerary line item. Swallows nothing - throws
  * ApiError on failure so the UI can show a real error instead of silently
  * pretending the feedback was recorded. */
 export async function submitFeedback(entry: Omit<FeedbackEntry, "id" | "createdAt">): Promise<void> {

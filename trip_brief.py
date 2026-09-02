@@ -9,7 +9,7 @@ the LLM) is threefold:
   2. It gives you something you can log, validate, and debug independently
      of the LLM call.
   3. It's the foundation for the "regenerate with this one change" interaction
-     later (Phase 2) — you just mutate one field and re-run.
+     later (Phase 2) - you just mutate one field and re-run.
 """
 
 from dataclasses import dataclass, field, asdict
@@ -37,7 +37,7 @@ class TripBrief:
             f"Destinations: {', '.join(self.destinations)}",
             f"Dates: {self.start_date} to {self.end_date}",
             f"Travelers: {self.party_size} ({self.party_composition})",
-            f"Budget: {'€' + str(self.budget_total_eur) + ' total' if self.budget_total_eur else 'not specified — assume mid-range'}",
+            f"Budget: {'€' + str(self.budget_total_eur) + ' total' if self.budget_total_eur else 'not specified - assume mid-range'}",
             f"Pace: {self.pace}",
             f"Interests: {', '.join(self.interests) if self.interests else 'general sightseeing'}",
         ]
@@ -53,7 +53,7 @@ class TripBrief:
         return json.dumps(asdict(self), indent=2)
 
 
-# Example briefs for testing the pipeline — replace with real form input later.
+# Example briefs for testing the pipeline - replace with real form input later.
 SAMPLE_BRIEFS = [
     TripBrief(
         destinations=["Brussels", "Bruges"],
@@ -84,7 +84,7 @@ SAMPLE_BRIEFS = [
 # look solid. A good engine should HEDGE HARD or explicitly flag uncertainty
 # on all three of these, rather than confidently making things up.
 ADVERSARIAL_BRIEFS = [
-    # 1. Zero facts file — nothing in /facts/ for this city. Does it
+    # 1. Zero facts file - nothing in /facts/ for this city. Does it
     #    confidently invent specific prices/hours, or does it visibly hedge?
     TripBrief(
         destinations=["Ljubljana"],
@@ -96,7 +96,7 @@ ADVERSARIAL_BRIEFS = [
         pace="moderate",
         interests=["nature", "local food"],
     ),
-    # 2. Genuinely unworkable budget — forces the engine to either say so
+    # 2. Genuinely unworkable budget - forces the engine to either say so
     #    honestly or paper over an impossible trip with vague optimism.
     TripBrief(
         destinations=["Brussels", "Bruges"],
@@ -108,7 +108,7 @@ ADVERSARIAL_BRIEFS = [
         pace="moderate",
         interests=["food", "architecture", "beer culture"],
     ),
-    # 3. Directly contradictory preferences — "packed" pace with a huge
+    # 3. Directly contradictory preferences - "packed" pace with a huge
     #    interest list but explicit no-early-mornings / lots-of-rest
     #    constraint. Tests whether it flags the contradiction or just
     #    quietly picks one side and hopes you don't notice.

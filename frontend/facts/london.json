@@ -1,6 +1,6 @@
 {
   "city": "London",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -16,11 +16,11 @@
     },
     {
       "category": "activity",
-      "text": "Most major London museums (British Museum, National Gallery, Tate Modern) are free to enter for the permanent collection — only special/temporary exhibitions charge, which is easy to miss when budgeting."
+      "text": "Most major London museums (British Museum, National Gallery, Tate Modern) are free to enter for the permanent collection - only special/temporary exhibitions charge, which is easy to miss when budgeting."
     },
     {
       "category": "practical",
-      "text": "Standing on the left, walking on the right on Underground escalators is a strongly enforced social norm — blocking the left side draws real irritation from commuters."
+      "text": "Standing on the left, walking on the right on Underground escalators is a strongly enforced social norm - blocking the left side draws real irritation from commuters."
     },
     {
       "category": "dietary",

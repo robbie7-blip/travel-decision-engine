@@ -1,4 +1,4 @@
-// Next.js API route — persists user feedback on a specific itinerary line
+// Next.js API route - persists user feedback on a specific itinerary line
 // item (helpful / wrong, with an optional comment). This is the start of
 // the trust-feedback loop: real users flagging real inaccuracies is the
 // only signal that tells us whether the grounding/search/confidence-tier
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
     return NextResponse.json(
-      { detail: `Too many requests — ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
+      { detail: `Too many requests - ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
       {
         status: 429,
         headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,

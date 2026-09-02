@@ -4,14 +4,14 @@
 //   - GET, signed in: the account owner's stable, server-issued token
 //     (unchanged from before).
 //   - POST, not signed in: the caller already minted its own token
-//     client-side and just wants its snapshot stored/refreshed under it —
+//     client-side and just wants its snapshot stored/refreshed under it -
 //     see lib/statsShare.ts's anonymous functions.
 // A signed-in POST is treated the same as GET (ignores the body, uses the
 // account's real list) so a signed-in caller never accidentally shares a
 // stale local snapshot instead of their synced one.
 // Reading the stats BEHIND a token (app/api/stats-share/[token]) is
-// deliberately public and unauthenticated — that's the whole point of a
-// shareable link — this route is just where the token itself is issued.
+// deliberately public and unauthenticated - that's the whole point of a
+// shareable link - this route is just where the token itself is issued.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   const codes = Array.isArray((body as Record<string, unknown>)?.codes)
     ? ((body as { codes: unknown[] }).codes.filter((c): c is string => typeof c === "string"))
     : null;
-  // A sane length cap on the token, not a format check — it's an opaque
+  // A sane length cap on the token, not a format check - it's an opaque
   // client-generated ID, not something this route needs to parse.
   if (!token.trim() || token.length > 128 || !codes) {
     return NextResponse.json({ detail: "token and codes are required." }, { status: 400 });

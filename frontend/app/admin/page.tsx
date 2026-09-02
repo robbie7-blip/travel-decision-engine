@@ -1,12 +1,12 @@
 "use client";
 
-// Index for /admin, which previously 404'd — every tool lived at
+// Index for /admin, which previously 404'd - every tool lived at
 // /admin/<something> and the bare path pointed at nothing, so the obvious
 // URL to type was the one that didn't work.
 //
 // It also fixes a quieter trap. The owner-only UI scattered around the app
 // (the "Add to showcase" button on a trip, the generation-timings panel)
-// keys off a localStorage flag set by visiting an admin page — but only the
+// keys off a localStorage flag set by visiting an admin page - but only the
 // CLIENT admin pages could ever set it, since it's localStorage. /admin/stats
 // and /admin/feedback are server components, so visiting either of those,
 // the two most natural places to go, silently left the flag unset and the
@@ -49,7 +49,7 @@ const TOOLS: { href: string; name: string; blurb: string }[] = [
 export default function AdminIndexPage() {
   useEffect(() => {
     // Reaching this page at all means middleware.ts already required the
-    // admin password, so recording it here is safe — same reasoning as the
+    // admin password, so recording it here is safe - same reasoning as the
     // other admin pages that do this.
     markAdminUi();
   }, []);
@@ -73,7 +73,7 @@ export default function AdminIndexPage() {
         Nothing here is visible to travelers.
       </p>
       <p style={{ color: "var(--ink-dim)", fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
-        You don&apos;t generate trips from here — go back to the site and generate one normally, then scroll to the
+        You don&apos;t generate trips from here - go back to the site and generate one normally, then scroll to the
         bottom of the finished trip to see how long each stage took.
       </p>
 

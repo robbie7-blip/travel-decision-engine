@@ -1,6 +1,6 @@
 "use client";
 
-// A single combined start/end date picker — click once to set the start,
+// A single combined start/end date picker - click once to set the start,
 // click again to set the end, instead of two separate native <input
 // type="date"> fields that don't visually relate to each other. No date
 // library: date math stays in local Date objects (safe for calendar grid
@@ -54,12 +54,12 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
   function handleDayClick(day: Date) {
     const iso = formatIsoDate(day);
     if (!start || (start && end)) {
-      // Nothing selected yet, or a full range already picked — this click
+      // Nothing selected yet, or a full range already picked - this click
       // starts a fresh selection.
       onChange(iso, "");
       return;
     }
-    // A start is set but no end yet — this click completes the range,
+    // A start is set but no end yet - this click completes the range,
     // swapping the order if the traveler clicked an earlier date second.
     if (day < start) {
       onChange(iso, formatIsoDate(start));

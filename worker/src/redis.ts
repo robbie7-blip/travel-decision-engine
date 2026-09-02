@@ -1,7 +1,7 @@
 // Standard TCP Redis client (ioredis), not the Upstash REST client the
 // Next.js app uses. This process is long-running (unlike a Vercel
 // serverless function), so it can hold one persistent connection open and
-// block on it with BRPOP — the REST API can't do blocking reads at all.
+// block on it with BRPOP - the REST API can't do blocking reads at all.
 
 import Redis from "ioredis";
 
@@ -12,7 +12,7 @@ export function getRedis(): Redis {
 
   const url = process.env.REDIS_URL;
   if (!url) {
-    throw new Error("REDIS_URL is not set — point it at the Upstash Redis TCP endpoint.");
+    throw new Error("REDIS_URL is not set - point it at the Upstash Redis TCP endpoint.");
   }
 
   // maxRetriesPerRequest is NOT null here, deliberately.
@@ -21,7 +21,7 @@ export function getRedis(): Redis {
   // with it because runConsumer's BRPOP runs on a duplicate of it. But null
   // means "retry this command forever", and this same connection also
   // serves every ordinary get and set in a job. A brief Redis blip
-  // therefore didn't fail a command, it hung it indefinitely — a generation
+  // therefore didn't fail a command, it hung it indefinitely - a generation
   // that stops dead partway through and never finishes or errors, which
   // from the outside is indistinguishable from the pipeline being slow.
   //

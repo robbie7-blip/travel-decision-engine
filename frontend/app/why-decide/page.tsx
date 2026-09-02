@@ -1,10 +1,10 @@
 // A confident, specific comparison against "just ask a chatbot to plan my
-// trip" — every claim here maps to something the product actually does
+// trip" - every claim here maps to something the product actually does
 // (confidence tiers in ItineraryResult.tsx, live price checks in the
 // worker, the Stamp budget-feasibility badge), not just an assertion that
 // decide is "better." Static marketing content, so this is a server
 // component with real metadata (same pattern as /showcase and
-// /destinations) rather than a client component — worth being crawlable.
+// /destinations) rather than a client component - worth being crawlable.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -24,7 +24,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await searchParams;
   const wd = TRANSLATIONS[resolveLanguage(lang)].whyDecide;
-  const title = `${wd.pageTitle} — decide`;
+  const title = `${wd.pageTitle} - decide`;
   const description = `${wd.subheadGeneric} ${wd.subheadDecide}`;
   return {
     title,
@@ -48,10 +48,10 @@ export default async function WhyDecidePage({
   return (
     <div style={{ minHeight: "100%" }}>
       <div style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
-        {/* 1450, not this page's own 780px content width below — see the
+        {/* 1450, not this page's own 780px content width below - see the
             comment on ask/page.tsx's SiteHeader call for why. Two rows,
             matching SiteHeader.tsx's own layout (see that file's header
-            comment for why) — logo+account/language on row 1, full nav on
+            comment for why) - logo+account/language on row 1, full nav on
             its own row 2, instead of cramming everything into one row. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
@@ -107,7 +107,7 @@ export default async function WhyDecidePage({
 
       <div style={{ padding: "48px clamp(32px, 8%, 180px) 32px", borderBottom: "1px solid var(--line)" }}>
         {/* Outer 1450 matches the header above so this page's content
-            starts at the same left edge as every other page's — see the
+            starts at the same left edge as every other page's - see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1100 }}>
@@ -127,7 +127,7 @@ export default async function WhyDecidePage({
             {wd.headlineLine2}
           </h1>
           {/* Same ×/✓ language as the comparison rows below, as a two-line
-              teaser instead of one flowing sentence — previews the page's
+              teaser instead of one flowing sentence - previews the page's
               whole argument before the reader even scrolls to the table. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 620 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -152,7 +152,7 @@ export default async function WhyDecidePage({
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1300 }}>
           {/* Column headers, hidden on mobile where each row stacks to a
-              single column anyway (see the 700px media rule below) — the
+              single column anyway (see the 700px media rule below) - the
               "GENERIC" vs "DECIDE" framing is carried by each cell's own
               styling at that width instead. */}
           <div
@@ -218,7 +218,7 @@ export default async function WhyDecidePage({
       <div style={{ padding: "48px clamp(32px, 8%, 180px) 64px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
           {/* Wide enough for the closing line to sit on one line at full
-              size in both languages — at 620 it broke after "deciding" and
+              size in both languages - at 620 it broke after "deciding" and
               left "it." alone on the second line, directly above the
               button, which read as a typo rather than a line break.
               text-wrap: balance keeps the two halves even rather than

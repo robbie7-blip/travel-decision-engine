@@ -1,4 +1,4 @@
-// Server-only helper for reading a job straight from Redis — used by the
+// Server-only helper for reading a job straight from Redis - used by the
 // trip page's generateMetadata and its opengraph-image, both of which need
 // the job's content before the client ever polls GET /api/job/[id].
 

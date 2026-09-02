@@ -15,7 +15,7 @@ import type { Language } from "@/lib/types";
 
 /** The trip's start month, in the reading language, for the starter
  * questions. Returns "" on a missing or unparseable date, which leaves the
- * packing question reading "...for Rome in?" — so the caller only reaches
+ * packing question reading "...for Rome in?" - so the caller only reaches
  * for it when a date is present. */
 function monthName(date: string | undefined, language: Language): string {
   if (!date) return "";
@@ -37,7 +37,7 @@ function monthName(date: string | undefined, language: Language): string {
  *
  * - EXIF orientation. A phone photo is very often stored rotated with an
  *   orientation flag, and drawing it to a canvas without honouring that
- *   flag uploads a sideways picture — which for this feature means asking
+ *   flag uploads a sideways picture - which for this feature means asking
  *   the model to read sideways small print.
  * - Quality over size. Encoded at 0.9 because the entire use case is
  *   reading fine print on a minibar card or a menu; JPEG artifacts land
@@ -70,7 +70,7 @@ async function fileToResizedImage(file: File): Promise<TripQAImage> {
 
 interface TripQAProps {
   // Omitted (or partially filled) on /ask when no trip has been generated
-  // here — the model falls back to whatever the traveler mentions in their
+  // here - the model falls back to whatever the traveler mentions in their
   // question, or asks a brief clarifying question if it genuinely can't
   // answer without it (see the system prompt in the API route).
   context?: TripQAContext;
@@ -78,7 +78,7 @@ interface TripQAProps {
   t: Dictionary;
 }
 
-/** General trip Q&A ("Ask a Local") — packing, safety, local customs — kept
+/** General trip Q&A ("Ask a Local") - packing, safety, local customs - kept
  * deliberately separate from the pushback/refine box on ItineraryResult,
  * which is for revising the itinerary itself. This never touches the
  * itinerary; it's just a short conversation, held in local state only
@@ -86,7 +86,7 @@ interface TripQAProps {
  * companion feature rather than a second product surface).
  *
  * Reads the API route's response as a plain text stream, appending each
- * chunk directly into the growing assistant message — the reply appears
+ * chunk directly into the growing assistant message - the reply appears
  * word by word as it's generated, the same feel as ChatGPT/Gemini, rather
  * than a blank wait followed by the whole answer at once. */
 export function TripQA({ context, language, t }: TripQAProps) {
@@ -95,7 +95,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [pendingImage, setPendingImage] = useState<TripQAImage | null>(null);
-  // null until the account check resolves — the photo button stays visible
+  // null until the account check resolves - the photo button stays visible
   // throughout, so the control never pops into existence after load.
   const [isPro, setIsPro] = useState<boolean | null>(null);
   const [showProUpsell, setShowProUpsell] = useState(false);
@@ -148,7 +148,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
 
   async function send() {
     const content = draft.trim();
-    // A photo on its own is a valid question — only require text when
+    // A photo on its own is a valid question - only require text when
     // there's no image attached.
     if ((!content && !pendingImage) || sending) return;
     if (content.length > MAX_TRIP_QA_MESSAGE_LENGTH) {
@@ -199,7 +199,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
       }
     } catch (e) {
       // Drop the empty assistant placeholder rather than leaving a blank
-      // bubble — the error below is the only thing shown for this turn.
+      // bubble - the error below is the only thing shown for this turn.
       setMessages((prev) => prev.filter((_, i) => i !== assistantIndex));
       setError(e instanceof Error ? e.message : t.tripQA.genericError);
     } finally {
@@ -264,7 +264,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 420, overflowY: "auto" }}>
           {messages.map((m, i) => {
             // The assistant's message starts empty and fills in as chunks
-            // arrive — show a brief pulse instead of a blank bubble until
+            // arrive - show a brief pulse instead of a blank bubble until
             // the first word lands.
             const isPendingAssistant = m.role === "assistant" && m.content === "" && sending && i === messages.length - 1;
             return (
@@ -360,7 +360,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
       )}
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
         {/* capture="environment" makes this open the rear camera directly on
-            a phone, which is the actual moment this feature is for — standing
+            a phone, which is the actual moment this feature is for - standing
             in front of the thing you're asking about. Desktop browsers ignore
             it and show a normal file picker. */}
         <input

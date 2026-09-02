@@ -39,7 +39,7 @@ export default function Home() {
 
   useEffect(() => {
     // Zero-commitment homepage demo: only shows up once an admin has set a
-    // real, already-generated trip via /admin/demo-trip — never a
+    // real, already-generated trip via /admin/demo-trip - never a
     // fabricated example (see lib/demoTrip.ts).
     fetch("/api/demo-trip")
       .then((res) => res.json())
@@ -51,7 +51,7 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
 
     // A ?lang= from a /destinations link takes priority over the saved
-    // preference — it reflects where the visitor just came from — and gets
+    // preference - it reflects where the visitor just came from - and gets
     // persisted so it sticks on the next visit too.
     const urlLang = params.get("lang");
     if (urlLang === "en" || urlLang === "bg") {
@@ -64,7 +64,7 @@ export default function Home() {
       }
     }
 
-    // Arriving from a /destinations/[slug] page's "Plan a trip to X" link —
+    // Arriving from a /destinations/[slug] page's "Plan a trip to X" link -
     // prefill the destination instead of leaving the sample data in place.
     const dest = params.get("dest");
     if (dest) {
@@ -85,8 +85,8 @@ export default function Home() {
 
       const compareDestinations = form.compareEnabled ? form.compareDestinations.trim() : "";
       if (compareDestinations) {
-        // Same trip (dates/budget/party/pace/etc.) — only the destination
-        // differs, and optionally the dates too — so both jobs are queued
+        // Same trip (dates/budget/party/pace/etc.) - only the destination
+        // differs, and optionally the dates too - so both jobs are queued
         // from the same brief with just those fields swapped, same as any
         // other generation (same rate limit, same spend cap, just twice).
         // Different dates matter in practice: direct-flight availability
@@ -112,7 +112,7 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100%" }}>
-      {/* Back to variant="large" — the compact single-row header (tried
+      {/* Back to variant="large" - the compact single-row header (tried
           briefly for cross-page consistency) read as a downgrade on the
           homepage specifically, which is the one page where a bigger
           entrance earns its keep. */}
@@ -126,7 +126,7 @@ export default function Home() {
       {/* The hero reversed out of deep sea blue.
           The grey version of this page was accurate about what it removed
           and wrong about what it left: a travel product that opens on a
-          flat light page has no moment in it. This is that moment — one
+          flat light page has no moment in it. This is that moment - one
           deep band, the headline in warm off-white, everything below it
           light and workmanlike. Nothing decorative was added to get it. */}
       <div className="hero" style={{ padding: "44px clamp(32px, 8%, 180px) 40px", position: "relative" }}>
@@ -139,7 +139,7 @@ export default function Home() {
 
         {/* 1550 matches the large header variant's own cap above so this
             section's left edge lines up with the logo instead of drifting
-            based on its own narrower 960 reading-width — same fix applied
+            based on its own narrower 960 reading-width - same fix applied
             sitewide, just with a percentage-based width instead of a flat
             maxWidth so the margin actually scales with the real window. */}
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
@@ -160,7 +160,7 @@ export default function Home() {
             {t.headlineLine2}
           </h1>
           {/* The <br> is CSS-gated (.subhead-break, see globals.css), not
-              unconditional like headlineLine1/2's above — on a narrow phone,
+              unconditional like headlineLine1/2's above - on a narrow phone,
               subheadLine1 alone already wraps to 2-3 lines, and forcing
               subheadLine2 onto its own line after that stranded "guess."
               alone mid-paragraph and pushed the whole block to 4 lines. Below
@@ -168,7 +168,7 @@ export default function Home() {
               back to the old space-joined natural wrap (3 lines on mobile).
               At/above it, the full 820 column is available and natural wrap
               was instead splitting mid-sentence-2 ("...never" / "overstated."
-              on separate lines) — the forced break fixes that by always
+              on separate lines) - the forced break fixes that by always
               landing exactly on the sentence boundary. */}
           <p style={{ color: "var(--deep-soft)", fontSize: 16, lineHeight: 1.65, maxWidth: 820, margin: 0 }}>
             {t.subheadLine1} <br className="subhead-break" />

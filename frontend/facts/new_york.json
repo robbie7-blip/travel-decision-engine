@@ -1,6 +1,6 @@
 {
   "city": "New York",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,7 +8,7 @@
     },
     {
       "category": "cost",
-      "text": "A mid-range hotel runs roughly $180-350/night depending on season and neighborhood; a mid-range dinner for two is closer to $135-145 before drinks, while a solid slice of pizza or food-cart meal is $4-8 — the gap between casual and sit-down dining is large."
+      "text": "A mid-range hotel runs roughly $180-350/night depending on season and neighborhood; a mid-range dinner for two is closer to $135-145 before drinks, while a solid slice of pizza or food-cart meal is $4-8 - the gap between casual and sit-down dining is large."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,7 +16,7 @@
     },
     {
       "category": "activity",
-      "text": "Timed-entry tickets for the Empire State Building, Top of the Rock, and the Statue of Liberty ferry can sell out days ahead in peak season — book in advance rather than assuming same-day availability."
+      "text": "Timed-entry tickets for the Empire State Building, Top of the Rock, and the Statue of Liberty ferry can sell out days ahead in peak season - book in advance rather than assuming same-day availability."
     },
     {
       "category": "practical",
@@ -24,7 +24,7 @@
     },
     {
       "category": "dietary",
-      "text": "Vegetarian, vegan, kosher, and halal options are all well represented even in casual spots — one of the easier major cities to accommodate a dietary restriction without much advance planning."
+      "text": "Vegetarian, vegan, kosher, and halal options are all well represented even in casual spots - one of the easier major cities to accommodate a dietary restriction without much advance planning."
     }
   ]
 }

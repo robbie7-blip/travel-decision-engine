@@ -1,10 +1,10 @@
 "use client";
 
-// The "Map Pins" Visualize tab — Been's per-place pins (a specific city or
+// The "Map Pins" Visualize tab - Been's per-place pins (a specific city or
 // spot within a country you've visited), plotted on the same 3D globe as
 // the "Globe" tab. A pin belongs to an already-visited country by design
 // (you can click the globe to drop one, but not on a country that isn't
-// marked visited yet) — "exactly where in a place you've been" only makes
+// marked visited yet) - "exactly where in a place you've been" only makes
 // sense once "a place you've been" is already true.
 
 import { useState, type CSSProperties } from "react";

@@ -1,6 +1,6 @@
 {
   "city": "Vienna",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,7 +8,7 @@
     },
     {
       "category": "cost",
-      "text": "Viennese coffeehouse culture expects you to linger — a single coffee (€4-6) buys the table for hours; it isn't rude to sit long, but it does mean a coffeehouse isn't a \"quick stop.\""
+      "text": "Viennese coffeehouse culture expects you to linger - a single coffee (€4-6) buys the table for hours; it isn't rude to sit long, but it does mean a coffeehouse isn't a \"quick stop.\""
     },
     {
       "category": "tourist_trap_warning",
@@ -16,7 +16,7 @@
     },
     {
       "category": "activity",
-      "text": "The Schönbrunn Palace gardens are free to enter; only the palace interior and certain garden features (maze, gloriette) require paid tickets — easy to accidentally overpay by not distinguishing these."
+      "text": "The Schönbrunn Palace gardens are free to enter; only the palace interior and certain garden features (maze, gloriette) require paid tickets - easy to accidentally overpay by not distinguishing these."
     },
     {
       "category": "practical",

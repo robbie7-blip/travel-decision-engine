@@ -37,7 +37,7 @@ export function CurrencySwitcher({
 }: {
   currency: Currency;
   setCurrency: (next: Currency) => void;
-  // Defaults to the English word rather than being required — this stays
+  // Defaults to the English word rather than being required - this stays
   // an easy drop-in at call sites that don't have a Dictionary in scope,
   // but every real call site below passes t.currencyLabel explicitly.
   label?: string;

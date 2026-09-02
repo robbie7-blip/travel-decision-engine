@@ -1,6 +1,6 @@
 {
   "city": "Tokyo",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -16,11 +16,11 @@
     },
     {
       "category": "activity",
-      "text": "Popular attractions (teamLab, some observation decks, well-known ramen shops) routinely require booking a timed slot or standing in a real line — walk-up access isn't guaranteed the way it might be elsewhere."
+      "text": "Popular attractions (teamLab, some observation decks, well-known ramen shops) routinely require booking a timed slot or standing in a real line - walk-up access isn't guaranteed the way it might be elsewhere."
     },
     {
       "category": "practical",
-      "text": "Despite the high-tech reputation, plenty of smaller restaurants and shops are cash-only — carrying yen is still necessary, not just a backup. Tipping isn't customary and can visibly confuse staff if offered."
+      "text": "Despite the high-tech reputation, plenty of smaller restaurants and shops are cash-only - carrying yen is still necessary, not just a backup. Tipping isn't customary and can visibly confuse staff if offered."
     },
     {
       "category": "dietary",

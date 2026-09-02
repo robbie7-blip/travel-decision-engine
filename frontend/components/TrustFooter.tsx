@@ -1,4 +1,4 @@
-// decide's answer to a Booking.com-style "why trust us" footer strip — but
+// decide's answer to a Booking.com-style "why trust us" footer strip - but
 // built from claims the app can actually back up (the confidence-tier
 // system already shown on every itinerary item) rather than partner logos
 // or certifications it doesn't have. Deliberately reuses tierLegend and
@@ -15,7 +15,7 @@ export function TrustFooter({ t }: { t: Dictionary }) {
   return (
     <div style={{ padding: "40px clamp(32px, 8%, 180px)", background: "var(--bg-panel-raised)", borderTop: "1px solid var(--line)" }}>
       {/* 1550, matching every other homepage section's own container
-          (see page.tsx) — this used to be its own narrower 960, which put
+          (see page.tsx) - this used to be its own narrower 960, which put
           its content noticeably to the right of the sections above it. */}
       <div style={{ maxWidth: 1550, margin: "0 auto" }}>
         <h2 className="font-display" style={{ fontSize: 22, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-teal)" }}>

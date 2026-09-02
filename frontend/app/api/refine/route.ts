@@ -1,6 +1,6 @@
 // Next.js API route for the pushback/follow-up feature: takes the trip
 // brief, the itinerary already shown to the traveler, and their question
-// about it, and enqueues a refinement job — same job-queue mechanics as
+// about it, and enqueues a refinement job - same job-queue mechanics as
 // /api/generate (see that route for the full rationale), just with a
 // `refinement` field set so the worker knows to build a follow-up prompt
 // instead of a fresh one (see buildRefinementPrompt).
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Same global spend cap as /api/generate — a refinement costs the same
+  // Same global spend cap as /api/generate - a refinement costs the same
   // as a fresh generation, so it draws from the same daily budget too.
   const budget = await checkDailyBudget(redis);
   if (!budget.allowed) {
@@ -77,13 +77,13 @@ export async function POST(request: NextRequest) {
   }
 
   // A refinement costs the same as a fresh generation (one model call, same
-  // search-tool access), so it draws from the exact same rate-limit budget —
+  // search-tool access), so it draws from the exact same rate-limit budget -
   // otherwise pushback would be a free way around the /api/generate cap.
   const rateLimit = await checkRateLimit(redis, getClientIp(request), GENERATE_RATE_LIMIT);
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
     return NextResponse.json(
-      { detail: `Too many requests — ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
+      { detail: `Too many requests - ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
       {
         status: 429,
         headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   try {
     await recordEvent(redis, "refine", brief.language);
   } catch {
-    // Analytics must never break refinement — swallow and move on.
+    // Analytics must never break refinement - swallow and move on.
   }
 
   return NextResponse.json({ jobId: id }, { status: 202 });

@@ -1,4 +1,4 @@
-// Next.js API route — validates the trip brief and enqueues a job. Does NOT
+// Next.js API route - validates the trip brief and enqueues a job. Does NOT
 // call Anthropic directly: that happens in the worker (worker/), a separate
 // always-on process with no execution-time limit, which is what makes full
 // web search viable (the old blocking-request version had to fit inside
@@ -24,7 +24,7 @@ import type { TripBriefInput } from "@/lib/types";
 export const runtime = "nodejs";
 
 /** True only if the request carries the exact ADMIN_PASSWORD as the
- * test-mode header — reuses the same shared secret /admin/* already gates
+ * test-mode header - reuses the same shared secret /admin/* already gates
  * on (see middleware.ts), rather than inventing a second one. Constant-time
  * compare for the same reason session.ts uses one: this is a real
  * authorization check (bypasses rate limits AND the daily spend cap), not
@@ -63,10 +63,10 @@ export async function POST(request: NextRequest) {
   const testMode = isTestModeRequest(request);
 
   // Signing in swaps a client OFF the anonymous per-IP abuse limiter below
-  // and ONTO a per-email monthly quota sized by plan (see account.ts) — the
+  // and ONTO a per-email monthly quota sized by plan (see account.ts) - the
   // actual product tier, not just an abuse guard. Anonymous requests keep
   // the existing IP limiter untouched. Test mode (the site owner, verified
-  // above) skips all of this below AND the daily budget check — it still
+  // above) skips all of this below AND the daily budget check - it still
   // costs a little real money (see generateItinerary's forced skipSearch
   // for test-mode jobs in the worker), just not gated by guardrails meant
   // for the public.
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       // The account read and the visited-countries read are independent
       // pure reads, so they go together rather than one after another.
       // Every round-trip here is Upstash over HTTP and lands entirely on
-      // the traveler's clock BEFORE the worker has even seen the job — the
+      // the traveler's clock BEFORE the worker has even seen the job - the
       // enqueue path was making eight of them in sequence, which is most of
       // a second of dead time on a budget of thirty.
       //
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
           plan === "paid"
             ? `You've used all ${quota.limit} generations included this month. It resets at the start of next month.`
             : `You've used all ${quota.limit} free generations this month. Upgrade for more, or wait for next month's reset.`;
-        // Funnel visibility — a Free account hitting its cap is exactly
+        // Funnel visibility - a Free account hitting its cap is exactly
         // the moment an upgrade would make sense; worth knowing how often
         // that actually happens vs. how many people ever reach checkout.
         await recordFunnelEvent(redis, plan === "paid" ? "quota_blocked_paid" : "quota_blocked_free").catch(() => {});
@@ -122,13 +122,13 @@ export async function POST(request: NextRequest) {
     } else {
       // Every request here costs real Anthropic API money once the worker
       // picks it up (each generation runs 1-2 live web searches per
-      // destination), so this is checked before any job is created — not
+      // destination), so this is checked before any job is created - not
       // just cosmetically.
       const rateLimit = await checkRateLimit(redis, getClientIp(request), GENERATE_RATE_LIMIT);
       if (!rateLimit.allowed) {
         const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
         return NextResponse.json(
-          { detail: `Too many requests — ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
+          { detail: `Too many requests - ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
           {
             status: 429,
             headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Soft personalization signal (see the visited_countries comment in
-  // lib/types.ts) — resolved from the traveler's own trusted account
+  // lib/types.ts) - resolved from the traveler's own trusted account
   // record, never from client input (parseTripBrief's allowlist already
   // dropped anything the client tried to pass under this key). A failure
   // here should never block generation, so it's swallowed the same way
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         brief = { ...brief, visited_countries: names };
       }
     } catch {
-      // Personalization is optional — never breaks generation.
+      // Personalization is optional - never breaks generation.
     }
   }
 
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
   // Both awaited, not fire-and-forget: a serverless function isn't
   // guaranteed to keep running after it returns a response, so an
   // un-awaited promise here could get silently cut off most of the time.
-  // They are independent of each other, though, so they go together — one
+  // They are independent of each other, though, so they go together - one
   // round-trip on the traveler's clock instead of two.
   //
   // Quota is consumed only now, after the job is actually enqueued: a

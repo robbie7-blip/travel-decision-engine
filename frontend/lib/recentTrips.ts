@@ -1,6 +1,6 @@
-// Purely client-side "recent trips" bookmark list — no accounts, no server
+// Purely client-side "recent trips" bookmark list - no accounts, no server
 // state. Backed by the durable /trip/[jobId] links the app already returns
-// (JOB_TTL_SECONDS keeps a job's record alive 30 days — see lib/jobs.ts),
+// (JOB_TTL_SECONDS keeps a job's record alive 30 days - see lib/jobs.ts),
 // this just remembers which ones a particular browser has visited so a
 // returning visitor can find their way back without hunting for the link.
 // Per-browser by design: clearing site data or switching devices loses the
@@ -43,7 +43,7 @@ export function saveRecentTrip(entry: Omit<RecentTrip, "savedAt">): void {
     const next = [{ ...entry, savedAt: Date.now() }, ...existing].slice(0, MAX_ENTRIES);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
-    // ignore — see rationale above
+    // ignore - see rationale above
   }
 }
 
@@ -53,6 +53,6 @@ export function removeRecentTrip(jobId: string): void {
     const next = getRecentTrips().filter((trip) => trip.jobId !== jobId);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
-    // ignore — see rationale above
+    // ignore - see rationale above
   }
 }

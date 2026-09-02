@@ -1,5 +1,5 @@
 // Shared types for the trip-Q&A feature (see app/api/trip-questions,
-// components/TripQA.tsx) — general practical trip questions (packing,
+// components/TripQA.tsx) - general practical trip questions (packing,
 // safety, local customs) answered directly by Claude, deliberately separate
 // from the itinerary engine: no schema to fill, no web_search, so it can be
 // a quick synchronous request/response instead of the job-queue flow
@@ -7,7 +7,7 @@
 
 export type TripQARole = "user" | "assistant";
 
-/** A photo attached to a question — "is this minibar complimentary", "what
+/** A photo attached to a question - "is this minibar complimentary", "what
  * does this sign say", "is this dish vegetarian". Deliberately carried
  * inline as base64 and NEVER persisted anywhere: it goes to the model with
  * the request and is gone. These photos are of hotel rooms, menus,
@@ -29,7 +29,7 @@ export interface TripQAMessage {
 }
 
 /** One photo per question. The use case is "what is this thing in front of
- * me", which is singular by nature — and a single image keeps the cost and
+ * me", which is singular by nature - and a single image keeps the cost and
  * the UI honest. */
 export const MAX_TRIP_QA_IMAGES_PER_MESSAGE = 1;
 
@@ -51,7 +51,7 @@ export const TRIP_QA_IMAGE_MAX_EDGE_PX = 1568;
  * photo from the UI should ever approach. */
 export const MAX_TRIP_QA_IMAGE_BYTES = 2 * 1024 * 1024;
 
-// Optional trip context to ground answers — every field is optional since
+// Optional trip context to ground answers - every field is optional since
 // this feature works two ways: embedded on a generated itinerary's result
 // page (full context available), and standalone on /ask for someone who
 // hasn't generated anything here at all (no context at all, or whatever
@@ -65,11 +65,11 @@ export interface TripQAContext {
 }
 
 // A single message beyond this length is almost certainly not a genuine
-// quick trip question — bounds worst-case token cost per request.
+// quick trip question - bounds worst-case token cost per request.
 export const MAX_TRIP_QA_MESSAGE_LENGTH = 800;
 
 // The client keeps the full visible conversation, but only this many most
-// recent messages are actually sent to the model on each turn — bounds
+// recent messages are actually sent to the model on each turn - bounds
 // cost/latency on a long-running chat without capping how long the visible
 // conversation can get.
 export const MAX_TRIP_QA_HISTORY = 20;

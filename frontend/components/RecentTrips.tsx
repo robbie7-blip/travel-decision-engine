@@ -8,13 +8,13 @@ import type { Dictionary } from "@/lib/i18n";
 
 /** Renders nothing until after mount (localStorage isn't available during
  * SSR, and reading it during render would create a hydration mismatch
- * anyway) and nothing at all once mounted if the list is empty — a
+ * anyway) and nothing at all once mounted if the list is empty - a
  * first-time visitor sees no trace of this section.
  *
  * Colours come from the --deep-* set, not --ink/--line: this list is
  * rendered inside the hero band (app/page.tsx), and it was still wearing
  * the palette drawn for the parchment ground it used to sit on. --ink on
- * --deep is near-black on dark green — about 1.1:1, which is not dim
+ * --deep is near-black on dark green - about 1.1:1, which is not dim
  * text, it's invisible text. */
 export function RecentTrips({ t }: { t: Dictionary }) {
   const [trips, setTrips] = useState<RecentTrip[] | null>(null);

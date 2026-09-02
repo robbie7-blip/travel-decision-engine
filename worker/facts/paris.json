@@ -1,6 +1,6 @@
 {
   "city": "Paris",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -28,7 +28,7 @@
     },
     {
       "category": "tourist_trap_warning",
-      "text": "Montmartre near Sacré-Cœur has a high density of pressure-selling street vendors (friendship bracelets, \"found ring\" routines) — politely declining and continuing to walk works better than engaging."
+      "text": "Montmartre near Sacré-Cœur has a high density of pressure-selling street vendors (friendship bracelets, \"found ring\" routines) - politely declining and continuing to walk works better than engaging."
     }
   ]
 }

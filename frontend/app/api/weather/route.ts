@@ -1,4 +1,4 @@
-// Weather outlook for a trip's destinations/dates — real short-range
+// Weather outlook for a trip's destinations/dates - real short-range
 // forecast when the trip is within Open-Meteo's ~15-day horizon, otherwise
 // a historical average across the last few years for those same calendar
 // dates (clearly marked as such, never presented as a forecast). Open-Meteo
@@ -20,7 +20,7 @@ import {
 export const runtime = "nodejs";
 
 // A real forecast (especially precipitation) can meaningfully change within
-// hours, so it's cached briefly — long enough to spare repeat page views
+// hours, so it's cached briefly - long enough to spare repeat page views
 // from re-hitting Open-Meteo, short enough that the shown forecast doesn't
 // go stale. A historical average across past years barely moves day to day,
 // so it's safe to cache far longer.
@@ -94,13 +94,13 @@ function mostCommon(values: WeatherCondition[]): WeatherCondition {
 
 // A plain plurality vote over weathercodes can pick a precipitation
 // condition (rain/snow/thunderstorm) as the "most common" even when it's a
-// minority of the sampled years — e.g. 2 of 5 years had a light-drizzle code
+// minority of the sampled years - e.g. 2 of 5 years had a light-drizzle code
 // and the other 3 split evenly across clear/partly-cloudy/cloudy, so drizzle
 // "wins" with only 2 votes. That produced a real, confirmed contradiction: a
 // rain icon shown next to "Avg rain: 0mm", since the averaged precipitation
 // across all 5 years (including the 3 dry ones) rounds down to nothing. A
 // precipitation condition is only trusted here when the averaged mm actually
-// backs it up — otherwise the icon falls back to the plurality among the
+// backs it up - otherwise the icon falls back to the plurality among the
 // non-precipitation years, which is what the traveler should actually expect.
 const PRECIP_CONDITIONS = new Set<WeatherCondition>(["rain", "snow", "thunderstorm"]);
 const MIN_AVG_PRECIP_FOR_ICON_MM = 1;
@@ -133,12 +133,12 @@ async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string
   if (validYears.length === 0) return [];
 
   // Align by day-offset within the range (not by literal date, since each
-  // year's dates differ) — every valid year should have the same number of
+  // year's dates differ) - every valid year should have the same number of
   // days for the same start/end month-day span.
   const dayCount = validYears[0].time.length;
   const [startY, startM, startD] = start.split("-").map(Number);
   const tripDates = Array.from({ length: dayCount }, (_, i) => {
-    // Date.UTC's month is 0-indexed — startM (e.g. 11 for November) must be
+    // Date.UTC's month is 0-indexed - startM (e.g. 11 for November) must be
     // passed as startM - 1, or it silently rolls forward a month (November
     // becoming December was confirmed happening in practice).
     const d = new Date(Date.UTC(startY, startM - 1, startD));
@@ -212,14 +212,14 @@ export async function GET(req: NextRequest) {
         const days = await weatherForDestination(city, start, end);
         if (days.length > 0) result[city] = days;
       } catch {
-        // Skip this destination — a partial weather outlook beats none.
+        // Skip this destination - a partial weather outlook beats none.
       }
     })
   );
 
   if (redis && Object.keys(result).length > 0) {
     // All destinations share the same trip dates, so they're uniformly
-    // forecast-or-historical together — checking any one day is enough to
+    // forecast-or-historical together - checking any one day is enough to
     // pick the right TTL for the whole cached response.
     const isForecast = Object.values(result).some((days) => days[0]?.isForecast);
     const ttl = isForecast ? FORECAST_CACHE_TTL_SECONDS : HISTORICAL_CACHE_TTL_SECONDS;

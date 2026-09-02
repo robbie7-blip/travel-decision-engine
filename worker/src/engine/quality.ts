@@ -6,7 +6,7 @@
 // with no property name. Days came back with no lunch and no dinner. Two
 // days named the same cafe. Nineteen percent of line items were backed by
 // anything. In each case the pipeline ran to completion, wrote "done" on
-// the job, and served it — because nothing in it had an opinion about what
+// the job, and served it - because nothing in it had an opinion about what
 // a finished itinerary is supposed to look like. The only detector was the
 // owner opening the page and noticing.
 //
@@ -24,8 +24,8 @@
 //
 //   2. SEPARATE FROM REPAIR. A check knows how to find a problem and
 //      nothing about how to fix it. Repairs live in index.ts, where the
-//      Anthropic client is. That split is what lets the gate run twice —
-//      once to find work, once to confirm the work landed — without
+//      Anthropic client is. That split is what lets the gate run twice -
+//      once to find work, once to confirm the work landed - without
 //      recursion.
 //
 //   3. RECORDED, NOT JUST ACTED ON. The result is written onto the job
@@ -36,12 +36,12 @@
 //
 // Severity is the useful distinction. A "defect" is something a traveler
 // would rightly call broken and the pipeline can usually fix. A "warning"
-// is a real weakness worth tracking that is not always fixable — a city
+// is a real weakness worth tracking that is not always fixable - a city
 // with no hotel worth naming is a fact about the city, not a bug.
 
 import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "../types";
 // The report shape lives in jobs.ts because it travels ON the job to the
-// frontend, exactly like JobTimings — declaring it twice is how the two
+// frontend, exactly like JobTimings - declaring it twice is how the two
 // sides drift.
 import type {
   QualityCheckId,
@@ -58,7 +58,7 @@ import {
 
 /** How far a lodging item's price may sit from the known per-night rate
  * before it is treated as wrong. Generous, because a day call is allowed to
- * round or to fold in a city tax — but nowhere near wide enough to let a
+ * round or to fold in a city tax - but nowhere near wide enough to let a
  * two-night total through as one night. */
 const LODGING_PRICE_TOLERANCE = 0.35;
 
@@ -66,16 +66,16 @@ const LODGING_PRICE_TOLERANCE = 0.35;
  * looked up.
  *
  * A real generation priced a two-night Rome stay at EUR 264 and then wrote
- * EUR 264 on BOTH nights. The instruction is explicit — "cost_estimate_eur
- * is ONE night, never a multi-night total" — and it lost anyway, which is
+ * EUR 264 on BOTH nights. The instruction is explicit - "cost_estimate_eur
+ * is ONE night, never a multi-night total" - and it lost anyway, which is
  * what makes this worth enforcing rather than asking for. Accommodation is
  * the largest line in most trips and the trip total is summed from item
  * costs, so getting it wrong here silently doubles the number the traveler
  * is budgeting against. That is the worst kind of error this product can
  * make: confidently stated, expensive, and invisible.
  *
- * Deterministic on purpose. The correct figure is already known — it came
- * from the lodging lookup and was handed to the day call in its prompt — so
+ * Deterministic on purpose. The correct figure is already known - it came
+ * from the lodging lookup and was handed to the day call in its prompt - so
  * this is arithmetic, not a judgement, and it does not need a model call to
  * settle it. */
 export function normalizeLodgingPrices(
@@ -100,7 +100,7 @@ export function normalizeLodgingPrices(
 }
 
 /** Matches a lodging item to its city's rate, falling back to the only
- * entry when there is just one — the same tolerance buildDayPrompt applies,
+ * entry when there is just one - the same tolerance buildDayPrompt applies,
  * since the frame and the plan name cities independently. */
 function perNightRateFor(
   item: ItineraryItem,
@@ -115,7 +115,7 @@ function perNightRateFor(
 /** Below this, an itinerary is mostly guesswork wearing a confident face.
  * Not a defect, because it can be entirely legitimate (an obscure
  * destination with no curated facts and few venues Places knows), but
- * always worth surfacing — a sustained drop here is the earliest signal
+ * always worth surfacing - a sustained drop here is the earliest signal
  * that grounding has broken somewhere upstream. */
 const MIN_GROUNDED_PERCENT = 40;
 
@@ -124,7 +124,7 @@ const MIN_GROUNDED_PERCENT = 40;
  * else is still an empty day.
  *
  * Two was one until a real Rome trip shipped a full day holding a single
- * activity — breakfast, lunch, one walk, dinner — which passed because one
+ * activity - breakfast, lunch, one walk, dinner - which passed because one
  * activity cleared the bar. A day someone flew in for needs more than one
  * thing in it. Arrival and departure days are exempt: a flight legitimately
  * eats half of them. */
@@ -135,7 +135,7 @@ const MIN_ACTIVITIES_PER_TRAVEL_DAY = 1;
  * actually awake and out, before the plan is treated as having a hole in it.
  *
  * This is not a demand that every hour be filled. Downtime is a legitimate
- * and often correct choice — but it has to be WRITTEN, as "afternoon at
+ * and often correct choice - but it has to be WRITTEN, as "afternoon at
  * leisure near the hotel" or similar, so the traveler knows it was a
  * decision rather than an omission. The same Rome day had a five-hour void
  * between breakfast and lunch and another five and a half between an
@@ -143,18 +143,18 @@ const MIN_ACTIVITIES_PER_TRAVEL_DAY = 1;
 const MAX_UNPLANNED_HOURS = 4;
 // From breakfast, not from nine. A gap that opens at 08:00 and runs to
 // lunch is five hours of someone's holiday, and starting the window at 9
-// skipped exactly that case — which is the one the Rome day actually had.
+// skipped exactly that case - which is the one the Rome day actually had.
 const DAY_ACTIVE_FROM = 7;
 const DAY_ACTIVE_UNTIL = 21;
 
 /** Coarse per-person floors for what Google's price tier implies a meal
  * costs, in EUR. Deliberately well below what each tier really means, so
- * only a clear mismatch fires — the tiers are relative to a city, and an
+ * only a clear mismatch fires - the tiers are relative to a city, and an
  * expensive restaurant genuinely can be done cheaply at lunch. The cheap
  * tiers are absent on purpose: there is no floor to violate. */
 /** Below this many minutes between arrival and closing, a ticketed
- * attraction is not really being visited. Deliberately modest — plenty of
- * small museums are an easy hour — so it flags the genuinely rushed rather
+ * attraction is not really being visited. Deliberately modest - plenty of
+ * small museums are an easy hour - so it flags the genuinely rushed rather
  * than second-guessing the pace. */
 const MIN_VISIT_MINUTES = 75;
 
@@ -165,7 +165,7 @@ const MIN_PER_PERSON_EUR: Record<string, number | undefined> = {
 
 /** Whether `haystack` refers to `wanted`, loosely enough to survive the
  * difference between how a traveler types a place and how an itinerary
- * writes it — "colosseum" against "Colosseum, Roman Forum and Palatine
+ * writes it - "colosseum" against "Colosseum, Roman Forum and Palatine
  * Hill". Every word of the request that carries meaning has to appear;
  * short connectives are dropped so "the Trevi Fountain" and "Trevi
  * Fountain" match. */
@@ -200,14 +200,14 @@ function mentions(haystack: string, wanted: string): boolean {
   const hay = new Set(normalize(haystack));
   const matched = words.filter((w) => hay.has(w)).length;
 
-  // Every word, for one- and two-word requests — those are proper nouns and
+  // Every word, for one- and two-word requests - those are proper nouns and
   // dropping half of "Vatican Museums" would let any museum satisfy it.
   // For longer phrases, allow one word to go missing: people write
   // must-sees as descriptions ("Trevi Fountain at night", "the Colosseum
   // underground tour") and an itinerary that delivers the place without the
   // adjective has not dropped anything. Demanding all of it would report a
   // silent drop that did not happen, which is the failure mode this check
-  // can least afford — a false alarm here trains you to ignore it.
+  // can least afford - a false alarm here trains you to ignore it.
   const needed = words.length <= 2 ? words.length : words.length - 1;
   return matched >= needed;
 }
@@ -220,7 +220,7 @@ function normalizeVenue(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-/** Which meal a written item represents — same logic the meal repair uses,
+/** Which meal a written item represents - same logic the meal repair uses,
  * kept here so the gate and the repair can never disagree about whether a
  * day has lunch. */
 export function mealSlotOf(item: ItineraryItem): MealSlot | null {
@@ -244,7 +244,7 @@ function parseHour(time: string | undefined): number | null {
     return h >= 0 && h <= 23 ? h : null;
   }
   const t = time.toLowerCase();
-  // "afternoon" first — it contains "noon", and testing noon first would
+  // "afternoon" first - it contains "noon", and testing noon first would
   // place every afternoon item at midday.
   if (t.includes("morning")) return 9;
   if (t.includes("afternoon")) return 15;
@@ -274,7 +274,7 @@ export function missingMealsFor(day: ItineraryDay, plan: SkeletonDay): MealSlot[
  *
  * That distinction is load-bearing rather than cosmetic. This same function
  * decides what repairDuplicateVenues replaces, so counting lodging here
- * would have the pipeline "fix" night two by booking a different hotel —
+ * would have the pipeline "fix" night two by booking a different hotel -
  * silently relocating someone mid-stay to solve a problem that did not
  * exist. It stayed harmless only while accommodation had no name to
  * collide on; the moment the property lookup worked, it would have started
@@ -299,8 +299,8 @@ export function duplicateVenueItems(
 /** Runs every invariant over a finished itinerary.
  *
  * `plan` is what phase 1 said each day should contain. Without it the
- * meal check can't run — there is no way to tell a legitimately mealless
- * departure morning from a dropped lunch — so it's skipped rather than
+ * meal check can't run - there is no way to tell a legitimately mealless
+ * departure morning from a dropped lunch - so it's skipped rather than
  * guessed at, and the skip is itself reported so a run that lost its plan
  * doesn't look like a clean one. */
 export function assessQuality(
@@ -406,7 +406,7 @@ export function assessQuality(
       const from = times[i - 1];
       const to = times[i];
       if (to - from <= MAX_UNPLANNED_HOURS) continue;
-      // Only the waking, out-and-about part of the day — a gap that starts
+      // Only the waking, out-and-about part of the day - a gap that starts
       // at 21:00 is called an evening.
       if (from < DAY_ACTIVE_FROM || from > DAY_ACTIVE_UNTIL) continue;
       findings.push({
@@ -439,7 +439,7 @@ export function assessQuality(
   // --- accommodation priced per night, not per stay --------------------
   // normalizeLodgingPrices corrects these before the gate runs, so this
   // firing means a lodging item is off its known rate by more than rounding
-  // AND could not be matched to a city — worth seeing, because the trip
+  // AND could not be matched to a city - worth seeing, because the trip
   // total is summed from these.
   for (const day of days) {
     for (const item of day.items) {
@@ -460,7 +460,7 @@ export function assessQuality(
 
   // --- meal prices against what Google says the place costs ------------
   // The model estimates a price before Places has said anything, so the two
-  // are independent — which is what makes disagreement informative. A lunch
+  // are independent - which is what makes disagreement informative. A lunch
   // put at EUR 40 for two at a venue Google rates very expensive is not
   // wrong exactly, but it is the direction that matters: an understated
   // meal understates the trip total, and the total is what the traveler
@@ -513,7 +513,7 @@ export function assessQuality(
 
   // --- open when we send them ------------------------------------------
   // Anything Google says is shut on the visit day should already have been
-  // removed by checkVenues, so this firing means something got past that —
+  // removed by checkVenues, so this firing means something got past that -
   // a repaired venue that failed its second pass, or an item whose time
   // moved after verification. Cheap to assert, and the failure it guards
   // against (a traveler standing outside a locked door) is the one this
@@ -537,7 +537,7 @@ export function assessQuality(
   // requirement. Dropping it silently is the failure they are most likely
   // to notice and least likely to forgive.
   //
-  // Being unable to fit one is allowed — the prompt says so — but only out
+  // Being unable to fit one is allowed - the prompt says so - but only out
   // loud. So the narrative counts as coverage: a must-see explained away in
   // the summary, a key decision or the skip list has been handled, while
   // one that appears nowhere at all has been dropped.
@@ -549,7 +549,7 @@ export function assessQuality(
   // location is in here because that is where a place name usually lands.
   // A real Rome trip asked for "Vatican City" and got the Vatican Museums,
   // the Sistine Chapel and St. Peter's Basilica, each with location
-  // "Vatican City" — and this reported the must-see as dropped, because
+  // "Vatican City" - and this reported the must-see as dropped, because
   // "Vatican" was in the titles and "City" was only in the field it wasn't
   // reading. The traveler's own requirement was met three times over and
   // the gate called it the run's only defect.
@@ -576,7 +576,7 @@ export function assessQuality(
   //
   // One-directional on purpose. Coming in under budget is not a defect, and
   // an item with no price (a flight priced by link rather than figure)
-  // makes the sum an UNDER-estimate — so this only ever fires when the
+  // makes the sum an UNDER-estimate - so this only ever fires when the
   // total is over despite that, which makes a false positive very unlikely.
   const stated = brief.budget_total_eur ?? 0;
   if (stated > 0 && itinerary.budget_feasibility?.feasible === true) {
@@ -596,8 +596,8 @@ export function assessQuality(
   // --- arriving with time to actually see it ----------------------------
   // The open_on_visit check asks whether the doors are open. This asks
   // whether there is any point walking through them. A real Rome trip put
-  // the Colosseum, Roman Forum and Palatine Hill — three sites on one
-  // ticket — at 15:30 against a 16:30 close, which passed as "open" and is
+  // the Colosseum, Roman Forum and Palatine Hill - three sites on one
+  // ticket - at 15:30 against a 16:30 close, which passed as "open" and is
   // not a visit. Paid attractions also tend to stop admitting people before
   // they close, so an hour on the clock is usually less than an hour in
   // practice.
@@ -641,7 +641,7 @@ export function assessQuality(
   };
 }
 
-/** Mirrors computeTrustScore in the frontend exactly — the same number the
+/** Mirrors computeTrustScore in the frontend exactly - the same number the
  * traveler is shown, computed here so it can be recorded per job. Kept as
  * its own function so the two can be diffed if they ever drift. */
 export function groundedRatio(itinerary: Itinerary): {
@@ -655,7 +655,7 @@ export function groundedRatio(itinerary: Itinerary): {
       total++;
       const searchGrounded = (item.confidence_tier ?? "inferred") !== "inferred";
       const placesGrounded = item.google_maps_url != null || item.google_rating != null;
-      // Mirrors trustScore.ts — a flight's Google Flights link is the same
+      // Mirrors trustScore.ts - a flight's Google Flights link is the same
       // kind of evidence as a venue's Maps link. Kept identical on purpose:
       // this number is recorded per job and the traveler is shown the other
       // one, and two definitions of "verified" would be worse than none.
@@ -676,9 +676,9 @@ function countNights(brief: TripBriefInput): number {
   return Math.max(0, Math.round((end - start) / 86400000));
 }
 
-/** One line for the worker log — the whole report at a glance. */
+/** One line for the worker log - the whole report at a glance. */
 export function summarizeQuality(report: QualityReport): string {
   const head = `${report.passed ? "PASS" : "FAIL"} ${report.defectCount} defect(s), ${report.warningCount} warning(s), ${report.groundedPercent}% grounded`;
   if (report.findings.length === 0) return head;
-  return `${head} — ${report.findings.map((f) => f.detail).join("; ")}`;
+  return `${head} - ${report.findings.map((f) => f.detail).join("; ")}`;
 }

@@ -1,6 +1,6 @@
 {
   "city": "Madrid",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,7 +8,7 @@
     },
     {
       "category": "practical",
-      "text": "The Spanish dining schedule runs late — lunch is often 2-4pm and dinner rarely starts before 9pm; restaurants that look \"closed\" mid-afternoon are frequently just on their siesta break, not shut for the day."
+      "text": "The Spanish dining schedule runs late - lunch is often 2-4pm and dinner rarely starts before 9pm; restaurants that look \"closed\" mid-afternoon are frequently just on their siesta break, not shut for the day."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,7 +16,7 @@
     },
     {
       "category": "activity",
-      "text": "The Prado, Reina Sofía, and Thyssen-Bornemisza museums each have specific free-entry windows (typically a few hours in the evening) — worth checking current hours if budget-conscious."
+      "text": "The Prado, Reina Sofía, and Thyssen-Bornemisza museums each have specific free-entry windows (typically a few hours in the evening) - worth checking current hours if budget-conscious."
     },
     {
       "category": "cost",

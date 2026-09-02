@@ -52,7 +52,7 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
   const job = await loadJob(jobId);
 
   // job.brief.language is already known server-side (it's how the itinerary
-  // itself was generated) — no ?lang= query param needed here, unlike the
+  // itself was generated) - no ?lang= query param needed here, unlike the
   // destinations OG images, which don't have a per-request "language" to
   // read until a query param supplies one.
   const language = job?.brief?.language === "bg" ? "bg" : "en";

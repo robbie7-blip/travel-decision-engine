@@ -1,4 +1,4 @@
-// Shared types for flight-history import — the traveler pastes a booking
+// Shared types for flight-history import - the traveler pastes a booking
 // confirmation and gets their own past flights back, which then fill in the
 // visited-countries tracker (see lib/visited.ts) instead of them ticking
 // countries off by hand.
@@ -31,7 +31,7 @@ export interface ImportedFlight {
   airline?: string;
   flightNumber?: string;
   /** False for a booking that hasn't happened yet. A future flight is a
-   * plan, not a visit, so it's shown but never pre-selected — otherwise a
+   * plan, not a visit, so it's shown but never pre-selected - otherwise a
    * forwarded upcoming booking would quietly mark a country visited. */
   isPast: boolean;
 }
@@ -43,7 +43,7 @@ export interface FlightImportResult {
 }
 
 /** Confirmation emails are long once quoted headers and HTML-to-text noise
- * are included, but not unbounded — this caps worst-case token cost per
+ * are included, but not unbounded - this caps worst-case token cost per
  * paste while comfortably fitting a normal multi-leg itinerary. */
 export const MAX_FLIGHT_IMPORT_CHARS = 20000;
 

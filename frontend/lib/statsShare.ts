@@ -1,14 +1,14 @@
 // Lightweight "share my stats" links for comparing visited-countries stats
-// with someone else — deliberately NOT a friend-request/social-graph system
+// with someone else - deliberately NOT a friend-request/social-graph system
 // (no requests, no accept/deny, no notifications, no "who are my friends"
 // list). Same trust model as a shareable /trip/[jobId] link: the token
-// itself, not a login, is what grants viewing access — anyone who has the
+// itself, not a login, is what grants viewing access - anyone who has the
 // link can see the stats behind it, same as anyone with a trip link can
 // view that itinerary. One stable token per email (not reissued each time)
 // so a traveler can share it once and reuse it.
 //
 // Deliberately never exposes the email behind a token in the public-facing
-// read (see app/api/stats-share/[token]) — the token is the shareable
+// read (see app/api/stats-share/[token]) - the token is the shareable
 // identity, the email stays private, the same way a trip's jobId is
 // shareable while nothing about who generated it is.
 //
@@ -47,13 +47,13 @@ function snapshotKey(token: string): string {
   return `statsShareSnapshot:${token}`;
 }
 
-// A snapshot isn't a live account — there's no email to reclaim it by, so
+// A snapshot isn't a live account - there's no email to reclaim it by, so
 // unlike the signed-in path above it needs an expiry rather than living
 // forever. ~13 months: long enough that a link shared once stays good for
 // a good while, without pretending this is permanent storage.
 const SNAPSHOT_TTL_SECONDS = 60 * 60 * 24 * 400;
 
-/** Anonymous counterpart to getOrCreateShareToken — the caller (an
+/** Anonymous counterpart to getOrCreateShareToken - the caller (an
  * unauthenticated device, via lib/localVisited.ts) already minted its own
  * token, so this just persists/refreshes the snapshot of codes behind it.
  * Called again on every toggle (see app/api/visited/share) so an

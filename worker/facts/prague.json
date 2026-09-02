@@ -1,18 +1,18 @@
 {
   "city": "Prague",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
-      "text": "A single Prague public transport ticket covers metro, tram, and bus for a fixed time window rather than a single ride — a 24 or 72-hour pass is cheaper if sightseeing all day, every day."
+      "text": "A single Prague public transport ticket covers metro, tram, and bus for a fixed time window rather than a single ride - a 24 or 72-hour pass is cheaper if sightseeing all day, every day."
     },
     {
       "category": "tourist_trap_warning",
-      "text": "Restaurants in Old Town Square and along the main route to Prague Castle are reliably 2-3x the price of equivalent food a few streets away; menus without listed prices at some tourist-strip restaurants have been a documented overcharging tactic — always confirm prices before ordering."
+      "text": "Restaurants in Old Town Square and along the main route to Prague Castle are reliably 2-3x the price of equivalent food a few streets away; menus without listed prices at some tourist-strip restaurants have been a documented overcharging tactic - always confirm prices before ordering."
     },
     {
       "category": "tourist_trap_warning",
-      "text": "Currency exchange booths advertising \"0% commission\" in the most touristy streets typically build a poor exchange rate into the rate itself — ATM withdrawals or exchanges a few streets off the main tourist path are usually better value."
+      "text": "Currency exchange booths advertising \"0% commission\" in the most touristy streets typically build a poor exchange rate into the rate itself - ATM withdrawals or exchanges a few streets off the main tourist path are usually better value."
     },
     {
       "category": "activity",

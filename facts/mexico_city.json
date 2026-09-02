@@ -1,6 +1,6 @@
 {
   "city": "Mexico City",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -16,7 +16,7 @@
     },
     {
       "category": "activity",
-      "text": "The Teotihuacán pyramids are about an hour outside the city — arriving early morning means both cooler temperatures for the climb and thinner crowds before tour buses arrive."
+      "text": "The Teotihuacán pyramids are about an hour outside the city - arriving early morning means both cooler temperatures for the climb and thinner crowds before tour buses arrive."
     },
     {
       "category": "practical",
@@ -24,7 +24,7 @@
     },
     {
       "category": "dietary",
-      "text": "Corn- and vegetable-based dishes are everywhere, so vegetarian eating isn't hard, but strict vegan travelers should ask specifically — lard (manteca) is a common traditional cooking fat even in dishes that otherwise look plant-based."
+      "text": "Corn- and vegetable-based dishes are everywhere, so vegetarian eating isn't hard, but strict vegan travelers should ask specifically - lard (manteca) is a common traditional cooking fat even in dishes that otherwise look plant-based."
     }
   ]
 }

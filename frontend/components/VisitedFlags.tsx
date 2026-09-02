@@ -1,11 +1,11 @@
 "use client";
 
-// One of the "Visualize" tabs (see app/account/visited/page.tsx) — a plain
+// One of the "Visualize" tabs (see app/account/visited/page.tsx) - a plain
 // grid of flags for every visited country, Been's "Flags" view. The
 // cheapest of the new views to build correctly: no new data, no new
 // dependency, countryFlagEmoji() already exists for the checklist below the
 // map. Clicking a flag un-marks that country, same as everywhere else in
-// the tracker — there's no reason this view should be read-only when the
+// the tracker - there's no reason this view should be read-only when the
 // map and checklist aren't.
 
 import { countryFlagEmoji, getCountry, getCountryName } from "@/lib/countries";

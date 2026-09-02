@@ -9,7 +9,7 @@ import type { Language } from "@/lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Small checkmark used in both plans' feature checklists — one shared glyph
+// Small checkmark used in both plans' feature checklists - one shared glyph
 // (colored per-card via `color`) instead of a plain "•" or "-", so the list
 // reads as a checked-off set of included things rather than generic bullets.
 function CheckIcon({ color }: { color: string }) {
@@ -24,11 +24,11 @@ function CheckIcon({ color }: { color: string }) {
 // The tinted-circle icon badges that used to live here are gone. They
 // were a deliberate copy of the homepage's "How it works" treatment, so
 // when that became three numbered columns divided by rules, this became
-// the last place on the site still drawing icons inside circles — the
+// the last place on the site still drawing icons inside circles - the
 // exact motif the redesign set out to remove. It now reuses .step-rows,
 // the same class the homepage uses, so the two cannot drift again.
 
-/** Standalone pricing page — a signed-in visitor trades the anonymous
+/** Standalone pricing page - a signed-in visitor trades the anonymous
  * per-IP trial limit for a per-email monthly quota (see lib/account.ts).
  * The email typed here becomes the Stripe customer's email; the traveler
  * later signs in with the SAME email via the magic link on /account, which
@@ -43,7 +43,7 @@ export default function PricingPage() {
     const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (saved === "en" || saved === "bg") setLanguageState(saved);
 
-    // Funnel visibility (see lib/analytics.ts) — the one event with no
+    // Funnel visibility (see lib/analytics.ts) - the one event with no
     // server route to piggyback on, since this page has no server-side
     // render step to hook into. Fire-and-forget: a dropped pageview count
     // must never block or visibly affect the actual page.
@@ -89,7 +89,7 @@ export default function PricingPage() {
   return (
     <div style={{ minHeight: "100%" }}>
       {/* Header stays 1450 (matching the rest of the site) even though this
-          page's own content column below is narrower — see the comment on
+          page's own content column below is narrower - see the comment on
           ask/page.tsx's SiteHeader call for why. */}
       <SiteHeader
         language={language}
@@ -101,7 +101,7 @@ export default function PricingPage() {
 
       <div style={{ padding: "36px clamp(32px, 8%, 180px) 0" }}>
         {/* Outer 1450 matches the header above so this page's content
-            starts at the same left edge as every other page's — see the
+            starts at the same left edge as every other page's - see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1200 }}>
@@ -115,7 +115,7 @@ export default function PricingPage() {
         </div>
       </div>
 
-      {/* Value props — real, already-live features (see WhyDecidePage /
+      {/* Value props - real, already-live features (see WhyDecidePage /
           app/page.tsx's "How it works") that BOTH plans get, shown before
           the price grid so this doesn't read as two bare numbers with
           nothing behind them. */}
@@ -134,7 +134,7 @@ export default function PricingPage() {
                 ),
               },
               {
-                // Three stepped bars, each a different fill weight — stands
+                // Three stepped bars, each a different fill weight - stands
                 // in for the app's confidence tiers (grounded/single-source/
                 // unverified) without literally redrawing the ConfidenceDot
                 // legend from the homepage.
@@ -282,7 +282,7 @@ export default function PricingPage() {
                   {error}
                 </div>
               )}
-              {/* Right at the point money changes hands — the one place on
+              {/* Right at the point money changes hands - the one place on
                   the site these links genuinely need to be, not buried in a
                   footer no one scrolls to before paying. */}
               <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 12, lineHeight: 1.5, textAlign: "center" }}>

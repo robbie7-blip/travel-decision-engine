@@ -1,4 +1,4 @@
-// Shared calendar-grid math for DateRangePicker and SingleDatePicker — no
+// Shared calendar-grid math for DateRangePicker and SingleDatePicker - no
 // date library: everything stays in local Date objects (safe for calendar
 // generation) and is only ever serialized back to "YYYY-MM-DD" via manual
 // zero-padded formatting, never toISOString() (which would shift the date

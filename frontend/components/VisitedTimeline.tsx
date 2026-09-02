@@ -1,9 +1,9 @@
 "use client";
 
-// One of the "Visualize" tabs — Been's "Timeline": every visited country in
+// One of the "Visualize" tabs - Been's "Timeline": every visited country in
 // one ordered list, most recent visit first, undated ones at the bottom.
 // Distinct from VisitedChronology (year-grouped totals) by staying a flat,
-// per-country list — this view is about WHEN each place was, that one is
+// per-country list - this view is about WHEN each place was, that one is
 // about HOW MANY per year.
 
 import { useState } from "react";
@@ -36,7 +36,7 @@ export function VisitedTimeline({ entries, onSetDate, emptyLabel, dateUnknownLab
     .map((e) => ({ entry: e, country: getCountry(e.code) }))
     .filter((x): x is { entry: VisitedEntry; country: NonNullable<ReturnType<typeof getCountry>> } => x.country !== undefined);
 
-  // Dated entries newest-first, then everything without a date — an
+  // Dated entries newest-first, then everything without a date - an
   // unknown date isn't "oldest," it's just not placed on the line yet.
   const dated = withCountry.filter((x) => x.entry.visitedAt).sort((a, b) => (b.entry.visitedAt! < a.entry.visitedAt! ? -1 : 1));
   const undated = withCountry.filter((x) => !x.entry.visitedAt);
@@ -105,7 +105,7 @@ export function VisitedTimeline({ entries, onSetDate, emptyLabel, dateUnknownLab
                   textDecoration: entry.visitedAt ? "none" : "underline",
                 }}
               >
-                {entry.visitedAt ? formatDate(entry.visitedAt, locale) : `${dateUnknownLabel} — ${setDateLabel}`}
+                {entry.visitedAt ? formatDate(entry.visitedAt, locale) : `${dateUnknownLabel} - ${setDateLabel}`}
               </button>
             )}
           </div>

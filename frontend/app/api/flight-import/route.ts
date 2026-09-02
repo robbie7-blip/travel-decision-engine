@@ -4,7 +4,7 @@
 // justify the job-queue round trip.
 //
 // Reads nothing and stores nothing. The pasted text is used for the one
-// extraction call and then it's gone — no Redis write, no logging of the
+// extraction call and then it's gone - no Redis write, no logging of the
 // body. Booking confirmations carry names, booking references, and
 // sometimes partial card details, none of which this feature needs, so the
 // safest place to keep them is nowhere. Only the flights the traveler then
@@ -77,7 +77,7 @@ function str(v: unknown): string {
 
 /** Turns the model's output into flights we're willing to act on. The
  * country code is checked against the real country list rather than
- * trusted — a hallucinated code would otherwise mark a country visited
+ * trusted - a hallucinated code would otherwise mark a country visited
  * that the traveler has never been to, which is the one error this feature
  * absolutely must not make. */
 function toImportedFlights(raw: unknown): ImportedFlight[] {
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     await recordSpend(redis, estimateCostUsd(response.usage)).catch(() => {});
 
     // A truncated response is broken JSON, and broken JSON lands in the
-    // catch below as "couldn't read that confirmation" — which blames the
+    // catch below as "couldn't read that confirmation" - which blames the
     // traveler's email for a cap of ours. A long multi-leg booking is
     // exactly the case that hits this, and it is the case where getting it
     // right matters most.
@@ -191,21 +191,21 @@ export async function POST(request: NextRequest) {
     const blocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
     const flights = toImportedFlights(JSON.parse(extractJson(blocks[blocks.length - 1]?.text ?? "")));
 
-    // Only past flights count as a visit — a future booking is a plan.
+    // Only past flights count as a visit - a future booking is a plan.
     const countryCodes = [...new Set(flights.filter((f) => f.isPast).map((f) => f.arrivalCountryCode))];
     const result: FlightImportResult = { flights, countryCodes };
     return NextResponse.json(result);
   } catch (e) {
     // Logged, not swallowed. This catch used to be a bare `catch {}` that
     // told the traveler "couldn't read that confirmation, try pasting the
-    // full email text" for EVERY failure — including an expired API key or
+    // full email text" for EVERY failure - including an expired API key or
     // a missing workspace id. That blames the person's email for a fault
     // that is entirely ours, sends them off to re-copy text that was
     // already fine, and leaves no trace anywhere of what actually broke.
     console.error("[flight-import] failed:", e);
     if (isMissingWorkspaceIdError(e) || e instanceof Anthropic.AuthenticationError) {
       console.error(
-        "[flight-import] THIS IS A CONFIGURATION FAILURE — check ANTHROPIC_API_KEY and " +
+        "[flight-import] THIS IS A CONFIGURATION FAILURE - check ANTHROPIC_API_KEY and " +
           "ANTHROPIC_WORKSPACE_ID on this deployment"
       );
       return NextResponse.json(

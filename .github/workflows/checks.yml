@@ -4,7 +4,7 @@
 # This exists because of a specific, repeated pattern: a change would land,
 # deploy, and the only way anyone found out it had broken generation was the
 # owner paying for a trip, opening it, and noticing something wrong in a
-# screenshot — sometimes weeks later. Three latency regressions and a broken
+# screenshot - sometimes weeks later. Three latency regressions and a broken
 # accommodation lookup all reached production that way.
 #
 # Every check below runs without an API key and without touching Redis, so
@@ -20,7 +20,7 @@ on:
 
 jobs:
   worker:
-    name: worker — typecheck + pipeline & quality suites
+    name: worker - typecheck + pipeline & quality suites
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -51,7 +51,7 @@ jobs:
       - run: npm run test:pipeline
 
   frontend:
-    name: frontend — typecheck + build
+    name: frontend - typecheck + build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -66,14 +66,20 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       # Every text color in the palette against the backgrounds it's
-      # actually painted on. --ink-dim — the color of nearly every label,
-      # date and helper line in the product — shipped for months at
+      # actually painted on. --ink-dim - the color of nearly every label,
+      # date and helper line in the product - shipped for months at
       # 3.28:1, under the 4.5:1 WCAG AA needs for body text, and the only
       # thing that would have caught it was someone noticing. Pure
       # arithmetic over the stylesheet: no browser, no network, runs in
       # milliseconds.
       - run: npm run check:contrast
-      # Catches what typecheck alone misses — a server component importing
+      # No em dashes anywhere in the repo. It is the single most
+      # recognisable sign that a line of text was written by a model, and
+      # this product asks travelers to read its output as advice from a
+      # person. The prompts ask the model not to write one and the worker
+      # strips any that survive; this covers the copy we write ourselves.
+      - run: npm run check:dashes
+      # Catches what typecheck alone misses - a server component importing
       # something client-only, a bad route export, a failed page render.
       - run: npm run build
         env:

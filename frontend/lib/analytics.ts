@@ -1,4 +1,4 @@
-// Self-hosted usage counters — no third-party script, no cookies, just a
+// Self-hosted usage counters - no third-party script, no cookies, just a
 // handful of Redis counters incremented on each successful job enqueue.
 // Deliberately minimal (totals + per-language + per-day), consistent with
 // this codebase's preference for small hand-rolled pieces over pulling in
@@ -22,7 +22,7 @@ const dayCountKey = (type: AnalyticsEventType, day: string) => `analytics:${type
 const DAYS_SEEN_KEY = "analytics:days"; // set of every day-key we've ever written, so the stats page knows what to look up
 
 /** Fire this after a job is successfully enqueued (not before rate-limit
- * checks pass, and not on validation failures — this counts real attempted
+ * checks pass, and not on validation failures - this counts real attempted
  * usage, not every malformed request). Best-effort: analytics must never
  * break the actual feature, so failures here are swallowed by the caller. */
 export async function recordEvent(redis: Redis, type: AnalyticsEventType, language: Language): Promise<void> {
@@ -35,12 +35,12 @@ export async function recordEvent(redis: Redis, type: AnalyticsEventType, langua
   ]);
 }
 
-// Conversion-funnel counters — separate from the generate/refine tracking
+// Conversion-funnel counters - separate from the generate/refine tracking
 // above (own key namespace, own recording function) rather than folded
 // into AnalyticsEventType, since these don't have a language dimension
 // that makes sense for every one of them (a Stripe webhook event, for
 // instance, carries no site-language context at all) where generate/refine
-// always do. Totals only for now, no daily breakdown — this exists to
+// always do. Totals only for now, no daily breakdown - this exists to
 // answer "where do people actually drop off" at all, which zero visibility
 // couldn't answer; a day-by-day view is a natural next step once these
 // totals turn up something worth digging into.
@@ -64,7 +64,7 @@ const FUNNEL_EVENT_TYPES: FunnelEventType[] = [
 const funnelTotalKey = (type: FunnelEventType) => `analytics:funnel:${type}:total`;
 
 /** Same "best-effort, never breaks the real feature" contract as
- * recordEvent above — every call site swallows failures from this. */
+ * recordEvent above - every call site swallows failures from this. */
 export async function recordFunnelEvent(redis: Redis, type: FunnelEventType): Promise<void> {
   await redis.incr(funnelTotalKey(type));
 }

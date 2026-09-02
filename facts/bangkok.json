@@ -1,6 +1,6 @@
 {
   "city": "Bangkok",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,15 +8,15 @@
     },
     {
       "category": "cost",
-      "text": "Street food runs roughly ฿40-80 a dish (~$1-2), a full restaurant meal for two is closer to $15-25, and a mid-range hotel is roughly ฿1,200-2,800/night (~$35-90) — genuinely one of the cheaper major destinations for eating well."
+      "text": "Street food runs roughly ฿40-80 a dish (~$1-2), a full restaurant meal for two is closer to $15-25, and a mid-range hotel is roughly ฿1,200-2,800/night (~$35-90) - genuinely one of the cheaper major destinations for eating well."
     },
     {
       "category": "tourist_trap_warning",
-      "text": "Tuk-tuk drivers near the Grand Palace offering a suspiciously cheap ride often steer riders toward a commission-paying gem or tailor shop instead of the intended destination — agree a price or use the meter before getting in, and treat \"that temple is closed today\" as a scam line."
+      "text": "Tuk-tuk drivers near the Grand Palace offering a suspiciously cheap ride often steer riders toward a commission-paying gem or tailor shop instead of the intended destination - agree a price or use the meter before getting in, and treat \"that temple is closed today\" as a scam line."
     },
     {
       "category": "activity",
-      "text": "The Grand Palace enforces a strict dress code (no shorts, no sleeveless tops) and turns away visitors at the gate for it — bring a cover-up rather than relying on rentals at the entrance."
+      "text": "The Grand Palace enforces a strict dress code (no shorts, no sleeveless tops) and turns away visitors at the gate for it - bring a cover-up rather than relying on rentals at the entrance."
     },
     {
       "category": "practical",
@@ -24,7 +24,7 @@
     },
     {
       "category": "dietary",
-      "text": "Vegetarian and vegan street food is genuinely abundant if you know to ask for \"mangsawirat\" (vegetarian) — without asking, fish sauce and shrimp paste show up in dishes that otherwise look plant-based."
+      "text": "Vegetarian and vegan street food is genuinely abundant if you know to ask for \"mangsawirat\" (vegetarian) - without asking, fish sauce and shrimp paste show up in dishes that otherwise look plant-based."
     }
   ]
 }

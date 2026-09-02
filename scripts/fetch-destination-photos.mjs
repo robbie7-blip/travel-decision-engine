@@ -6,7 +6,7 @@
 // build time: this repo's own dev/build sandbox has no outbound network
 // access to Wikipedia (or any image host), so nothing here can fetch these
 // itself. Run this once on a machine or CI job that DOES have normal
-// internet access — your laptop, a GitHub Action, Vercel's build step —
+// internet access - your laptop, a GitHub Action, Vercel's build step -
 // then commit the results. The destination pages already know to prefer a
 // real photo over the generated banner the moment one exists on disk (see
 // lib/destinations.ts's getDestinationPhoto), so no other code changes are
@@ -16,11 +16,11 @@
 //   node scripts/fetch-destination-photos.mjs
 //
 // Requires Node 18+ (uses the global fetch API). Writes:
-//   frontend/public/destinations/<slug>.<ext>       — the photo itself
-//   frontend/lib/destinationPhotoCredits.json        — attribution manifest
+//   frontend/public/destinations/<slug>.<ext>       - the photo itself
+//   frontend/lib/destinationPhotoCredits.json        - attribution manifest
 //
 // Wikipedia/Commons images carry a range of licenses (public domain,
-// CC-BY, CC-BY-SA, ...) — review frontend/lib/destinationPhotoCredits.json
+// CC-BY, CC-BY-SA, ...) - review frontend/lib/destinationPhotoCredits.json
 // after running this and make sure the attribution shown on each guide
 // page (already wired up in app/destinations/[slug]/page.tsx) satisfies
 // whatever license each photo actually turned out to carry.
@@ -70,7 +70,7 @@ async function fetchCityPhoto(city) {
   const filename = pages[0]?.pageimage;
   if (!filename) return null;
 
-  // Step 2: pull that file's full metadata — license, artist, direct URL —
+  // Step 2: pull that file's full metadata - license, artist, direct URL -
   // from its File: page, which pageimages alone doesn't include.
   const fileData = await getJson({
     action: "query",
@@ -123,13 +123,13 @@ async function main() {
       console.error(`[error] ${city}:`, e.message);
       failed++;
     }
-    // Be polite to Wikimedia's shared infrastructure — no need to hammer it.
+    // Be polite to Wikimedia's shared infrastructure - no need to hammer it.
     await new Promise((r) => setTimeout(r, 300));
   }
 
   await fs.writeFile(CREDITS_PATH, JSON.stringify(credits, null, 2));
   console.log(`\n${ok} photo(s) fetched, ${failed} skipped/failed.`);
-  console.log(`Credits written to frontend/lib/destinationPhotoCredits.json — review licenses before committing.`);
+  console.log(`Credits written to frontend/lib/destinationPhotoCredits.json - review licenses before committing.`);
 }
 
 main();

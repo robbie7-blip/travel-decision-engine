@@ -1,14 +1,14 @@
 {
   "city": "Venice",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
-      "text": "There is no standard road traffic in central Venice — vaporetto (water bus) passes are the main public transport, and a multi-day pass is usually better value than paying per ride if moving around a lot."
+      "text": "There is no standard road traffic in central Venice - vaporetto (water bus) passes are the main public transport, and a multi-day pass is usually better value than paying per ride if moving around a lot."
     },
     {
       "category": "cost",
-      "text": "Sitting at a table (rather than standing at the counter) in most Venetian cafés/bars incurs a significantly higher table-service charge — this is standard and legal, not a scam, but easy to be surprised by."
+      "text": "Sitting at a table (rather than standing at the counter) in most Venetian cafés/bars incurs a significantly higher table-service charge - this is standard and legal, not a scam, but easy to be surprised by."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,11 +16,11 @@
     },
     {
       "category": "activity",
-      "text": "Venice charges a day-tripper access fee on certain peak dates for visitors not staying overnight — check current dates if visiting for a single day rather than staying in the city."
+      "text": "Venice charges a day-tripper access fee on certain peak dates for visitors not staying overnight - check current dates if visiting for a single day rather than staying in the city."
     },
     {
       "category": "practical",
-      "text": "Venice floods periodically (\"acqua alta\"), most commonly autumn through early spring — raised walkways go up in St. Mark's Square when this happens; it's a normal, managed occurrence, not a crisis."
+      "text": "Venice floods periodically (\"acqua alta\"), most commonly autumn through early spring - raised walkways go up in St. Mark's Square when this happens; it's a normal, managed occurrence, not a crisis."
     },
     {
       "category": "dietary",

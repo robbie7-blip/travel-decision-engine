@@ -1,17 +1,17 @@
 // Real Google Places lookup for named-venue items (meals, and any activity
-// whose title names a specific business — see the "NAME SPECIFIC VENUES"
-// rule in prompt.ts) — the one thing the model's own web_search tool can't
+// whose title names a specific business - see the "NAME SPECIFIC VENUES"
+// rule in prompt.ts) - the one thing the model's own web_search tool can't
 // reliably give us: an actual Google rating, open/closed status, and price
 // tier. Entirely optional: no-ops (returns the itinerary unchanged) if
 // GOOGLE_PLACES_API_KEY isn't set, so a missing key never breaks generation.
 //
 // Hard rule (non-negotiable): if a title names a specific business, that
 // business must be confirmed to exist, open, and well-rated, with a real
-// Maps link — or it doesn't appear at all. "Places found nothing," "found
+// Maps link - or it doesn't appear at all. "Places found nothing," "found
 // something that doesn't look like the same business," "closed (temporarily
 // or permanently)," and "rated below the bar" are all treated the same way:
 // the item is silently dropped from the itinerary. No warning is surfaced
-// for this — the traveler doesn't need to know an item was swapped out, just
+// for this - the traveler doesn't need to know an item was swapped out, just
 // see an itinerary made only of confirmed real places. Deliberately a single
 // Places lookup per item with no follow-up model call for a replacement
 // suggestion: an earlier version tried one real alternative via a small
@@ -22,11 +22,11 @@
 //
 // Text Search alone is NOT a reliable geographic filter: confirmed in
 // practice, it matched a same-or-similarly-named venue in a completely
-// wrong place — a different city on the same island (~100km+ away), and
+// wrong place - a different city on the same island (~100km+ away), and
 // once a same-named restaurant in New York for a Cyprus trip. namesLikelyMatch
 // only checks the name, not the place, so a name match there wasn't enough
 // to catch it. Fixed with a real geographic cross-check: the item's stated
-// location is geocoded (Open-Meteo, free, no key — same provider already
+// location is geocoded (Open-Meteo, free, no key - same provider already
 // used for weather) to bias the Places search toward the right area AND to
 // hard-reject a match that lands too far from where it should be, even if
 // the name lined up.
@@ -36,7 +36,7 @@ import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem }
 // Below this, a venue is dropped rather than shown.
 //
 // Two floors, because the two kinds of venue are not the same decision. A
-// restaurant is SUBSTITUTABLE — there is always another good one, so the
+// restaurant is SUBSTITUTABLE - there is always another good one, so the
 // bar can be set where a traveler would set it. A landmark is not: the
 // Pantheon is the Pantheon, and dropping it because its average sits at 4.1
 // would remove the reason the day exists and leave a hole nothing can fill.
@@ -45,7 +45,7 @@ const MIN_RATING_ACTIVITY = 4.2;
 
 // ...and above this review count, rating is not allowed to reject an
 // activity at all. A place with this many reviews is a real destination in
-// its own right — a major museum, a basilica, a ruin — and its average says
+// its own right - a major museum, a basilica, a ruin - and its average says
 // something about queues and crowds rather than about whether it is worth
 // seeing. This is a latent bug being closed rather than a preference: the
 // single 4.2 floor applied to landmarks too, so a heavily-reviewed sight
@@ -62,7 +62,7 @@ function minRatingFor(item: ItineraryItem): number {
 // end: a 5.0 from 2 reviews sailed through while a 3.9 from 5,000 was
 // dropped, and the UI then printed that 2-review average next to the venue
 // as if it were a credential. On a product whose entire pitch is that its
-// signals are earned, an unearned one is worse than none — so below this
+// signals are earned, an unearned one is worse than none - so below this
 // count the rating is neither trusted for the accept/reject decision nor
 // shown to the traveler. The venue itself still stands (it's a real,
 // confirmed business, with its real Maps link); we just don't pretend to
@@ -74,12 +74,12 @@ function hasReliableRating(place: PlacesApiPlace): boolean {
 }
 
 // A same-named match further than this from the item's stated location is
-// treated as the wrong venue entirely, regardless of name similarity — chosen
+// treated as the wrong venue entirely, regardless of name similarity - chosen
 // to comfortably cover a city's metro/outskirts sprawl while still rejecting
 // a different city on the same island (Paphos-to-Nicosia-area is ~100km+)
 // or, worse, a different country.
 const MAX_MATCH_DISTANCE_KM = 60;
-// Soft bias radius handed to Places itself, in meters — generous since the
+// Soft bias radius handed to Places itself, in meters - generous since the
 // hard cutoff above is what actually enforces correctness.
 const LOCATION_BIAS_RADIUS_M = 30000;
 
@@ -87,7 +87,7 @@ const PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 
 // Both of these sit on the generation critical path, once per named venue,
-// and neither had a timeout — so a slow or unresponsive Google could hold a
+// and neither had a timeout - so a slow or unresponsive Google could hold a
 // traveler's generation open indefinitely with nothing to cap it. Amadeus
 // was given timeouts after exactly this failure mode was confirmed to push
 // real generations past two minutes (see engine/flightPricing.ts); these
@@ -104,14 +104,14 @@ const GEOCODE_TIMEOUT_MS = 5000;
 // This was unbounded, which was fine while a trip named ten venues and
 // stopped being fine the moment days filled out properly: a three-day Rome
 // trip now fires closer to twenty simultaneously, and Google rate-limits
-// per second. A 429 is indistinguishable from an outage in this code — the
-// item ships unverified — so hitting the limit quietly costs BOTH the badge
+// per second. A 429 is indistinguishable from an outage in this code - the
+// item ships unverified - so hitting the limit quietly costs BOTH the badge
 // and up to a full timeout of wall clock, per affected venue. Confirmed in
 // practice: two cafes on one trip came back with no rating, no hours and no
 // Maps link while every other venue resolved.
 const MAX_PARALLEL_PLACES = 6;
 
-// A rate limit is worth waiting out — it means the answer exists and we
+// A rate limit is worth waiting out - it means the answer exists and we
 // asked too fast. A timeout is not retried, for the same reason it isn't
 // elsewhere: a call that hung once rarely succeeds by being repeated.
 const PLACES_RETRY_BACKOFF_MS = [400, 1200];
@@ -137,7 +137,7 @@ export interface PlacesApiPlace {
   rating?: number;
   userRatingCount?: number;
   businessStatus?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY";
-  priceLevel?: string; // e.g. "PRICE_LEVEL_INEXPENSIVE" — see mapPriceLevel
+  priceLevel?: string; // e.g. "PRICE_LEVEL_INEXPENSIVE" - see mapPriceLevel
   id?: string;
   displayName?: { text?: string };
   location?: GeoPoint;
@@ -151,7 +151,7 @@ interface PlacesApiResponse {
   places?: PlacesApiPlace[];
 }
 
-/** Great-circle distance in km — used to sanity-check a Places match against
+/** Great-circle distance in km - used to sanity-check a Places match against
  * where the item actually says it is, not just whether the name matches. */
 function distanceKm(a: GeoPoint, b: GeoPoint): number {
   const R = 6371;
@@ -179,11 +179,11 @@ async function geocodeRaw(query: string): Promise<GeoPoint | null> {
 }
 
 /** The "City" part of a "Neighborhood, City" location string (or the whole
- * string if there's no comma) — per the "location" schema instruction
+ * string if there's no comma) - per the "location" schema instruction
  * requiring the destination city always be included. Used both as the
  * primary geocoding query AND as the cache key, so every item in the same
  * city (regardless of which neighborhood each names) shares one geocode
- * lookup instead of one per distinct location string — the difference
+ * lookup instead of one per distinct location string - the difference
  * between one network round-trip per destination city and one per
  * neighborhood, which matters since this sits in the generation critical
  * path. */
@@ -194,10 +194,10 @@ function cityPart(location: string): string {
 
 /** Geocodes an item's location, memoized per city within one checkVenues
  * call. Tries the extracted city name first (the common, fast-resolving
- * case) and only falls back to the full raw string — a second sequential
- * fetch — if that fails, since a neighborhood name is rarely more
+ * case) and only falls back to the full raw string - a second sequential
+ * fetch - if that fails, since a neighborhood name is rarely more
  * geocodable than the city it's in. Returns null (skip the geo cross-check
- * for this item) rather than throwing if both fail — a geocoding hiccup
+ * for this item) rather than throwing if both fail - a geocoding hiccup
  * should never block generation. */
 function geocode(location: string, cache: Map<string, Promise<GeoPoint | null>>): Promise<GeoPoint | null> {
   const key = cityPart(location);
@@ -216,12 +216,12 @@ function geocode(location: string, cache: Map<string, Promise<GeoPoint | null>>)
 }
 
 /** Loose overlap check between the venue name in the item's title and what
- * Text Search actually matched — normalizes case/accents/punctuation and
+ * Text Search actually matched - normalizes case/accents/punctuation and
  * checks for a meaningful shared word, rather than an exact match (titles
- * and Google's listed name legitimately differ in small ways — "Restaurante
+ * and Google's listed name legitimately differ in small ways - "Restaurante
  * Vegetariano Apfel" vs "Apfel Vegetariano"). This exists specifically to
  * catch Text Search matching a WRONG business entirely (a stale/duplicate
- * listing, a similarly-named place in a different area) — confirmed to
+ * listing, a similarly-named place in a different area) - confirmed to
  * happen in practice: three real, currently-operating restaurants all came
  * back "permanently closed" in one run, which is far more consistent with
  * mismatched listings than three coincidentally-wrong real closures. */
@@ -243,14 +243,14 @@ function namesLikelyMatch(venueName: string, placeName: string): boolean {
 
 /** Pulls the venue's proper name out of a title phrased as "... at X" or
  * "... @ X" (the last such occurrence, so "Tattoo studio visit at Vodka
- * Tattoo" correctly yields "Vodka Tattoo") — deliberately general rather
+ * Tattoo" correctly yields "Vodka Tattoo") - deliberately general rather
  * than an enumerated prefix list (breakfast/lunch/tattoo session/etc.),
  * since that list missed real cases like "Tattoo studio visit at X" or any
  * other activity phrasing that doesn't start with one of the listed words.
  * Returns null (not a fallback to the full title) when no "at X" pattern is
  * found.
  *
- * LEGACY FALLBACK ONLY — English titles only, since "at" isn't how other
+ * LEGACY FALLBACK ONLY - English titles only, since "at" isn't how other
  * languages phrase this (confirmed: this used to be the ONLY detection
  * method, and it silently broke venue verification, Maps links, AND the
  * "hard rule, non-negotiable" real-business check entirely for every
@@ -272,13 +272,13 @@ function extractVenueNameFromTitle(title: string): string | null {
 
 /** Resolves the venue name to verify: prefers the model's own structured
  * venue_name field, falling back to the legacy title-regex only when that
- * field is absent (an itinerary cached before this field existed) — see
+ * field is absent (an itinerary cached before this field existed) - see
  * extractVenueNameFromTitle's header for why the regex alone isn't enough
  * on its own for a non-English trip. */
 function resolveVenueName(item: { title: string; venue_name?: string | null }): string | null {
   if (item.venue_name) return item.venue_name;
   if (item.venue_name === undefined) return extractVenueNameFromTitle(item.title);
-  return null; // venue_name explicitly null — model says this item doesn't name one
+  return null; // venue_name explicitly null - model says this item doesn't name one
 }
 
 function mapPriceLevel(level?: string): GooglePriceLevel | undefined {
@@ -312,7 +312,7 @@ function mapBusinessStatus(status?: string): GoogleBusinessStatus | undefined {
 }
 
 // The documented Google Maps "Search" URL (not the `?q=place_id:` shorthand,
-// which was confirmed NOT to work reliably — opening it just dumped the raw
+// which was confirmed NOT to work reliably - opening it just dumped the raw
 // "place_id:XXX" string into the search box as literal text instead of
 // resolving the place, giving "No results found"). This form requires a
 // text query alongside query_place_id, which is why displayName is fetched.
@@ -323,7 +323,7 @@ function buildMapsUrl(placeName: string, placeId: string): string {
 /** Three outcomes, not two.
  *
  * "Places has no such business" and "Places did not answer" used to be the
- * same value — null — and null meant delete the item. So a Google outage,
+ * same value - null - and null meant delete the item. So a Google outage,
  * a quota rejection, or one slow response did not degrade verification, it
  * stripped every named venue out of the itinerary and handed the traveler a
  * trip with no restaurants in it. The pipeline would have reported that as
@@ -360,7 +360,7 @@ async function lookupPlace(
       }),
       signal: AbortSignal.timeout(PLACES_TIMEOUT_MS),
     });
-    // A 4xx/5xx is the API failing us, not a verdict on the venue — a 429
+    // A 4xx/5xx is the API failing us, not a verdict on the venue - a 429
     // over quota or a 500 would otherwise read as "this restaurant does not
     // exist" for every item in the trip at once.
     if (!res.ok) {
@@ -383,7 +383,7 @@ async function lookupPlace(
 }
 
 /** A "named venue" is any meal or activity whose title actually names a
- * business (resolveVenueName found one) — NOT based on whether it costs
+ * business (resolveVenueName found one) - NOT based on whether it costs
  * money. A free activity can still name a real business (e.g. "Tattoo
  * studio visit at Vodka Tattoo", a no-charge browse) and must be verified
  * exactly like a paid one; a genuinely generic title (a walk, a park visit)
@@ -393,7 +393,7 @@ function isNamedVenueItem(item: { type: string; title: string; venue_name?: stri
   // the legacy title regex the other types fall back to. That regex keys
   // on the last " at " in a title, which is a good signal in "Lunch at
   // Mocotó" and a bad one in "Second night at the central Chisinau hotel"
-  // — it would extract "the central Chisinau hotel" and either burn a
+  // - it would extract "the central Chisinau hotel" and either burn a
   // lookup failing to match it or, worse, match some unrelated hotel and
   // hang a confident Maps link off it.
   if (item.type === "lodging") return Boolean(item.venue_name);
@@ -402,7 +402,7 @@ function isNamedVenueItem(item: { type: string; title: string; venue_name?: stri
 
 /** Accommodation is verified like any other venue but can NEVER be removed
  * on a failed lookup, unlike a meal or activity. Dropping a lodging item
- * doesn't just lose a suggestion — it silently breaks the itinerary's
+ * doesn't just lose a suggestion - it silently breaks the itinerary's
  * arithmetic: one item per night is what the budget total and
  * checkBudgetIntegrity's night count are both built on, and a trip that
  * quietly loses a night's accommodation cost understates its own budget.
@@ -417,7 +417,7 @@ function isLodging(item: ItineraryItem): boolean {
  * downstream treats it as a confirmed venue) and no Places fields. Named
  * for its original and still-primary caller, lodging, but also used for any
  * item the second pass must keep rather than delete (see keepUnverified). The
- * title is deliberately left alone — it's written in the trip's own
+ * title is deliberately left alone - it's written in the trip's own
  * language, so rewriting it here would either break localization or
  * require re-calling the model for a cosmetic fix. Its confidence tier
  * still reflects the price grounding, which is unaffected by whether the
@@ -432,16 +432,16 @@ export function stripToUnverified(item: ItineraryItem): void {
   // The opening hours go too, and they are the important ones.
   //
   // They are written onto the item BEFORE the reject conditions below run
-  // (deliberately — see the comment at that assignment), so an item
+  // (deliberately - see the comment at that assignment), so an item
   // rejected for a low rating, a permanent closure or being shut that day
   // used to keep them. On the page that renders as "✓ Open on this day ·
-  // 7:00 AM – 9:00 PM" in the verified colour, which is the strongest
+  // 7:00 AM - 9:00 PM" in the verified colour, which is the strongest
   // confidence signal the product has, sitting on a line whose name was
   // just stripped precisely because it could not be stood behind.
   //
   // It is also a claim about the wrong thing. Once venue_name is gone the
   // item no longer says it is that business, so that business's hours are
-  // not a fact about it — and if the lookup matched something similarly
+  // not a fact about it - and if the lookup matched something similarly
   // named, they never were.
   item.google_open_on_visit = undefined;
   item.google_opening_hours = undefined;
@@ -452,7 +452,7 @@ export function stripToUnverified(item: ItineraryItem): void {
  *
  * "Open at 15:30" and "worth going at 15:30" are different questions, and
  * only the first was being asked. A real trip put the Colosseum, Roman
- * Forum and Palatine Hill at 15:30 against a 16:30 close — technically open,
+ * Forum and Palatine Hill at 15:30 against a 16:30 close - technically open,
  * practically an hour to see three sites on one ticket, and most of those
  * have a last-entry cutoff before closing anyway.
  *
@@ -489,14 +489,14 @@ export function minutesUntilClose(
 }
 
 /** Minutes past midnight on the given weekday, as one number, so an
- * overnight period ("Fri 18:00 – Sat 02:00") is a simple range comparison
+ * overnight period ("Fri 18:00 - Sat 02:00") is a simple range comparison
  * instead of a special case. Sunday is 0, matching Google. */
 function weekMinute(day: number, hour: number, minute: number): number {
   return day * 24 * 60 + hour * 60 + minute;
 }
 
 /** The hour an item is scheduled at, from either a clock time ("19:30") or
- * a time-of-day phrase. Returns null when neither is present — an item with
+ * a time-of-day phrase. Returns null when neither is present - an item with
  * no time cannot be checked against opening hours, and guessing one would
  * manufacture a closure that isn't real. */
 function scheduledMinutes(time: string | undefined): number | null {
@@ -509,9 +509,9 @@ function scheduledMinutes(time: string | undefined): number | null {
   }
   const t = time.toLowerCase();
   // "afternoon" is tested BEFORE "noon", and "noon" only with word
-  // boundaries, because "afternoon" contains "noon" — which silently placed
+  // boundaries, because "afternoon" contains "noon" - which silently placed
   // every afternoon item at 13:00 and would have declared a venue open
-  // through a 15:00–19:00 closure.
+  // through a 15:00-19:00 closure.
   //
   // Times are deliberately mid-slot rather than at the edges: a lunch place
   // that opens at 12:00 should not read as closed because "midday" was
@@ -526,7 +526,7 @@ function scheduledMinutes(time: string | undefined): number | null {
 
 /** Whether the venue is open on `date` at the item's scheduled time.
  *
- * Returns undefined — not false — whenever the question can't be answered:
+ * Returns undefined - not false - whenever the question can't be answered:
  * no published hours, no parseable visit time, a malformed period list.
  * That distinction is the whole point. "We don't know" and "it's shut" look
  * identical to a naive check, and conflating them would delete perfectly
@@ -554,7 +554,7 @@ export function isOpenAt(place: PlacesApiPlace, date: string, time: string | und
     const start = weekMinute(o.day, o.hour ?? 0, o.minute ?? 0);
     let end = weekMinute(c.day, c.hour ?? 0, c.minute ?? 0);
     // Closing "before" opening means the period wraps past Saturday night
-    // into Sunday morning — add a week so the comparison stays linear.
+    // into Sunday morning - add a week so the comparison stays linear.
     if (end <= start) end += 7 * 24 * 60;
     if (visit >= start && visit < end) return true;
     // The same wrapped period also has to be tested one week earlier, or a
@@ -565,7 +565,7 @@ export function isOpenAt(place: PlacesApiPlace, date: string, time: string | und
 }
 
 function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
-  // Only surface a rating we'd actually stand behind — see MIN_RATING_COUNT.
+  // Only surface a rating we'd actually stand behind - see MIN_RATING_COUNT.
   if (hasReliableRating(place)) {
     item.google_rating = place.rating;
     item.google_rating_count = place.userRatingCount;
@@ -596,7 +596,7 @@ async function runWithLimit<T>(items: T[], limit: number, fn: (item: T) => Promi
 /** Starts the geocode lookups for a trip's destinations before anything
  * needs them, and hands back the cache checkVenues will use.
  *
- * Every Places lookup awaits its city's geocode first — it's memoized, so
+ * Every Places lookup awaits its city's geocode first - it's memoized, so
  * a trip pays one geocode per city rather than one per venue, but that one
  * still sat at the head of the verification stage with every lookup queued
  * behind it. The destinations are known the instant the job is read, so
@@ -617,7 +617,7 @@ export function prewarmGeocodes(destinations: string[]): Map<string, Promise<Geo
 
 export interface CheckVenuesOptions {
   /** Verify only these items. Used for the second pass, which re-checks
-   * just the venues the repair stage added or replaced — re-verifying the
+   * just the venues the repair stage added or replaced - re-verifying the
    * whole trip would spend a Places lookup per item to confirm what the
    * first pass already confirmed. */
   only?: Set<ItineraryItem>;
@@ -625,7 +625,7 @@ export interface CheckVenuesOptions {
    *
    * Used by the second pass, and it matters: the repairs exist to close
    * holes, and deleting a replacement that also fails verification would
-   * reopen the exact hole the repair just closed — a day would lose its
+   * reopen the exact hole the repair just closed - a day would lose its
    * dinner twice over, once to the original venue failing and once to its
    * replacement failing, with no third attempt coming.
    *
@@ -648,7 +648,7 @@ export async function checkVenues(
   if (!apiKey) return itinerary;
 
   // Paired with its day, because the single most valuable thing this
-  // function can check — is the place open when we're sending someone —
+  // function can check - is the place open when we're sending someone -
   // needs the date, and the previous flatMap threw it away.
   const targets = (itinerary.days ?? []).flatMap((day) =>
     day.items
@@ -661,7 +661,7 @@ export async function checkVenues(
   const geoCache = options.geoCache ?? new Map<string, Promise<GeoPoint | null>>();
   let unavailable = 0;
 
-  // Bounded fan-out rather than Promise.all over every venue — see
+  // Bounded fan-out rather than Promise.all over every venue - see
   // MAX_PARALLEL_PLACES. Six at a time still resolves a full trip in a
   // couple of rounds while staying inside Google's per-second budget.
   await runWithLimit(targets, MAX_PARALLEL_PLACES, async ({ item, date }) => {
@@ -681,7 +681,7 @@ export async function checkVenues(
       const placeName = place?.displayName?.text;
       const matched = place && placeName && namesLikelyMatch(venueName, placeName);
 
-      // Lodging is downgraded to unnamed instead of dropped — see
+      // Lodging is downgraded to unnamed instead of dropped - see
       // isLodging/stripToUnverified for why removal isn't an option.
       const reject = (target: ItineraryItem) => {
         if (isLodging(target) || options.keepUnverified) stripToUnverified(target);
@@ -694,7 +694,7 @@ export async function checkVenues(
       }
 
       // Name matched, but a same/similarly-named venue can still exist
-      // somewhere entirely wrong — the failure mode confirmed in practice
+      // somewhere entirely wrong - the failure mode confirmed in practice
       // (a different city, once a different country). Reject on distance
       // regardless of how well the name matched.
       if (bias && place.location && distanceKm(bias, place.location) > MAX_MATCH_DISTANCE_KM) {
@@ -705,7 +705,7 @@ export async function checkVenues(
       applyPlaceData(item, place);
 
       // Open on the actual day and hour we're sending them. Checked after
-      // applyPlaceData so the hours are recorded on the item either way —
+      // applyPlaceData so the hours are recorded on the item either way -
       // a traveler seeing "closed Mondays" next to a venue understands the
       // plan; one seeing nothing just finds a locked door.
       const open = isOpenAt(place, date, item.time);
@@ -718,7 +718,7 @@ export async function checkVenues(
         reject(item);
       } else if (open === false) {
         // A real, well-rated venue that happens to be shut that day. Same
-        // outcome as any other failed check — it does not appear — but the
+        // outcome as any other failed check - it does not appear - but the
         // repair stage that runs after this pass will put a different real
         // venue in the slot, so the day doesn't just lose a meal.
         reject(item);
@@ -727,9 +727,9 @@ export async function checkVenues(
         place.rating! < minRatingFor(item) &&
         !(item.type === "activity" && (place.userRatingCount ?? 0) >= LANDMARK_RATING_COUNT)
       ) {
-        // Only reject on a rating solid enough to justify it — a bad
+        // Only reject on a rating solid enough to justify it - a bad
         // average over a handful of reviews isn't evidence the place is bad
-        // — and never on rating alone for a landmark (see
+        // - and never on rating alone for a landmark (see
         // LANDMARK_RATING_COUNT).
         reject(item);
       }
@@ -739,7 +739,7 @@ export async function checkVenues(
     // Loud on purpose. Silently shipping unverified venues is the right
     // call in the moment and the wrong thing to never find out about.
     console.warn(
-      `[worker] Places was unavailable for ${unavailable}/${targets.length} venue(s) — ` +
+      `[worker] Places was unavailable for ${unavailable}/${targets.length} venue(s) - ` +
         `those items ship unverified rather than being dropped`
     );
   }

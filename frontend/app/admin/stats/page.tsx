@@ -1,5 +1,5 @@
 // Password-protected (see middleware.ts) internal view of self-hosted usage
-// counters (see lib/analytics.ts). Reads directly from Redis — no separate
+// counters (see lib/analytics.ts). Reads directly from Redis - no separate
 // API route, since this is the only consumer, same pattern as
 // admin/feedback/page.tsx.
 
@@ -51,9 +51,9 @@ export default async function StatsAdminPage() {
   }
 
   const { analytics: snapshot, funnel, budget, quality } = loaded;
-  // Percentage of `from` that reached `to` — null (rendered as "—") rather
+  // Percentage of `from` that reached `to` - null (rendered as "-") rather
   // than a misleading 0% or NaN when the denominator is 0 (no data yet).
-  const rate = (from: number, to: number): string => (from > 0 ? `${Math.round((to / from) * 100)}%` : "—");
+  const rate = (from: number, to: number): string => (from > 0 ? `${Math.round((to / from) * 100)}%` : "-");
   const maxDaily = Math.max(1, ...snapshot.daily.map((d) => d.generate + d.refine));
   // Mirrors the worker's own early-warning threshold (see
   // maybeAlertBudgetThreshold in worker/src/index.ts) so this page's color
@@ -105,19 +105,19 @@ export default async function StatsAdminPage() {
           </div>
           <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 4 }}>
             of ${budget.limitUsd.toFixed(2)} budget
-            {!budget.allowed ? " — new generations paused" : budgetNearLimit ? " — nearing cap" : ""}
+            {!budget.allowed ? " - new generations paused" : budgetNearLimit ? " - nearing cap" : ""}
           </div>
         </div>
       </div>
 
-      {/* What the acceptance gate found across REAL generations — see
+      {/* What the acceptance gate found across REAL generations - see
           worker/src/engine/quality.ts. This section exists because the only
           previous detector for a quality regression was the owner opening a
           trip and noticing something wrong, which made every quality
           question cost a paid generation to ask. Traveler traffic answers
           it for free now, and continuously. */}
       <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-        Generation quality — last 30 days
+        Generation quality - last 30 days
       </div>
       {quality.jobs === 0 ? (
         <div style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 32 }}>
@@ -209,7 +209,7 @@ export default async function StatsAdminPage() {
         </div>
       )}
 
-      {/* Where visitors actually drop off, not a guess — see
+      {/* Where visitors actually drop off, not a guess - see
           lib/analytics.ts's FunnelEventType. Totals since these counters
           were added, not lifetime (there was no visibility before this). */}
       <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>

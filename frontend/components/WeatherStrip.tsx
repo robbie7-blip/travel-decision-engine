@@ -86,7 +86,7 @@ function useWeather(destinations: string[], startDate: string, endDate: string):
 }
 
 // Bug fixed: this used to be a single module-level formatter hardcoded to
-// "en" regardless of the app's selected language — every forecast day
+// "en" regardless of the app's selected language - every forecast day
 // label ("Mon, 12 Aug") showed English weekday/month abbreviations even
 // when the rest of the page was in Bulgarian. Same LOCALE_BY_LANGUAGE
 // pattern as DateRangePicker/SingleDatePicker, keyed per-language so the

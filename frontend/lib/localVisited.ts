@@ -1,4 +1,4 @@
-// Client-side, device-local storage for the visited-countries tracker — the
+// Client-side, device-local storage for the visited-countries tracker - the
 // primary store now (see app/account/visited/page.tsx). Modeled on how the
 // Been app works: marking a country visited needs no account at all, it
 // just needs to persist on this device. Signing in is an optional upgrade
@@ -15,7 +15,7 @@ export interface VisitedPin {
 
 export interface VisitedEntry {
   code: string;
-  visitedAt?: string; // ISO date, e.g. "2024-07-03" — optional
+  visitedAt?: string; // ISO date, e.g. "2024-07-03" - optional
   pins?: VisitedPin[];
 }
 
@@ -55,7 +55,7 @@ export function readLocalVisitedEntries(): VisitedEntry[] {
       }
     }
   } catch {
-    // Corrupt or inaccessible storage — treat as empty rather than crash the page.
+    // Corrupt or inaccessible storage - treat as empty rather than crash the page.
   }
   return [];
 }
@@ -65,12 +65,12 @@ export function writeLocalVisitedEntries(entries: VisitedEntry[]): void {
   try {
     window.localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
   } catch {
-    // Storage can fail (private browsing, quota) — the in-memory state
+    // Storage can fail (private browsing, quota) - the in-memory state
     // still reflects the change for this render, it just won't persist.
   }
 }
 
-/** Reads the share token for this device WITHOUT creating one — used to
+/** Reads the share token for this device WITHOUT creating one - used to
  * decide whether a previously-shared anonymous link needs refreshing after
  * a toggle. Returns null if this device has never generated a share link. */
 export function peekLocalShareToken(): string | null {
@@ -80,7 +80,7 @@ export function peekLocalShareToken(): string | null {
 
 /** Reads this device's share token, minting one on first use. The token
  * itself (not an email) is the whole identity behind an anonymous share
- * link — see lib/statsShare.ts's anonymous snapshot functions. */
+ * link - see lib/statsShare.ts's anonymous snapshot functions. */
 export function getOrCreateLocalShareToken(): string {
   if (typeof window === "undefined") return "";
   let token = window.localStorage.getItem(SHARE_TOKEN_KEY);

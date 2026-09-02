@@ -1,6 +1,6 @@
 // Public, read-only: live EUR exchange rates for the currency switcher (see
 // lib/currency.ts). Cached in Redis so a page full of visitors doesn't each
-// trigger an upstream call — rates don't need to be more real-time than a
+// trigger an upstream call - rates don't need to be more real-time than a
 // few hours old for a trip-cost estimate anyway. Falls back to an empty
 // rates object (EUR-only display) on any failure rather than serving a
 // stale or fabricated conversion.

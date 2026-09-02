@@ -1,5 +1,5 @@
 // Marks this browser as having successfully passed Basic Auth against an
-// /admin/* page at some point (see middleware.ts) — set by those pages
+// /admin/* page at some point (see middleware.ts) - set by those pages
 // themselves on load, since reaching them at all already proves it. Lets
 // AddToShowcaseButton decide whether to show its control on a public
 // /trip/[jobId] page WITHOUT ever probing a Basic-Auth-protected endpoint

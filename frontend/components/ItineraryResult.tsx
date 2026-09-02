@@ -12,7 +12,7 @@ import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
 import type { GooglePriceLevel, Itinerary, ItineraryItem, Language } from "@/lib/types";
 
-// Google's price_level is a 0-4 tier, not a literal per-person figure — shown
+// Google's price_level is a 0-4 tier, not a literal per-person figure - shown
 // as $ symbols rather than implying a precise amount Google doesn't actually
 // give us.
 const PRICE_LEVEL_SYMBOL: Record<GooglePriceLevel, string> = {
@@ -24,7 +24,7 @@ const PRICE_LEVEL_SYMBOL: Record<GooglePriceLevel, string> = {
 };
 
 /** >=80% grounded reuses the same teal as the "verified" tier dot; below
- * 50% reuses the infeasible red — thresholds chosen to match, not clash
+ * 50% reuses the infeasible red - thresholds chosen to match, not clash
  * with, the per-item confidence colors already established elsewhere. */
 function trustScoreColor(percent: number): string {
   if (percent >= 80) return "var(--grounded)";
@@ -34,7 +34,7 @@ function trustScoreColor(percent: number): string {
 
 /** Splits the model's free-text budget reasoning into sentences for display
  * as bullet points, since the reasoning itself is unstructured prose (no
- * schema field breaks it into a list) — a period/!/? followed by whitespace
+ * schema field breaks it into a list) - a period/!/? followed by whitespace
  * and then a capital letter or a currency symbol is a safe-enough split
  * point given this app's plain, short-sentence prompt style (see WRITING
  * STYLE in the system prompt). Worst case a sentence splits oddly; the
@@ -56,7 +56,7 @@ const feedbackButtonStyle = {
   textDecoration: "underline",
 } as const;
 
-/** Per-item helpful/wrong feedback control — the start of the trust-feedback
+/** Per-item helpful/wrong feedback control - the start of the trust-feedback
  * loop. Deliberately low-friction: one click for "helpful", one click plus an
  * optional one-line comment for "wrong". */
 function ItemFeedback({
@@ -150,7 +150,7 @@ function itemKey(day: number, index: number): string {
   return `${day}-${index}`;
 }
 
-/** The "how do we know this?" disclosure — a tier-specific plain-language
+/** The "how do we know this?" disclosure - a tier-specific plain-language
  * explanation (not just the dot color) plus the item's actual evidence
  * (source links, cross-check agreement) when there is any. Collapsed by
  * default so a long itinerary doesn't turn into a wall of links; this is
@@ -202,7 +202,7 @@ interface ItineraryResultProps {
   jobId: string;
   t: Dictionary;
   // Optional so callers without a job to refine (there are none left, but
-  // keeping it optional costs nothing) can skip pushback entirely — it just
+  // keeping it optional costs nothing) can skip pushback entirely - it just
   // doesn't render. CompareView.tsx wires this up per column, each with its
   // own independent refine handler.
   onRefine?: (question: string) => void;
@@ -210,11 +210,11 @@ interface ItineraryResultProps {
   refiningLabel?: string;
   refineError?: string;
   lastQuestion?: string;
-  // Defaults to EUR/no rates — every cost figure just renders in EUR, the
+  // Defaults to EUR/no rates - every cost figure just renders in EUR, the
   // currency the itinerary was actually generated and budget-checked in.
   currency?: Currency;
   rates?: FxRates | null;
-  // Drives the weather outlook strip — omitted (strip just doesn't render)
+  // Drives the weather outlook strip - omitted (strip just doesn't render)
   // if the caller doesn't have the brief handy for some reason. destinations/
   // startDate/endDate/partyComposition/interests double as the trip context
   // handed to the embedded <TripQA> box further down, so its answers are
@@ -449,10 +449,10 @@ export function ItineraryResult({
                       <span className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                         {item.flight_search_url && item.cost_estimate_eur > 0 && item.source_confidence !== "grounded" ? (
                           // A flight's own guessed fare has repeatedly turned out badly wrong
-                          // in practice (a model estimate is not a live price check) — rather
+                          // in practice (a model estimate is not a live price check) - rather
                           // than show a number that might flatly contradict the real, current
                           // price one tap away, point straight at the real price instead of
-                          // asserting our own. Only applies when NOT grounded — attachFlightPrices
+                          // asserting our own. Only applies when NOT grounded - attachFlightPrices
                           // (worker/src/engine/flightPricing.ts) replaces this guess with a real,
                           // live-checked fare and marks it "grounded" when it succeeds, in which
                           // case the real number is shown below like any other grounded price.
@@ -480,7 +480,7 @@ export function ItineraryResult({
                     </div>
                     {/* Where this live-checked fare sits against the route's
                         own price history. Stated as a fact about a range
-                        that actually happened, never as a prediction — the
+                        that actually happened, never as a prediction - the
                         band is always shown alongside the verdict so the
                         claim is checkable rather than asserted. */}
                     {item.fare_price_context && (
@@ -544,7 +544,7 @@ export function ItineraryResult({
                           const mondayFirst = (new Date(parsed).getUTCDay() + 6) % 7;
                           const line = item.google_opening_hours?.[mondayFirst];
                           if (!line) return null;
-                          // "Tuesday: 11:00 AM – 10:00 PM" -> just the hours.
+                          // "Tuesday: 11:00 AM - 10:00 PM" -> just the hours.
                           const hours = line.slice(line.indexOf(":") + 1).trim();
                           return <span style={{ color: "var(--ink-dim)" }}> · {hours}</span>;
                         })()}

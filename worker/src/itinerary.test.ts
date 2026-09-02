@@ -1,5 +1,5 @@
 // Runs the REAL pipeline over a realistic fake generation and reads the
-// finished trip — no API key, no Redis, no money.
+// finished trip - no API key, no Redis, no money.
 //
 // This exists because of a specific unfairness. Every content mistake this
 // product has shipped was found the same way: the owner paid for a
@@ -7,7 +7,7 @@
 // two-night total on both nights. An Italian dinner inside an English trip.
 // "Check in to the hotel" on the second night. A flight landing with no way
 // into town. None of those were subtle, and none of them needed a real
-// model to catch — they only needed something to look at the output.
+// model to catch - they only needed something to look at the output.
 //
 // pipeline.test.ts measures WHEN things happen. This measures WHAT comes
 // out. The stub returns a plausible Rome-shaped trip with the exact flaws
@@ -16,7 +16,7 @@
 //
 // It also captures every prompt the pipeline sends, because a whole class
 // of these bugs is not bad judgement but a rule that never made it into the
-// request — the instruction exists, and nothing passes it through.
+// request - the instruction exists, and nothing passes it through.
 //
 // Run: npm run test:itinerary
 
@@ -86,8 +86,8 @@ function planJson(): string {
   });
 }
 
-/** A day written the way a real generation writes one — several items, real
- * names, sensible times — carrying the flaws that have actually shipped:
+/** A day written the way a real generation writes one - several items, real
+ * names, sensible times - carrying the flaws that have actually shipped:
  *
  *   - day 1 prices the lodging at the WHOLE STAY (the EUR 264 bug)
  *   - day 2 forgets its dinner entirely (the Bali bug)
@@ -115,7 +115,7 @@ function dayJson(dayNumber: number): string {
     base.items = [
       { time: "09:00", type: "transport", title: "Flight from Sofia to Rome", venue_name: null, is_flight: true, location: "Sofia to Rome", cost_estimate_eur: 150, reasoning: "r", source_confidence: "inferred" },
       { time: "12:30", type: "transport", title: "Leonardo Express to Termini", venue_name: null, location: "Fiumicino to Termini, Rome", cost_estimate_eur: 28, reasoning: "r", source_confidence: "inferred" },
-      // Two nights' worth on a single night — the bug that shipped.
+      // Two nights' worth on a single night - the bug that shipped.
       lodgingItem(PER_NIGHT * 2),
       { time: "14:00", type: "meal", title: "Lunch at Ai Tre Scalini", venue_name: "Ai Tre Scalini", location: "Monti, Rome", cost_estimate_eur: 30, reasoning: "r", source_confidence: "inferred" },
       { time: "16:00", type: "activity", title: "Sight 1", venue_name: "Colosseum", location: "Colosseo, Rome", cost_estimate_eur: 36, reasoning: "r", source_confidence: "inferred" },
@@ -128,7 +128,7 @@ function dayJson(dayNumber: number): string {
       // Day 1's lunch venue again.
       { time: "13:00", type: "meal", title: "Lunch at Ai Tre Scalini", venue_name: "Ai Tre Scalini", location: "Monti, Rome", cost_estimate_eur: 30, reasoning: "r", source_confidence: "inferred" },
       { time: "16:00", type: "activity", title: "Castel Sant'Angelo", venue_name: "Castel Sant'Angelo", location: "Borgo, Rome", cost_estimate_eur: 15, reasoning: "r", source_confidence: "inferred" },
-      // ...no dinner at all, AND no bed — so checkBudgetIntegrity has to
+      // ...no dinner at all, AND no bed - so checkBudgetIntegrity has to
       // clone one in, which is where two separate bugs used to live.
     ];
   } else {
@@ -183,7 +183,7 @@ function makeClient(sent: Sent[]): Anthropic {
           case "day": {
             // The prompt states which day it wants; honour it so each day's
             // planted flaw lands where the assertions expect.
-            const m = /Day (\d+) —/.exec(user);
+            const m = /Day (\d+) -/.exec(user);
             const n = m ? Number(m[1]) : ++dayCursor;
             text = dayJson(n);
             break;
@@ -238,7 +238,7 @@ function makeRedis(store: Map<string, string>): Redis {
 }
 
 async function main() {
-  heading("FINISHED ITINERARY — what a traveler would actually read");
+  heading("FINISHED ITINERARY - what a traveler would actually read");
 
   const store = new Map<string, string>();
   const sent: Sent[] = [];
@@ -256,7 +256,7 @@ async function main() {
   check("three days", (result?.days ?? []).length === 3);
   check("did not fall back to the single-call path", finished.timings?.fellBackToSingleCall !== true);
 
-  section("accommodation — the EUR 264 bug");
+  section("accommodation - the EUR 264 bug");
   const lodging = items.filter((i) => i.type === "lodging");
   check("one lodging item per night", lodging.length === 2, `${lodging.length}`);
   check(
@@ -273,7 +273,7 @@ async function main() {
 
   section("a cloned accommodation night lands correctly");
   // Day 2's stub omits its bed entirely. checkBudgetIntegrity clones one so
-  // the trip total stays honest — but it used to clone the NEAREST lodging
+  // the trip total stays honest - but it used to clone the NEAREST lodging
   // item, which is day 1's check-in, and it pushed it on AFTER the day had
   // been sorted. The result was "Check in to Hotel Artemide" sitting at the
   // bottom of day 2, below dinner, on a night they were already staying.
@@ -290,14 +290,14 @@ async function main() {
     dayTwo.items.map((i) => `${i.time} ${i.type}`).join(" | ")
   );
 
-  section("meals — the Bali bug");
+  section("meals - the Bali bug");
   for (const day of result.days) {
     const meals = day.items.filter((i) => i.type === "meal").length;
     const owed = day.day === 1 ? 2 : 3; // day 1 lands at midday, so no breakfast
     check(`day ${day.day} has all ${owed} meals it owes`, meals >= owed, `${meals}`);
   }
 
-  section("duplicate venues — the Chisinau bug");
+  section("duplicate venues - the Chisinau bug");
   const names = items.map((i) => i.venue_name).filter((n): n is string => !!n && n !== HOTEL.name);
   check("no venue appears twice", new Set(names).size === names.length, names.join(", "));
 
@@ -326,7 +326,7 @@ async function main() {
   check("day prompts carry the whole-day accounting rule", dayPrompts.every((p) => /ACCOUNT FOR THE WHOLE DAY/.test(p.system)));
   const repairs = sent.filter((s) => s.kind === "meal-repair" || s.kind === "venue-repair");
   check(
-    "every repair call names the trip's language outright — the Italian-dinner bug",
+    "every repair call names the trip's language outright - the Italian-dinner bug",
     repairs.length > 0 && repairs.every((p) => /Language: write .*English/.test(p.user)),
     repairs.map((p) => (/Language:.*/.exec(p.user) ?? [""])[0]).join(" | ")
   );
@@ -336,7 +336,7 @@ async function main() {
   check("a quality report was recorded", q != null);
   const defects = (q?.findings ?? []).filter((f) => f.severity === "defect");
   check(
-    "every planted defect was repaired — none survive to the traveler",
+    "every planted defect was repaired - none survive to the traveler",
     defects.length === 0,
     defects.map((f) => f.detail).join("; ")
   );

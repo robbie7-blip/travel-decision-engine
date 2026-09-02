@@ -1,5 +1,5 @@
 // Long-running worker: consumes jobs pushed onto jobs:queue by the Next.js
-// app's POST /api/generate, calls Claude (with full web search — no
+// app's POST /api/generate, calls Claude (with full web search - no
 // duration limit here, unlike the old Vercel-serverless version of this
 // call), and writes the result back to Redis for the app's poll endpoint
 // to read. Deploy this as an always-on process (Railway, Fly.io, etc.),
@@ -11,7 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type Redis from "ioredis";
 import { getRedis } from "./redis";
 import { createAnthropicClient, isMissingWorkspaceIdError, workspaceId } from "./anthropicClient";
-// Local copies of the shared engine/job code, not "../../frontend/..." —
+// Local copies of the shared engine/job code, not "../../frontend/..." -
 // Railway's "Root Directory: worker" setting deploys only this directory,
 // so a cross-directory import into frontend/ has nothing to resolve
 // against in production (works locally where the full repo is checked
@@ -40,6 +40,7 @@ import {
   type TripSkeleton,
 } from "./engine/twoPhase";
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
+import { stripEmDashes } from "./engine/plainDashes";
 import {
   assessQuality,
   duplicateVenueItems,
@@ -75,7 +76,7 @@ import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "./t
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 12000;
 // The single largest quality knob available, and it had been pinned to the
-// minimum since before any of the latency work — not because low effort was
+// minimum since before any of the latency work - not because low effort was
 // judged good enough, but because it was the cheapest way to make
 // generation fast. That is the wrong trade for this product: the whole
 // pitch is that the reasoning is worth trusting, and effort is exactly the
@@ -83,7 +84,7 @@ const MAX_TOKENS = 12000;
 //
 // "high" costs real time and real money per generation. That is the
 // intended trade. MODEL_EFFORT overrides it without a code change if the
-// balance ever needs revisiting — "low" restores the old behaviour exactly.
+// balance ever needs revisiting - "low" restores the old behaviour exactly.
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
 
@@ -106,7 +107,7 @@ function readEffort(name: string, fallback: Effort): Effort {
   const normalized = raw.trim().toLowerCase() as Effort;
   if (EFFORTS.includes(normalized)) return normalized;
   console.error(
-    `[worker] ${name}="${raw}" is not a valid effort (${EFFORTS.join(", ")}) — falling back to "${fallback}"`
+    `[worker] ${name}="${raw}" is not a valid effort (${EFFORTS.join(", ")}) - falling back to "${fallback}"`
   );
   return fallback;
 }
@@ -122,7 +123,7 @@ const EFFORT = readEffort("MODEL_EFFORT", "high");
 // It bought nothing: there is no judgement in "which number in this page is
 // the nightly rate", so extra reasoning has no quality to add. And it cost
 // something real, because these calls have deliberately tiny token caps
-// (they emit two fields) — reasoning is drawn from the same budget as the
+// (they emit two fields) - reasoning is drawn from the same budget as the
 // answer, so a high-effort call under a 400-token cap can spend the whole
 // cap thinking and return no JSON at all. That failure is silent by design
 // here (a lodging lookup that fails degrades to a generic estimate rather
@@ -141,7 +142,7 @@ const EXTRACT_EFFORT = readEffort("EXTRACT_MODEL_EFFORT", "low");
 const LODGING_MAX_TOKENS = 2000;
 const REPAIR_MAX_TOKENS = 1500;
 
-// Bounds a hung request. Deliberately far above any healthy call — its job
+// Bounds a hung request. Deliberately far above any healthy call - its job
 // is to stop a generation hanging forever, not to abandon a call that is
 // merely slow, since abandoning one costs a full retry and makes things
 // worse. A single call still running at two minutes is not slow, it is
@@ -149,12 +150,12 @@ const REPAIR_MAX_TOKENS = 1500;
 const CALL_TIMEOUT_MS = 120_000;
 
 // Full search is the entire point of moving generation into a worker with
-// no execution-time limit — but per-item restaurant/activity searches were
+// no execution-time limit - but per-item restaurant/activity searches were
 // the single biggest generation-time cost (each search round-trip is a real
 // model pause, easily several seconds, multiplied across ~4 named venues a
 // day). Now that checkVenues (worker/src/engine/venueVerification.ts) does a
 // fast, fully-parallelized Google Places lookup for every named venue right
-// after generation, the model no longer needs to search them itself — it
+// after generation, the model no longer needs to search them itself - it
 // only searches for lodging, which stays the one price category Places
 // doesn't cover. This roughly halves-or-better real generation time.
 //
@@ -165,17 +166,17 @@ const CALL_TIMEOUT_MS = 120_000;
 // code_execution call per search, so two searches isn't just double the
 // network time). A single grounded source per destination is still a real
 // improvement over an inferred guess, and is reported as "single_source"
-// confidence rather than "verified" — an honest, already-supported tier —
+// confidence rather than "verified" - an honest, already-supported tier -
 // rather than paying for a second round-trip just to upgrade that label.
 //
 // Flights are deliberately NOT searched (tried it, reverted it): it added a
-// full extra search round-trip back onto every generation with an origin —
-// confirmed pushing real generation time toward 2 minutes — and worse, the
+// full extra search round-trip back onto every generation with an origin -
+// confirmed pushing real generation time toward 2 minutes - and worse, the
 // number it found was actually wrong in practice: a live test showed the
 // model reporting a confident "single_source" EUR240 round-trip fare while
 // the real Google Flights price for that exact route/dates, one line below
 // it via the deterministic link attachFlightSearchLinks always attaches
-// (see engine/flightLinks.ts), was EUR43 — a self-contradicting itinerary,
+// (see engine/flightLinks.ts), was EUR43 - a self-contradicting itinerary,
 // and a worse outcome than just being honest that it's a ballpark. Dynamic
 // airline pricing isn't something a single web_search reliably nails down
 // the way a lodging price range is; the real Google Flights link is the
@@ -183,53 +184,53 @@ const CALL_TIMEOUT_MS = 120_000;
 // Maps links already have with venues. Flight cost_estimate_eur is back to
 // a plain hedged, inferred estimate, same as any other transport item.
 const SEARCH_INSTRUCTIONS = `You have a web_search tool available. Use it ONLY for lodging price \
-research — do NOT use it for meals, activities, or transport (including flights/trains), even ones \
+research - do NOT use it for meals, activities, or transport (including flights/trains), even ones \
 that name a specific venue or carrier: a separate, much faster automated step verifies named \
 venues (real business, open/closed status, rating, price tier) right after you finish, and flight \
-items get a real, clickable Google Flights link attached automatically — so spending search budget \
+items get a real, clickable Google Flights link attached automatically - so spending search budget \
 on either here only adds latency without adding trust.
 
 LODGING:
-For each destination, perform ONE search for its lodging price range — do not perform a second \
+For each destination, perform ONE search for its lodging price range - do not perform a second \
 search for the same destination, even to cross-check; speed matters more here than a second \
 opinion on a number that's already grounded once.
 - If the search returns a usable result, use it for lodging cost_estimate_eur items in that \
 destination, mark source_confidence as "grounded", set source_urls to that single URL, and leave \
-source_agreement unset (null) — this is a single-source grounding, not a cross-check.
+source_agreement unset (null) - this is a single-source grounding, not a cross-check.
 - If the search returns nothing usable for a destination, fall back to the existing hedged, \
-inferred estimate — do not invent a false source. Set source_urls to an empty array and \
+inferred estimate - do not invent a false source. Set source_urls to an empty array and \
 source_agreement to null.
 
-MEALS, ACTIVITIES, AND TRANSPORT (including flights) — DO NOT SEARCH: still name a real, specific \
+MEALS, ACTIVITIES, AND TRANSPORT (including flights) - DO NOT SEARCH: still name a real, specific \
 venue per the NAME SPECIFIC VENUES rule for meals/activities, and still give your best hedged \
 price estimate from general knowledge for all of these (a typical current fare/price range for the \
-route or category is fine — you don't need to know today's exact number), but set \
-source_confidence to "inferred" and source_urls to an empty array — the automated Places check and \
+route or category is fine - you don't need to know today's exact number), but set \
+source_confidence to "inferred" and source_urls to an empty array - the automated Places check and \
 the attached Google Flights link are what actually let the traveler verify these, and do it far \
 faster and more reliably than a per-item search would here.
 
 CRITICAL: never adjust a "grounded" lodging number to fit the budget: whatever cost_estimate_eur \
 you write for a "grounded" lodging item MUST fall within (or match, for a single price) what its \
 cited source(s) actually reported. Do NOT quietly write a lower number than your source found just \
-because the trip's budget is tight — if the real number is high enough that it strains or breaks \
+because the trip's budget is tight - if the real number is high enough that it strains or breaks \
 the budget, that IS the correct finding; report it as infeasible rather than manufacturing a \
 cheaper "grounded" figure that isn't actually what you found. A cost figure invented to make the \
 budget work, even with a real citation link attached, is worse than no citation, because it looks \
-verified when it isn't — never do this.
+verified when it isn't - never do this.
 
 CURRENCY: a search result will often quote a price in the local currency (BRL, USD, THB, \
 whatever), not EUR. Convert it to EUR yourself before writing cost_estimate_eur or mentioning that \
-price anywhere in reasoning — never leave a raw local-currency figure in the output, even inside a \
+price anywhere in reasoning - never leave a raw local-currency figure in the output, even inside a \
 citation-backed reasoning sentence. If the local pricing convention itself is unfamiliar to a \
 European traveler (pay-by-weight, a per-person cover charge, a prix-fixe menu), translate it into \
 an estimated total EUR cost for a typical portion or person, and explain the convention in plain \
 terms rather than just repeating the local unit rate.
 
 After any searches, output ONLY the final JSON matching the schema. Do not write any other text \
-before, between, or after — no acknowledgment of the search, no commentary.`;
+before, between, or after - no acknowledgment of the search, no commentary.`;
 
-// Used instead of SEARCH_INSTRUCTIONS — and with no web_search tool declared
-// at all — whenever every destination already has a cached, recently
+// Used instead of SEARCH_INSTRUCTIONS - and with no web_search tool declared
+// at all - whenever every destination already has a cached, recently
 // search-verified lodging price (see lodgingCache.ts). Not just "tell the
 // model not to search": the tool itself is omitted from the request, so
 // there's no possibility of the model spending a search round-trip on it
@@ -238,19 +239,19 @@ before, between, or after — no acknowledgment of the search, no commentary.`;
 // search latency every single time even though lodging prices barely change
 // hour to hour.
 const NO_SEARCH_INSTRUCTIONS = `No web_search tool is available for this generation. Every destination's lodging \
-price has already been verified via a recent live search — see the "already verified" notes provided below for \
+price has already been verified via a recent live search - see the "already verified" notes provided below for \
 each destination. Reuse those exact figures and source_urls/source_agreement values for that destination's lodging \
 item(s), set source_confidence to "grounded", and do not attempt to search.
 
-Do not search for meals, activities, or transport either — a separate, much faster automated step verifies named \
+Do not search for meals, activities, or transport either - a separate, much faster automated step verifies named \
 meal/activity venues (real business, open/closed status, rating, price tier) right after you finish. Still name a \
 real, specific venue per the NAME SPECIFIC VENUES rule, give your best hedged price estimate, and set \
 source_confidence to "inferred" and source_urls to an empty array for those.
 
 CURRENCY: if a cached lodging figure needs conversion, or you need to estimate any other price, convert to EUR \
-yourself — never write a raw local-currency figure anywhere in the output.
+yourself - never write a raw local-currency figure anywhere in the output.
 
-Output ONLY the final JSON matching the schema. Do not write any other text before, between, or after — no \
+Output ONLY the final JSON matching the schema. Do not write any other text before, between, or after - no \
 commentary.`;
 
 function extractJson(text: string): string {
@@ -266,12 +267,12 @@ function extractJson(text: string): string {
 
 class ModelOutputError extends Error {}
 
-// Each real search costs more than 1 "use" here — the tool's dynamic
+// Each real search costs more than 1 "use" here - the tool's dynamic
 // filtering makes an internal code_execution call that eats into the same
 // budget, so too low a count can be exhausted before a real query completes,
 // causing a silent, unlogged fallback to an ungrounded estimate (empirically
 // confirmed via a live test job). Only budgets for lodging's single search
-// per destination now — meals, activities, and transport (including
+// per destination now - meals, activities, and transport (including
 // flights) are deliberately not searched by the model at all (see
 // SEARCH_INSTRUCTIONS), so there's no other budget to account for. This is
 // the main lever behind cutting overall generation time: fewer searches
@@ -282,14 +283,14 @@ function estimateMaxSearchUses(brief: TripBriefInput): number {
 
 // A single destination's lodging price, fetched on its own rather than as
 // part of the main itinerary-writing call. The old design had the model do
-// this search INLINE, mid-conversation, once per destination — for an
+// this search INLINE, mid-conversation, once per destination - for an
 // N-destination trip that's N sequential search pauses stacked in front of
 // (and adding straight onto) the time it separately takes to write the
 // whole itinerary, all inside one linear call. Firing one of these per
 // missing destination via Promise.all (see the prefetch step in
 // processJob) turns that into max(N parallel lookups) instead of their
 // sum, then hands the main call a fully-cached brief so it can always take
-// the fast NO_SEARCH_INSTRUCTIONS path — no tool-use turn in the critical
+// the fast NO_SEARCH_INSTRUCTIONS path - no tool-use turn in the critical
 // generation call at all. The prompt/output here is deliberately tiny
 // (a handful of tokens, not a whole schema) so this call's own non-search
 // portion is as close to free as possible; the wall-clock cost is close to
@@ -302,7 +303,7 @@ function estimateMaxSearchUses(brief: TripBriefInput): number {
 // isn't. One lookup that returns both keeps the name and the number
 // describing the same thing.
 //
-// "name": null is a first-class, expected outcome — plenty of searches
+// "name": null is a first-class, expected outcome - plenty of searches
 // surface a credible rate without a single property worth committing to,
 // and lodgingCache falls back to the original generic wording for those.
 const LODGING_RATE_SYSTEM = `Find the current typical price per night for a mid-range hotel in the given city, \
@@ -315,18 +316,18 @@ If nothing usable is found, return exactly: {"cost_estimate_eur": null, "source_
 or a URL.`;
 
 const LODGING_PROPERTY_SYSTEM = `Find a real, specific, well-reviewed mid-range hotel in the given city that a \
-traveler would actually be happy staying in. Take the time to pick a good one — somewhere with a solid reputation \
+traveler would actually be happy staying in. Take the time to pick a good one - somewhere with a solid reputation \
 and a sensible central-ish location, not merely the first result.
 
 Respond with ONLY this JSON, no other text:
 {"name": "<the hotel's real proper name>", "area": "<its neighborhood or district>"}
 
 If you cannot find a specific property you would confidently name, return exactly: {"name": null, "area": null}. \
-Never invent a hotel that might not exist — a generic accommodation line is far better than a fabricated name.`;
+Never invent a hotel that might not exist - a generic accommodation line is far better than a fabricated name.`;
 
 interface LodgingLookupResult {
   /** Null when the rate search came back with nothing usable. The property
-   * half is reported anyway in that case — see the return below. */
+   * half is reported anyway in that case - see the return below. */
   costEstimateEur: number | null;
   sourceUrl: string | null;
   name: string | null;
@@ -345,8 +346,8 @@ interface LodgingLookupResult {
   missing: "rate" | "property" | null;
 }
 
-/** Rate and property are two genuinely different questions — "what does a
- * night cost here" and "which specific hotel is worth naming" — and an
+/** Rate and property are two genuinely different questions - "what does a
+ * night cost here" and "which specific hotel is worth naming" - and an
  * earlier version tried to answer both from a single search to save a
  * round-trip. That cost quality: the search that finds a good price article
  * is rarely the one that surfaces a property worth committing to, so the
@@ -356,7 +357,7 @@ interface LodgingLookupResult {
  *
  * They're independent, so they run CONCURRENTLY instead. Two dedicated
  * searches, each free to do its own job properly, at the wall-clock cost of
- * one — the version that collapsed them was trading away real quality for
+ * one - the version that collapsed them was trading away real quality for
  * latency it didn't actually need to save. */
 async function prefetchLodging(
   client: Anthropic,
@@ -399,7 +400,7 @@ async function prefetchLodging(
   /** One retry when a half comes back with nothing.
    *
    * These are small, low-effort calls, and they run CONCURRENTLY WITH
-   * PHASE 1 — measured at 16.5s of prefetch against 24.0s of phase 1, so
+   * PHASE 1 - measured at 16.5s of prefetch against 24.0s of phase 1, so
    * there is real slack before a retry costs the generation anything at
    * all. Against that: a missing rate forces phase 2 to wait for the trip
    * frame, which on the same run was the difference between gating on the
@@ -418,7 +419,7 @@ async function prefetchLodging(
   ): Promise<T | null> {
     const first = await ask<T>(system, maxUses);
     if (!empty(first)) return first;
-    console.warn(`[worker] lodging ${label} for ${city} came back empty — retrying once`);
+    console.warn(`[worker] lodging ${label} for ${city} came back empty - retrying once`);
     return await ask<T>(system, maxUses);
   }
 
@@ -445,7 +446,7 @@ async function prefetchLodging(
   // The two halves fail independently, so they're reported independently.
   // This used to return null unless the RATE came back, which threw away a
   // successfully-found property whenever the price search happened to miss
-  // — and the property is the half the traveler actually sees. A named
+  // - and the property is the half the traveler actually sees. A named
   // hotel with the frame's own hedged price estimate is a strictly better
   // line than "a mid-range hotel" at the same price.
   if (costEstimateEur == null && !name) {
@@ -455,7 +456,7 @@ async function prefetchLodging(
   const missing = costEstimateEur == null ? "rate" : name ? null : "property";
   if (missing === "rate") {
     console.warn(
-      `[worker] lodging for ${city}: found "${name}" but no rate — phase 2 will have to wait ` +
+      `[worker] lodging for ${city}: found "${name}" but no rate - phase 2 will have to wait ` +
         `for the trip frame to price it`
     );
   } else if (missing === "property") {
@@ -477,11 +478,11 @@ async function callModel(
     // cache_control on this last system block caches SYSTEM_PROMPT (~3K
     // tokens, well above Sonnet 5's 1024-token minimum) together with
     // whichever instructions variant follows it (and the web_search tool
-    // definition too, per the render order tools -> system -> messages) — a
+    // definition too, per the render order tools -> system -> messages) - a
     // single breakpoint covers the whole shared prefix. This text is
     // byte-identical across every job with the same skipSearch value, and
     // in particular a refine call almost always follows its own generate
-    // call within the same session, seconds to minutes later — precisely
+    // call within the same session, seconds to minutes later - precisely
     // the repeat-prefix pattern caching is for. Reads cost ~0.1x the base
     // input rate vs. paying full price for the same ~3K tokens every call.
     system: [
@@ -533,14 +534,14 @@ async function callModel(
 
 /** Generic over the call's result type so the two-phase generator's skeleton
  * and per-day calls get the same one-retry treatment the single-call path
- * has always had — malformed JSON is non-deterministic, and a retry costs
+ * has always had - malformed JSON is non-deterministic, and a retry costs
  * far less than failing a whole generation over it. */
 async function withOneRetryOf<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (e) {
     if (e instanceof ModelOutputError) {
-      // Model occasionally returns malformed JSON — non-deterministic,
+      // Model occasionally returns malformed JSON - non-deterministic,
       // one retry usually succeeds.
       return await fn();
     }
@@ -566,7 +567,7 @@ async function withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promi
       return await fn();
     } catch (e) {
       // A TIMEOUT IS NOT RETRIED. It is a subclass of APIConnectionError,
-      // so it used to fall into the retryable set — which meant a request
+      // so it used to fall into the retryable set - which meant a request
       // that hung for the full two-minute timeout would be sent again, and
       // again, turning one stuck call into six minutes of stuck calls. A
       // call that hangs once is not likely to succeed by being repeated.
@@ -591,7 +592,7 @@ async function withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promi
 }
 
 // Two-phase parallel generation (see engine/twoPhase.ts for the full
-// rationale) — on by default, since one call streaming the whole itinerary
+// rationale) - on by default, since one call streaming the whole itinerary
 // out sequentially is the dominant remaining cost in generation wall-time.
 // Set TWO_PHASE_GENERATION=0 to fall back to the original single-call path
 // for every job, without a deploy of different code.
@@ -608,7 +609,7 @@ const TWO_PHASE_ENABLED = process.env.TWO_PHASE_GENERATION !== "0";
 // Phase 1 is where the judgement lives: whether the budget is real, which
 // city gets which days, which venues are worth anchoring a day around, what
 // to skip. Phase 2 expands an already-decided day under rules it is handed
-// verbatim — the anchors are chosen, the meals are listed, the
+// verbatim - the anchors are chosen, the meals are listed, the
 // accommodation is fixed, the transport is committed. It is the most
 // constrained call in the pipeline and it sits on the critical path.
 //
@@ -621,21 +622,21 @@ const DAY_EFFORT = readEffort("DAY_MODEL_EFFORT", EFFORT);
 
 // Model used for the phase-2 day calls only. Phase 1 (every real decision:
 // budget, city order, which venues anchor which day) always stays on MODEL.
-// Phase 2 is comparatively mechanical — expand an already-decided day into
-// items under rules it's handed verbatim — so a faster model is a genuine
+// Phase 2 is comparatively mechanical - expand an already-decided day into
+// items under rules it's handed verbatim - so a faster model is a genuine
 // latency lever here in a way it wouldn't be for phase 1. Defaults to the
 // same model as phase 1 (zero quality change vs. today); set DAY_MODEL to
 // a faster one to trade some prose polish for a materially shorter phase 2.
 const DAY_MODEL = process.env.DAY_MODEL ?? MODEL;
 
 // Caps how many day calls are in flight at once. Days are pure I/O wait, so
-// this isn't about CPU — it's about not opening an unbounded number of
+// this isn't about CPU - it's about not opening an unbounded number of
 // concurrent Anthropic requests when a long trip and comparison mode (two
 // jobs at once, see WORKER_CONCURRENCY) coincide, which is how you trip
 // provider rate limits and end up slower than the serial path you replaced.
 //
 // It was 6, which quietly made phase 2 cost TWO waves for any trip longer
-// than six days — a 10-day trip paid max(day) twice, and the whole reason
+// than six days - a 10-day trip paid max(day) twice, and the whole reason
 // phase 2 exists is to pay it once. Worse, it was invisible: the stage
 // timing showed "days: 48s" either way, so a long trip looked like it just
 // had slow days.
@@ -648,12 +649,12 @@ const DAY_MODEL = process.env.DAY_MODEL ?? MODEL;
 // than a permanent extra wave on all of them.
 const MAX_PARALLEL_DAYS = Number(process.env.MAX_PARALLEL_DAYS ?? 16);
 
-// Headroom, not a target — you are billed for tokens generated, never for
+// Headroom, not a target - you are billed for tokens generated, never for
 // the cap. These are sized for the WORST case rather than the typical one
 // because hitting a cap here is catastrophically expensive relative to the
 // nothing it costs to avoid: a truncated day throws, burns a retry, and if
 // the retry also truncates the entire two-phase path is abandoned and the
-// whole itinerary is regenerated in one serial call — the two-minute path
+// whole itinerary is regenerated in one serial call - the two-minute path
 // this design exists to avoid.
 //
 // 6000 was set for a sparser day and before effort went to "high". Adaptive
@@ -678,7 +679,7 @@ async function runWithLimit<T, R>(items: T[], limit: number, fn: (item: T) => Pr
 }
 
 /** One phase-2 call: expands a single already-planned day into real items.
- * No tools declared at all — every price that needed a live lookup was
+ * No tools declared at all - every price that needed a live lookup was
  * already resolved by prefetchLodging and carried through the skeleton, so
  * there is nothing here worth a search round-trip. */
 async function generateDay(
@@ -716,7 +717,7 @@ async function generateDay(
   // a silent, expensive retry-then-fall-back loop hides in plain sight.
   if (response.stop_reason === "max_tokens") {
     throw new ModelOutputError(
-      `Day ${day.day} hit the ${DAY_MAX_TOKENS}-token cap and was cut off mid-JSON — raise DAY_MAX_TOKENS.`
+      `Day ${day.day} hit the ${DAY_MAX_TOKENS}-token cap and was cut off mid-JSON - raise DAY_MAX_TOKENS.`
     );
   }
 
@@ -732,12 +733,12 @@ async function generateDay(
     throw new ModelOutputError(`Day ${day.day} came back with no items array.`);
   }
   // The model is told its own day number and date, but the skeleton is the
-  // authority on both — a day that renumbers itself would silently reorder
+  // authority on both - a day that renumbers itself would silently reorder
   // or collide once merged.
   parsed.day = day.day;
   parsed.date = day.date;
   parsed.feasibility_flag = parsed.feasibility_flag ?? null;
-  // A prompt-level self-check, not itinerary data — the model reads back
+  // A prompt-level self-check, not itinerary data - the model reads back
   // its own items and confirms each required meal is there. Whether it
   // agrees with reality is decided by missingMealsFor, which counts actual
   // items; this field's job is to make the model look before it answers.
@@ -789,7 +790,7 @@ async function repairDuplicateVenues(
   // Every venue name already spoken for in this trip, shared with the
   // missing-meal repair that runs alongside this one. Both hand out new
   // venue names concurrently, and a set per function would let them
-  // independently pick the same "different" restaurant — reintroducing the
+  // independently pick the same "different" restaurant - reintroducing the
   // exact duplicate one of them exists to remove.
   claimed: Set<string>,
   onUsage?: (usage: ModelUsage) => void,
@@ -858,8 +859,8 @@ async function repairDuplicateVenues(
   );
 }
 
-/** One half of phase 1. Both halves are the same call shape — a cached
- * system prompt, no tools, JSON out — so the only things that vary are
+/** One half of phase 1. Both halves are the same call shape - a cached
+ * system prompt, no tools, JSON out - so the only things that vary are
  * which prompt, which validator, and what to call it in an error. */
 async function generatePhase1Half<T>(
   client: Anthropic,
@@ -885,7 +886,7 @@ async function generatePhase1Half<T>(
   // phase 1 costs a retry AND then a full single-call regeneration.
   if (response.stop_reason === "max_tokens") {
     throw new ModelOutputError(
-      `The ${label} hit the ${SKELETON_MAX_TOKENS}-token cap and was cut off mid-JSON — raise SKELETON_MAX_TOKENS.`
+      `The ${label} hit the ${SKELETON_MAX_TOKENS}-token cap and was cut off mid-JSON - raise SKELETON_MAX_TOKENS.`
     );
   }
 
@@ -933,7 +934,7 @@ Never use an em dash. If you genuinely cannot name a real venue for this slot, r
  * Splitting "work out what's missing and ask for a replacement" from
  * "put it in the itinerary" is what lets the model calls run CONCURRENTLY
  * with Places verification. They are the two slowest things left after
- * generation and neither reads the other's output — but verification
+ * generation and neither reads the other's output - but verification
  * rewrites day.items as it drops unverifiable venues, so a repair that
  * mutated the same array at the same time would be a genuine race. Buffered
  * results sidestep that completely: nothing is touched until verification
@@ -964,7 +965,7 @@ async function repairMissingMeals(
   brief: TripBriefInput,
   skeletonDays: SkeletonDay[],
   itinerary: Itinerary,
-  /** Shared with repairDuplicateVenues — see the note on its parameter. */
+  /** Shared with repairDuplicateVenues - see the note on its parameter. */
   taken: Set<string>,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<PlannedMealFill[]> {
@@ -1023,7 +1024,7 @@ async function repairMissingMeals(
         const item: ItineraryItem = {
           // The time is checked against the slot it was asked to fill, not
           // taken on trust. A dinner returned at 13:00 reads as a second
-          // lunch to everything downstream — including the gate — so the
+          // lunch to everything downstream - including the gate - so the
           // day would still be short a dinner and the repair would have
           // spent a call to achieve nothing. The venue is the part worth
           // asking a model for; which end of the day it goes at is
@@ -1035,7 +1036,7 @@ async function repairMissingMeals(
           location: parsed.location || plan.city,
           cost_estimate_eur: typeof parsed.cost_estimate_eur === "number" ? parsed.cost_estimate_eur : 0,
           reasoning: parsed.reasoning || "",
-          // Not searched and not yet through Places — checkVenues runs after
+          // Not searched and not yet through Places - checkVenues runs after
           // this and will verify it like any other named venue.
           source_confidence: "inferred",
           source_urls: [],
@@ -1058,8 +1059,8 @@ const DEFAULT_MEAL_TIME: Record<MealSlot, string> = {
 };
 
 /** Keeps a repaired meal in the slot it was meant to fill. Accepts the
- * model's own time when it genuinely lands in that slot — it often knows
- * that a particular place is better at 20:30 than 19:30 — and substitutes
+ * model's own time when it genuinely lands in that slot - it often knows
+ * that a particular place is better at 20:30 than 19:30 - and substitutes
  * the slot's default when it doesn't. */
 function timeForSlot(proposed: string | undefined, slot: MealSlot): string {
   if (proposed) {
@@ -1078,7 +1079,7 @@ function timeOrder(time: string | undefined): number {
   const m = /(\d{1,2})[:.](\d{2})/.exec(time);
   if (m) return Number(m[1]) + Number(m[2]) / 60;
   const t = time.toLowerCase();
-  // "afternoon" before "noon" — see scheduledMinutes in
+  // "afternoon" before "noon" - see scheduledMinutes in
   // engine/venueVerification.ts for why that ordering is load-bearing.
   if (/morning|breakfast|закуск/.test(t)) return 8.5;
   if (/afternoon|следобед/.test(t)) return 15.5;
@@ -1090,7 +1091,7 @@ function timeOrder(time: string | undefined): number {
 
 /** Phase 1: the whole-trip decisions and the day layout, as two calls that
  * run at the same time. They own disjoint fields and neither reads the
- * other's output — see the header comment in engine/twoPhase.ts.
+ * other's output - see the header comment in engine/twoPhase.ts.
  *
  * Returns the plan RESOLVED and the frame still in flight. That asymmetry
  * is the point: phase 2 needs the plan and does not need the frame, so
@@ -1135,7 +1136,7 @@ function startPhase1(
  * city that needs a bed didn't get a usable price.
  *
  * When this returns a list, the day calls have everything they need and the
- * frame's own accommodation estimate is redundant — its figures were only
+ * frame's own accommodation estimate is redundant - its figures were only
  * ever a fallback for exactly this lookup. When it returns null, the frame
  * has to be waited for, which is the old behaviour and still correct. */
 function accommodationFromLodging(
@@ -1149,7 +1150,7 @@ function accommodationFromLodging(
   if (citiesNeedingBeds.size === 0) return [];
 
   const out: SkeletonAccommodation[] = [];
-  // A cache hit is already a completed lookup — same price, same property,
+  // A cache hit is already a completed lookup - same price, same property,
   // from a search that ran within the last 20 hours. Treating it as one
   // means a repeat destination needs neither a search nor the frame.
   for (const [city, fact] of cached) {
@@ -1179,7 +1180,7 @@ function accommodationFromLodging(
 }
 
 /** Phase 1, then all days concurrently. Throws on any failure so the
- * caller can fall back to the single-call path — a partially-written
+ * caller can fall back to the single-call path - a partially-written
  * itinerary must never reach a traveler just because it was faster. */
 async function generateItineraryTwoPhase(
   client: Anthropic,
@@ -1278,14 +1279,14 @@ function generateItinerarySingleCall(
   onUsage?: (usage: ModelUsage) => void,
   forceSkipSearch = false
 ): Promise<Itinerary> {
-  // Skip the web_search tool entirely — not just instruct around it — when
+  // Skip the web_search tool entirely - not just instruct around it - when
   // every destination already has a cached, recently-verified lodging price
   // (lodging is the only thing ever searched now), so a repeat/common-
   // destination generation pays zero search latency rather than relying on
   // the model choosing not to search.
   //
   // This used to be forced on for test-mode jobs as well, which made the
-  // owner's own generations quietly WEAKER than a real traveler's — the
+  // owner's own generations quietly WEAKER than a real traveler's - the
   // one person who needs to see the true output was the only one who
   // couldn't. Test mode now bypasses the guardrails only (see jobs.ts).
   const skipSearch = forceSkipSearch || brief.destinations.every((d) => d in cachedLodgingFacts);
@@ -1344,7 +1345,7 @@ async function generateItinerary(
 
 /** Handles a pushback/follow-up request: re-sends the previously generated
  * itinerary plus the traveler's question, and asks the model to either
- * revise the itinerary or explain why it's standing firm — see
+ * revise the itinerary or explain why it's standing firm - see
  * buildRefinementPrompt for the exact instructions given. */
 function generateRefinement(
   client: Anthropic,
@@ -1363,7 +1364,7 @@ async function writeJob(redis: Redis, job: Job): Promise<void> {
 }
 
 /** Fires once per day, the first time a spend update pushes the running
- * total past ALERT_THRESHOLD_RATIO of the budget — a loud log line always,
+ * total past ALERT_THRESHOLD_RATIO of the budget - a loud log line always,
  * plus a POST to BUDGET_ALERT_WEBHOOK_URL if one is configured (a generic
  * {text: string} payload, compatible with Slack/Discord-style incoming
  * webhooks). Purely an early warning: checkDailyBudget on the frontend is
@@ -1378,7 +1379,7 @@ async function maybeAlertBudgetThreshold(redis: Redis, totalSpentUsd: number): P
 
   const message =
     `[worker] BUDGET ALERT: today's spend is $${totalSpentUsd.toFixed(2)} of a $${DAILY_BUDGET_USD.toFixed(2)} ` +
-    `daily cap (${Math.round(ALERT_THRESHOLD_RATIO * 100)}%+) — new generations will be rejected once the cap is reached.`;
+    `daily cap (${Math.round(ALERT_THRESHOLD_RATIO * 100)}%+) - new generations will be rejected once the cap is reached.`;
   console.warn(message);
 
   const webhookUrl = process.env.BUDGET_ALERT_WEBHOOK_URL;
@@ -1395,7 +1396,7 @@ async function maybeAlertBudgetThreshold(redis: Redis, totalSpentUsd: number): P
   }
 }
 
-/** Adds this job's estimated cost onto today's running total — the
+/** Adds this job's estimated cost onto today's running total - the
  * counterpart to checkDailyBudget on the frontend, which reads this same
  * key before enqueueing new jobs. Called once per job regardless of
  * success/failure/retries, since a retry after malformed JSON still bills
@@ -1437,7 +1438,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // Stage timings, logged as one line at the end of every job. Generation
   // latency has been tuned three separate times against reasoning about
   // which stage "should" dominate rather than a measurement of which one
-  // actually does — this makes the next round (and any regression) a
+  // actually does - this makes the next round (and any regression) a
   // matter of reading a log line instead of re-deriving it from the code.
   const jobStartedAt = Date.now();
   const timings: Record<string, number> = {};
@@ -1466,7 +1467,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         generateRefinement(client, job.brief, job.refinement!, onUsage)
       );
     } else {
-      // Both reads go together — same keys, and the pipeline needs the
+      // Both reads go together - same keys, and the pipeline needs the
       // structured entries as much as the prompt needs the formatted ones.
       const [cachedLodgingFacts, cachedLodgingEntries] = await Promise.all([
         loadCachedLodgingFacts(redis, job.brief.destinations),
@@ -1475,7 +1476,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 
       // Anything already cached is free and phase 1 gets it immediately.
       // Anything missing needs live searches, and those used to run BEFORE
-      // generation started — a serial stage on the critical path that phase
+      // generation started - a serial stage on the critical path that phase
       // 1 doesn't actually depend on. It now runs concurrently with phase 1
       // and is folded in before phase 2, which is the point at which the
       // itinerary genuinely needs it. Cache hits behave exactly as before.
@@ -1497,7 +1498,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
               if (short.length > 0) jobTimings.lodgingShort = short;
               // Written WITHOUT awaiting. The day calls await this promise
               // for the accommodation figures, and the cache write is
-              // bookkeeping for some future generation — awaiting it put a
+              // bookkeeping for some future generation - awaiting it put a
               // Redis round-trip per destination directly in front of phase
               // 2, delaying the trip being generated now in order to speed
               // up one that may never happen.
@@ -1544,8 +1545,8 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // been open the whole time and is invisible from either end on its own.
     //
     // checkVenues doesn't flag a venue it can't confirm, it DELETES the
-    // item. So a restaurant that fails its Places lookup — a wrong listing,
-    // a sub-4.2 rating, or now, shut on the day we're sending them — took
+    // item. So a restaurant that fails its Places lookup - a wrong listing,
+    // a sub-4.2 rating, or now, shut on the day we're sending them - took
     // the day's dinner with it. Running the repairs before that, as they
     // were, meant they could only ever fix holes the MODEL left. A hole
     // punched by verification a moment later was nobody's job, and the day
@@ -1555,7 +1556,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // no dinner far better than the model forgetting to write them, and it
     // would have survived every prompt fix aimed at the model.
     //
-    // attachFlightSearchLinks must run before applyFlightPricing — the
+    // attachFlightSearchLinks must run before applyFlightPricing - the
     // price lookup reuses the same link as its source_urls value once a
     // real fare is found.
     // Before anything sums item costs. A day call that wrote the whole
@@ -1581,9 +1582,9 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 
     // VERIFICATION AND THE MEAL CALLS RUN AT THE SAME TIME.
     //
-    // These are the two slowest things left after generation — a Places
+    // These are the two slowest things left after generation - a Places
     // lookup per named venue, and a model call per meal the day calls
-    // didn't write — and they were running one after the other for no
+    // didn't write - and they were running one after the other for no
     // reason. Neither reads the other's output: verification asks Google
     // about venues that already exist, and the meal calls ask for venues to
     // fill slots that are empty.
@@ -1616,7 +1617,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // What's left after that: duplicate venues, and any meal that went
     // missing because VERIFICATION removed it rather than because the model
     // skipped it. On a clean generation both are empty and this stage is
-    // skipped entirely — which is the point. It only costs a round-trip
+    // skipped entirely - which is the point. It only costs a round-trip
     // when there is genuinely something wrong.
     const needsSecondPass =
       duplicateVenueItems(itinerary.days ?? []).length > 0 ||
@@ -1641,7 +1642,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 
     // Second verification pass over ONLY what the repairs touched. A
     // replacement venue is a fresh, unchecked business, and shipping it
-    // unverified would undo the guarantee the first pass exists to make —
+    // unverified would undo the guarantee the first pass exists to make -
     // but re-checking the whole trip would spend a Places lookup per item
     // to reconfirm what was confirmed a moment ago. Typically a handful of
     // items, all in parallel.
@@ -1658,7 +1659,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(itinerary, job.brief);
 
-    // Every day reads top to bottom, always — and AFTER checkBudgetIntegrity,
+    // Every day reads top to bottom, always - and AFTER checkBudgetIntegrity,
     // not before it.
     //
     // Until recently the only thing that sorted a day was the meal repair,
@@ -1674,7 +1675,12 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 
     itinerary = deriveConfidenceTiers(itinerary);
 
-    // The acceptance gate, run LAST — after the repairs have had their
+    // Punctuation, last: the prompt asks the model not to write em dashes
+    // and the model does it anyway often enough to be the loudest "this was
+    // written by an AI" signal on the page. See engine/plainDashes.ts.
+    itinerary = stripEmDashes(itinerary);
+
+    // The acceptance gate, run LAST - after the repairs have had their
     // turn, after Places has verified what it can, after the confidence
     // tiers are derived. Everything upstream gets to do its job first;
     // this is the verdict on the result of all of it.
@@ -1683,8 +1689,8 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // because a traveler waiting on a generation is better served by a
     // flawed itinerary than by an error page, and every defect it can
     // catch it has already tried to repair. What it changes is that the
-    // flaw is now RECORDED — on this job, and in the rolling quality
-    // counters — instead of waiting to be noticed in a screenshot.
+    // flaw is now RECORDED - on this job, and in the rolling quality
+    // counters - instead of waiting to be noticed in a screenshot.
     const quality = assessQuality(itinerary, job.brief, planDays, planAccommodation);
     job.quality = quality;
     console.log(`[worker] quality ${id}: ${summarizeQuality(quality)}`);
@@ -1707,7 +1713,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
             : e instanceof Anthropic.APIError
               ? `Model provider error: ${e.message}`
               : e instanceof ModelOutputError
-                ? "The model's response was malformed twice in a row — try a shorter or simpler trip brief."
+                ? "The model's response was malformed twice in a row - try a shorter or simpler trip brief."
                 : "Unexpected error generating itinerary.";
   }
 
@@ -1720,7 +1726,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   job.timings = jobTimings;
 
   // Publish FIRST. The traveler is polling for this write and nothing after
-  // it changes what they receive — the lodging cache is an optimization for
+  // it changes what they receive - the lodging cache is an optimization for
   // some future generation and the spend counter is accounting. Awaiting
   // them here put several Redis round-trips (one per destination, and they
   // were sequential) between a finished itinerary and the traveler seeing
@@ -1736,7 +1742,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   );
 
   // Off the traveler's clock. This is a long-running process, so there is
-  // no exit to race — but failures still get logged rather than swallowed.
+  // no exit to race - but failures still get logged rather than swallowed.
   void Promise.all([
     recordSpend(redis, costUsd).catch((e) => console.error(`[worker] spend write failed for ${id}:`, e)),
     job.result
@@ -1750,16 +1756,16 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 // calls), not CPU, so a handful of them genuinely run concurrently in one
 // Node process rather than fighting over the event loop. This is the fix
 // for a real, confirmed bug: comparison mode creates two jobs at once, but
-// with a single consumer they were processed strictly one after another —
+// with a single consumer they were processed strictly one after another -
 // the second column's loading screen didn't even start its own generation
-// until the first column's had entirely finished — turning what should be
+// until the first column's had entirely finished - turning what should be
 // two ~1-minute generations running side by side into one that's additive
 // (2+ minutes before the second column showed anything).
 const WORKER_CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 4);
 
 /** One consumer's loop: block on the queue, process a job, repeat. Uses its
  * own dedicated Redis connection (via redis.duplicate()) purely for the
- * blocking BRPOP call — a blocking command occupies its whole connection
+ * blocking BRPOP call - a blocking command occupies its whole connection
  * until it returns, so sharing one connection across concurrent consumers
  * (or with any other command) would serialize everything behind whichever
  * BRPOP is currently waiting, defeating the entire point of running several
@@ -1767,7 +1773,7 @@ const WORKER_CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 4);
  * one shared non-blocking `sharedRedis` connection instead, which is safe
  * to use concurrently since none of those calls block. */
 async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthropic): Promise<void> {
-  // null is required for BRPOP specifically — ioredis refuses to run a
+  // null is required for BRPOP specifically - ioredis refuses to run a
   // blocking command on a connection with a bounded per-request retry. It's
   // scoped to this connection so the shared one keeps its bounded retries
   // and can't hang a job forever on a transient Redis error (see redis.ts).
@@ -1798,7 +1804,7 @@ async function main() {
     //
     // The retries were worse, because they NEST. A day call runs inside
     // withRateLimitRetry (4 attempts) inside withOneRetryOf (2 attempts)
-    // inside the SDK's own 3 — up to 24 HTTP requests for one day of one
+    // inside the SDK's own 3 - up to 24 HTTP requests for one day of one
     // itinerary, each with its own backoff. A sustained rate limit would
     // not have surfaced as an error; it would have surfaced as a
     // generation that took several minutes for no visible reason.
@@ -1813,11 +1819,11 @@ async function main() {
   // Said at startup rather than discovered at the first model call. An
   // identity-linked key with no workspace id fails on every request with a
   // 400 that reads like a malformed request, which is a long way from
-  // "this credential needs one more setting" — see anthropicClient.ts.
+  // "this credential needs one more setting" - see anthropicClient.ts.
   console.log(
     `[worker] started, ${WORKER_CONCURRENCY} concurrent consumer(s) waiting on`,
     JOBS_QUEUE_KEY,
-    workspaceId() ? `— workspace ${workspaceId()}` : "— no ANTHROPIC_WORKSPACE_ID set"
+    workspaceId() ? `- workspace ${workspaceId()}` : "- no ANTHROPIC_WORKSPACE_ID set"
   );
   await Promise.all(
     Array.from({ length: WORKER_CONCURRENCY }, (_, i) => runConsumer(i, redis, client))

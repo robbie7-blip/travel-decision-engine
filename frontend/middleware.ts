@@ -1,4 +1,4 @@
-// Protects /admin/* with HTTP Basic Auth. Deliberately minimal — this is a
+// Protects /admin/* with HTTP Basic Auth. Deliberately minimal - this is a
 // single-owner internal tool (browsing feedback entries), not a multi-user
 // auth system, so a shared password checked at the edge is proportional.
 // Uses atob (not Buffer) since middleware runs on the Edge runtime by
@@ -35,7 +35,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   // /api/admin/:path* covers the demo-trip admin API (see
-  // app/api/admin/demo-trip/route.ts) — it lives under /api, not /admin,
+  // app/api/admin/demo-trip/route.ts) - it lives under /api, not /admin,
   // since Next.js route handlers alongside a page path is unconventional,
   // so it needs its own matcher entry rather than falling under /admin/:path*.
   matcher: ["/admin/:path*", "/api/admin/:path*"],

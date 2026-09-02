@@ -40,7 +40,7 @@ function useStatsFor(token: string | null): Fetched {
   return result;
 }
 
-/** One person's stats card — shared markup between the "yours" and
+/** One person's stats card - shared markup between the "yours" and
  * "theirs" columns below, and deliberately similar to the card on
  * /account/visited so the same numbers read consistently in both places. */
 function StatsCard({
@@ -130,7 +130,7 @@ function StatsCard({
   );
 }
 
-/** A stats-comparison view built from two share tokens (?a=/?b=) — same
+/** A stats-comparison view built from two share tokens (?a=/?b=) - same
  * lightweight, no-friend-graph share-link pattern as the itinerary
  * comparison at /compare (?a=/?b= job IDs there). Anyone with both links
  * can view them side by side; there's no request/accept step. */

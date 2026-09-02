@@ -1,27 +1,27 @@
 // The link a magic-link email points at.
 //
-// GET no longer consumes the token — it used to, but any automated system
+// GET no longer consumes the token - it used to, but any automated system
 // that fetches a link before a human clicks it (Resend's own click-tracking
 // rewrite, Outlook "Safe Links", corporate mail security gateways, various
 // antivirus link scanners) only needs to issue one GET to burn a single-use
 // token, which meant a real click could fail with "invalid or expired"
 // before the traveler ever saw the link. GET now just renders a page that
-// completes sign-in via a fetch() POST — the POST is what actually
+// completes sign-in via a fetch() POST - the POST is what actually
 // consumes the token and sets the session cookie. Automated fetchers
 // essentially never execute JavaScript, so they see this harmless
 // intermediate page and nothing happens to the token; a real person's
 // browser completes it within milliseconds, so it still feels like one tap.
 //
-// fetch()-driven, not a raw auto-submitted <form> — confirmed in production
+// fetch()-driven, not a raw auto-submitted <form> - confirmed in production
 // (Safari, desktop, no extensions/cache involved) that a form.submit() fired
 // from an inline <script> right as the page loads could leave the tab on a
 // blank page with the navigation never completing (no status, no response
-// headers at all in the network inspector — the request never finished).
+// headers at all in the network inspector - the request never finished).
 // Handing control to the browser's own navigation timing right as the
 // document is still settling is exactly the kind of thing that varies by
 // browser; driving it with fetch() instead means the intermediate page
 // stays fully loaded and in control throughout, and *this* script decides
-// when to navigate away, once it actually has a real response in hand — no
+// when to navigate away, once it actually has a real response in hand - no
 // dependency on how any particular browser sequences a same-tick form
 // submission against its own page-load lifecycle. A visible fallback
 // button still appears (via a short timeout, or immediately for the no-JS
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   if (!token) {
     // Logged so we can tell this apart from the POST hitting the same
-    // ?error=missing_token redirect below — if this is the branch firing,
+    // ?error=missing_token redirect below - if this is the branch firing,
     // the email link itself arrived at this route with no ?token= at all
     // (link-wrapping/click-tracking rewrite, a copy-paste that dropped the
     // query string, etc.), which is a completely different bug from the
@@ -60,11 +60,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${site}/account?error=missing_token`);
   }
 
-  // Token isn't touched here at all — validity is only checked (and
+  // Token isn't touched here at all - validity is only checked (and
   // consumed) by the POST below, once the browser actually issues it.
   const safeToken = escapeHtmlAttr(token);
   // Also embedded as a JSON-encoded JS string literal for the fetch() call
-  // below — JSON.stringify handles quote/backslash escaping correctly for
+  // below - JSON.stringify handles quote/backslash escaping correctly for
   // that context, which is different from (and not covered by) the HTML-
   // attribute escaping used for the <form> fallback's hidden input above.
   const jsToken = JSON.stringify(token);
@@ -106,19 +106,19 @@ export async function GET(request: NextRequest) {
       fetch('/api/auth/verify', { method: 'POST', body: body })
         .then(function (res) {
           clearTimeout(fallbackTimer);
-          // fetch() only rejects on network-level failure — an HTTP error
+          // fetch() only rejects on network-level failure - an HTTP error
           // status (e.g. a 500 from an unhandled exception on the server)
           // still resolves here with res.ok === false. Blindly navigating
           // to res.url in that case is exactly how a real server error
           // turned into a confusing "?error=missing_token": with no
           // redirect to follow, res.url is just this same POST endpoint
           // with no query string, and *that* URL's own GET handler is what
-          // was actually producing the missing_token redirect — hiding the
+          // was actually producing the missing_token redirect - hiding the
           // real failure completely. Checking res.ok first means a genuine
           // server error now falls through to the visible fallback button
           // instead of masquerading as a token problem.
           if (res.ok) {
-            // redirect: 'follow' is fetch's default — res.url is already the
+            // redirect: 'follow' is fetch's default - res.url is already the
             // final /account?... URL after following the server's 303, and
             // any Set-Cookie along that chain has already been applied by
             // the browser by the time this callback runs.
@@ -139,12 +139,12 @@ export async function GET(request: NextRequest) {
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 
-// Both submission paths — the fetch() call above and the <noscript>/fallback
-// <form> — send the token as application/x-www-form-urlencoded: that's
+// Both submission paths - the fetch() call above and the <noscript>/fallback
+// <form> - send the token as application/x-www-form-urlencoded: that's
 // URLSearchParams's serialization for the fetch body, and it's also a plain
 // HTML <form>'s default enctype (multipart/form-data is opt-in, not the
 // default). request.formData() is supposed to handle both per the Fetch
-// spec, but in production this was silently failing on the urlencoded case —
+// spec, but in production this was silently failing on the urlencoded case -
 // the request reached this handler (proven by landing on this route's own
 // ?error=missing_token, not a blank page or a different error), yet the
 // token never came out of form.get("token"), which only happens if
@@ -167,10 +167,10 @@ async function extractToken(request: NextRequest): Promise<string | null> {
       // capture actually tells us which of two very different bugs this is:
       // content-type wrong/missing entirely (client-side send bug) vs.
       // content-type looks right but the body came through empty/mangled
-      // (something between the browser and this function stripped it —
+      // (something between the browser and this function stripped it -
       // could be a CDN/edge layer, could be Vercel's own deployment
       // protection intercepting the POST). Body is logged truncated since
-      // it's expected to just be "token=<opaque>" — nothing sensitive
+      // it's expected to just be "token=<opaque>" - nothing sensitive
       // beyond the token itself, which is already single-use and about to
       // be invalidated by this same request either way.
       console.error(
@@ -209,11 +209,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(`${site}/account?error=invalid_link`, { status: 303 });
   }
 
-  // Token is already consumed above by this point — a throw here (e.g.
+  // Token is already consumed above by this point - a throw here (e.g.
   // SESSION_SECRET missing) used to bubble up as an unhandled 500 with no
   // redirect at all, which the fetch() caller then (mis)treated as success
   // and navigated to res.url with no query string, landing on this same
-  // route's GET-with-no-token branch and showing ?error=missing_token —
+  // route's GET-with-no-token branch and showing ?error=missing_token -
   // completely hiding that the real problem was server config, not the
   // token. Catching it here and logging explicitly means the real cause
   // shows up in Vercel's logs instead of a wild goose chase, and the

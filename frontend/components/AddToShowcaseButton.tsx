@@ -4,7 +4,7 @@
 // to the /showcase gallery, without copying the jobId over to
 // /admin/showcase by hand. Visibility is driven purely by a localStorage
 // flag (see lib/adminUi.ts) set by the /admin/* pages themselves, NOT by
-// probing /api/admin/showcase on load — an earlier version did that and it
+// probing /api/admin/showcase on load - an earlier version did that and it
 // meant every visitor who opened a shared /trip/[jobId] link got a native
 // browser Basic Auth popup, because some browsers (Safari included) show
 // that dialog for a background fetch() against a 401-challenging URL, not
@@ -40,7 +40,7 @@ export function AddToShowcaseButton({ jobId }: { jobId: string }) {
       const data = await res.json();
       if (!res.ok) {
         // "already in the showcase" isn't really an error from the
-        // clicker's point of view — treat it the same as a fresh add.
+        // clicker's point of view - treat it the same as a fresh add.
         if (res.status === 400 && typeof data.detail === "string" && data.detail.includes("already")) {
           setStatus("added");
           return;

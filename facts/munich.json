@@ -1,6 +1,6 @@
 {
   "city": "Munich",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,7 +8,7 @@
     },
     {
       "category": "cost",
-      "text": "Beer hall meals (Hofbräuhaus and similar) are moderately priced (€12-20/dish) but drinks add up fast at a full liter (\"Maß\") per round — worth budgeting for drinks separately from food."
+      "text": "Beer hall meals (Hofbräuhaus and similar) are moderately priced (€12-20/dish) but drinks add up fast at a full liter (\"Maß\") per round - worth budgeting for drinks separately from food."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,11 +16,11 @@
     },
     {
       "category": "activity",
-      "text": "The Glockenspiel show at Marienplatz's New Town Hall runs at fixed times (commonly 11am and 12pm, sometimes 5pm) for only a few minutes — easy to miss if not timed deliberately."
+      "text": "The Glockenspiel show at Marienplatz's New Town Hall runs at fixed times (commonly 11am and 12pm, sometimes 5pm) for only a few minutes - easy to miss if not timed deliberately."
     },
     {
       "category": "practical",
-      "text": "Sundays follow the same near-total retail shutdown as elsewhere in Germany — plan shopping/grocery needs accordingly."
+      "text": "Sundays follow the same near-total retail shutdown as elsewhere in Germany - plan shopping/grocery needs accordingly."
     },
     {
       "category": "dietary",

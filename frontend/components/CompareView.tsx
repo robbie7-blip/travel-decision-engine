@@ -26,10 +26,10 @@ interface ColumnState {
 const EMPTY_COLUMN: ColumnState = { jobStatus: null, loadError: "", result: null, brief: null };
 
 /** Polls one side of the comparison and gives it its own pushback/refine
- * handler — the same refineItinerary used on the single-trip page, just
+ * handler - the same refineItinerary used on the single-trip page, just
  * instantiated per column instead of assumed to be a single job. On a
  * successful refine, swaps that column's job id into the URL's "a"/"b"
- * query param (via router.replace, not push — this is an in-place revision
+ * query param (via router.replace, not push - this is an in-place revision
  * of an existing column, not new navigation) so the comparison stays a
  * shareable link pointing at the latest version of each side. */
 function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictionary) {
@@ -100,7 +100,7 @@ function totalCost(itinerary: Itinerary): number {
   );
 }
 
-/** >=80/50% thresholds match trustScoreColor in ItineraryResult.tsx —
+/** >=80/50% thresholds match trustScoreColor in ItineraryResult.tsx -
  * duplicated rather than exported since it's a two-line function tied to
  * this specific color scale, not worth a shared module for. */
 function trustScoreColor(percent: number): string {

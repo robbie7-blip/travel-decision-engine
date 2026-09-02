@@ -1,8 +1,8 @@
-// Cookie Policy — the third leg of the standard Terms/Privacy/Cookies
+// Cookie Policy - the third leg of the standard Terms/Privacy/Cookies
 // footer trio (see SiteFooter.tsx). Kept intentionally short: decide sets
 // exactly one cookie (see lib/session.ts), and it's a strictly necessary
 // one (keeps you signed in), not an analytics/advertising/tracking cookie
-// — under GDPR/ePrivacy that means it's exempt from needing a consent
+// - under GDPR/ePrivacy that means it's exempt from needing a consent
 // banner, which is why this site doesn't have one. This page exists to
 // disclose that plainly rather than to gate anything.
 
@@ -22,7 +22,7 @@ function resolveLanguage(lang?: string): Language {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const title = "Cookie Policy — decide";
+  const title = "Cookie Policy - decide";
   const description = "The one cookie decide sets, and why.";
   return { title, description, openGraph: { title, description }, twitter: { title, description } };
 }
@@ -77,17 +77,17 @@ export default async function CookiesPage({
             Last updated: {LAST_UPDATED}
           </p>
           <p style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.6, margin: "0 0 36px", fontStyle: "italic" }}>
-            English only, for the same reason as the Terms of Service — see that page.
+            English only, for the same reason as the Terms of Service - see that page.
           </p>
 
           <LegalSection heading="The one cookie decide sets">
             <p style={{ margin: "0 0 10px" }}>
               decide sets a single cookie, <code>decide_session</code>. It exists only to keep you signed in between
-              visits — it stores a signed token identifying your account, nothing else. It&apos;s marked httpOnly
+              visits - it stores a signed token identifying your account, nothing else. It&apos;s marked httpOnly
               and secure, so it can&apos;t be read by page scripts or sent over an unencrypted connection.
             </p>
             <p style={{ margin: 0 }}>
-              This cookie is strictly necessary for the sign-in feature to work at all — it&apos;s only set once you
+              This cookie is strictly necessary for the sign-in feature to work at all - it&apos;s only set once you
               actually sign in, and it&apos;s not used for advertising, analytics, or tracking you across sites.
               Under GDPR/ePrivacy rules, strictly-necessary cookies like this one are exempt from requiring consent,
               which is why decide doesn&apos;t show a cookie-consent banner.
@@ -98,13 +98,13 @@ export default async function CookiesPage({
             <p style={{ margin: 0 }}>
               No third-party advertising or analytics cookies, no cross-site tracking pixels, no fingerprinting.
               Our own usage stats (how many trips were generated, per day/language) are plain aggregate counters
-              with no cookie and nothing tied to you individually — see the Privacy Policy for details.
+              with no cookie and nothing tied to you individually - see the Privacy Policy for details.
             </p>
           </LegalSection>
 
           <LegalSection heading="Other storage">
             <p style={{ margin: 0 }}>
-              A few features use your browser&apos;s local storage instead of a cookie — your language preference,
+              A few features use your browser&apos;s local storage instead of a cookie - your language preference,
               your currency preference, your recently-viewed trips, and (if you&apos;re not signed in) any countries
               you&apos;ve marked as visited. None of this is sent to us automatically; it just lives in your own
               browser until you clear it.

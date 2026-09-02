@@ -1,5 +1,5 @@
 // Public, read-only: returns the current homepage demo trip, if one is set
-// and its underlying job hasn't expired past JOB_TTL_SECONDS — never a
+// and its underlying job hasn't expired past JOB_TTL_SECONDS - never a
 // fabricated example, see lib/demoTrip.ts. Separate from GET /api/job/[id]
 // since the homepage only needs jobId + destinations, not the full
 // itinerary, to render the "see a real example" link.
@@ -25,7 +25,7 @@ export async function GET() {
 
   const demo = typeof raw === "string" ? (JSON.parse(raw) as DemoTrip) : raw;
 
-  // Confirm the underlying job still exists and finished successfully —
+  // Confirm the underlying job still exists and finished successfully -
   // the demo trip's own record has no TTL, but the job it points at does
   // (JOB_TTL_SECONDS), so this is what actually catches a stale link
   // rather than showing a dead one.

@@ -1,5 +1,5 @@
 // Thin wrapper so CompareView's useSearchParams() has the Suspense boundary
-// Next.js requires around it during static generation — see
+// Next.js requires around it during static generation - see
 // components/CompareView.tsx for the actual page.
 
 import { Suspense } from "react";

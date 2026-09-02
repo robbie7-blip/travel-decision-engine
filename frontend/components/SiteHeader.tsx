@@ -1,21 +1,21 @@
 "use client";
 
-// Single shared header for every page — was previously hand-duplicated
+// Single shared header for every page - was previously hand-duplicated
 // across 10+ files, each showing only ONE contextual link (e.g. "Plan
 // another trip →" on /trip/[id], "Places you've been →" on /account) with
 // no way to reach anywhere else without going back to the homepage first.
 // Confirmed confusing in practice: from most pages there was no path to
 // Destination guides, Ask a Local, or Pricing at all. Every page now gets
 // the full link set via the same mobile-collapsible menu the homepage
-// already uses (.nav-menu-toggle/.nav-links-row in globals.css) — a page
+// already uses (.nav-menu-toggle/.nav-links-row in globals.css) - a page
 // can still show its own extra context link (contextLink prop) alongside
 // it, it just isn't the ONLY way to navigate anymore.
 //
-// Two rows, not one — logo + account controls on row 1, the full nav on
+// Two rows, not one - logo + account controls on row 1, the full nav on
 // its own row 2 below a divider. A single combined row (logo + 7 nav
 // links + account pill + language toggle, more on the homepage with the
 // currency switcher too) needs ~1500px+ to lay out without cramming,
-// which is wider than a lot of ordinary laptop browser windows — it kept
+// which is wider than a lot of ordinary laptop browser windows - it kept
 // either overflowing/wrapping badly or forcing an early collapse to a
 // bare hamburger button that looked sparse next to reference sites
 // (Booking.com, Ryanair) that never collapse this early because THEIR
@@ -38,16 +38,16 @@ interface SiteHeaderProps {
   t: Dictionary;
   /** "large" is the homepage's own hero lockup (big logo + tagline);
    * every other page uses the default compact treatment. Both are now
-   * two rows — large just has a bigger row 1. */
+   * two rows - large just has a bigger row 1. */
   variant?: "compact" | "large";
-  /** Extra control rendered next to the language switcher — currently
+  /** Extra control rendered next to the language switcher - currently
    * only the homepage/trip pages' CurrencySwitcher. */
   extraControls?: ReactNode;
   /** An additional page-specific link shown alongside the full menu
-   * (e.g. "Plan another trip →" on a result page) — kept because it's
+   * (e.g. "Plan another trip →" on a result page) - kept because it's
    * often the single most relevant action on that page, not a
    * replacement for real navigation. Pass the label pre-formatted with
-   * whatever arrow (or none) it should show — existing translation
+   * whatever arrow (or none) it should show - existing translation
    * strings aren't consistent about embedding a trailing "→" vs. a
    * leading "←" vs. neither, so this renders the label verbatim rather
    * than guessing/appending one itself. */
@@ -63,7 +63,7 @@ export function SiteHeader({
   extraControls,
   contextLink,
   // 1450 matches the header width every page now passes explicitly (see
-  // ask/page.tsx's SiteHeader call for the full reasoning) — CompareStatsView
+  // ask/page.tsx's SiteHeader call for the full reasoning) - CompareStatsView
   // is the one remaining caller that relies on this default rather than
   // passing its own maxWidth, so it needs to move in step with the rest.
   maxWidth = 1450,
@@ -82,7 +82,7 @@ export function SiteHeader({
     >
       <div style={{ maxWidth: large ? 1550 : maxWidth, margin: "0 auto" }}>
         {/* Row 1: logo (+ tagline on large) on the left, every account/
-            language/context control on the right — no nav here, so this
+            language/context control on the right - no nav here, so this
             row's own space need is small regardless of how many nav links
             exist. */}
         <div
@@ -162,7 +162,7 @@ export function SiteHeader({
           </div>
         </div>
 
-        {/* Row 2: the full nav, on its own line — same visual pattern as
+        {/* Row 2: the full nav, on its own line - same visual pattern as
             Booking.com's tab strip below its own top bar. Only this row's
             content (7 links) has to fit the available width, which is why
             it can stay inline much further down than the old combined row

@@ -4,8 +4,8 @@
 // This exists for the same reason the worker's test suites do: the only
 // detector for "the secondary text is too light to read" used to be
 // someone noticing it on a screenshot, and by then it had been live for
-// weeks. --ink-dim shipped at 3.28:1 against the raised panel — under the
-// 4.5:1 AA needs for body text — and it is the color of nearly every
+// weeks. --ink-dim shipped at 3.28:1 against the raised panel - under the
+// 4.5:1 AA needs for body text - and it is the color of nearly every
 // label, date, rating and helper line in the product.
 //
 // No browser, no network, no dependencies: it reads the token values out
@@ -26,7 +26,7 @@ const AA_NORMAL = 4.5;
 const AA_LARGE = 3;
 
 function parseTokens(css) {
-  // Only the :root block — component rules may legitimately reference a
+  // Only the :root block - component rules may legitimately reference a
   // token in a context this check doesn't model.
   const root = css.slice(css.indexOf(":root"), css.indexOf("\n}"));
   const tokens = {};
@@ -67,7 +67,7 @@ function contrast(a, b) {
 
 /** Every foreground/background pair the UI actually puts on screen.
  *
- * `min` is AA_LARGE only where the color is never used below 24px — the
+ * `min` is AA_LARGE only where the color is never used below 24px - the
  * headline is the one such case. Everything else is read at body size
  * somewhere in the product and has to clear AA_NORMAL. */
 const PAIRS = [
@@ -121,17 +121,17 @@ for (const pair of PAIRS) {
   if (!ok) failed++;
   rows.push(
     `  ${ok ? "ok  " : "FAIL"}  ${ratio.toFixed(2).padStart(5)}:1  (needs ${pair.min})  ` +
-      `${pair.fg} on ${pair.bg} — ${pair.note}`
+      `${pair.fg} on ${pair.bg} - ${pair.note}`
   );
 }
 
-console.log("contrast — text colors against the backgrounds they're painted on\n");
+console.log("contrast - text colors against the backgrounds they're painted on\n");
 console.log(rows.join("\n"));
 
 if (failed > 0) {
   console.error(
     `\n${failed} pair(s) below the WCAG AA minimum.\n` +
-      `Darken the foreground token in app/globals.css until it clears — don't lower the\n` +
+      `Darken the foreground token in app/globals.css until it clears - don't lower the\n` +
       `threshold here. If a color is genuinely only ever used above 24px, move that pair\n` +
       `to AA_LARGE and say so in the note.`
   );

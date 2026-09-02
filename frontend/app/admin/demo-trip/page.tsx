@@ -27,7 +27,7 @@ export default function DemoTripAdminPage() {
 
   useEffect(() => {
     // Reaching this page at all means middleware.ts already required Basic
-    // Auth to succeed — see lib/adminUi.ts for why AddToShowcaseButton reads
+    // Auth to succeed - see lib/adminUi.ts for why AddToShowcaseButton reads
     // this flag instead of probing a protected endpoint on every visitor's
     // /trip/[jobId] page load.
     markAdminUi();

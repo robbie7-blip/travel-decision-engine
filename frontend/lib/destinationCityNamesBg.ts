@@ -1,4 +1,4 @@
-// Bulgarian display names for the /destinations guides — display only.
+// Bulgarian display names for the /destinations guides - display only.
 // The canonical English city name (from facts/*.json) stays the value sent
 // as ?dest= to the trip form and everywhere the engine matches destination
 // strings, so this never touches anything functional, just what a

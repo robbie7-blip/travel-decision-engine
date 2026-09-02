@@ -1,6 +1,6 @@
 // Optional cross-device sync for the visited-countries tracker. The tracker
 // itself is local-storage-first and needs no account at all (see
-// lib/localVisited.ts + app/account/visited/page.tsx) — this route is only
+// lib/localVisited.ts + app/account/visited/page.tsx) - this route is only
 // hit when someone chooses to sign in so their list follows them to another
 // device too. Session-gated the same as /api/account since it's account
 // state once someone opts in.
@@ -16,7 +16,7 @@ function requireEmail(request: NextRequest): string | null {
   return verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
 }
 
-// Loose on purpose — this only guards against garbage breaking storage
+// Loose on purpose - this only guards against garbage breaking storage
 // downstream, not full schema validation. A malformed pin is just dropped
 // rather than rejecting the whole request over one bad entry.
 function parsePins(value: unknown): VisitedPin[] | undefined {

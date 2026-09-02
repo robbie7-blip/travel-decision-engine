@@ -1,4 +1,4 @@
-// Sends a magic sign-in link to an email. No account pre-creation step —
+// Sends a magic sign-in link to an email. No account pre-creation step -
 // the first successful click on the link IS the account (see account.ts:
 // a user record only exists once something writes to it, which happens at
 // Stripe checkout, not here). Signing in with no subscription just gets you
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Deliberately the same generic message regardless of whether this email
-  // has ever signed in before — nothing here should let a client
+  // has ever signed in before - nothing here should let a client
   // distinguish "known" from "unknown" addresses.
   return NextResponse.json({ ok: true, detail: "Check your email for a sign-in link." });
 }

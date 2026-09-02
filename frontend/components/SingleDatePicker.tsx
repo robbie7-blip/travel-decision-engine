@@ -1,7 +1,7 @@
 "use client";
 
 // A single-date picker sharing the exact calendar look of DateRangePicker
-// (see lib/dateGrid.ts for the shared grid math) — used where only one date
+// (see lib/dateGrid.ts for the shared grid math) - used where only one date
 // is meaningful (e.g. an arrival date) rather than a start/end range.
 
 import { useEffect, useRef, useState } from "react";

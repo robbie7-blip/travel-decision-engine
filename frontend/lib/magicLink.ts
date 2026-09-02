@@ -1,7 +1,7 @@
 // One-time magic-link tokens, stored in the same Upstash Redis instance as
-// everything else (jobs, rate limits, user records) — no new infra. A token
+// everything else (jobs, rate limits, user records) - no new infra. A token
 // is a random opaque string mapped to the email it was issued for, single-use
-// (deleted on verify) and short-lived (15 min — long enough to go check an
+// (deleted on verify) and short-lived (15 min - long enough to go check an
 // inbox, short enough that a leaked/forwarded email link doesn't stay a
 // standing risk).
 

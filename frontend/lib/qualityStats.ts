@@ -3,8 +3,8 @@
 // reasoning). Surfaced on /admin/stats.
 //
 // The keys and field names are duplicated here rather than imported
-// because the two sides speak different Redis clients — the worker uses
-// ioredis over TCP, the app uses the Upstash REST client — and this repo
+// because the two sides speak different Redis clients - the worker uses
+// ioredis over TCP, the app uses the Upstash REST client - and this repo
 // already duplicates shared engine code across that boundary for the same
 // reason. Any change to a key name has to be made in both files.
 

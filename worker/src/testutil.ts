@@ -12,7 +12,7 @@ export function check(label: string, cond: boolean, detail = ""): void {
     console.log(`  PASS  ${label}`);
   } else {
     failures++;
-    console.log(`  FAIL  ${label}${detail ? ` — ${detail}` : ""}`);
+    console.log(`  FAIL  ${label}${detail ? ` - ${detail}` : ""}`);
   }
 }
 

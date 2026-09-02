@@ -3,7 +3,7 @@
 // lib/engine/prompt.ts's loadFacts (which only needs category+text for the
 // model prompt) since these pages also need the display name and the full
 // list of available slugs, and this file must NOT be mirrored to the
-// worker — it's Next.js/fs-at-build-time only.
+// worker - it's Next.js/fs-at-build-time only.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -70,7 +70,7 @@ export function listDestinations(): Destination[] {
     .filter((d): d is Destination => d !== null);
 }
 
-/** Facts for a destination in the requested language — falls back to the
+/** Facts for a destination in the requested language - falls back to the
  * English facts (from facts/*.json) if no Bulgarian translation exists yet
  * for this slug in destinationFactsBg.ts, rather than showing nothing. */
 export function getLocalizedFacts(slug: string, language: Language, fallback: DestinationFact[]): DestinationFact[] {
@@ -78,7 +78,7 @@ export function getLocalizedFacts(slug: string, language: Language, fallback: De
   return fallback;
 }
 
-/** Display name only — never used for ?dest= or anything the engine
+/** Display name only - never used for ?dest= or anything the engine
  * matches destinations against, which always stays the canonical English
  * name from facts/*.json. */
 export function getLocalizedCityName(slug: string, language: Language, fallback: string): string {
@@ -102,7 +102,7 @@ function loadPhotoCredits(): Record<string, DestinationPhotoCredit> {
 }
 
 /** Returns a real photo for this destination if one has been fetched onto
- * disk (see scripts/fetch-destination-photos.mjs), otherwise null — callers
+ * disk (see scripts/fetch-destination-photos.mjs), otherwise null - callers
  * should fall back to <DestinationBanner> when this returns null. */
 export function getDestinationPhoto(slug: string): DestinationPhoto | null {
   for (const ext of PHOTO_EXTENSIONS) {

@@ -1,16 +1,16 @@
 // Attaches a real, always-present Google Flights link to arrival/departure
-// transport items that are actual flights — the same "give a real,
+// transport items that are actual flights - the same "give a real,
 // verifiable link, don't just assert a number" principle behind the Google
 // Maps links on named venues (see venueVerification.ts). Built
 // deterministically from the trip brief rather than depending on whether
 // the model's own web_search (see SEARCH_INSTRUCTIONS in index.ts) happened
-// to surface a usable source_url — a flight item should never go without a
+// to surface a usable source_url - a flight item should never go without a
 // real place to check today's actual price, even on a cache hit or a search
 // that came back empty.
 //
 // Google Flights' `/travel/flights?q=` endpoint accepts a natural-language
 // query (e.g. "Flights from Sofia to Hurghada on 2027-01-22") and doesn't
-// require IATA airport codes, unlike Skyscanner-style URLs — a real
+// require IATA airport codes, unlike Skyscanner-style URLs - a real
 // advantage here since the trip brief only ever has city names, never
 // airport codes. This isn't a live-priced quote (Google Flights runs its
 // own fresh search when the link is opened), it's a real, clickable place
@@ -18,7 +18,7 @@
 //
 // Detection relies on item.is_flight (a structured field the model sets
 // directly per prompt.ts's LANGUAGE-INDEPENDENT FIELDS instruction), NOT on
-// matching the word "flight" in the title — titles follow the trip's
+// matching the word "flight" in the title - titles follow the trip's
 // response language, so a Bulgarian trip's title reads "Полет от София
 // до..." and an English-word regex would silently never match, meaning no
 // Bulgarian trip would ever get this link. Confirmed bug, not hypothetical:
@@ -48,7 +48,7 @@ export function attachFlightSearchLinks(itinerary: Itinerary, brief: TripBriefIn
 
   const origin = brief.origin.trim();
   // Multi-city trips: the first-listed destination is the actual arrival
-  // point, the last-listed is where the traveler departs from — matches how
+  // point, the last-listed is where the traveler departs from - matches how
   // the system prompt already reasons about arrival/departure transport.
   const arrivalDestination = brief.destinations[0];
   const departureDestination = brief.destinations[brief.destinations.length - 1];

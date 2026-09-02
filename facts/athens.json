@@ -1,14 +1,14 @@
 {
   "city": "Athens",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
-      "text": "The Athens metro is modern, cheap, and directly connects the airport to the city center — a noticeably better value and faster option than a taxi for solo/light-luggage travelers."
+      "text": "The Athens metro is modern, cheap, and directly connects the airport to the city center - a noticeably better value and faster option than a taxi for solo/light-luggage travelers."
     },
     {
       "category": "cost",
-      "text": "A taverna meal (moussaka, souvlaki, Greek salad) for two with a modest amount of wine typically runs €25-40 outside the most touristy zones — genuinely one of the cheaper major European capitals for eating well."
+      "text": "A taverna meal (moussaka, souvlaki, Greek salad) for two with a modest amount of wine typically runs €25-40 outside the most touristy zones - genuinely one of the cheaper major European capitals for eating well."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,11 +16,11 @@
     },
     {
       "category": "activity",
-      "text": "The Acropolis is dramatically less crowded at opening time (early morning) than midday, especially in summer heat — both a comfort and a crowd consideration."
+      "text": "The Acropolis is dramatically less crowded at opening time (early morning) than midday, especially in summer heat - both a comfort and a crowd consideration."
     },
     {
       "category": "practical",
-      "text": "Summer heat in Athens is intense (regularly 35°C+/95°F+ July-August) — many locals and savvy visitors avoid strenuous sightseeing between roughly 1-5pm."
+      "text": "Summer heat in Athens is intense (regularly 35°C+/95°F+ July-August) - many locals and savvy visitors avoid strenuous sightseeing between roughly 1-5pm."
     },
     {
       "category": "dietary",

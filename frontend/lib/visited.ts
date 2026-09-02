@@ -1,19 +1,19 @@
-// Redis-backed side of the visited-countries tracker — used only for the
+// Redis-backed side of the visited-countries tracker - used only for the
 // optional signed-in sync path (see app/api/visited); the primary,
 // no-account-required path stores the same data client-side (see
 // lib/localVisited.ts). Same "no new database" approach as account.ts.
 //
 // Stored as a Redis HASH `visited:<email>`, one field per country code,
-// value a JSON blob of that country's metadata (visit date, pins) — richer
+// value a JSON blob of that country's metadata (visit date, pins) - richer
 // than the original plain SET of codes, needed once a visit could carry an
 // optional date and named pins (the Visualize views: Timeline, Chronology,
 // Map Pins). This app has no real users yet (added the same day as this
-// change), so there's no legacy-format migration to carry here — unlike
+// change), so there's no legacy-format migration to carry here - unlike
 // lib/localVisited.ts, which does need one for whatever's already sitting
 // in someone's browser.
 //
 // computeVisitedStats/groupCountriesByContinent below are pure functions
-// with no Redis dependency, working off a plain code list — imported
+// with no Redis dependency, working off a plain code list - imported
 // directly by the client-side page too, so the exact same stats math runs
 // whether the codes came from local storage or from here.
 
@@ -30,7 +30,7 @@ export interface VisitedPin {
 
 export interface VisitedEntry {
   code: string;
-  visitedAt?: string; // ISO date, e.g. "2024-07-03" — optional, a visit doesn't need one
+  visitedAt?: string; // ISO date, e.g. "2024-07-03" - optional, a visit doesn't need one
   pins?: VisitedPin[];
 }
 
@@ -67,7 +67,7 @@ export async function getVisitedEntries(redis: Redis, email: string): Promise<Vi
 }
 
 /** Convenience wrapper for the (more common) callers that only need the
- * code list, not full entries — e.g. /api/generate's soft-personalization
+ * code list, not full entries - e.g. /api/generate's soft-personalization
  * lookup, which only cares which countries, never when or which pins. */
 export async function getVisitedCodes(redis: Redis, email: string): Promise<string[]> {
   return (await getVisitedEntries(redis, email)).map((e) => e.code);
@@ -93,14 +93,14 @@ export async function setVisitedEntry(
 
 export interface Badge {
   id: string;
-  // Threshold is checked against the specific stat named by `metric` — kept
+  // Threshold is checked against the specific stat named by `metric` - kept
   // as data (this array) rather than a chain of if-statements so adding a
   // badge later is a one-line addition, not new branching logic.
   metric: "countries" | "continents" | "percent";
   threshold: number;
 }
 
-// Deliberately few, deliberately round numbers for v1 — easy to extend
+// Deliberately few, deliberately round numbers for v1 - easy to extend
 // once there's a sense of which milestones actually feel good to hit.
 export const BADGES: Badge[] = [
   { id: "first_stamp", metric: "countries", threshold: 1 },
@@ -148,7 +148,7 @@ export function computeVisitedStats(codes: string[]): VisitedStats {
   };
 }
 
-/** Grouped view for the tracker UI's continent-by-continent checklist —
+/** Grouped view for the tracker UI's continent-by-continent checklist -
  * every country in COUNTRIES, annotated with whether it's in this user's
  * visited set, still ordered/grouped by continent. */
 export function groupCountriesByContinent(visitedCodes: Set<string>) {

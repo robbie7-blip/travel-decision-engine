@@ -1,6 +1,6 @@
 {
   "city": "Barcelona",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,7 +8,7 @@
     },
     {
       "category": "tourist_trap_warning",
-      "text": "Paella served at restaurants directly on La Rambla is almost universally poor quality, pre-made, and overpriced — genuine paella (which takes about 20 minutes to cook to order) is found in Barceloneta or Poble Sec instead."
+      "text": "Paella served at restaurants directly on La Rambla is almost universally poor quality, pre-made, and overpriced - genuine paella (which takes about 20 minutes to cook to order) is found in Barceloneta or Poble Sec instead."
     },
     {
       "category": "activity",
@@ -20,7 +20,7 @@
     },
     {
       "category": "practical",
-      "text": "Pickpocketing is a genuine, well-documented risk on La Rambla, the metro, and around Sagrada Família — not just tourist paranoia; keep bags zipped and to the front in these areas."
+      "text": "Pickpocketing is a genuine, well-documented risk on La Rambla, the metro, and around Sagrada Família - not just tourist paranoia; keep bags zipped and to the front in these areas."
     },
     {
       "category": "dietary",
@@ -28,7 +28,7 @@
     },
     {
       "category": "activity",
-      "text": "Sagrada Família requires timed-entry tickets booked well in advance (weeks, not days, in peak season) — walk-up tickets are frequently sold out."
+      "text": "Sagrada Família requires timed-entry tickets booked well in advance (weeks, not days, in peak season) - walk-up tickets are frequently sold out."
     }
   ]
 }

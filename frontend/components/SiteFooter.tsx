@@ -1,11 +1,11 @@
 // The standard Terms/Privacy/Cookies/Contact footer strip most sites carry
 // (mirrors what Booking/Ryanair etc. put at the very bottom of every page)
-// — this site had no sitewide footer at all before. Mounted once in
+// - this site had no sitewide footer at all before. Mounted once in
 // app/layout.tsx so it's on every page, unlike TrustFooter.tsx (the
 // homepage's own "why trust us" strip, a different kind of content that
 // doesn't belong on every page).
 //
-// Plain server component, no language toggle — the three pages it links to
+// Plain server component, no language toggle - the three pages it links to
 // (/terms, /privacy, /cookies) are English-only (see their own top-of-file
 // comments for why), so labeling the links themselves in whatever language
 // the rest of a given page happens to be in would be inconsistent with

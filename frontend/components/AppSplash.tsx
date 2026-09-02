@@ -6,7 +6,7 @@ const MIN_VISIBLE_MS = 1650;
 const FADE_MS = 300;
 
 /** Brief branded overlay shown once when the app is first opened in a
- * browser tab — mounts in the root layout, so client-side navigations
+ * browser tab - mounts in the root layout, so client-side navigations
  * within the app never re-trigger it. Purely cosmetic: fades itself out
  * on a timer rather than waiting on any real loading signal. */
 export function AppSplash() {

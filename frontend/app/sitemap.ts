@@ -3,7 +3,7 @@ import { listDestinationSlugs } from "@/lib/destinations";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 // Next.js App Router convention: this file's presence auto-generates
-// /sitemap.xml at the site root — no manual XML, no separate route file.
+// /sitemap.xml at the site root - no manual XML, no separate route file.
 // Exists mainly for the /destinations guides (see destinations.ts): they
 // were built to bring in organic search traffic, and without a sitemap
 // search engines only find them by crawling links rather than being told
@@ -18,7 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   // Each guide is also reachable with ?lang=bg (see DESTINATION_CITY_NAMES_BG
-  // etc.) — that's a query-param variant of the same URL, not a distinct
+  // etc.) - that's a query-param variant of the same URL, not a distinct
   // path, so it's surfaced via `alternates.languages` rather than as its own
   // sitemap entry.
   const destinationRoutes: MetadataRoute.Sitemap = listDestinationSlugs().map((slug) => ({

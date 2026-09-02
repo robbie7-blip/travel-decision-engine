@@ -3,7 +3,7 @@
 // Shows a finished job's stage timings on the trip page, to the site owner
 // only. This exists because generation latency has now been diagnosed
 // several times by reasoning from the code about which stage *should*
-// dominate — and been wrong more than once, each time costing a deploy
+// dominate - and been wrong more than once, each time costing a deploy
 // cycle and a round trip to find out. The worker has always logged these
 // numbers; the problem was that reading them meant shell access to the
 // worker host, so in practice they went unread and the guessing continued.
@@ -11,7 +11,7 @@
 // Putting them on the page the owner is already looking at, right after the
 // run they just did, makes the answer a glance instead of an investigation.
 // Visibility is driven by the same localStorage flag as AddToShowcaseButton
-// (see lib/adminUi.ts) — set by visiting any /admin/* page, never shown to
+// (see lib/adminUi.ts) - set by visiting any /admin/* page, never shown to
 // a real traveler, and never requiring a probe of a protected endpoint.
 
 import { useEffect, useState } from "react";
@@ -19,7 +19,7 @@ import { isAdminUi } from "@/lib/adminUi";
 import type { JobTimings as Timings, QualityReport } from "@/lib/jobs";
 
 function secs(ms?: number): string {
-  return ms == null ? "—" : `${(ms / 1000).toFixed(1)}s`;
+  return ms == null ? "-" : `${(ms / 1000).toFixed(1)}s`;
 }
 
 export function JobTimings({ timings, quality }: { timings?: Timings; quality?: QualityReport }) {
@@ -47,7 +47,7 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
     >
       {/* The verdict first. Everything below it is detail explaining how
           the run got there, and on a run that passed there is nothing to
-          investigate — so the one line that says whether to look further
+          investigate - so the one line that says whether to look further
           goes at the top. */}
       {quality && (
         <div style={{ color: quality.passed ? "var(--accent-green)" : "var(--infeasible)", fontWeight: 700 }}>
@@ -82,13 +82,13 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
           </div>
           <div>
             phase 1 ({timings.waitedForFrame ? "plan + frame ⚠ lodging came back short" : "plan only, frame ran alongside days"}){" "}
-            {secs(timings.skeletonMs)} · {timings.dayCount ?? "—"} day(s){" "}
+            {secs(timings.skeletonMs)} · {timings.dayCount ?? "-"} day(s){" "}
             {secs(timings.daysMs)}
             {timings.dayWaves != null && (
               // Anything above 1 means the day calls didn't all run at once,
               // so phase 2 paid for its slowest day more than once. It reads
               // as "the days were slow" in the number next to it, which is
-              // exactly how it went unnoticed for weeks — so it's called out.
+              // exactly how it went unnoticed for weeks - so it's called out.
               <span style={{ color: timings.dayWaves > 1 ? "var(--infeasible)" : "var(--ink-dim)" }}>
                 {" "}
                 in {timings.dayWaves} wave{timings.dayWaves === 1 ? "" : "s"}
@@ -107,13 +107,13 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
             >
               ⚠ {s.city}: lodging {s.missing === "rate" ? "rate" : "property"} came back empty after a retry
               {s.missing === "rate"
-                ? " — this is what made phase 1 wait for the frame"
-                : " — accommodation fell back to a generic line"}
+                ? " - this is what made phase 1 wait for the frame"
+                : " - accommodation fell back to a generic line"}
             </div>
           ))}
           {fellBack && (
             <div style={{ color: "var(--infeasible)", marginTop: 4 }}>
-              ⚠ FELL BACK to single-call generation — this is the slow path.
+              ⚠ FELL BACK to single-call generation - this is the slow path.
               <div style={{ color: "var(--ink-soft)", wordBreak: "break-word" }}>
                 {timings.fallbackReason}
               </div>

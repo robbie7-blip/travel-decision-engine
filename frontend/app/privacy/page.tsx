@@ -1,11 +1,11 @@
-// Privacy Policy — English-only, same reasoning as /terms (see that file's
+// Privacy Policy - English-only, same reasoning as /terms (see that file's
 // top-of-file comment): a mistranslated legal document is worse than none.
-// Every claim below is grounded in what the codebase actually does — see
+// Every claim below is grounded in what the codebase actually does - see
 // lib/account.ts (Redis user records), lib/jobs.ts (30-day job TTL),
 // lib/account.ts's QUOTA_KEY_TTL_SECONDS (~40 days), lib/analytics.ts
 // (aggregate-only, no per-user tracking), lib/session.ts (the one cookie
 // this app sets), and app/api/trip-questions/route.ts (Anthropic web_search
-// for Pro) — not generic privacy-policy boilerplate.
+// for Pro) - not generic privacy-policy boilerplate.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -23,7 +23,7 @@ function resolveLanguage(lang?: string): Language {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const title = "Privacy Policy — decide";
+  const title = "Privacy Policy - decide";
   const description = "What decide collects, why, and how it's used.";
   return { title, description, openGraph: { title, description }, twitter: { title, description } };
 }
@@ -36,11 +36,11 @@ interface DataRow {
 const DATA_COLLECTED: DataRow[] = [
   {
     what: "Email address",
-    why: "If you sign in (magic link) or subscribe to Pro — identifies your account, sends sign-in links, and links your Stripe subscription to your account.",
+    why: "If you sign in (magic link) or subscribe to Pro - identifies your account, sends sign-in links, and links your Stripe subscription to your account.",
   },
   {
     what: "Trip details you type in",
-    why: "Destinations, dates, budget, party size/description, interests, and any constraints — sent to Anthropic (maker of the Claude model that powers generation) to produce your itinerary.",
+    why: "Destinations, dates, budget, party size/description, interests, and any constraints - sent to Anthropic (maker of the Claude model that powers generation) to produce your itinerary.",
   },
   {
     what: "Ask a Local questions",
@@ -48,11 +48,11 @@ const DATA_COLLECTED: DataRow[] = [
   },
   {
     what: "Photos you attach to a question (Pro)",
-    why: "Sent to Anthropic to answer the question about them, and never stored by decide — not on our servers, not in our database. They exist for the length of that one request and then they're gone. They stay visible in your browser for the rest of that conversation only, and disappear when you reload or leave the page. Photos in this context are often of hotel rooms, menus, receipts or documents, so avoid including anything you wouldn't want read by a third-party AI provider — passports, boarding passes, card numbers.",
+    why: "Sent to Anthropic to answer the question about them, and never stored by decide - not on our servers, not in our database. They exist for the length of that one request and then they're gone. They stay visible in your browser for the rest of that conversation only, and disappear when you reload or leave the page. Photos in this context are often of hotel rooms, menus, receipts or documents, so avoid including anything you wouldn't want read by a third-party AI provider - passports, boarding passes, card numbers.",
   },
   {
     what: "Booking confirmations you paste in (flight-history import)",
-    why: "Sent to Anthropic once, to read the flights out of them, and never stored by decide — not on our servers, not in our database. Only the flights you then confirm are saved, and only as airports, dates and airline. Passenger names, booking references, ticket numbers and payment details are explicitly excluded from what we extract, and the email text itself is discarded as soon as the flights are read. Import your own bookings only.",
+    why: "Sent to Anthropic once, to read the flights out of them, and never stored by decide - not on our servers, not in our database. Only the flights you then confirm are saved, and only as airports, dates and airline. Passenger names, booking references, ticket numbers and payment details are explicitly excluded from what we extract, and the email text itself is discarded as soon as the flights are read. Import your own bookings only.",
   },
   {
     what: "Visited-countries data",
@@ -64,11 +64,11 @@ const DATA_COLLECTED: DataRow[] = [
   },
   {
     what: "Payment information",
-    why: "Handled entirely by Stripe. decide never receives or stores your card number — only your email, a Stripe customer ID, and your subscription status.",
+    why: "Handled entirely by Stripe. decide never receives or stores your card number - only your email, a Stripe customer ID, and your subscription status.",
   },
   {
     what: "Aggregate usage counts",
-    why: "E.g. how many trips were generated per day, per language. Not tied to any individual visitor — used only for our own internal stats.",
+    why: "E.g. how many trips were generated per day, per language. Not tied to any individual visitor - used only for our own internal stats.",
   },
 ];
 
@@ -122,12 +122,12 @@ export default async function PrivacyPage({
             Last updated: {LAST_UPDATED}
           </p>
           <p style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.6, margin: "0 0 36px", fontStyle: "italic" }}>
-            English only, for the same reason as the Terms of Service — see that page.
+            English only, for the same reason as the Terms of Service - see that page.
           </p>
 
           <p style={{ fontSize: 14, lineHeight: 1.65, color: "var(--ink-soft)", marginBottom: 28 }}>
             This describes what decide (the "Service"), operated by {OPERATOR_NAME}, collects, why, and how it&apos;s
-            used. We don&apos;t sell your data, and we don&apos;t use third-party advertising or tracking cookies —
+            used. We don&apos;t sell your data, and we don&apos;t use third-party advertising or tracking cookies -
             the only cookie decide sets is a session cookie used solely to keep you signed in.
           </p>
 
@@ -144,23 +144,23 @@ export default async function PrivacyPage({
 
           <LegalSection heading="Where it's stored">
             <p style={{ margin: 0 }}>
-              Upstash Redis — a hosted database. There&apos;s no separate customer database beyond that.
+              Upstash Redis - a hosted database. There&apos;s no separate customer database beyond that.
             </p>
           </LegalSection>
 
           <LegalSection heading="Who we share it with">
             <p style={{ margin: "0 0 10px" }}>
-              <strong style={{ color: "var(--ink)" }}>Anthropic</strong> — trip details and questions, to generate
+              <strong style={{ color: "var(--ink)" }}>Anthropic</strong> - trip details and questions, to generate
               itineraries and answers.
               <br />
-              <strong style={{ color: "var(--ink)" }}>Stripe</strong> — your email and billing details, to process
+              <strong style={{ color: "var(--ink)" }}>Stripe</strong> - your email and billing details, to process
               subscription payments.
               <br />
-              <strong style={{ color: "var(--ink)" }}>Resend</strong> — your email address, to deliver sign-in links.
+              <strong style={{ color: "var(--ink)" }}>Resend</strong> - your email address, to deliver sign-in links.
             </p>
             <p style={{ margin: 0 }}>
               Depending on what&apos;s configured on a given deployment, Google Places, Amadeus, and Open-Meteo may
-              also be queried for destination, venue, flight, or weather information — these receive search terms
+              also be queried for destination, venue, flight, or weather information - these receive search terms
               about places, not information that identifies you personally.
             </p>
           </LegalSection>
@@ -177,10 +177,10 @@ export default async function PrivacyPage({
             <p style={{ margin: "0 0 10px" }}>
               You can request a copy of your data, ask us to correct it, or ask us to delete your account and
               associated data at any time by emailing {CONTACT_EMAIL}. If you&apos;re in the EU/UK, this includes
-              your rights under GDPR — access, rectification, erasure, portability, and objection.
+              your rights under GDPR - access, rectification, erasure, portability, and objection.
             </p>
             <p style={{ margin: 0 }}>
-              We don&apos;t currently offer a self-service "delete my account" button in the app — deletion
+              We don&apos;t currently offer a self-service "delete my account" button in the app - deletion
               requests are handled manually once we receive your email.
             </p>
           </LegalSection>

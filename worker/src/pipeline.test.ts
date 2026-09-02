@@ -4,7 +4,7 @@
 // Every latency regression in this pipeline has been the same kind of bug:
 // work that should overlap quietly running one stage after another. Each
 // time, it was found by deploying, asking the owner to burn a paid
-// generation, and reading the wall-clock number — which is slow, costs real
+// generation, and reading the wall-clock number - which is slow, costs real
 // money per attempt, and had already been wrong twice before it was right.
 //
 // None of that is necessary. Whether two stages overlap is a property of
@@ -36,7 +36,7 @@ const CALL_MS = 400; // stands in for one model round-trip
 // things-to-skip list, while the plan just lays out days. With every stub
 // call taking the same time, "the frame overlaps the day calls" and "the
 // day calls started one millisecond after the frame finished" are
-// indistinguishable — and the whole point of the change under test is that
+// indistinguishable - and the whole point of the change under test is that
 // the frame must NOT gate phase 2. Making it slow is what gives that
 // assertion teeth.
 const FRAME_CALL_MS = CALL_MS * 2;
@@ -244,7 +244,7 @@ function check(label: string, cond: boolean, detail = "") {
   if (cond) console.log(`  PASS  ${label}`);
   else {
     failures++;
-    console.log(`  FAIL  ${label}${detail ? ` — ${detail}` : ""}`);
+    console.log(`  FAIL  ${label}${detail ? ` - ${detail}` : ""}`);
   }
 }
 
@@ -320,7 +320,7 @@ async function run(scenario: Scenario) {
     !!frame && !!rate && overlaps(rate, frame)
   );
   check(
-    `all ${days.length} day calls overlap each other — ONE wave, not ${Math.ceil(days.length / 6)}`,
+    `all ${days.length} day calls overlap each other - ONE wave, not ${Math.ceil(days.length / 6)}`,
     days.length > 1 && days.every((d) => overlaps(d, days[0])),
     days.length > 1
       ? `first day ends at +${days[0].end - startedAt}ms, last starts at +${
@@ -331,9 +331,9 @@ async function run(scenario: Scenario) {
   // The meal calls now run UNDER the verification stage rather than after
   // it, so they start the moment the last day call returns. Places isn't a
   // model call and leaves no record here, so this is asserted by position:
-  // the meal calls begin with the verify stage, and the venue repairs —
+  // the meal calls begin with the verify stage, and the venue repairs -
   // which genuinely cannot start until verification has finished rewriting
-  // day.items — come later.
+  // day.items - come later.
   const lastDayEnd = Math.max(...days.map((d) => d.end));
   check(
     "missing-meal calls start as soon as the days finish, not after verification",
@@ -372,7 +372,7 @@ async function run(scenario: Scenario) {
   // a concurrency one: the stub feeds the pipeline days that are broken in
   // exactly the ways real generations have been (one venue reused
   // everywhere, breakfast only), and the repairs have to actually fix them
-  // — not merely run.
+  // - not merely run.
   check("the acceptance gate ran and recorded a verdict", finished.quality != null);
   check(
     "no duplicate venue survived the repair",
@@ -392,11 +392,11 @@ async function run(scenario: Scenario) {
   // regression this pipeline has had was a stage silently becoming two.
   //
   // The four, in order:
-  //   1. phase 1     — frame ‖ plan, concurrent with the lodging prefetch
-  //   2. days        — all of them at once
-  //   3. verify      — Places ‖ Amadeus
-  //   4. repairs     — duplicates ‖ missing meals, ONLY when something is wrong
-  //   (+ re-verify   — only the repaired items, only when there were repairs)
+  //   1. phase 1     - frame ‖ plan, concurrent with the lodging prefetch
+  //   2. days        - all of them at once
+  //   3. verify      - Places ‖ Amadeus
+  //   4. repairs     - duplicates ‖ missing meals, ONLY when something is wrong
+  //   (+ re-verify   - only the repaired items, only when there were repairs)
   //
   // A clean generation pays 3, since stages 4 and 5 are skipped entirely.
   const stageOf = (r: CallRecord) =>
@@ -444,7 +444,7 @@ async function run(scenario: Scenario) {
 async function main() {
   const short = datesBetween("2026-12-28", 3);
   await run({
-    label: "SHORT TRIP — 3 days, 1 city (the shape that measured 30s)",
+    label: "SHORT TRIP - 3 days, 1 city (the shape that measured 30s)",
     destinations: ["Chisinau"],
     dates: short,
     cityByDay: short.map(() => "Chisinau"),
@@ -455,7 +455,7 @@ async function main() {
   const long = datesBetween("2027-03-18", 10);
   const cities = ["Ubud", "Seminyak", "Uluwatu"];
   await run({
-    label: "LONG TRIP — 10 days, 3 cities (the shape that measured 2 minutes)",
+    label: "LONG TRIP - 10 days, 3 cities (the shape that measured 2 minutes)",
     destinations: cities,
     dates: long,
     cityByDay: long.map((_, i) => cities[Math.min(Math.floor(i / 4), cities.length - 1)]),

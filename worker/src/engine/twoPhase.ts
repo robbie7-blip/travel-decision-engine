@@ -1,4 +1,4 @@
-// Parallel generation — the fix for generation wall-time being dominated by
+// Parallel generation - the fix for generation wall-time being dominated by
 // ONE model call streaming the entire itinerary's JSON out token by token.
 //
 // Phase 1 is itself two calls that run CONCURRENTLY (see TripFrame and
@@ -24,14 +24,14 @@
 // dominant cost untouched: a 5-day trip is ~30 itinerary items, and one
 // call emitting all of them plus the trip-level fields is roughly 3,000+
 // output tokens generated strictly sequentially. Output tokens are serial
-// by nature — no amount of search tuning touches that, which is why
+// by nature - no amount of search tuning touches that, which is why
 // generation stayed near-constant at ~90s even after search stopped being
 // the bottleneck.
 //
 // So: split the work instead of shortening it.
 //
 //   Phase 1 (skeleton, one call): every decision that genuinely needs a
-//   whole-trip view — budget feasibility, city order, which day is where,
+//   whole-trip view - budget feasibility, city order, which day is where,
 //   accommodation choice per city, key decisions, things to skip, and a
 //   per-day plan naming that day's anchor venues. Small output (~800-1200
 //   tokens) because it names things without writing them up.
@@ -44,12 +44,12 @@
 // bar is held by construction rather than by hoping: the day calls reuse
 // the EXISTING SYSTEM_PROMPT verbatim (every venue-naming, hedging, tone,
 // currency and schema rule applies to item writing exactly as it does
-// today — see DAY_INSTRUCTIONS, which only redirects the output shape),
+// today - see DAY_INSTRUCTIONS, which only redirects the output shape),
 // and the hard reasoning that actually needs whole-trip context is done
 // once, in the skeleton, not duplicated per day.
 //
-// Cross-day consistency — the real risk when N calls can't see each other
-// — is handled three ways, deliberately NOT by making the skeleton name
+// Cross-day consistency - the real risk when N calls can't see each other
+// - is handled three ways, deliberately NOT by making the skeleton name
 // every venue in the trip. That was tried, and it moved the bulk of the
 // naming work into the one serial call, which is the single worst place to
 // put work: it roughly tripled generation time. Instead the skeleton names
@@ -84,8 +84,8 @@ export interface TripSkeleton {
 }
 
 /** Phase 1A: the whole-trip judgement calls. Everything here is about the
- * trip as one object — is the budget real, what is worth skipping, where do
- * they sleep — and none of it grows with the number of days. */
+ * trip as one object - is the budget real, what is worth skipping, where do
+ * they sleep - and none of it grows with the number of days. */
 export interface TripFrame {
   budget_feasibility: BudgetFeasibility;
   trip_summary: string;
@@ -102,7 +102,7 @@ export interface TripPlan {
 
 export interface SkeletonAccommodation {
   city: string;
-  /** Null when no specific property could be verified for this city — the
+  /** Null when no specific property could be verified for this city - the
    * accommodation item then stays deliberately generic rather than being
    * given an invented hotel name. */
   name: string | null;
@@ -119,21 +119,21 @@ export interface SkeletonDay {
   theme: string;
   /** Whether this day ends with a night at the accommodation. The skeleton
    * decides it explicitly rather than each day call inferring "is there a
-   * night after me" from dates it can only partially see — that inference
+   * night after me" from dates it can only partially see - that inference
    * is exactly the kind of thing that silently produces N-1 or N+1 lodging
    * items once the days are written independently. */
   include_lodging: boolean;
   /** Real, specific, named venues assigned to this day, each with the slot
    * it fills, e.g. "Mocotó (dinner)". This is also the cross-day
-   * de-duplication mechanism — see DAY_INSTRUCTIONS. */
+   * de-duplication mechanism - see DAY_INSTRUCTIONS. */
   anchors: string[];
   /** Set only on the days that actually carry an arrival or departure leg. */
   transport_note?: string | null;
   /** Which meals this day owes, decided here because only this stage knows
    * the arrival and departure timing that makes a missing meal legitimate.
    *
-   * This exists because "include every meal the day realistically needs" —
-   * a rule the day call was given as prose — produced days with no lunch and
+   * This exists because "include every meal the day realistically needs" -
+   * a rule the day call was given as prose - produced days with no lunch and
    * no dinner on a real trip. Written as a general instruction it competes
    * with "downtime that fits the stated pace", and on a relaxed brief the
    * pace wins. Written as an explicit list of slots this day owes, there is
@@ -162,7 +162,7 @@ const SHARED_PHASE1_RULES = `- Respect all hard constraints exactly (dietary, mo
 - ALL prices are EUR, everywhere. Convert from any local currency yourself before writing a number.
 - WRITING STYLE: write like a person texting a friend, not like an AI assistant. Never use an em \
 dash. Short, plain sentences.
-- TONE — CONFIDENT, NEVER ANXIOUS: never frame a tradeoff as "tension", "conflict", or "pressure". \
+- TONE - CONFIDENT, NEVER ANXIOUS: never frame a tradeoff as "tension", "conflict", or "pressure". \
 State how you handled it, not that a problem exists. Real constraints (an infeasible budget, a \
 hard_no conflict) still get stated plainly and matter-of-factly.
 - Output ONLY valid JSON matching the schema. No prose outside the JSON. No trailing commas.`;
@@ -171,7 +171,7 @@ const FRAME_SYSTEM = `You are a travel decision engine. This is STAGE 1A: the wh
 calls. A separate stage lays out the individual days and a later one writes them up, so do NOT \
 produce any day-by-day content here.
 
-Decide, and be opinionated about it — this is where the real calls get made:
+Decide, and be opinionated about it - this is where the real calls get made:
 - Whether the stated budget is actually realistic (mandatory, see below).
 - Where the traveler stays in each city.
 - What's worth skipping, and the handful of decisions worth explaining.
@@ -180,7 +180,7 @@ Rules:
 - BUDGET FEASIBILITY IS MANDATORY AND MUST BE HONEST: independently estimate a realistic MINIMUM \
 total for this trip, including accommodation for every night (unless the brief says accommodation \
 is already arranged, in which case exclude it entirely). Compare that to the stated budget. Never \
-quietly shrink or drop a real cost category to make the numbers appear to fit — if the honest \
+quietly shrink or drop a real cost category to make the numbers appear to fit - if the honest \
 minimum breaks the budget, say so plainly, that IS the correct finding.
 - You are not told how the nights split between the cities, because that is decided in parallel \
 with this. The trip's total number of nights is fixed by the dates you were given, and that plus \
@@ -189,12 +189,12 @@ and estimate from that.
 - ACCOMMODATION: one entry per city, with "city" spelled exactly as the brief spells that \
 destination, character for character. Give its real per-night cost in EUR. If the context below \
 supplies a SPECIFIC PROPERTY for a city, use that exact property name and area, reuse that exact \
-price and its source_urls, and set source_confidence "grounded" — do not substitute a different \
+price and its source_urls, and set source_confidence "grounded" - do not substitute a different \
 hotel or downgrade it to a generic "mid-range hotel". If the context supplies a verified price but \
 no specific property, set name to null and keep source_confidence "grounded" (the price is still \
 verified, just not the property). If neither is supplied, give your best hedged price estimate, set \
 name null and source_confidence "inferred" with no source_urls. NEVER invent a property name that \
-wasn't supplied to you — accommodation is the biggest line item in most trips, and a fabricated \
+wasn't supplied to you - accommodation is the biggest line item in most trips, and a fabricated \
 hotel is the worst possible place to be wrong. If the brief says accommodation is already arranged, \
 return an empty accommodation array.
 - Treat must-see/must-do items as near-mandatory. If one is genuinely infeasible, say so explicitly \
@@ -215,7 +215,7 @@ Schema:
     "min_realistic_total_eur": 0,
     "reasoning": "your minimum estimate and whether the stated budget is realistic, noting explicitly if any cost category had to be excluded"
   },
-  "trip_summary": "one confident, appealing sentence about the trip itself — never mention data verification or confidence here. Only exception: if the budget is genuinely infeasible, say so plainly",
+  "trip_summary": "one confident, appealing sentence about the trip itself - never mention data verification or confidence here. Only exception: if the budget is genuinely infeasible, say so plainly",
   "key_decisions": [
     {"decision": "...", "reasoning": "<=15 words", "alternative_considered": "a few words", "confidence": "high|medium|low"}
   ],
@@ -240,26 +240,26 @@ Decide:
 Rules:
 - ANCHORS ARE THE FEW LOAD-BEARING VENUES OF THE DAY, not everything in it: the 2-4 places that decide what \
 the day IS (the sight it's built around, the one dinner worth planning). The expansion stage fills in the rest \
-itself — the other meals, the coffee stop, the walk between two of them.
+itself - the other meals, the coffee stop, the walk between two of them.
 - Anchors must be real, specific, named businesses: "Mocotó (dinner)", not "a churrascaria (dinner)". Name your \
 single best real candidate even when you can't confirm current hours or prices. Genuinely generic activities with \
 no business to name (a walk through a neighborhood, a rest at the accommodation) need no anchor.
 - NEVER REPEAT AN ANCHOR ACROSS DAYS: each named venue appears on exactly ONE day.
-- Match the anchor count to the stated pace: relaxed means fewer, packed means more. Keep this list SHORT — it is \
+- Match the anchor count to the stated pace: relaxed means fewer, packed means more. Keep this list SHORT - it is \
 a plan, not the itinerary, and every extra entry here is time the traveler spends waiting.
 - Assign each must-see/must-do item to a specific day.
 - "city" must be one of the destinations exactly as the brief spells it, character for character.
 - MEALS: list the meals that day genuinely owes, out of "breakfast", "lunch", "dinner". A normal \
 full day owes all three. Drop one ONLY when travel timing actually removes it: no breakfast if they \
 land or set off before it, no lunch if they land mid-afternoon, no dinner if they fly out at 16:00. \
-A relaxed pace is NOT a reason to drop a meal — people eat lunch on relaxed days too. Never return \
+A relaxed pace is NOT a reason to drop a meal - people eat lunch on relaxed days too. Never return \
 an empty list.
 - include_lodging: true for every day the traveler actually spends the night at the accommodation, \
 false for the final departure day (and any day they're in transit overnight). The number of true \
 values must equal the number of nights in the trip. If the brief says accommodation is already \
 arranged, set include_lodging false on every day.
 - transport_note: set it ONLY on the arrival day and the departure day, and only when the brief \
-gives an origin AND doesn't say the flight/train is already booked — one short line naming the \
+gives an origin AND doesn't say the flight/train is already booked - one short line naming the \
 specific mode and route, e.g. "Flight from Sofia to Chisinau". Commit to ONE mode, never "X or Y". \
 Leave it null on every other day.
 - LENGTH: theme is a short phrase, not a sentence.
@@ -337,13 +337,13 @@ export function mergeSkeleton(frame: TripFrame, plan: TripPlan): TripSkeleton {
 
 /** Appended after the existing SYSTEM_PROMPT for a day call, as its own
  * cache_control block. SYSTEM_PROMPT is reused verbatim and on purpose:
- * every rule that governs how an item is written today — name a real venue,
- * hedge once, EUR only, confident tone, the exact item field shapes — has to
+ * every rule that governs how an item is written today - name a real venue,
+ * hedge once, EUR only, confident tone, the exact item field shapes - has to
  * apply identically here, and the surest way to guarantee that is to not
  * restate any of it. This block only redirects the OUTPUT SHAPE (one day,
  * not a whole itinerary) and adds the cross-day constraints a call that can
  * only see its own day would otherwise have no way to respect. */
-const DAY_INSTRUCTIONS = `STAGE 2 — WRITE EXACTLY ONE DAY.
+const DAY_INSTRUCTIONS = `STAGE 2 - WRITE EXACTLY ONE DAY.
 
 Everything above still applies to how you write each item (naming real specific venues, hedging \
 once, EUR only, confident tone, the exact item fields). Only the output SHAPE changes: you are \
@@ -354,7 +354,7 @@ before anything else, then build the rest of the day around them. This ordering 
 day written sights-first reliably runs out of momentum and arrives at the end having quietly \
 dropped its dinner, which is the single most common way this stage fails.
 
-Output ONLY this JSON object — no trip_summary, no key_decisions, no things_to_skip, no \
+Output ONLY this JSON object - no trip_summary, no key_decisions, no things_to_skip, no \
 budget_feasibility, no other days:
 {
   "day": <the day number you were given>,
@@ -374,11 +374,11 @@ Stage 1 already made the whole-trip decisions. Hold to them:
 a sensible order. Keep those venue names exactly as given.
 - Then fill in the rest of the day yourself: the meals the anchors don't already cover, a coffee or \
 snack stop, getting between places, downtime that fits the stated pace. Name real specific venues \
-for these exactly as the rules above require — this is your day to write.
+for these exactly as the rules above require - this is your day to write.
 - ACCOUNT FOR THE WHOLE DAY. Read your finished items in time order and check there is no stretch of \
 four hours or more between them while the traveler is up and out. Downtime is a fine answer and often \
-the right one, but WRITE IT — "afternoon at leisure around the hotel", "slow wander back through the \
-old town" — so it reads as a decision rather than as a day you stopped planning halfway through. A \
+the right one, but WRITE IT - "afternoon at leisure around the hotel", "slow wander back through the \
+old town" - so it reads as a decision rather than as a day you stopped planning halfway through. A \
 full day needs at least two real things in it beyond the meals; an arrival or departure day can have \
 one, because the flight takes the rest.
 - MEALS ARE NOT OPTIONAL: you are given the exact list of meals this day owes. Every one of them \
@@ -386,20 +386,20 @@ MUST appear as its own item, at a real named venue, even on a relaxed day and ev
 already fill the day. The travel timing that would justify dropping one has already been accounted \
 for in that list, so there is nothing left for you to weigh up: if lunch is listed, the day has \
 lunch. A day missing a listed meal is a hole in the itinerary, not a stylistic choice.
-- NEVER name a venue listed under "Anchors used on OTHER days" — those belong to another day and \
+- NEVER name a venue listed under "Anchors used on OTHER days" - those belong to another day and \
 would read to the traveler as the same place twice.
 - ACCOMMODATION: include exactly one item with type "lodging" if and only if you are told to \
 include it for this day, using the accommodation name, area and per-night cost you're given. Its \
 cost_estimate_eur is ONE night, never a multi-night total. Copy the given source_confidence and \
 source_urls onto it exactly. In human-readable text always call it "accommodation", never \
-"lodging" (that word is only the JSON type key). Only the FIRST night in a city is a check-in — on \
+"lodging" (that word is only the JSON type key). Only the FIRST night in a city is a check-in - on \
 later nights at the same place write it as another night there, never "check in" again.
 - TRANSPORT: include an arrival or departure transport item only if you're given a transport note \
 for this day, and follow it exactly, including the mode it commits to.
 - GETTING FROM AND TO THE AIRPORT IS PART OF THE DAY. A flight item is not a complete arrival: on \
 an arrival day also include the onward leg from the airport or station to the accommodation, and on \
 a departure day the leg back out to it. Name the actual mode and give it a real cost (airport \
-train, bus, taxi — whichever genuinely makes sense for that city, that hour and that much luggage). \
+train, bus, taxi - whichever genuinely makes sense for that city, that hour and that much luggage). \
 Landing at an airport with no way into town written down is a hole in the plan, and it is the point \
 in a trip where a traveler is least able to work it out for themselves.
 - Do not re-explain trip-level tradeoffs here. This day's items only.`;
@@ -412,7 +412,7 @@ export function getDayInstructions(): string {
  * the whole skeleton: a day needs the plan (its own anchors, the other
  * days' anchors, whether it is the first night in this city) and where the
  * traveler sleeps. It does not need the budget verdict, the key decisions
- * or the things-to-skip list — none of which appear in a day's output.
+ * or the things-to-skip list - none of which appear in a day's output.
  *
  * Naming that dependency exactly is what lets phase 2 start as soon as the
  * PLAN is ready instead of waiting for both halves of phase 1. The frame is
@@ -421,7 +421,7 @@ export function getDayInstructions(): string {
 export interface DayContext {
   days: SkeletonDay[];
   accommodation: SkeletonAccommodation[];
-  /** Omitted when the frame hasn't resolved yet — it is context only, and
+  /** Omitted when the frame hasn't resolved yet - it is context only, and
    * the day is explicitly told not to repeat it. */
   tripSummary?: string;
 }
@@ -431,7 +431,7 @@ export function buildDayPrompt(
   skeleton: DayContext,
   day: SkeletonDay
 ): string {
-  // Only this day's city's facts — the other destinations' curated facts
+  // Only this day's city's facts - the other destinations' curated facts
   // are irrelevant to writing this day and would otherwise be re-sent on
   // every parallel day call.
   const { tripBlock, factsBlock, warning } = buildContext(brief, undefined, day.city);
@@ -460,11 +460,11 @@ export function buildDayPrompt(
     warning,
     `The whole-trip plan is already decided. Your job is day ${day.day} only.`,
     ``,
-    `Day ${day.day} — ${day.date}`,
+    `Day ${day.day} - ${day.date}`,
     `City: ${day.city}`,
     `Theme: ${day.theme}`,
     `Anchors for THIS day (each becomes an item, names exactly as written): ${
-      day.anchors.length ? day.anchors.join("; ") : "(none — build the day from the theme)"
+      day.anchors.length ? day.anchors.join("; ") : "(none - build the day from the theme)"
     }`,
     `Meals this day MUST include, each as its own item at a real named venue: ${requiredMeals(day).join(
       ", "
@@ -474,15 +474,15 @@ export function buildDayPrompt(
   if (day.transport_note) {
     lines.push(`Transport for this day (include it, follow it exactly): ${day.transport_note}`);
   } else {
-    lines.push(`Transport: no arrival/departure leg on this day — do not invent one.`);
+    lines.push(`Transport: no arrival/departure leg on this day - do not invent one.`);
   }
 
   if (day.include_lodging && accommodation) {
     const where = accommodation.name
-      ? `${accommodation.name}${accommodation.area ? `, ${accommodation.area}` : ""} — use this exact ` +
+      ? `${accommodation.name}${accommodation.area ? `, ${accommodation.area}` : ""} - use this exact ` +
         `property name in the title AND in venue_name, do not substitute a generic description`
       : `no specific property was verified for this city, so keep it generic and set venue_name to ` +
-        `null — do NOT invent a hotel name`;
+        `null - do NOT invent a hotel name`;
     // Whether this is the arrival night is a fact about the plan, not a
     // judgement, so it's computed here rather than left to a call that can
     // only see its own day. Without it every night in a city independently
@@ -499,7 +499,7 @@ export function buildDayPrompt(
         `${JSON.stringify(accommodation.source_urls ?? [])}. ` +
         (isFirstNight
           ? `This is the FIRST night in ${day.city}, so this item is the check-in.`
-          : `This is NOT the first night in ${day.city} — they are already checked in, so write it ` +
+          : `This is NOT the first night in ${day.city} - they are already checked in, so write it ` +
             `as another night there and never as a check-in or arrival.`)
     );
   } else {
@@ -512,7 +512,7 @@ export function buildDayPrompt(
 
   if (otherAnchors.length > 0) {
     lines.push(
-      `Anchors used on OTHER days — never name any of these here: ${otherAnchors.join("; ")}`
+      `Anchors used on OTHER days - never name any of these here: ${otherAnchors.join("; ")}`
     );
   }
 
@@ -527,7 +527,7 @@ export function buildDayPrompt(
   return lines.join("\n");
 }
 
-/** Fallback used only when a replacement couldn't be found — strips the
+/** Fallback used only when a replacement couldn't be found - strips the
  * venue identity so nothing downstream treats it as verified, keeping the
  * item so the day doesn't lose a meal outright. */
 export function stripVenueIdentity(item: ItineraryItem): void {
@@ -549,7 +549,7 @@ export function assembleItinerary(skeleton: TripSkeleton, days: ItineraryDay[]):
 
 /** Structural sanity checks before we commit to a parallel-path result.
  * Anything failing here means falling back to the single-call path rather
- * than shipping a half-formed itinerary — the whole point of this being an
+ * than shipping a half-formed itinerary - the whole point of this being an
  * optimization is that it can't cost correctness. */
 export function isUsableFrame(frame: unknown): frame is TripFrame {
   if (!frame || typeof frame !== "object") return false;
@@ -573,7 +573,7 @@ export function isUsablePlan(plan: unknown): plan is TripPlan {
  *
  * Running those two at the same time removes a whole serial stage from the
  * critical path, but it means phase 1 priced accommodation from general
- * knowledge. The real figure is strictly better, so it wins — and because
+ * knowledge. The real figure is strictly better, so it wins - and because
  * accommodation is usually the largest line in the trip, the trip-level
  * budget minimum is corrected by the same delta rather than being left
  * quietly inconsistent with the items underneath it. Deterministic
@@ -618,7 +618,7 @@ export function applyVerifiedAccommodation(
   if (existing) Object.assign(existing, next);
   else skeleton.accommodation.push(next);
 
-  // Only correctable once the frame exists — when accommodation is applied
+  // Only correctable once the frame exists - when accommodation is applied
   // before it (the fast path), the caller re-applies against the real
   // budget as soon as the frame lands.
   if (hasPrice && nights > 0 && previousPerNight > 0 && skeleton.budget_feasibility) {

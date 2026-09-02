@@ -16,7 +16,7 @@ const TIER_COLOR: Record<ConfidenceTier, string> = {
  *
  * It failed WCAG 1.4.1. inlineTierLabel only ever carried a string for
  * single_source, so for the other four tiers the colour of that dot was the
- * ONLY thing distinguishing them — on the feature this product is built
+ * ONLY thing distinguishing them - on the feature this product is built
  * around. A colourblind traveler could not read the trust system at all,
  * and everyone else had to learn a five-colour legend before the page meant
  * anything.
@@ -48,7 +48,7 @@ export function ConfidenceTag({ tier, label }: { tier: ConfidenceTier; label: st
 }
 
 /** The same marker with no text, for the legend rows where the full label
- * already sits beside it — a rule rather than a dot, so the legend and the
+ * already sits beside it - a rule rather than a dot, so the legend and the
  * itinerary use the same vocabulary. */
 export function ConfidenceRule({ tier }: { tier: ConfidenceTier }) {
   return (
@@ -85,7 +85,7 @@ export function Stamp({ ok, color, children }: { ok: boolean; color?: string; ch
         transform: "rotate(-2deg)",
         fontSize: 13,
         // resolved is a var(--x) reference (or occasionally a literal from
-        // trustScoreColor), never a bare hex — color-mix lets the shadow
+        // trustScoreColor), never a bare hex - color-mix lets the shadow
         // pick up its alpha without string-concatenating onto a var().
         boxShadow: `0 4px 14px -2px color-mix(in srgb, ${resolved} 45%, transparent)`,
       }}
@@ -144,11 +144,11 @@ export function SectionLabel({
   );
 }
 
-/** Heading + body block shared by /terms, /privacy, and /cookies — the
+/** Heading + body block shared by /terms, /privacy, and /cookies - the
  * three legal pages were each hand-rolling an identical version of this
  * before, which is exactly the kind of drift risk worth collapsing into
  * one place (unlike the header markup those same pages duplicate, which
- * differs in small page-specific ways — see why-decide/page.tsx etc.). */
+ * differs in small page-specific ways - see why-decide/page.tsx etc.). */
 export function LegalSection({ heading, children }: { heading: string; children: ReactNode }) {
   return (
     <div style={{ marginBottom: 28 }}>
@@ -161,7 +161,7 @@ export function LegalSection({ heading, children }: { heading: string; children:
 }
 
 /** The shared field look, for the controls that build their own trigger
- * rather than being a plain <input> inside .trip-form-grid — the two date
+ * rather than being a plain <input> inside .trip-form-grid - the two date
  * pickers. Kept in step with the CSS by hand, which is the price of those
  * controls not being inputs.
  *

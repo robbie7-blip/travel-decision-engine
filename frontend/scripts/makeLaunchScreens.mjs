@@ -4,7 +4,7 @@
 // Why these exist at all: an installed PWA on iOS does NOT use the web
 // manifest's background_color for its launch screen. With no startup
 // image declared, iOS paints plain white until the web view has something
-// to show — so opening the app flashed white, then cut to our own
+// to show - so opening the app flashed white, then cut to our own
 // parchment splash. These images make that first frame the parchment
 // splash instead, so the launch reads as one continuous screen.
 //
@@ -13,7 +13,7 @@
 // specific devices rather than one scalable asset.
 //
 // This is a one-off asset generator, not part of the build, so
-// playwright-core is deliberately not a dependency of this package —
+// playwright-core is deliberately not a dependency of this package -
 // point NODE_PATH at an install that has it:
 //
 //   NODE_PATH=/path/to/node_modules node scripts/makeLaunchScreens.mjs
@@ -41,7 +41,7 @@ const BROWSER =
   process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
 // The device list lives in lib/launchScreens.ts, which the root layout
-// also reads to emit the matching <link> tags — one source, so an image
+// also reads to emit the matching <link> tags - one source, so an image
 // and its link can never drift apart. Parsed rather than imported because
 // that file is TypeScript and this script runs under bare node.
 async function devices() {

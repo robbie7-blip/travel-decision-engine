@@ -4,7 +4,7 @@
 // possible rather than whether the place is any good, and it is the error a
 // traveler cannot recover from: they trusted the plan, crossed a city, and
 // found a locked door. It is also fiddly in exactly the ways that don't
-// show up until someone is standing outside — a kitchen that closes at
+// show up until someone is standing outside - a kitchen that closes at
 // 02:00 belongs to the previous day, and a Sunday brunch can fall inside a
 // Saturday-night period. Hence direct tests rather than trusting a read of
 // the code.
@@ -35,13 +35,13 @@ function period(day: number, openH: number, closeDay: number, closeH: number): P
   return { open: { day, hour: openH, minute: 0 }, close: { day: closeDay, hour: closeH, minute: 0 } };
 }
 
-/** Open 11:00–22:00 every day except Monday — the single most common shape
+/** Open 11:00–22:00 every day except Monday - the single most common shape
  * for a restaurant, and the one that produces the classic failure. */
 const CLOSED_MONDAYS = place(
   [SUN, TUE, WED, THU, FRI, SAT].map((d) => period(d, 11, d, 22))
 );
 
-heading("OPENING HOURS — is the venue open when we send them");
+heading("OPENING HOURS - is the venue open when we send them");
 
 section("the classic failure: dinner on the day it's shut");
 {
@@ -86,7 +86,7 @@ section("kitchens that run past midnight");
 
 section("periods that wrap around the end of the week");
 {
-  // Saturday 20:00 through Sunday 03:00 — the case a naive linear
+  // Saturday 20:00 through Sunday 03:00 - the case a naive linear
   // comparison gets wrong, because Sunday is day 0 and sorts *before*
   // Saturday.
   const saturdayNight = place([period(SAT, 20, SUN, 3)]);
@@ -150,7 +150,7 @@ section("an item that fails verification keeps none of the evidence");
 {
   // The opening hours are written onto the item BEFORE the reject
   // conditions run, so a venue rejected for a low rating, a closure, or
-  // being shut that day used to keep them — and the page renders
+  // being shut that day used to keep them - and the page renders
   // google_open_on_visit === true as "✓ Open on this day · 7:00 AM – 9:00
   // PM" in the verified colour.
   //

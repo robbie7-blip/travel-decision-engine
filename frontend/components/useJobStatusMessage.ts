@@ -1,7 +1,7 @@
 "use client";
 
-// While a job is "running" — the only status that can take a minute or two
-// — cycles through a handful of small status lines instead of showing one
+// While a job is "running" - the only status that can take a minute or two
+// - cycles through a handful of small status lines instead of showing one
 // static "Generating…" message the whole wait, same idea as Booking.com/
 // Wizzair's loading screens. Every other status (pending/done/error) just
 // renders its normal static jobStatus label.

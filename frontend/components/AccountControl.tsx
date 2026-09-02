@@ -4,10 +4,10 @@
 // toggle in every header (SiteHeader.tsx, plus the three hand-rolled
 // headers on destinations/destinations/[slug]/showcase which don't use
 // SiteHeader). Before this, sign-in only existed as UI buried inside
-// /account and /account/visited themselves — there was no visible way to
+// /account and /account/visited themselves - there was no visible way to
 // reach it from anywhere else, even though several pages (visited-places
 // sync, saved plan/quota) are meaningfully better once signed in. This is
-// deliberately just a link to /account, not an inline login form — /account
+// deliberately just a link to /account, not an inline login form - /account
 // already owns the full email/magic-link flow, so this stays a single
 // small pill instead of duplicating that UI in the header.
 

@@ -2,8 +2,8 @@
 //
 // Every other suite tests a three-day, single-city, English trip with a
 // flight and a hotel. That is one point in a space the product actually
-// serves, and the branches the other shapes take — a second city, a
-// Bulgarian itinerary, a brief that says the hotel is already booked —
+// serves, and the branches the other shapes take - a second city, a
+// Bulgarian itinerary, a brief that says the hotel is already booked -
 // have never been executed end to end by anything.
 //
 // Untested branches are where the next silly mistake lives, and these cost
@@ -50,7 +50,7 @@ function daysBetween(start: string, end: string): string[] {
 
 interface Shape {
   brief: TripBriefInput;
-  /** Which city each day sits in — drives the multi-city fixtures. */
+  /** Which city each day sits in - drives the multi-city fixtures. */
   cityForDay: (i: number, total: number) => string;
 }
 
@@ -166,7 +166,7 @@ function makeClient(shape: Shape): Anthropic {
         if (system.includes("STAGE 1A")) text = s.frame();
         else if (system.includes("STAGE 1B")) text = s.plan();
         else if (system.includes("STAGE 2")) {
-          const m = /Day (\d+) —/.exec(user);
+          const m = /Day (\d+) -/.exec(user);
           text = s.day(m ? Number(m[1]) : 1);
         } else if (system.includes("price per night")) {
           text = JSON.stringify({ cost_estimate_eur: 90, source_url: "https://example.com/rate" });

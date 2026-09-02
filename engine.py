@@ -25,7 +25,7 @@ from trip_brief import TripBrief, SAMPLE_BRIEFS, ADVERSARIAL_BRIEFS
 
 FACTS_DIR = Path(__file__).parent / "facts"
 
-SYSTEM_PROMPT = """You are a travel decision engine. Your job is not to list options — \
+SYSTEM_PROMPT = """You are a travel decision engine. Your job is not to list options - \
 it is to DECIDE and justify. For every meaningful choice (which city to prioritize, \
 which day to visit which sight, whether to take a train or skip a stop, where to \
 eat), state the decision AND the one-line reason behind it, the same way a smart, \
@@ -42,16 +42,16 @@ and say why.
 crammed into one day) rather than silently including it.
 - If any preferences are in direct tension with each other (e.g. a fast pace combined \
 with mandatory long rest periods, or a long interest list combined with a short trip), \
-say so explicitly in trip_summary and in a key_decisions entry — do not just silently \
+say so explicitly in trip_summary and in a key_decisions entry - do not just silently \
 comply with the literal wording of each constraint while ignoring that they conflict.
 - BUDGET FEASIBILITY CHECK IS MANDATORY AND MUST BE CONSISTENT: before generating the \
-itinerary, independently estimate a realistic MINIMUM total cost for this trip — \
+itinerary, independently estimate a realistic MINIMUM total cost for this trip - \
 including lodging for every night, even if you have no verified lodging data (use \
 general knowledge and hedge it explicitly, e.g. "a bare-minimum hostel is realistically \
 at least roughly €X/night, unverified"). Compare that minimum to the stated budget. \
 You MUST include a "budget_feasibility" object as specified below, and you MUST NOT \
 silently reduce or omit a major cost category (especially lodging) just to make the \
-numbers appear to fit — if lodging is excluded from the daily items, budget_feasibility \
+numbers appear to fit - if lodging is excluded from the daily items, budget_feasibility \
 must say so explicitly and explain why the budget is infeasible as stated.
 - Output ONLY valid JSON matching the schema below. No prose outside the JSON.
 
@@ -62,7 +62,7 @@ Schema:
     "min_realistic_total_eur": 0,
     "reasoning": "explain your minimum estimate and whether/why the stated budget is or isn't realistic, noting explicitly if any cost category (e.g. lodging) had to be excluded or reduced to fit"
   },
-  "trip_summary": "one sentence — MUST mention if budget is infeasible or data is unverified",
+  "trip_summary": "one sentence - MUST mention if budget is infeasible or data is unverified",
   "key_decisions": [
     {"decision": "...", "reasoning": "...", "alternative_considered": "...", "confidence": "high|medium|low"}
   ],
@@ -93,7 +93,7 @@ Schema:
 
 def load_facts(city: str) -> list[dict]:
     """Retrieval layer, v0: exact-filename lookup against a curated JSON file.
-    Deliberately dumb — this is fine for 5-10 cities. Replace with embeddings-based
+    Deliberately dumb - this is fine for 5-10 cities. Replace with embeddings-based
     retrieval only once city coverage makes keyword/exact lookup break down.
     """
     path = FACTS_DIR / f"{city.lower().replace(' ', '_')}.json"
@@ -117,7 +117,7 @@ def build_prompt(brief: TripBrief) -> str:
                 f"Facts for {city}: NONE AVAILABLE. You have no verified data for this "
                 f"city. Do not state specific prices, hours, or logistics with confidence. "
                 f"Every reasoning string touching {city} must contain an explicit hedge word "
-                f"('unverified', 'unconfirmed', 'I don't have checked data on this') — write "
+                f"('unverified', 'unconfirmed', 'I don't have checked data on this') - write "
                 f"as a knowledgeable friend would if honestly saying 'I'm not sure, but...' "
                 f"rather than as a confident local guide."
             )
@@ -183,7 +183,7 @@ def generate_itinerary(
 
 def check_feasibility(itinerary: dict) -> dict:
     """Minimal rule-based sanity check layer, run on top of the LLM output.
-    This is what makes the product trustworthy rather than just plausible-sounding —
+    This is what makes the product trustworthy rather than just plausible-sounding -
     catch the model overpacking a day even if its prose sounds confident.
     Expand this over time (real travel-time lookups, opening-hours checks, etc.)
     """
@@ -191,7 +191,7 @@ def check_feasibility(itinerary: dict) -> dict:
         activity_items = [i for i in day["items"] if i["type"] in ("activity", "meal")]
         if len(activity_items) > 5:
             day["feasibility_flag"] = (
-                f"{len(activity_items)} activities/meals scheduled in one day — "
+                f"{len(activity_items)} activities/meals scheduled in one day - "
                 f"likely overpacked, review pacing."
             )
     return itinerary
@@ -200,7 +200,7 @@ def check_feasibility(itinerary: dict) -> dict:
 def check_budget_integrity(itinerary: dict, brief: TripBrief) -> dict:
     """Cross-check the model's self-reported budget_feasibility against what's
     actually in the itinerary. This exists because the model was observed to be
-    INCONSISTENT across runs — sometimes explicitly flagging an impossible budget,
+    INCONSISTENT across runs - sometimes explicitly flagging an impossible budget,
     sometimes quietly omitting lodging costs to make the numbers appear to fit.
     Don't trust the self-report alone; verify it structurally.
     """
@@ -219,14 +219,14 @@ def check_budget_integrity(itinerary: dict, brief: TripBrief) -> dict:
     warnings = []
     if nights > 0 and not lodging_items:
         warnings.append(
-            f"Itinerary spans {nights} night(s) but has NO lodging line items at all — "
+            f"Itinerary spans {nights} night(s) but has NO lodging line items at all - "
             f"the budget total is almost certainly missing a major cost, regardless "
             f"of what budget_feasibility below claims."
         )
     elif nights > 0 and lodging_items and len(lodging_items) < nights:
         warnings.append(
             f"Itinerary spans {nights} nights but only {len(lodging_items)} lodging "
-            f"line item(s) appear — likely undercounting total lodging cost."
+            f"line item(s) appear - likely undercounting total lodging cost."
         )
 
     self_report = itinerary.get("budget_feasibility", {})
@@ -234,7 +234,7 @@ def check_budget_integrity(itinerary: dict, brief: TripBrief) -> dict:
         warnings.append(
             "MISMATCH: model self-reported budget as FEASIBLE, but the itinerary "
             "structurally excludes a full lodging cost. Treat 'feasible: true' with "
-            "suspicion — this is the exact inconsistency this check exists to catch."
+            "suspicion - this is the exact inconsistency this check exists to catch."
         )
 
     itinerary["_budget_integrity_warnings"] = warnings
@@ -275,7 +275,7 @@ def pretty_print(itinerary: dict) -> None:
                 if grounded
                 else f"€{item.get('cost_estimate_eur', '?')} [UNVERIFIED ESTIMATE]"
             )
-            print(f"    [{item['time']}] {conf} {item['title']} — {item['location']} ({cost_label})")
+            print(f"    [{item['time']}] {conf} {item['title']} - {item['location']} ({cost_label})")
             print(f"        {item['reasoning']}")
 
     if itinerary.get("things_to_skip"):
@@ -283,7 +283,7 @@ def pretty_print(itinerary: dict) -> None:
         for s in itinerary["things_to_skip"]:
             print(f"  ✗ {s['item']}: {s['reasoning']}")
 
-    # Budget honesty summary — the whole point of this block is to stop
+    # Budget honesty summary - the whole point of this block is to stop
     # a confident-sounding itinerary from hiding how much of its cost
     # estimate is actually made up.
     verified_total, unverified_total = 0, 0
@@ -298,7 +298,7 @@ def pretty_print(itinerary: dict) -> None:
     pct_unverified = (unverified_total / grand_total * 100) if grand_total else 0
     print(f"\nBUDGET RELIABILITY: €{grand_total} total estimated "
           f"(€{verified_total} grounded in facts, €{unverified_total} unverified estimate "
-          f"— {pct_unverified:.0f}% of the total is a guess, not a checked number)")
+          f"- {pct_unverified:.0f}% of the total is a guess, not a checked number)")
 
 
 def run_briefs(briefs: list[TripBrief], label: str) -> None:

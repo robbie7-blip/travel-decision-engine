@@ -4,14 +4,14 @@
 // The point of this file is to end a specific, repeated failure: the only
 // way anyone found out that generation quality had regressed was the owner
 // paying for a generation, opening it, and noticing something wrong in a
-// screenshot — days or weeks after the commit that caused it. That made
+// screenshot - days or weeks after the commit that caused it. That made
 // every quality question expensive to ask, which meant it mostly went
 // unasked, which is how a broken accommodation lookup survived multiple
 // deploys.
 //
 // Real traveler generations are already running through the acceptance
 // gate (engine/quality.ts). Recording what the gate found turns that
-// traffic into the regression signal — free, continuous, and far larger
+// traffic into the regression signal - free, continuous, and far larger
 // than any test the owner could afford to run by hand. "Did the last
 // deploy break named hotels" becomes a number on a page instead of an
 // afternoon.
@@ -46,7 +46,7 @@ export const QF = {
   warning: (check: QualityCheckId) => `warning:${check}`,
 } as const;
 
-/** Best-effort by contract — every call site fires this without awaiting
+/** Best-effort by contract - every call site fires this without awaiting
  * it. A stats write must never be the reason a traveler's finished
  * itinerary fails to be delivered. */
 export async function recordQualitySample(redis: Redis, report: QualityReport): Promise<void> {

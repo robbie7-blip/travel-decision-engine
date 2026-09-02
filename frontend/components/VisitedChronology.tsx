@@ -1,10 +1,10 @@
 "use client";
 
-// One of the "Visualize" tabs — Been's "Chronology": travel history grouped
+// One of the "Visualize" tabs - Been's "Chronology": travel history grouped
 // by year instead of VisitedTimeline's flat per-country list. Answers "how
 // much did I travel in a given year" rather than "when was I in country X."
 // Countries with no recorded date land in their own "Undated" group at the
-// top — they don't have a place on the chronological line yet, so grouping
+// top - they don't have a place on the chronological line yet, so grouping
 // them under a fabricated year would be more misleading than useful.
 
 import { countryFlagEmoji, getCountry, getCountryName } from "@/lib/countries";
@@ -31,7 +31,7 @@ export function VisitedChronology({ entries, undatedLabel, countLabel, language 
     byYear.set(year, bucket);
   }
 
-  const years = [...byYear.keys()].filter((y) => y !== "undated").sort(); // oldest first — this IS the chronology
+  const years = [...byYear.keys()].filter((y) => y !== "undated").sort(); // oldest first - this IS the chronology
   const orderedKeys = byYear.has("undated") ? ["undated", ...years] : years;
   const maxCount = Math.max(...orderedKeys.map((y) => byYear.get(y)!.length), 1);
 

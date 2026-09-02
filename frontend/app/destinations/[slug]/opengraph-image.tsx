@@ -1,4 +1,4 @@
-// Per-city social share image for the /destinations guides — without this,
+// Per-city social share image for the /destinations guides - without this,
 // sharing a guide link fell back to the site's generic OG metadata (no
 // photo, no city name), even for cities that now have a real photo. Mirrors
 // the pattern and branding of trip/[jobId]/opengraph-image.tsx: same
@@ -6,7 +6,7 @@
 //
 // English-only, not a locale gap that's fixable here: Next's
 // opengraph-image.tsx file convention only ever passes `params` to this
-// function, never `searchParams` — confirmed by trying it (a ?lang=bg
+// function, never `searchParams` - confirmed by trying it (a ?lang=bg
 // request still throws "Cannot destructure property 'lang' of undefined"
 // inside this function). See https://github.com/vercel/next.js/discussions/56314.
 // A real per-locale OG image would need a custom Route Handler instead of
@@ -48,7 +48,7 @@ const MARK_SVG = `
 const MARK_DATA_URI = `data:image/svg+xml;base64,${Buffer.from(MARK_SVG).toString("base64")}`;
 
 // Same palette + hash as DestinationBanner.tsx, for cities without a real
-// photo yet — keeps the fallback share image on-brand rather than blank.
+// photo yet - keeps the fallback share image on-brand rather than blank.
 const PALETTES: [string, string][] = [
   ["#1b3a2c", "#4f9a72"],
   ["#d9643f", "#e8a23f"],
@@ -73,7 +73,7 @@ const MIME_BY_EXT: Record<string, string> = {
 
 const MAX_INTRO_LENGTH = 110;
 
-/** Truncates at the last whole word within the limit rather than mid-word —
+/** Truncates at the last whole word within the limit rather than mid-word -
  * slicing at a fixed character count landed inside a word often enough
  * (e.g. "...precise enough t…") to be worth the extra step. */
 function truncateAtWord(text: string, maxLength: number): string {

@@ -1,14 +1,14 @@
 {
   "city": "Florence",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
-      "text": "Central Florence is entirely walkable and a car is a liability, not an asset — much of the historic center is a restricted traffic zone (ZTL) with automatic fines for unauthorized vehicles."
+      "text": "Central Florence is entirely walkable and a car is a liability, not an asset - much of the historic center is a restricted traffic zone (ZTL) with automatic fines for unauthorized vehicles."
     },
     {
       "category": "activity",
-      "text": "The Uffizi Gallery and Accademia (David) both benefit enormously from advance timed-entry booking — walk-up lines in peak season can run multiple hours."
+      "text": "The Uffizi Gallery and Accademia (David) both benefit enormously from advance timed-entry booking - walk-up lines in peak season can run multiple hours."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,7 +16,7 @@
     },
     {
       "category": "cost",
-      "text": "A \"bistecca alla fiorentina\" (Florentine steak) is traditionally priced and served by weight (often per 100g/hg) — always confirm the total expected price before ordering, as this has been a documented source of bill-shock for tourists."
+      "text": "A \"bistecca alla fiorentina\" (Florentine steak) is traditionally priced and served by weight (often per 100g/hg) - always confirm the total expected price before ordering, as this has been a documented source of bill-shock for tourists."
     },
     {
       "category": "dietary",

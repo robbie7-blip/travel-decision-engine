@@ -1,10 +1,10 @@
 {
   "city": "Berlin",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
-      "text": "Public transport (BVG) runs on an honor system — you must validate your ticket, and plainclothes inspectors do fine riders without one; a day pass is usually the simplest option for a full day of sightseeing."
+      "text": "Public transport (BVG) runs on an honor system - you must validate your ticket, and plainclothes inspectors do fine riders without one; a day pass is usually the simplest option for a full day of sightseeing."
     },
     {
       "category": "cost",
@@ -12,15 +12,15 @@
     },
     {
       "category": "tourist_trap_warning",
-      "text": "The area immediately around Checkpoint Charlie is a reconstructed photo-op with costumed \"guards\" charging for photos and surrounding souvenir shops at a markup — the historical substance is better found at the nearby, free open-air Wall Museum sections."
+      "text": "The area immediately around Checkpoint Charlie is a reconstructed photo-op with costumed \"guards\" charging for photos and surrounding souvenir shops at a markup - the historical substance is better found at the nearby, free open-air Wall Museum sections."
     },
     {
       "category": "activity",
-      "text": "The Pergamon Museum's main hall (Pergamon Altar) has been closed for renovation for an extended, multi-year period — check current status before planning a visit around it specifically."
+      "text": "The Pergamon Museum's main hall (Pergamon Altar) has been closed for renovation for an extended, multi-year period - check current status before planning a visit around it specifically."
     },
     {
       "category": "practical",
-      "text": "Sundays are a near-total retail shutdown in Berlin (Ladenschlussgesetz) — supermarkets, most shops, and many non-restaurant businesses are closed; plan grocery/shopping needs around this."
+      "text": "Sundays are a near-total retail shutdown in Berlin (Ladenschlussgesetz) - supermarkets, most shops, and many non-restaurant businesses are closed; plan grocery/shopping needs around this."
     },
     {
       "category": "dietary",

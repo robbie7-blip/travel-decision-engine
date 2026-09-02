@@ -18,9 +18,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await searchParams;
   const t = TRANSLATIONS[resolveLanguage(lang)].destinations;
-  const title = `${t.pageTitle} — decide`;
+  const title = `${t.pageTitle} - decide`;
   // The OG image itself (opengraph-image.tsx in this folder) stays
-  // English-only regardless of language here — Next's file-convention
+  // English-only regardless of language here - Next's file-convention
   // image routes don't receive searchParams at all, so there's no ?lang=
   // value to forward to it. See that file's header for the confirmed
   // Next.js limitation.
@@ -50,10 +50,10 @@ export default async function DestinationsIndexPage({
   return (
     <div style={{ minHeight: "100%" }}>
       <div style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
-        {/* 1450, not this page's own 780px content width below — see the
+        {/* 1450, not this page's own 780px content width below - see the
             comment on ask/page.tsx's SiteHeader call for why the header
             stays pinned to the site-wide width regardless. Two rows,
-            matching SiteHeader.tsx — see that file's header comment. */}
+            matching SiteHeader.tsx - see that file's header comment. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
             <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
@@ -108,7 +108,7 @@ export default async function DestinationsIndexPage({
 
       <div style={{ padding: "40px clamp(32px, 8%, 180px) 72px" }}>
         {/* Outer 1450 matches the header above so this page's content
-            starts at the same left edge as every other page's — see the
+            starts at the same left edge as every other page's - see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1300 }}>
@@ -119,7 +119,7 @@ export default async function DestinationsIndexPage({
             {dt.pageTitle}
           </h1>
           {/* Responsive size (not a flat 15px) so a phone-width viewport gets
-              more characters per line — at a fixed 15px this sentence wrapped
+              more characters per line - at a fixed 15px this sentence wrapped
               to 4 lines on a phone, stranding "runs." alone on the last one;
               clamping down a couple px on narrow screens brings it back to 3. */}
           <p style={{ color: "var(--ink-dim)", fontSize: "clamp(13.5px, 3.4vw, 15px)", lineHeight: 1.6, maxWidth: 620, margin: "0 0 12px" }}>
@@ -154,7 +154,7 @@ export default async function DestinationsIndexPage({
             ))}
           </div>
 
-          {/* Bottom CTA — after scrolling past a full grid of city cards
+          {/* Bottom CTA - after scrolling past a full grid of city cards
               (24 and counting) there was previously no way back to actually
               starting a trip without scrolling all the way back up to the
               header, which mattered most on a phone where that's a much

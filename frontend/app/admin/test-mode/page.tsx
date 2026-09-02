@@ -1,14 +1,14 @@
 "use client";
 
 // Password-protected (see middleware.ts) internal tool: paste ADMIN_PASSWORD
-// once to flip this browser into "test mode" for new generations — every
+// once to flip this browser into "test mode" for new generations - every
 // /api/generate call from it then skips the daily budget cap and the
-// per-IP/per-email rate limits — the guardrails, and only those (see the
+// per-IP/per-email rate limits - the guardrails, and only those (see the
 // Job.testMode comment in lib/jobs.ts), for fast, cheap iteration while
 // building. There's no server-side validation call here: entering the wrong
 // value just means /api/generate silently ignores the header and behaves
 // like a normal request (see isTestModeRequest in app/api/generate/route.ts)
-// — reaching this page at all already required knowing the real
+// - reaching this page at all already required knowing the real
 // ADMIN_PASSWORD, so there's nothing to protect against here that
 // middleware.ts hasn't already gated.
 
@@ -44,8 +44,8 @@ export default function TestModeAdminPage() {
       </h1>
       <p style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5, marginBottom: 20 }}>
         When on, generations from THIS BROWSER skip the daily budget cap, all rate limits, and your
-        monthly quota. The itinerary itself is IDENTICAL to what a real traveler gets — same searches,
-        same verification, same quality — so what you see here is what they see. It still costs real
+        monthly quota. The itinerary itself is IDENTICAL to what a real traveler gets - same searches,
+        same verification, same quality - so what you see here is what they see. It still costs real
         API money, because a real generation does. Nothing here affects any
         other visitor.
       </p>

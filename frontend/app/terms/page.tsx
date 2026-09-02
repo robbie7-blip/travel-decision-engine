@@ -1,13 +1,13 @@
-// Terms of Service — English-only (unlike the rest of the site) because
+// Terms of Service - English-only (unlike the rest of the site) because
 // getting legal-document translation wrong is a worse outcome than not
 // having it: the EN text here is what actually governs, and a mistranslated
 // BG version could read as a different, conflicting agreement. The header
-// still supports the EN/BG toggle for site navigation — it just doesn't
+// still supports the EN/BG toggle for site navigation - it just doesn't
 // change this page's body.
 //
 // LAST_UPDATED, and the two placeholders in lib/legal.ts (operator name,
 // contact email), need filling in with real values before this is truly
-// ready to govern a live, paying customer base — see that file's own
+// ready to govern a live, paying customer base - see that file's own
 // comment.
 
 import type { Metadata } from "next";
@@ -26,7 +26,7 @@ function resolveLanguage(lang?: string): Language {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const title = "Terms of Service — decide";
+  const title = "Terms of Service - decide";
   const description = "The terms that govern using decide.";
   return { title, description, openGraph: { title, description }, twitter: { title, description } };
 }
@@ -81,7 +81,7 @@ export default async function TermsPage({
             Last updated: {LAST_UPDATED}
           </p>
           <p style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.6, margin: "0 0 36px", fontStyle: "italic" }}>
-            English only — this is the version that governs your use of decide, regardless of which language you
+            English only - this is the version that governs your use of decide, regardless of which language you
             browse the rest of the site in.
           </p>
 
@@ -91,7 +91,7 @@ export default async function TermsPage({
             you don&apos;t agree, don&apos;t use the Service.
           </p>
 
-          <LegalSection heading="1. What decide is — and isn't">
+          <LegalSection heading="1. What decide is - and isn't">
             <p style={{ margin: "0 0 10px" }}>
               decide is an AI-assisted trip-planning tool. It generates itinerary suggestions, checks live prices
               where it can, and answers general travel questions ("Ask a Local").
@@ -103,23 +103,23 @@ export default async function TermsPage({
             </p>
           </LegalSection>
 
-          <LegalSection heading="2. Accuracy — read this before you rely on anything">
+          <LegalSection heading="2. Accuracy - read this before you rely on anything">
             <p style={{ margin: "0 0 10px" }}>
               Every recommendation carries a confidence label (verified, fact-grounded, single-source, conflicting,
-              or an honest guess) showing how it was checked — this is a real, load-bearing part of the product, not
+              or an honest guess) showing how it was checked - this is a real, load-bearing part of the product, not
               a disclaimer for its own sake. Even a "verified" result can be wrong, out of date, or change after it
               was checked.
             </p>
             <p style={{ margin: 0 }}>
-              Always independently confirm anything time-sensitive or safety-critical — prices, opening hours,
-              availability, travel advisories, visa/entry requirements — before you act on it, book anything, or
+              Always independently confirm anything time-sensitive or safety-critical - prices, opening hours,
+              availability, travel advisories, visa/entry requirements - before you act on it, book anything, or
               travel. decide is a research aid, not a source of truth.
             </p>
           </LegalSection>
 
           <LegalSection heading="3. Accounts">
             <p style={{ margin: 0 }}>
-              Signing in uses a passwordless "magic link" sent to your email — there's no separate password to
+              Signing in uses a passwordless "magic link" sent to your email - there's no separate password to
               manage. Anyone with access to that email inbox can access your account, so keep it secure. You&apos;re
               responsible for all activity under your account.
             </p>
@@ -128,12 +128,12 @@ export default async function TermsPage({
           <LegalSection heading="4. Subscriptions and billing">
             <p style={{ margin: "0 0 10px" }}>
               The Pro plan is a recurring monthly subscription, billed through Stripe, that renews automatically
-              until cancelled. decide never sees or stores your card number — Stripe handles payment collection
+              until cancelled. decide never sees or stores your card number - Stripe handles payment collection
               directly.
             </p>
             <p style={{ margin: "0 0 10px" }}>
               Cancel anytime from the "Manage subscription" button on your Account page, which opens Stripe&apos;s
-              secure billing portal — or email {CONTACT_EMAIL} if you&apos;d rather we do it for you. Either way,
+              secure billing portal - or email {CONTACT_EMAIL} if you&apos;d rather we do it for you. Either way,
               you&apos;ll keep Pro access through the end of the billing period you already paid for.
             </p>
             <p style={{ margin: 0 }}>
@@ -161,8 +161,8 @@ export default async function TermsPage({
 
           <LegalSection heading="7. Service availability">
             <p style={{ margin: 0 }}>
-              decide depends on third-party services — AI models, live web search, weather, flight, and venue data
-              providers — that can be slow, temporarily unavailable, or occasionally wrong. We don&apos;t guarantee
+              decide depends on third-party services - AI models, live web search, weather, flight, and venue data
+              providers - that can be slow, temporarily unavailable, or occasionally wrong. We don&apos;t guarantee
               uninterrupted availability or that any particular piece of information will be accurate.
             </p>
           </LegalSection>
@@ -171,7 +171,7 @@ export default async function TermsPage({
             <p style={{ margin: 0 }}>
               The Service is provided "as is," without warranties of any kind. To the maximum extent permitted by
               law, {OPERATOR_NAME} isn&apos;t liable for losses, costs, or damages arising from travel decisions
-              made using information from the Service — including inaccurate, outdated, or incomplete information —
+              made using information from the Service - including inaccurate, outdated, or incomplete information -
               or from Service downtime or unavailability.
             </p>
           </LegalSection>

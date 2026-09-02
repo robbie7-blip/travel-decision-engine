@@ -7,7 +7,7 @@ import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
 // Same tinted-circle icon badge used on the homepage's "How it works" and
-// the pricing page's value props — reused here (topics[0..2]) so /ask
+// the pricing page's value props - reused here (topics[0..2]) so /ask
 // carries the site's visual identity instead of reading as bare text next
 // to a form, which is what it used to be.
 const TOPIC_ICONS = [
@@ -46,7 +46,7 @@ const TOPIC_ICONS = [
   },
 ];
 
-/** Standalone entry point for the trip-Q&A feature — no generated
+/** Standalone entry point for the trip-Q&A feature - no generated
  * itinerary needed. For a traveler who already planned everything
  * elsewhere (or hasn't started) and just has a practical question:
  * packing, safety, local customs. The same <TripQA> also appears embedded
@@ -71,7 +71,7 @@ export default function AskPage() {
   return (
     <div style={{ minHeight: "100%" }}>
       {/* Header intentionally wider (1450) than this page's own 720px
-          content column below — see globals.css .nav-link comment history:
+          content column below - see globals.css .nav-link comment history:
           720 was too narrow to fit the full nav without wrapping, which is
           what made this page's header look different from wider pages
           (destinations, showcase, trip). 1450 matches the header width used
@@ -87,7 +87,7 @@ export default function AskPage() {
 
       <div style={{ padding: "36px clamp(32px, 8%, 180px) 64px" }}>
         {/* Outer 1450 matches the header above so this page's content
-            starts at the same left edge as every other page's — see the
+            starts at the same left edge as every other page's - see the
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1100 }}>
@@ -98,7 +98,7 @@ export default function AskPage() {
             {t.tripQA.pageSubheading}
           </p>
 
-          {/* Scope preview — what kind of question this is for, shown
+          {/* Scope preview - what kind of question this is for, shown
               before the input so a first-time visitor isn't staring at an
               empty box wondering what's in bounds. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 36 }}>

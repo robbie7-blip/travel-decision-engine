@@ -7,7 +7,7 @@ interface CityFactsResponse {
   facts: string[];
 }
 
-/** Self-fetches trivia for the given destinations from /api/city-facts —
+/** Self-fetches trivia for the given destinations from /api/city-facts -
  * curated facts/*.json when the city is one of the ~24 hand-verified ones,
  * a live Wikipedia summary otherwise, so every possible destination has
  * something to show, not just the curated set. */
@@ -50,10 +50,10 @@ function useRotatingIndex(length: number): number {
   return length > 0 ? index % length : 0;
 }
 
-/** Shown while a trip (or one side of a comparison) is generating — replaces
+/** Shown while a trip (or one side of a comparison) is generating - replaces
  * the old bare status text with a spinner + card so the wait feels designed
  * rather than stalled. `message` is the live rotating status line from
- * useJobStatusMessage. `destinations` and `t` are optional — when both are
+ * useJobStatusMessage. `destinations` and `t` are optional - when both are
  * given, a rotating "Did you know?" fact about the destination(s) is shown
  * below the status line so the wait feels productive instead of dead time. */
 export function LoadingScreen({
@@ -89,7 +89,7 @@ export function LoadingScreen({
           borderRadius: "50%",
           border: "3px solid var(--line)",
           // Was coral over gold, from the palette this design left behind.
-          // The spinner itself stays a circle — that is what a spinner is,
+          // The spinner itself stays a circle - that is what a spinner is,
           // not the decorative motif the redesign removed.
           borderTopColor: "var(--brand-teal)",
           borderRightColor: "var(--brand-gold)",

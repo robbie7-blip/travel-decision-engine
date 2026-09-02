@@ -1,4 +1,4 @@
-// Owner-only "test mode" flag — same localStorage-flag pattern as
+// Owner-only "test mode" flag - same localStorage-flag pattern as
 // lib/adminUi.ts, and deliberately holds the actual ADMIN_PASSWORD value
 // (not just a boolean), since /api/generate needs to see it on every
 // request to verify this browser is actually the owner, not just "some
@@ -7,7 +7,7 @@
 // a generation job.
 //
 // Security note: this is the same proportional, single-owner-tool posture
-// middleware.ts already documents for ADMIN_PASSWORD itself — storing it in
+// middleware.ts already documents for ADMIN_PASSWORD itself - storing it in
 // this browser's localStorage to auto-attach as a header is no weaker than
 // the browser already having typed it into a Basic Auth prompt to reach
 // this page in the first place.

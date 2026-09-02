@@ -1,6 +1,6 @@
 {
   "city": "Copenhagen",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,19 +8,19 @@
     },
     {
       "category": "cost",
-      "text": "Copenhagen is one of the more expensive European capitals for food and drink — a casual lunch commonly runs 100-150 DKK (~€13-20) and a sit-down dinner with drinks for two can easily exceed 700-900 DKK (~€95-120)."
+      "text": "Copenhagen is one of the more expensive European capitals for food and drink - a casual lunch commonly runs 100-150 DKK (~€13-20) and a sit-down dinner with drinks for two can easily exceed 700-900 DKK (~€95-120)."
     },
     {
       "category": "tourist_trap_warning",
-      "text": "Nyhavn's waterfront restaurants (the famously photogenic colorful-house strip) charge a substantial premium for the view — food quality doesn't reliably match the price, and better options are a short walk away."
+      "text": "Nyhavn's waterfront restaurants (the famously photogenic colorful-house strip) charge a substantial premium for the view - food quality doesn't reliably match the price, and better options are a short walk away."
     },
     {
       "category": "activity",
-      "text": "Tivoli Gardens charges separate entry and per-ride tickets (or a combined multi-ride pass) — easy to underestimate the total cost if only budgeting for the entry fee."
+      "text": "Tivoli Gardens charges separate entry and per-ride tickets (or a combined multi-ride pass) - easy to underestimate the total cost if only budgeting for the entry fee."
     },
     {
       "category": "practical",
-      "text": "Many smaller Danish shops and even some market stalls are card-only now — carrying cash \"just in case\" is less useful in Copenhagen than in many other European cities."
+      "text": "Many smaller Danish shops and even some market stalls are card-only now - carrying cash \"just in case\" is less useful in Copenhagen than in many other European cities."
     },
     {
       "category": "dietary",

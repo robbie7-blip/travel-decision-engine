@@ -26,17 +26,17 @@ export interface TripFormState {
   needs_lodging: boolean;
   accommodation_location: string;
   needs_flight: boolean;
-  // "" means no preference — kept as a plain string (not the narrower
+  // "" means no preference - kept as a plain string (not the narrower
   // TripBriefInput union) so an empty <select> value works naturally.
   transport_preference: string;
   arrival_date: string;
   arrival_time: string;
   // Compare mode: same trip (dates/budget/party/pace/etc.), a second
-  // destination — the toggle is separate from the text so unchecking it
+  // destination - the toggle is separate from the text so unchecking it
   // doesn't need to also clear whatever was typed.
   compareEnabled: boolean;
   compareDestinations: string;
-  // Optional per-destination date override for the comparison side — real
+  // Optional per-destination date override for the comparison side - real
   // direct-flight availability often differs by route (e.g. one destination
   // only has direct flights Tue-Fri, another Wed-Sat), so forcing identical
   // dates on both sides of a comparison can silently make one side price in
@@ -76,7 +76,7 @@ export const DEFAULT_FORM_STATE: TripFormState = {
 };
 
 /** The comparison side's own dates, when the traveler opted into different
- * dates and actually filled both in — null means "use the same dates as the
+ * dates and actually filled both in - null means "use the same dates as the
  * primary trip," the existing default behavior. */
 export function compareDateOverride(form: TripFormState): { start_date: string; end_date: string } | null {
   if (!form.compareUseDifferentDates) return null;
@@ -134,7 +134,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
 
   return (
     // A real panel again, but not the old card. White against the warm
-    // page ground with one hairline and generous padding — no drop shadow,
+    // page ground with one hairline and generous padding - no drop shadow,
     // no coloured border. Removing it entirely was an over-correction: the
     // page stopped showing where the product starts, and the form read as
     // text that happened to be lying on the page.
@@ -240,7 +240,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
           <>
             <div>
               {/* Not <Field>: same label-click-forwarding reason as the
-                  DATES field below — a plain <div> replicates Field's label
+                  DATES field below - a plain <div> replicates Field's label
                   styling without a popover-reopening side effect. */}
               <div
                 className="font-ui"
@@ -295,7 +295,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
           {/* Not <Field>: its wrapping <label> would forward a click from any
               button inside it (the calendar's day buttons) to the first
-              control in the label — the trigger button — re-toggling it
+              control in the label - the trigger button - re-toggling it
               open right after a day-click closes it. Plain <div> here
               replicates Field's label styling without that label-click
               side effect. */}

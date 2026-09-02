@@ -2,7 +2,7 @@
 // Lodging is asked about the same way regardless of a specific traveler's
 // dates/budget/interests, and prices don't meaningfully shift hour to hour,
 // so reusing a recent verified lookup skips real search round-trips (the
-// actual bottleneck in generation wall-time — see SEARCH_INSTRUCTIONS in
+// actual bottleneck in generation wall-time - see SEARCH_INSTRUCTIONS in
 // index.ts) without weakening verification: only genuinely search-backed
 // results ("verified" or "single_source" tier) ever get cached, never
 // inferred guesses.
@@ -10,7 +10,7 @@
 import type Redis from "ioredis";
 import type { Itinerary, TripBriefInput } from "./types";
 
-const CACHE_TTL_SECONDS = 20 * 60 * 60; // ~20h — long enough to help back-to-back testers/users on the same city, short enough that a real price swing doesn't linger
+const CACHE_TTL_SECONDS = 20 * 60 * 60; // ~20h - long enough to help back-to-back testers/users on the same city, short enough that a real price swing doesn't linger
 
 export interface CachedLodgingFact {
   costEstimateEur: number;
@@ -42,10 +42,10 @@ function formatCachedFact(city: string, fact: CachedLodgingFact): string {
   // Named entries let the itinerary point at a real, checkable property
   // instead of "a mid-range hotel". Unnamed ones (pre-existing cache
   // entries, or a lookup that found a rate but no specific place) keep the
-  // original generic wording — better a generic accommodation item than a
+  // original generic wording - better a generic accommodation item than a
   // property name we can't stand behind.
   const property = fact.name
-    ? `Accommodation for ${city}: stay at ${fact.name}${fact.area ? ` in ${fact.area}` : ""} — a real, ` +
+    ? `Accommodation for ${city}: stay at ${fact.name}${fact.area ? ` in ${fact.area}` : ""} - a real, ` +
       `specific property found via live search ${hoursAgo}h ago, at approx €${fact.costEstimateEur}/night. ` +
       `Use this exact property name for ${city}'s accommodation; do not substitute a different place or a ` +
       `generic "a mid-range hotel".`
@@ -66,13 +66,13 @@ function formatCachedFact(city: string, fact: CachedLodgingFact): string {
  *
  * The formatted-string version is what the prompt needs; this is what the
  * PIPELINE needs. A cache hit means the price and the property are already
- * known without any model call at all — so accommodation can be built from
+ * known without any model call at all - so accommodation can be built from
  * it directly, which lets the day calls start the moment the plan lands
  * instead of waiting on the trip frame to restate figures we already hold.
  *
  * Without this, a cache hit was quietly the SLOWEST path: it skipped the
  * lodging search (good) but then had nothing to build accommodation from,
- * so phase 2 fell back to waiting for the frame — putting the heavier half
+ * so phase 2 fell back to waiting for the frame - putting the heavier half
  * of phase 1 back on the critical path precisely when everything else had
  * gone faster. */
 export async function loadCachedLodgingEntries(
@@ -118,7 +118,7 @@ export async function loadCachedLodgingFacts(
   return result;
 }
 
-/** Shared write path — both the post-hoc extraction below and the
+/** Shared write path - both the post-hoc extraction below and the
  * standalone prefetch (see prefetchLodging in index.ts) land here, so
  * there's exactly one place that decides the cache entry's shape/TTL. */
 export async function writeCachedLodgingFact(
@@ -131,10 +131,10 @@ export async function writeCachedLodgingFact(
 }
 
 /** Best-effort: scans a finished itinerary for search-verified lodging
- * items and caches one per matched destination. Never throws — caching
+ * items and caches one per matched destination. Never throws - caching
  * must not affect the actual response. Mostly a fallback/backstop now that
  * prefetchLodging (index.ts) populates the cache upfront for anything
- * missing before generation even starts — this still catches whatever
+ * missing before generation even starts - this still catches whatever
  * that path didn't (e.g. testMode jobs, which skip prefetch entirely). */
 export async function cacheLodgingFacts(redis: Redis, brief: TripBriefInput, itinerary: Itinerary): Promise<void> {
   try {
@@ -155,7 +155,7 @@ export async function cacheLodgingFacts(redis: Redis, brief: TripBriefInput, iti
             costEstimateEur: item.cost_estimate_eur,
             sourceUrls: item.source_urls ?? [],
             sourceAgreement: item.source_agreement ?? null,
-            // Carry the property forward when the finished item names one —
+            // Carry the property forward when the finished item names one -
             // otherwise this path would keep overwriting a named cache entry
             // with an unnamed one on every generation, quietly undoing the
             // prefetch's work for that city.

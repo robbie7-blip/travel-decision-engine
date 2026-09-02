@@ -1,12 +1,12 @@
 // Literal copies of the CSS custom properties in app/globals.css, for the
 // few places that can't read a CSS variable at all: canvas/WebGL contexts
 // (components/VisitedGlobe.tsx renders via three.js, not the DOM, so
-// `var(--accent-green)` is meaningless there — three.js needs a real color
+// `var(--accent-green)` is meaningless there - three.js needs a real color
 // string). Every other component in the app should keep using the CSS
 // variables directly; only reach for this file from inside a canvas.
 //
-// Kept intentionally small — just the handful of colors the globe actually
-// needs — rather than mirroring the full palette, so it doesn't quietly
+// Kept intentionally small - just the handful of colors the globe actually
+// needs - rather than mirroring the full palette, so it doesn't quietly
 // drift out of sync with globals.css by growing unused entries.
 export const CANVAS_COLORS = {
   accentGreen: "#3f7a4a", // visited country / --accent-green

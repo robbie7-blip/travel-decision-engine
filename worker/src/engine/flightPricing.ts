@@ -5,7 +5,7 @@
 // on its first line in production and always will. Flights fall back to the
 // deterministic Google Flights deep link (see engine/flightLinks.ts), which
 // is the documented, intended behaviour when no fare provider is
-// configured — not a degradation.
+// configured - not a degradation.
 //
 // This is left in place rather than deleted because the SEAM is still the
 // right one and is worth keeping if a provider is ever added: fetchFarePricing
@@ -22,31 +22,31 @@
 // Worth being clear about why that is not urgent: the Google Flights link
 // shows the traveler the REAL price in one tap, and this product already
 // learned the hard way that a confident wrong fare is worse than an honest
-// link — a live test once had the model reporting a "verified" EUR240 round
+// link - a live test once had the model reporting a "verified" EUR240 round
 // trip directly above a link showing EUR43 for the same route and dates.
 //
-// Real flight-price lookup for the arrival flight item — an actual current
+// Real flight-price lookup for the arrival flight item - an actual current
 // fare, not a memory-based guess. The model's own guess repeatedly turned
 // out badly wrong (confirmed: a "€150, likely with one connection" guess
 // for a route that was actually a real, current €43 nonstop fare), which is
 // why flightLinks.ts stopped showing that guess as a number at all and
 // pointed to a real Google Flights link instead. This module is the next
 // step: actually fetch a real fare, the same "verify structurally, don't
-// trust the model's memory" principle as checkVenues (Google Places) —
+// trust the model's memory" principle as checkVenues (Google Places) -
 // just for flights instead of venues.
 //
-// Uses Amadeus's self-service Flight Offers Search API — free-tier signup,
+// Uses Amadeus's self-service Flight Offers Search API - free-tier signup,
 // same self-serve pattern as GOOGLE_PLACES_API_KEY. Entirely optional:
 // no-ops (returns the itinerary unchanged) if AMADEUS_API_KEY/
 // AMADEUS_API_SECRET aren't set, or if anything in the lookup fails, so a
-// missing/misconfigured key or an API hiccup never breaks generation —
+// missing/misconfigured key or an API hiccup never breaks generation -
 // falls back to the existing link-only display (see ItineraryResult.tsx).
 //
 // Honest caveat worth keeping in mind: Amadeus's free/test environment
 // draws on a real but not always fully live-refreshed fare dataset, so this
 // number, while a genuine market fare (not a memory guess), can still
 // occasionally differ from what Google Flights shows at the exact same
-// moment — categorically more trustworthy than an unaided guess, but not
+// moment - categorically more trustworthy than an unaided guess, but not
 // guaranteed to be pixel-identical to the linked Google Flights page.
 
 import type { Itinerary, ItineraryItem, TripBriefInput } from "../types";
@@ -54,7 +54,7 @@ import type { Itinerary, ItineraryItem, TripBriefInput } from "../types";
 const AMADEUS_BASE_URL = process.env.AMADEUS_BASE_URL ?? "https://test.api.amadeus.com";
 
 // Amadeus's test/sandbox environment is known to be slow, and none of the
-// fetches below had a timeout — confirmed to be exactly what pushed real
+// fetches below had a timeout - confirmed to be exactly what pushed real
 // generation time toward 2 minutes (the same regression this file's own
 // intro comment already documents once happening with the model's own
 // flight search, see worker/src/index.ts). Every call here is optional by
@@ -69,7 +69,7 @@ const SEARCH_TIMEOUT_MS = 8_000;
 
 // Every failure here is already silently swallowed by design (the whole
 // module no-ops back to the link-only fallback), which is the right
-// behavior for the job — but silent means invisible in the worker's own
+// behavior for the job - but silent means invisible in the worker's own
 // logs too, so a real outage or a timeout creeping back up would look
 // identical to "nobody has Amadeus keys configured." This logs loudly
 // enough to spot in `railway logs`/etc. without throwing or slowing
@@ -81,7 +81,7 @@ const SEARCH_TIMEOUT_MS = 8_000;
 function logFailure(step: string, e: unknown): void {
   const timedOut = e instanceof Error && e.name === "TimeoutError";
   console.warn(
-    `[flightPricing] ${step} ${timedOut ? "timed out" : "failed"} — falling back to link-only display.` +
+    `[flightPricing] ${step} ${timedOut ? "timed out" : "failed"} - falling back to link-only display.` +
       (timedOut ? "" : ` (${e instanceof Error ? e.message : String(e)})`)
   );
 }
@@ -91,7 +91,7 @@ interface CachedToken {
   expiresAt: number; // epoch ms
 }
 
-// Module-level caches, scoped to this process's lifetime — an OAuth token
+// Module-level caches, scoped to this process's lifetime - an OAuth token
 // and a city's IATA code are both stable for far longer than one
 // generation, so reusing them across jobs avoids paying for a fresh lookup
 // every single time (the same reasoning as the geocode cache in
@@ -201,7 +201,7 @@ const METRICS_TIMEOUT_MS = 6_000;
 
 /** Amadeus's itinerary price metrics: the historical price distribution for
  * a route and departure date, as quartile points. This is what makes an
- * honest "is this a good price?" possible without predicting anything — we
+ * honest "is this a good price?" possible without predicting anything - we
  * report where today's real fare falls in a range that actually happened.
  *
  * Route coverage is genuinely partial (thin regional routes frequently have
@@ -231,7 +231,7 @@ async function fetchPriceMetrics(
     });
     if (!res.ok) {
       // 404/400 here overwhelmingly means "no history for this route",
-      // which is ordinary — log at a lower key than a real failure.
+      // which is ordinary - log at a lower key than a real failure.
       console.warn(`[flightPricing] no price history for ${originCode}-${destinationCode} (HTTP ${res.status})`);
       return null;
     }
@@ -263,7 +263,7 @@ export interface FareObservation {
   departureDate: string;
   fareEur: number;
   observedAt: number;
-  /** Days between observing the fare and flying — the axis any future
+  /** Days between observing the fare and flying - the axis any future
    * prediction actually needs, and impossible to reconstruct later from a
    * bare timestamp once the departure date has passed. */
   daysBeforeDeparture: number;
@@ -276,11 +276,11 @@ function isFlightItem(item: ItineraryItem): boolean {
 }
 
 /** Replaces the model's own guessed fare on the arrival flight item with a
- * real, live-checked round-trip price from Amadeus — the departure leg
+ * real, live-checked round-trip price from Amadeus - the departure leg
  * keeps its existing "free, already covered" treatment either way. Marks
  * the item "grounded" with the real Google Flights link as its source, so
  * it flows into the normal single_source confidence tier alongside every
- * other grounded item (see deriveConfidenceTiers in checks.ts) — no
+ * other grounded item (see deriveConfidenceTiers in checks.ts) - no
  * special-casing needed downstream, and the frontend shows the real number
  * instead of the link-only fallback exactly when this succeeds (see
  * ItineraryResult.tsx's `source_confidence === "grounded"` check). */
@@ -291,7 +291,7 @@ export interface PrefetchedFare {
 }
 
 /** The Amadeus half of flight pricing, which depends ONLY on the trip brief
- * — origin, destination, dates, party size. It used to run after generation
+ * - origin, destination, dates, party size. It used to run after generation
  * finished, purely because that's where the itinerary was available to
  * write into, which put a provider this module's own header calls slow
  * squarely on the critical path for no reason. Started at t=0 instead and
@@ -335,8 +335,8 @@ export async function fetchFarePricing(brief: TripBriefInput): Promise<Prefetche
 
 let lastObservation: FareObservation | null = null;
 
-/** Applies an already-fetched fare to the itinerary. Pure bookkeeping — no
- * network — so it adds nothing to the critical path. */
+/** Applies an already-fetched fare to the itinerary. Pure bookkeeping - no
+ * network - so it adds nothing to the critical path. */
 export function applyFlightPricing(
   itinerary: Itinerary,
   brief: TripBriefInput,
@@ -403,7 +403,7 @@ export async function attachFlightPrices(
   // Both calls need only the token and the two IATA codes, so they run
   // together rather than back to back. Sequentially these stacked their
   // timeouts (8s + 6s) onto a provider whose own test environment this
-  // module already documents as slow — pure added latency for no ordering
+  // module already documents as slow - pure added latency for no ordering
   // reason, since neither result feeds the other.
   const startedAt = Date.now();
   const [fare, metrics] = await Promise.all([
@@ -425,7 +425,7 @@ export async function attachFlightPrices(
   // Every real fare we look up is worth keeping, whether or not the
   // provider has history for this route today. This is the only place a
   // genuine, timestamped market price passes through the system, so it's
-  // the one chance to accumulate a price history of our own — the thing
+  // the one chance to accumulate a price history of our own - the thing
   // any future "will this get cheaper?" would have to be built on, and
   // something no amount of prompting can substitute for.
   const msPerDay = 86_400_000;
@@ -442,7 +442,7 @@ export async function attachFlightPrices(
   });
 
   // Per-passenger, because the quartiles the provider returns are for one
-  // traveller — comparing a family's total against them would read as
+  // traveller - comparing a family's total against them would read as
   // wildly expensive on every group trip.
   const adults = Math.max(1, Math.min(brief.party_size, 9));
   const perPassenger = fare / adults;

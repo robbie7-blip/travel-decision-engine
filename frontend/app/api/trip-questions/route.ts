@@ -1,5 +1,5 @@
-// A general trip-Q&A endpoint — packing, safety, local customs, weather-
-// appropriate clothing, that kind of practical question — deliberately
+// A general trip-Q&A endpoint - packing, safety, local customs, weather-
+// appropriate clothing, that kind of practical question - deliberately
 // separate from /api/generate's itinerary engine and NOT routed through the
 // worker's job queue. That queue exists specifically to escape Vercel's
 // function-duration limit for the web_search tool used during full
@@ -14,7 +14,7 @@
 // Streamed, not a single blocking JSON response: a non-streamed reply feels
 // noticeably slower than ChatGPT/Gemini even when the actual generation
 // time is similar, because nothing appears until the entire answer is
-// done — streaming shows the first words almost immediately, which is most
+// done - streaming shows the first words almost immediately, which is most
 // of what "feels instant" actually comes from. The response body is plain
 // UTF-8 text chunks (not the Anthropic SDK's own SSE wire format) so the
 // client can read it with a bare fetch + ReadableStream reader, no SDK
@@ -46,7 +46,7 @@ export const runtime = "nodejs";
 
 const MODEL = "claude-sonnet-5";
 // 500 was too tight for the questions people actually ask. A traveler
-// asked "Sharm El-Sheikh or Hurghada for a family weekend in January?" —
+// asked "Sharm El-Sheikh or Hurghada for a family weekend in January?" -
 // a real comparison, and the right answer is a short list of differences
 // per option. It ran out of room and stopped at "minimizing transfer time
 // and", mid-sentence, with nothing anywhere saying it had been cut.
@@ -63,7 +63,7 @@ const MAX_TOKENS = 1500;
 // "is it going to rain in Lisbon next week" or "is [venue] actually still
 // open" gets a real, current answer instead of the honest-but-unhelpful
 // "I don't have live info, check an official source" the base system
-// prompt falls back to. Free stays exactly as it was — this is additive
+// prompt falls back to. Free stays exactly as it was - this is additive
 // capability, not a cap on how many questions anyone can ask (see
 // pricing.freePlanFeatures/paidPlanFeatures: both plans are "unlimited
 // Ask a Local Q&A").
@@ -71,11 +71,11 @@ const MAX_TOKENS = 1500;
 // Capped low (2, vs. the itinerary engine's estimateMaxSearchUses which
 // can go much higher across a multi-day plan): a single conversational
 // question rarely needs more than one or two searches, and this route is
-// a synchronous request (no job queue — see the file-header comment
+// a synchronous request (no job queue - see the file-header comment
 // above), so keeping search usage small keeps it comfortably inside
 // Vercel's function-duration limit the same way the plain-text/no-search
 // free path already does.
-// Stands in for the question when a photo is sent with no typed text —
+// Stands in for the question when a photo is sent with no typed text -
 // sending the picture IS the question in that case.
 const IMPLIED_PHOTO_QUESTION = "What am I looking at here, and is there anything I should know about it?";
 
@@ -84,7 +84,7 @@ const IMPLIED_PHOTO_QUESTION = "What am I looking at here, and is there anything
 // a hotel room deciding whether to open something that might cost €12, so
 // a confident guess is materially worse than "I can't tell from this". The
 // existing system prompt already sets the honest-hedging tone; this points
-// it at what's different about reading a picture — that the answer often
+// it at what's different about reading a picture - that the answer often
 // hinges on small print that may be cropped, blurred, or in another
 // language.
 const PHOTO_ADDENDUM = `\n\nThe traveler has attached a photo. Answer from what you can actually see in it.
@@ -103,18 +103,18 @@ compendium, or a quick call to reception. Costing someone an unexpected charge b
 outcome worth being careful about.`;
 
 const WEB_SEARCH_MAX_USES = 2;
-const WEB_SEARCH_ADDENDUM = `\n\nYou also have a web_search tool available for this question — use it when a \
+const WEB_SEARCH_ADDENDUM = `\n\nYou also have a web_search tool available for this question - use it when a \
 current/time-sensitive detail would actually change the answer (today's weather, whether a specific place is \
 still open, a current price, a real advisory), not for background knowledge you already know. When you do use \
 it, answer based on what you actually found, and you no longer need the "I don't have live info" hedge for \
 whatever you searched.`;
 
 // Anthropic's backend occasionally returns a transient 529 "overloaded"
-// error — confirmed happening in practice. One immediate retry (no
+// error - confirmed happening in practice. One immediate retry (no
 // artificial delay) resolves most of these, since a retry often lands on a
 // different, non-overloaded backend. If both attempts fail, or any other
 // error occurs, the traveler gets a short, friendly line instead of the
-// raw provider error — never leak "Model provider error: 529 {...}" into
+// raw provider error - never leak "Model provider error: 529 {...}" into
 // the UI, that's both ugly and actively undermines trust in the product.
 const MAX_MODEL_ATTEMPTS = 2;
 
@@ -122,8 +122,8 @@ const MAX_MODEL_ATTEMPTS = 2;
 // second" is only true for one of them.
 //
 // A transient overload really does clear on a retry. A CONFIGURATION
-// failure — a key that has expired, or an identity-linked key with no
-// ANTHROPIC_WORKSPACE_ID — never will, and telling someone to try again is
+// failure - a key that has expired, or an identity-linked key with no
+// ANTHROPIC_WORKSPACE_ID - never will, and telling someone to try again is
 // sending them into a loop that cannot end. Both used to produce the same
 // friendly line, which meant a dead API key looked exactly like a busy
 // server: the traveler retried forever and the owner had no signal at all
@@ -139,8 +139,8 @@ const FALLBACK_REPLY: Record<Language, string> = {
 // halfway reads as an interruption rather than as the model's own idea of a
 // finished thought.
 const TRUNCATED_SUFFIX: Record<Language, string> = {
-  en: "\n\n(That got cut off — ask me to keep going and I'll finish it.)",
-  bg: "\n\n(Прекъснах се — кажи ми да продължа и ще довърша.)",
+  en: "\n\n(That got cut off - ask me to keep going and I'll finish it.)",
+  bg: "\n\n(Прекъснах се - кажи ми да продължа и ще довърша.)",
 };
 
 const MISCONFIGURED_REPLY: Record<Language, string> = {
@@ -156,11 +156,11 @@ function isConfigurationError(e: unknown): boolean {
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable travel assistant helping with practical trip \
 questions: what to pack, whether an area is safe at night, whether to bring insect repellent or a \
 specific medication, local customs, plug types, tipping norms, that kind of thing. This is NOT the \
-full itinerary planner — don't offer to build a day-by-day plan, just answer the question directly.
+full itinerary planner - don't offer to build a day-by-day plan, just answer the question directly.
 
 WRITING STYLE: write like a knowledgeable friend texting back, not like an AI assistant. Never use \
 an em dash ("—"). Keep answers short: a few sentences for a simple question, a short paragraph at \
-most for a more involved one. Be direct and specific, not wishy-washy or over-hedged — give a real, \
+most for a more involved one. Be direct and specific, not wishy-washy or over-hedged - give a real, \
 useful answer.
 
 If trip context (destination, dates, travelers, interests) is provided below, use it to tailor the \
@@ -172,7 +172,7 @@ guessing.
 Be honest about uncertainty: for anything time-sensitive or safety-critical (a specific current \
 travel advisory, a disease outbreak, a political situation), say plainly that you don't have live, \
 current information and the traveler should check an official source (their government's travel \
-advisory site, the CDC, etc.) — don't state something time-sensitive as settled fact.`;
+advisory site, the CDC, etc.) - don't state something time-sensitive as settled fact.`;
 
 function languageLabel(language: Language): string {
   return language === "bg" ? "Bulgarian (български)" : "English";
@@ -188,7 +188,7 @@ function contextBlock(context: TripQAContext | undefined, language: Language): s
   return `Trip context:\n${lines.join("\n")}`;
 }
 
-/** Base64 decodes to roughly 3 bytes per 4 chars — measured off the string
+/** Base64 decodes to roughly 3 bytes per 4 chars - measured off the string
  * rather than decoding it, so an oversized payload is rejected without
  * first allocating it. */
 function approxDecodedBytes(base64: string): number {
@@ -201,7 +201,7 @@ function isValidImage(v: unknown): v is TripQAImage {
   if (typeof mediaType !== "string" || typeof data !== "string") return false;
   if (!(TRIP_QA_IMAGE_MEDIA_TYPES as readonly string[]).includes(mediaType)) return false;
   if (data.length === 0 || approxDecodedBytes(data) > MAX_TRIP_QA_IMAGE_BYTES) return false;
-  // Reject anything that isn't plain base64 — in particular a full
+  // Reject anything that isn't plain base64 - in particular a full
   // `data:image/...;base64,` URL, which the Anthropic API would refuse
   // further down with a much less obvious error.
   return /^[A-Za-z0-9+/]+={0,2}$/.test(data);
@@ -216,7 +216,7 @@ function isValidMessage(m: unknown): m is TripQAMessage {
   if (typeof content !== "string") return false;
 
   if (images !== undefined) {
-    // Only a question can carry a photo — an assistant turn claiming one
+    // Only a question can carry a photo - an assistant turn claiming one
     // would just be a way to smuggle image tokens into the request.
     if (role !== "user") return false;
     if (!Array.isArray(images) || images.length > MAX_TRIP_QA_IMAGES_PER_MESSAGE) return false;
@@ -230,14 +230,14 @@ function isValidMessage(m: unknown): m is TripQAMessage {
   const hasImage = Array.isArray(images) && images.length > 0;
   if (trimmed.length === 0 && !hasImage) return false;
   // The length cap only ever guarded against an unreasonably long typed
-  // *question* (see MAX_TRIP_QA_MESSAGE_LENGTH's own comment) — it was
+  // *question* (see MAX_TRIP_QA_MESSAGE_LENGTH's own comment) - it was
   // never meant to apply to the assistant's own replies. At MAX_TOKENS
   // a normal reply routinely runs past 800 characters, so applying this
   // cap to both roles meant a single longer-than-usual answer would get
   // stored client-side, resent as history on the next turn, and reject
   // the *entire* conversation (including a brand new, perfectly valid
   // user message) purely because of something the model itself wrote
-  // earlier — not anything the user did wrong.
+  // earlier - not anything the user did wrong.
   if (role === "user" && trimmed.length > MAX_TRIP_QA_MESSAGE_LENGTH) return false;
   return true;
 }
@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
     return NextResponse.json(
-      { detail: `Too many requests — ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
+      { detail: `Too many requests - ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
       {
         status: 429,
         headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,
@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Same session cookie /api/generate reads for quota — here it only gates
+  // Same session cookie /api/generate reads for quota - here it only gates
   // web_search access, not whether the question can be asked at all (see
   // WEB_SEARCH_MAX_USES's comment above).
   const email = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "Server is misconfigured (invalid API key)." }, { status: 500 });
   }
 
-  // Only the most recent images survive into the request — see
+  // Only the most recent images survive into the request - see
   // MAX_TRIP_QA_IMAGES_SENT. Earlier photos are dropped from history while
   // their text stays, so a long thread doesn't silently re-upload every
   // photo taken so far on every single turn. Counted from the end, so it's
@@ -388,12 +388,18 @@ export async function POST(request: NextRequest) {
           const stream = client.messages.stream(modelParams);
           stream.on("text", (delta) => {
             sentAnyText = true;
-            controller.enqueue(encoder.encode(delta));
+            // The prompt tells the model not to write em dashes and it does
+            // anyway, often enough that it's the loudest "an AI wrote this"
+            // signal in the answer. Swapped per delta rather than on the
+            // finished reply because this response streams; the dash is a
+            // single code point, so it can't be split across two deltas and
+            // the surrounding spaces are already whatever the model sent.
+            controller.enqueue(encoder.encode(delta.replace(/[—–]/g, "-")));
           });
 
           const finalMessage = await stream.finalMessage();
           // Billed whether or not any text actually streamed, same principle
-          // as the worker's onUsage in callModel — record it right away.
+          // as the worker's onUsage in callModel - record it right away.
           await recordSpend(redis, estimateCostUsd(finalMessage.usage));
 
           // A truncated answer used to be indistinguishable from a finished
@@ -408,7 +414,7 @@ export async function POST(request: NextRequest) {
 
           if (!sentAnyText) {
             // A well-formed response with no text content is rare but not
-            // impossible — same fallback as a hard failure, since an empty
+            // impossible - same fallback as a hard failure, since an empty
             // reply is just as unhelpful to the traveler either way.
             controller.enqueue(encoder.encode(FALLBACK_REPLY[language]));
           }
@@ -420,7 +426,7 @@ export async function POST(request: NextRequest) {
           // work, and no point telling the traveler to try again.
           if (isConfigurationError(e)) {
             console.error(
-              "[trip-questions] THIS IS A CONFIGURATION FAILURE, not an overload — " +
+              "[trip-questions] THIS IS A CONFIGURATION FAILURE, not an overload - " +
                 "check ANTHROPIC_API_KEY and ANTHROPIC_WORKSPACE_ID on this deployment"
             );
             if (!sentAnyText) controller.enqueue(encoder.encode(MISCONFIGURED_REPLY[language]));
@@ -428,7 +434,7 @@ export async function POST(request: NextRequest) {
             return;
           }
           if (sentAnyText) {
-            // Partial text already reached the client — retrying now would
+            // Partial text already reached the client - retrying now would
             // just glue a second, unrelated attempt onto a half-finished
             // answer, which reads far worse than just stopping here.
             controller.close();
@@ -439,7 +445,7 @@ export async function POST(request: NextRequest) {
             controller.close();
             return;
           }
-          // Otherwise loop straight into the next attempt — no delay, since
+          // Otherwise loop straight into the next attempt - no delay, since
           // the point is to still feel instant even when the first attempt
           // hits a transient overload.
         }

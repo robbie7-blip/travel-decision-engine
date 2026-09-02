@@ -1,6 +1,6 @@
 // Shared between the /api/weather route and the frontend WeatherStrip
-// component. Source is Open-Meteo (open-meteo.com) — free, no API key,
-// no signup — rather than a keyed provider like AccuWeather.
+// component. Source is Open-Meteo (open-meteo.com) - free, no API key,
+// no signup - rather than a keyed provider like AccuWeather.
 
 export type WeatherCondition = "clear" | "partly-cloudy" | "cloudy" | "fog" | "rain" | "snow" | "thunderstorm";
 
@@ -12,7 +12,7 @@ export interface DayWeather {
   isForecast: boolean;
   tempMaxC: number;
   tempMinC: number;
-  // 0-100, forecast only — historical averages report a precipitation
+  // 0-100, forecast only - historical averages report a precipitation
   // total instead, since "chance of rain" isn't meaningful averaged
   // across different years.
   precipitationChance: number | null;
@@ -23,17 +23,17 @@ export interface DayWeather {
 export type DestinationWeather = Record<string, DayWeather[]>;
 
 // Open-Meteo's short-range forecast model reliably covers this many days
-// from today — beyond it, we fall back to historical averages instead of
+// from today - beyond it, we fall back to historical averages instead of
 // a forecast that wouldn't actually be meaningful that far out.
 export const FORECAST_HORIZON_DAYS = 15;
 
-// How many past years to average for the historical-fallback case — enough
+// How many past years to average for the historical-fallback case - enough
 // to smooth out one unusually hot/rainy year without requiring a huge
 // number of upstream calls per destination.
 export const ARCHIVE_YEARS = 5;
 
 // WMO weather interpretation codes, as used by Open-Meteo's `weathercode`
-// daily field — https://open-meteo.com/en/docs, bucketed down to the handful
+// daily field - https://open-meteo.com/en/docs, bucketed down to the handful
 // of conditions the UI actually distinguishes.
 const WMO_CONDITION: Record<number, WeatherCondition> = {
   0: "clear",
@@ -70,7 +70,7 @@ export function conditionFromWmoCode(code: number): WeatherCondition {
   return WMO_CONDITION[code] ?? "cloudy";
 }
 
-/** How many whole days from today (UTC) a given YYYY-MM-DD date is —
+/** How many whole days from today (UTC) a given YYYY-MM-DD date is -
  * negative for the past, 0 for today. Used to decide forecast vs
  * historical-average per destination. */
 export function daysFromToday(dateStr: string): number {

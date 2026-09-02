@@ -1,7 +1,7 @@
 // Protected by middleware.ts (matches /api/admin/:path*, same
 // ADMIN_PASSWORD as the rest of /admin/*). Lets the site owner point the
 // homepage's "see a real example" link at any real, already-generated
-// trip — see lib/demoTrip.ts for why this is admin-set rather than
+// trip - see lib/demoTrip.ts for why this is admin-set rather than
 // fabricated or hardcoded.
 
 import { NextRequest, NextResponse } from "next/server";
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   const demo: DemoTrip = { jobId: job.id, destinations: job.brief.destinations, setAt: Date.now() };
   await redis.set(DEMO_TRIP_KEY, JSON.stringify(demo));
-  // Same reasoning as the showcase gallery's own POST handler — this is
+  // Same reasoning as the showcase gallery's own POST handler - this is
   // now the homepage's featured example, not a transient job; it shouldn't
   // silently disappear on the normal 30-day job TTL.
   await redis.expire(jobKey(job.id), CURATED_JOB_TTL_SECONDS);

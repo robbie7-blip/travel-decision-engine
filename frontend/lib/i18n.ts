@@ -1,4 +1,4 @@
-// Hand-rolled translation dictionary — deliberately not a formal i18n library
+// Hand-rolled translation dictionary - deliberately not a formal i18n library
 // (next-intl etc.): the app has one page and a fixed, known set of UI
 // strings, so a flat object keyed by Language is simpler to maintain than
 // wiring up a routing/loader layer for two locales. Covers UI chrome only;
@@ -22,20 +22,20 @@ export interface Dictionary {
   howItWorks: string;
   browseDestinations: string;
   // Screen-reader-only label on the currency <select> (components/
-  // CurrencySwitcher.tsx) — the currency codes themselves (EUR, USD...)
+  // CurrencySwitcher.tsx) - the currency codes themselves (EUR, USD...)
   // are intentionally left untranslated (ISO codes, not prose).
   currencyLabel: string;
-  // Mobile-only nav toggle (see .nav-menu-toggle in globals.css) — collapses
+  // Mobile-only nav toggle (see .nav-menu-toggle in globals.css) - collapses
   // the 6 header links behind a single "Menu" button instead of letting
   // them wrap onto 2-3 rows.
   navMenuOpen: string;
   navMenuClose: string;
-  // Two sentences, rendered on separate lines (see page.tsx) — same reason
+  // Two sentences, rendered on separate lines (see page.tsx) - same reason
   // as subheadLine1/2: natural wrap doesn't reliably break at the sentence
   // boundary once the translation's line lengths differ from English's.
   headlineLine1: string;
   headlineLine2: string;
-  // Two sentences, rendered on separate lines (see page.tsx) — kept apart so
+  // Two sentences, rendered on separate lines (see page.tsx) - kept apart so
   // "Never hidden, never overstated." never gets split by a text wrap that
   // strands "Never" alone at the end of the line above it.
   subheadLine1: string;
@@ -52,7 +52,7 @@ export interface Dictionary {
   /** The one- or two-word version, shown on every itinerary line.
    *
    * Exists because until now four of the five tiers were distinguished on
-   * an item row by NOTHING but the colour of a 9px dot — inlineTierLabel
+   * an item row by NOTHING but the colour of a 9px dot - inlineTierLabel
    * only ever had an entry for single_source. That is WCAG 1.4.1, colour
    * as the sole carrier of meaning, on the one feature this product is
    * built around: a colourblind traveler could not read the trust system
@@ -61,7 +61,7 @@ export interface Dictionary {
   jobStatus: Record<JobStatus, string>;
   // Cycled through (one at a time, every few seconds) while a job is
   // "running" instead of showing one static "Generating…" message for the
-  // full minute-plus wait — same idea as Booking.com/Wizzair's loading
+  // full minute-plus wait - same idea as Booking.com/Wizzair's loading
   // screens. Every other job status still uses the single static
   // jobStatus label above.
   runningMessages: string[];
@@ -71,7 +71,7 @@ export interface Dictionary {
     compareToggleLabel: string;
     compareDestinations: string;
     compareDestinationsPlaceholder: string;
-    // Shown only when compareEnabled — lets the comparison side use its own
+    // Shown only when compareEnabled - lets the comparison side use its own
     // date range instead of forcing identical dates on both destinations.
     compareDifferentDatesLabel: string;
     compareDates: string;
@@ -82,7 +82,7 @@ export interface Dictionary {
     accommodationLocation: string;
     accommodationLocationPlaceholder: string;
     skipFlightLabel: string;
-    // Shown only when flights/trains are already booked separately — lets
+    // Shown only when flights/trains are already booked separately - lets
     // the traveler state their real arrival timing so the engine doesn't
     // presume day 1 must be a light "just landed" day.
     arrivalDate: string;
@@ -90,7 +90,7 @@ export interface Dictionary {
     arrivalTime: string;
     arrivalTimePlaceholder: string;
     // How the traveler wants to get around locally (see transport_preference
-    // on TripBriefInput) — always shown, optional, defaults to no preference.
+    // on TripBriefInput) - always shown, optional, defaults to no preference.
     transportPreference: string;
     transportNoPreference: string;
     transportPublicTransit: string;
@@ -104,7 +104,7 @@ export interface Dictionary {
     // yet, prompting the second click.
     datesPickEnd: string;
     // Screen-reader-only labels on DateRangePicker/SingleDatePicker's month
-    // arrows (see those files) — not visible text, but real content for a
+    // arrows (see those files) - not visible text, but real content for a
     // screen-reader user, so still needs both languages like everything else.
     calendarPrevMonth: string;
     calendarNextMonth: string;
@@ -144,10 +144,10 @@ export interface Dictionary {
     budgetFeasible: string;
     budgetNotFeasible: string;
     minEstimate: string;
-    // Shown instead of a price + confidence tier for a zero-cost item — free
+    // Shown instead of a price + confidence tier for a zero-cost item - free
     // by nature (a walk, browsing a neighborhood) needs no verification badge.
     free: string;
-    // Weather outlook strip (see components/WeatherStrip.tsx) — sourced from
+    // Weather outlook strip (see components/WeatherStrip.tsx) - sourced from
     // Open-Meteo, a real forecast when the trip is soon, a labeled historical
     // average otherwise (historicalNote explains which one is showing).
     weather: {
@@ -159,7 +159,7 @@ export interface Dictionary {
       avgRain: string;
     };
     // Google Places verification on named-venue items (see worker/src/engine/
-    // venueVerification.ts) — "{count}" placeholder for googleRatingCount.
+    // venueVerification.ts) - "{count}" placeholder for googleRatingCount.
     googleRatingCount: string;
     closedTemporarily: string;
     /** Shown next to a venue we confirmed is open on the day it is scheduled. */
@@ -167,21 +167,21 @@ export interface Dictionary {
     closedPermanently: string;
     viewOnGoogleMaps: string;
     // Google Flights deep link on flight items (see worker/src/engine/
-    // flightLinks.ts) — always present when there's a real flight leg to
+    // flightLinks.ts) - always present when there's a real flight leg to
     // check, not dependent on whether the model's own search found a URL.
     // Doubles as the price display itself for any non-zero-cost flight item
-    // (see ItineraryResult.tsx) — the model's own guessed fare has turned
+    // (see ItineraryResult.tsx) - the model's own guessed fare has turned
     // out badly wrong often enough that it's no longer shown as a number.
     checkFlightPrices: string;
     // Where a live-checked fare sits against that route's own historical
-    // price range (see FarePriceContext) — a statement about observed
+    // price range (see FarePriceContext) - a statement about observed
     // prices, deliberately never a prediction about future ones.
     farePrice: Record<"low" | "typical" | "high", string>;
     farePriceRange: string; // "{low}" / "{high}" placeholders
     // "{percent}% " is prepended by the component; this is just the word
     // after the number (e.g. "92% verified").
     trustScoreLabel: string;
-    // "{grounded}" / "{total}" placeholders — one sentence explaining what
+    // "{grounded}" / "{total}" placeholders - one sentence explaining what
     // the trust score percentage actually counted.
     trustScoreDetail: string;
     downloadCalendar: string;
@@ -191,7 +191,7 @@ export interface Dictionary {
     day: string;
     inlineTierLabel: Partial<Record<ConfidenceTier, string>>;
     // One-sentence, tier-specific explanation of what that confidence level
-    // actually means — shown when a visitor expands an item's evidence
+    // actually means - shown when a visitor expands an item's evidence
     // rather than just taking the dot color on faith.
     tierExplainer: Record<ConfidenceTier, string>;
     evidenceShow: string;
@@ -213,7 +213,7 @@ export interface Dictionary {
   };
   genericError: string;
   // Homepage footer band translating the confidence-tier system into plain
-  // language (see components/TrustFooter.tsx) — decide's answer to a
+  // language (see components/TrustFooter.tsx) - decide's answer to a
   // Booking.com-style "why trust us" strip, built from claims the app
   // already makes rather than partner logos or certifications it doesn't
   // have. Reuses tierLegend (short label) and result.tierExplainer (the
@@ -228,19 +228,19 @@ export interface Dictionary {
     loading: string;
     didYouKnow: string; // label above the rotating city-fact shown on the loading screen
   };
-  // Bookmarks a browser has visited (see lib/recentTrips.ts) — no accounts,
+  // Bookmarks a browser has visited (see lib/recentTrips.ts) - no accounts,
   // purely a localStorage list of previously generated /trip/[jobId] links.
   recentTrips: {
     heading: string;
     remove: string; // aria-label on the per-entry remove button
   };
-  // Homepage "see a real example" link — only rendered when an admin has
+  // Homepage "see a real example" link - only rendered when an admin has
   // set a real, already-generated trip via /admin/demo-trip (see
   // lib/demoTrip.ts). "{destination}" placeholder.
   demo: {
     seeExample: string;
   };
-  // The /showcase gallery — a curated list of real, already-generated trips
+  // The /showcase gallery - a curated list of real, already-generated trips
   // (see lib/showcase.ts), admin-managed via /admin/showcase.
   showcase: {
     navLabel: string;
@@ -250,7 +250,7 @@ export interface Dictionary {
     viewTrip: string;
     daysLabel: string; // "{count}" placeholder, e.g. "9 days"
   };
-  // The /why-decide comparison page — confident, specific claims about what
+  // The /why-decide comparison page - confident, specific claims about what
   // decide actually does differently from a general-purpose chatbot,
   // grounded in real product behavior (confidence tiers, live price checks,
   // budget feasibility) rather than just asserting it's "better."
@@ -258,14 +258,14 @@ export interface Dictionary {
     navLink: string;
     pageTitle: string;
     // Two explicit lines (not one string left to wrap on its own) so the
-    // break always falls at the sentence boundary — a flexible single
+    // break always falls at the sentence boundary - a flexible single
     // string wraps wherever the viewport happens to cut it, which on a
     // narrow phone landed mid-sentence ("...It's a" / "decision.").
     headlineLine1: string;
     headlineLine2: string;
     // Same "generic AI chatbot vs decide" framing as the comparison rows
     // below, just as a two-line teaser right under the headline instead of
-    // one flowing paragraph — sets up the ×/✓ visual language early.
+    // one flowing paragraph - sets up the ×/✓ visual language early.
     subheadGeneric: string;
     subheadDecide: string;
     columnHeadingGeneric: string; // e.g. "A GENERIC AI CHATBOT"
@@ -278,7 +278,7 @@ export interface Dictionary {
     ctaHeading: string;
     ctaButton: string;
   };
-  // The /compare page — two full generations, same trip, different
+  // The /compare page - two full generations, same trip, different
   // destination, shown side by side.
   compare: {
     heading: string;
@@ -286,11 +286,11 @@ export interface Dictionary {
     missingJobs: string; // shown if the page is loaded without both ?a=/?b= ids
     planAnother: string;
   };
-  // General trip Q&A (packing, safety, local customs) — see components/
+  // General trip Q&A (packing, safety, local customs) - see components/
   // TripQA.tsx, embedded on a generated itinerary's result page and also
   // standalone at /ask (see app/ask/page.tsx) for someone who hasn't
   // generated anything here at all.
-  // "Ask a Local" — general trip Q&A (packing, safety, local customs),
+  // "Ask a Local" - general trip Q&A (packing, safety, local customs),
   // named to fit the app's existing "opinionated local friend" voice
   // (see SYSTEM_PROMPT in worker/src/engine/prompt.ts) rather than a flat,
   // generic "Q&A" or "Ask a question" label.
@@ -305,7 +305,7 @@ export interface Dictionary {
     thinking: string; // shown while waiting for the first word of a reply
     genericError: string;
     tooLong: string;
-    // Photo questions (Pro) — "what is this / is this included", asked from
+    // Photo questions (Pro) - "what is this / is this included", asked from
     // wherever the traveler is standing. See app/api/trip-questions.
     addPhoto: string;
     removePhoto: string;
@@ -314,7 +314,7 @@ export interface Dictionary {
     photoUnreadable: string;
     photoProOnly: string; // upsell shown when a free account taps the camera
     photoProOnlyCta: string;
-    // Clickable starter questions shown only before the first message —
+    // Clickable starter questions shown only before the first message -
     // fills what was otherwise a lot of empty space under the input box on
     // a fresh /ask visit, and doubles as a hint at the kind of question
     // this is for (packing/safety/customs, not itinerary planning).
@@ -322,12 +322,12 @@ export interface Dictionary {
     // The trip-page variant of the above, with {destination} and {month}
     // placeholders filled from the itinerary's own brief.
     examplePromptsForTrip: string[];
-    // 3 icon cards shown above the Q&A box on the standalone /ask page —
+    // 3 icon cards shown above the Q&A box on the standalone /ask page -
     // the page used to be just a heading and a plain input, with nothing
     // hinting at scope before you typed something.
     topics: { title: string; body: string }[];
   };
-  // Pricing + account/sign-in — a signed-in visitor trades the anonymous
+  // Pricing + account/sign-in - a signed-in visitor trades the anonymous
   // per-IP trial limit for a per-email monthly quota (see account.ts);
   // these two pages are the only UI for that. Kept as one section since
   // they share almost all their copy (plan names, quota wording).
@@ -337,7 +337,7 @@ export interface Dictionary {
     headerAccountLink: string; // short "Account" label for the same header slot once signed in
     pricingHeading: string;
     pricingSubheading: string;
-    // 3 icon cards shown above the plan comparison — features every visitor
+    // 3 icon cards shown above the plan comparison - features every visitor
     // already gets regardless of plan (see lib/account.ts: quota is the
     // ONLY thing that's actually plan-gated), so the pricing page doesn't
     // read as an empty grid of two prices with nothing to compare.
@@ -365,7 +365,7 @@ export interface Dictionary {
     renewsOn: string; // "{date}" placeholder
     upgradeCta: string;
     // Self-service cancel/manage-payment-method flow via Stripe's hosted
-    // Customer Portal (see app/api/billing-portal) — only shown to a
+    // Customer Portal (see app/api/billing-portal) - only shown to a
     // signed-in Pro account.
     manageSubscriptionButton: string;
     openingPortal: string;
@@ -374,7 +374,7 @@ export interface Dictionary {
     invalidLink: string;
     genericError: string;
   };
-  // The Been-style visited-countries tracker (lib/visited.ts) — a real
+  // The Been-style visited-countries tracker (lib/visited.ts) - a real
   // account is required (see app/api/visited), unlike RecentTrips which is
   // fine local-only.
   visited: {
@@ -401,7 +401,7 @@ export interface Dictionary {
     compareInputLabel: string;
     compareInputPlaceholder: string;
     compareButton: string;
-    // The interactive map (components/VisitedMap.tsx) — mapVisited/
+    // The interactive map (components/VisitedMap.tsx) - mapVisited/
     // mapNotVisited/mapUntracked are the map's own hover-tooltip text,
     // mapSmallCountriesNote explains why very small nations only appear in
     // the checklist below, not as a clickable shape on the map itself.
@@ -409,7 +409,7 @@ export interface Dictionary {
     mapNotVisited: string;
     mapUntracked: string;
     mapSmallCountriesNote: string;
-    // The Visualize tab row (components/Visited*.tsx) — Been-style
+    // The Visualize tab row (components/Visited*.tsx) - Been-style
     // alternate views of the same underlying visited list, switched via
     // pill tabs alongside the default flat-map view.
     visualize: {
@@ -456,7 +456,7 @@ export interface Dictionary {
     pageTitle: string;
     pageDescription: string; // "{count}" placeholder for the city count
     notOnListNote: string;
-    // Bottom-of-page CTA — after scrolling past a full grid of city cards
+    // Bottom-of-page CTA - after scrolling past a full grid of city cards
     // (24 and growing), there was no way back to actually starting a trip
     // without scrolling all the way back up to the header logo/nav.
     ctaButton: string;
@@ -613,19 +613,19 @@ const en: Dictionary = {
     day: "Day",
     // "inferred" deliberately has no inline label (unlike single_source):
     // most non-lodging items are inferred by design (see SEARCH_INSTRUCTIONS
-    // in worker/src/index.ts — meals/activities aren't price-searched), so
+    // in worker/src/index.ts - meals/activities aren't price-searched), so
     // an "(unverified)" tag next to nearly every price read as the app
     // doubting itself on every line, undermining trust rather than earning
     // it. The confidence dot and the on-demand "How do we know this?" detail
-    // still convey it honestly — just not shouted inline by default.
+    // still convey it honestly - just not shouted inline by default.
     inlineTierLabel: {
       single_source: "single source",
     },
     tierExplainer: {
-      verified: "Two independent searches were checked against each other and roughly agreed — this number reflects what was actually found, not a guess.",
-      fact_grounded: "This comes from decide's curated local knowledge base, not a live search — solid background, not price-checked in real time.",
+      verified: "Two independent searches were checked against each other and roughly agreed - this number reflects what was actually found, not a guess.",
+      fact_grounded: "This comes from decide's curated local knowledge base, not a live search - solid background, not price-checked in real time.",
       single_source: "One live search returned a usable result. It wasn't cross-checked against a second source, so treat it as reliable but not double-verified.",
-      conflicting: "Two live searches disagreed on this. Both figures are shown so you can judge for yourself — the higher one was used as the safer assumption.",
+      conflicting: "Two live searches disagreed on this. Both figures are shown so you can judge for yourself - the higher one was used as the safer assumption.",
       inferred: "No reliable live search result was found for this. This is an honest, hedged estimate based on general knowledge, not a checked price.",
     },
     evidenceShow: "How do we know this?",
@@ -743,7 +743,7 @@ const en: Dictionary = {
     ],
     // The same four questions, aimed at the trip the traveler is actually
     // looking at. On a trip page the generic set above named four cities,
-    // none of which was the one on screen — a Rome itinerary offering
+    // none of which was the one on screen - a Rome itinerary offering
     // "what should I pack for Lisbon" reads as though the feature hasn't
     // read the page it's sitting on. {destination} and {month} are filled
     // from the trip's own brief; the generic set still serves /ask, which
@@ -756,8 +756,8 @@ const en: Dictionary = {
     ],
     topics: [
       { title: "Packing", body: "What to bring for the season, the climate, and what you're actually planning to do there." },
-      { title: "Safety & practicalities", body: "Walking around at night, getting around town, money, SIM cards — the stuff you'd ask a friend who's already been." },
-      { title: "Local customs", body: "Tipping, etiquette, what's normal — so you don't stand out for the wrong reasons." },
+      { title: "Safety & practicalities", body: "Walking around at night, getting around town, money, SIM cards - the stuff you'd ask a friend who's already been." },
+      { title: "Local customs", body: "Tipping, etiquette, what's normal - so you don't stand out for the wrong reasons." },
     ],
   },
   account: {
@@ -769,33 +769,33 @@ const en: Dictionary = {
       "Every visitor can try decide without an account. Sign in with an email to track your plan across visits, or subscribe for more generations a month.",
     valuePropsHeading: "Every plan gets the real thing",
     valueProps: [
-      { title: "Budget feasibility, checked", body: "Every trip is checked against real, live costs — not numbers invented mid-conversation." },
+      { title: "Budget feasibility, checked", body: "Every trip is checked against real, live costs - not numbers invented mid-conversation." },
       { title: "Confidence you can see", body: "Each recommendation is tagged grounded, inferred, or unverified, so you know what to double-check." },
-      { title: "Ask a Local, anytime", body: "Packing, safety, local customs — unlimited questions, on both plans." },
+      { title: "Ask a Local, anytime", body: "Packing, safety, local customs - unlimited questions, on both plans." },
     ],
     freePlanName: "Free",
-    freePlanBlurb: "{count} generations a month, signed in with just an email — no card needed.",
+    freePlanBlurb: "{count} generations a month, signed in with just an email - no card needed.",
     freePlanFeatures: [
       "{count} full itinerary generations a month",
       "Unlimited Ask a Local Q&A",
       "Budget feasibility check & trust score on every trip",
       "Destination guides, showcase & visited-countries tracker",
-      "No card required — just an email",
+      "No card required - just an email",
     ],
     paidPlanName: "Pro",
     paidPlanBlurb: "{count} generations a month, plus you're directly supporting the real API costs behind every trip.",
     paidPlanFeaturesIntro: "Everything in Free, plus:",
     paidPlanFeatures: [
-      "{count} generations a month — {multiplier}× the Free quota",
-      "Ask a Local can search the live web for current answers — weather, opening hours, real advisories",
-      "Ask a Local with photos — snap a minibar card, a menu or a sign and ask what it says",
+      "{count} generations a month - {multiplier}× the Free quota",
+      "Ask a Local can search the live web for current answers - weather, opening hours, real advisories",
+      "Ask a Local with photos - snap a minibar card, a menu or a sign and ask what it says",
       "Room to plan (and compare) more than one trip a month",
       "Directly funds the real API costs behind every generation",
     ],
     paidPlanPrice: "€9/month",
     emailLabel: "EMAIL",
     emailPlaceholder: "you@example.com",
-    emailMismatchNote: "Use the same email here that you'll sign in with below — that's how your plan gets linked to your account.",
+    emailMismatchNote: "Use the same email here that you'll sign in with below - that's how your plan gets linked to your account.",
     subscribeButton: "Subscribe",
     subscribing: "Starting checkout...",
     signInButton: "Email me a sign-in link",
@@ -810,7 +810,7 @@ const en: Dictionary = {
     openingPortal: "Opening...",
     signOutButton: "Sign out",
     notSignedIn: "Not signed in.",
-    invalidLink: "That sign-in link is invalid or has expired — request a new one below.",
+    invalidLink: "That sign-in link is invalid or has expired - request a new one below.",
     genericError: "Something went wrong. Try again.",
   },
   visited: {
@@ -821,7 +821,7 @@ const en: Dictionary = {
     statsCountries: "{count} countries visited",
     statsPercent: "{percent}% of the world",
     statsContinents: "{count} of {total} continents",
-    signInPrompt: "Sign in to sync this list across devices — no password needed.",
+    signInPrompt: "Sign in to sync this list across devices - no password needed.",
     signInButton: "Email me a sign-in link",
     signInSent: "Check your email for a sign-in link.",
     badges: {
@@ -845,7 +845,7 @@ const en: Dictionary = {
     mapNotVisited: "Tap to mark visited",
     mapUntracked: "not tracked",
     mapSmallCountriesNote:
-      "A few very small countries (city-states, small islands) don't show up as their own shape on the map above — mark them here instead.",
+      "A few very small countries (city-states, small islands) don't show up as their own shape on the map above - mark them here instead.",
     visualize: {
       tabMap: "Map",
       tabGlobe: "Globe",
@@ -861,9 +861,9 @@ const en: Dictionary = {
       chronologyUndated: "Undated",
       chronologyCountLabel: "{count} countries",
       pinsHeading: "Pin exact places",
-      pinsBlurb: "Drop a pin on a specific city or spot within a country you've visited — shown on the globe below.",
+      pinsBlurb: "Drop a pin on a specific city or spot within a country you've visited - shown on the globe below.",
       pinsEmpty: "No pins yet. Add one below.",
-      pinsNeedVisitedCountry: "Mark at least one country visited first — a pin belongs to a country you've been to.",
+      pinsNeedVisitedCountry: "Mark at least one country visited first - a pin belongs to a country you've been to.",
       pinFormCountryLabel: "Country",
       pinFormCountryPlaceholder: "Choose a visited country",
       pinFormLabelLabel: "Place name",
@@ -911,7 +911,7 @@ const en: Dictionary = {
     moreGuides: "More destination guides",
     photoCredit: "Photo:",
     metaIndexDescription: "What decide already knows about 18 cities before it even runs a live search.",
-    metaDetailTitle: "{city} travel notes — decide",
+    metaDetailTitle: "{city} travel notes - decide",
     metaDetailDescription:
       "What decide already knows about {city} before it even runs a live search: getting around, real costs, and what locals skip.",
   },
@@ -1289,9 +1289,9 @@ const bg: Dictionary = {
       chronologyUndated: "Без дата",
       chronologyCountLabel: "{count} държави",
       pinsHeading: "Отбележете точни места",
-      pinsBlurb: "Поставете пин на конкретен град или място в държава, която сте посетили — показва се на глобуса по-долу.",
+      pinsBlurb: "Поставете пин на конкретен град или място в държава, която сте посетили - показва се на глобуса по-долу.",
       pinsEmpty: "Все още няма пинове. Добавете един по-долу.",
-      pinsNeedVisitedCountry: "Първо отбележете поне една посетена държава — пинът принадлежи на държава, в която сте били.",
+      pinsNeedVisitedCountry: "Първо отбележете поне една посетена държава - пинът принадлежи на държава, в която сте били.",
       pinFormCountryLabel: "Държава",
       pinFormCountryPlaceholder: "Изберете посетена държава",
       pinFormLabelLabel: "Име на мястото",

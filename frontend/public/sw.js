@@ -2,7 +2,7 @@
 // (Chrome requires a registered SW with a fetch handler) and to keep a
 // totally-offline visit from hitting a blank browser error instead of the
 // app shell. This product is fundamentally dynamic (live search + LLM
-// calls) — there's no meaningful "offline itinerary generation" — so this
+// calls), and there's no meaningful "offline itinerary generation", so this
 // deliberately stays network-first with a cache fallback, not an offline-
 // first strategy.
 const CACHE_NAME = "decide-shell-v1";

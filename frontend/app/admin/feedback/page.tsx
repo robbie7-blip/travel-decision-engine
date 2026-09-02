@@ -1,5 +1,5 @@
 // Password-protected (see middleware.ts) internal view of the feedback
-// entries submitted via /api/feedback. Reads directly from Redis — no
+// entries submitted via /api/feedback. Reads directly from Redis - no
 // separate API route, since this is the only consumer.
 
 import Link from "next/link";

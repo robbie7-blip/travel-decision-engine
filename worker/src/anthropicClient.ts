@@ -5,16 +5,16 @@
 // Anthropic has two kinds of API key. A WORKSPACE key is bound to one
 // workspace, so the server already knows which workspace a request acts in.
 // An IDENTITY-LINKED key is not bound to anything, and every request made
-// with one must name its workspace in an `anthropic-workspace-id` header —
+// with one must name its workspace in an `anthropic-workspace-id` header -
 // without it the API returns:
 //
-//   400 invalid_request_error — "anthropic-workspace-id is required when
+//   400 invalid_request_error - "anthropic-workspace-id is required when
 //   authenticating with an identity-linked API key; send the id of the
 //   workspace this request acts in."
 //
 // This cost most of a morning to find. The two key types look identical
 // where you paste them, the failure arrives as a 400 rather than an auth
-// error, and it surfaces at the model call rather than at startup — so it
+// error, and it surfaces at the model call rather than at startup - so it
 // reads as "the request is malformed" when the request is fine and the
 // credential simply needs one more field. Rotating an expired workspace key
 // to a new identity-linked one is enough to trigger it, with nothing in the

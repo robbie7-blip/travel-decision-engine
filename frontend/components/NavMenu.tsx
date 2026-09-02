@@ -12,7 +12,7 @@ import { usePathname } from "next/navigation";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
-// One small monoline glyph per nav item — the plain-text pills read as flat
+// One small monoline glyph per nav item - the plain-text pills read as flat
 // and generic on the pages where nothing is "active" yet (the homepage:
 // none of the hrefs match "/", so every link sits at the same visual
 // weight with nothing to distinguish it). All six share one stroke width
@@ -77,7 +77,7 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
   ];
 
   // Strip the ?lang= suffix each href may carry before comparing to the
-  // current route — pathname never includes it.
+  // current route - pathname never includes it.
   function isActive(href: string): boolean {
     const path = href.split("?")[0];
     return pathname === path || pathname.startsWith(`${path}/`);
@@ -103,7 +103,7 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
       >
         {menuOpen ? t.navMenuClose : t.navMenuOpen} {menuOpen ? "✕" : "☰"}
       </button>
-      {/* gap 4px — .nav-link is now a standalone pill (background + radius,
+      {/* gap 4px - .nav-link is now a standalone pill (background + radius,
           see globals.css), not divider-separated running text, so it needs
           a little breathing room between items instead of the old 0. */}
       <div className={menuOpen ? "nav-links-row nav-links-row--open" : "nav-links-row"} style={{ alignItems: "center", gap: 4 }}>

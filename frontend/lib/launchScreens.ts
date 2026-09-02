@@ -5,7 +5,7 @@
 //
 // Background: an installed PWA on iOS does not use the manifest's
 // background_color for its launch screen. With no apple-touch-startup-image
-// declared, iOS paints plain white until the web view first draws — which
+// declared, iOS paints plain white until the web view first draws - which
 // is why opening the app flashed white before our own parchment splash.
 //
 // iOS matches a startup image only when the media query names the device's
@@ -18,7 +18,7 @@ export interface LaunchDevice {
   width: number;
   height: number;
   ratio: number;
-  /** Which phones land on this size — for whoever reads the list next. */
+  /** Which phones land on this size - for whoever reads the list next. */
   note: string;
 }
 

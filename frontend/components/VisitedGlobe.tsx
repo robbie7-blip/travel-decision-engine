@@ -1,18 +1,18 @@
 "use client";
 
-// The headline "Visualize" tab — a real 3D rotating globe, react-globe.gl
+// The headline "Visualize" tab - a real 3D rotating globe, react-globe.gl
 // (MIT; wraps three.js + globe.gl). Country shapes come from
 // lib/worldGeo.ts, the SAME proven alpha-2-keyed topology the flat map
-// already uses (see that file's header for why — a second, independently-
+// already uses (see that file's header for why - a second, independently-
 // sourced dataset here would risk exactly the kind of silent
 // wrong-country-colored bug this app already hit once with the flat map's
 // contrast issue).
 //
-// Colors are hardcoded hex (lib/theme.ts), not CSS var(--x) — this renders
+// Colors are hardcoded hex (lib/theme.ts), not CSS var(--x) - this renders
 // to a canvas/WebGL context, which can't resolve CSS custom properties at
 // all.
 //
-// This must only ever be loaded via `next/dynamic(..., { ssr: false })` —
+// This must only ever be loaded via `next/dynamic(..., { ssr: false })` -
 // three.js touches `document`/`window` at construction time, which throws
 // during server-side rendering. See app/account/visited/page.tsx.
 //
@@ -109,13 +109,13 @@ export function VisitedGlobe({
           polygonLabel={(feat: object) => {
             const f = feat as CountryFeature;
             const code = f.properties.I.toUpperCase();
-            // f.properties.N is the topology's own (English) name — use our
+            // f.properties.N is the topology's own (English) name - use our
             // localized name for tracked countries so the globe's tooltip
             // doesn't revert to English mid-Bulgarian-UI (same fix as the
             // flat map's tooltipTextFunction in VisitedMap.tsx).
             const name = isTracked(code) ? getCountryName(code, language) : f.properties.N;
-            if (!isTracked(code)) return `${name} — ${untrackedLabel}`;
-            return `${name} — ${visitedCodes.has(code) ? visitedLabel : notVisitedLabel}`;
+            if (!isTracked(code)) return `${name} - ${untrackedLabel}`;
+            return `${name} - ${visitedCodes.has(code) ? visitedLabel : notVisitedLabel}`;
           }}
           onPolygonClick={(feat: object) => {
             const f = feat as CountryFeature;
@@ -132,7 +132,7 @@ export function VisitedGlobe({
           pointRadius={0.55}
           pointLabel={(p: object) => {
             const pin = p as GlobePin;
-            return pin.note ? `${pin.label} — ${pin.note}` : pin.label;
+            return pin.note ? `${pin.label} - ${pin.note}` : pin.label;
           }}
           onGlobeReady={() => {
             const controls = globeRef.current?.controls();

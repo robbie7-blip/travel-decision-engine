@@ -1,9 +1,9 @@
 """
-Phase 1 backend — FastAPI wrapper around the Phase 0 decision engine.
+Phase 1 backend - FastAPI wrapper around the Phase 0 decision engine.
 
 Reuses engine.py and trip_brief.py unchanged: same system prompt, same
 retrieval, same JSON schema, same check_feasibility / check_budget_integrity
-logic. The only thing this file adds is an HTTP boundary — the Anthropic API
+logic. The only thing this file adds is an HTTP boundary - the Anthropic API
 key lives here, server-side, and is never sent to the browser.
 """
 
@@ -29,7 +29,7 @@ from trip_brief import TripBrief  # noqa: E402
 
 MODEL = "claude-opus-5"
 # claude-opus-5 has thinking on by default, and max_tokens caps thinking +
-# response text combined — engine.py's original 8000 (tuned against a model
+# response text combined - engine.py's original 8000 (tuned against a model
 # with thinking off) risks truncating the JSON mid-response, so give it room.
 MAX_TOKENS = 12000
 VALID_PACES = {"relaxed", "moderate", "packed"}
@@ -83,7 +83,7 @@ def create_itinerary(request: TripBriefRequest) -> dict:
         try:
             itinerary = generate_itinerary(brief, model=MODEL, max_tokens=MAX_TOKENS)
         except ValueError:
-            # Model occasionally returns truncated/malformed JSON — it's
+            # Model occasionally returns truncated/malformed JSON - it's
             # non-deterministic, so one retry usually succeeds.
             itinerary = generate_itinerary(brief, model=MODEL, max_tokens=MAX_TOKENS)
     except anthropic.AuthenticationError:
@@ -97,11 +97,11 @@ def create_itinerary(request: TripBriefRequest) -> dict:
     except ValueError as e:
         raise HTTPException(
             status_code=502,
-            detail="The model's response was malformed twice in a row — try a shorter or simpler trip brief.",
+            detail="The model's response was malformed twice in a row - try a shorter or simpler trip brief.",
         ) from e
     except Exception:
         logger.exception("Unexpected error generating itinerary")
-        raise HTTPException(status_code=500, detail="Server is misconfigured — check ANTHROPIC_API_KEY is set.")
+        raise HTTPException(status_code=500, detail="Server is misconfigured - check ANTHROPIC_API_KEY is set.")
 
     itinerary = check_feasibility(itinerary)
     itinerary = check_budget_integrity(itinerary, brief)

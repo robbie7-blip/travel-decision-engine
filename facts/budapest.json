@@ -1,6 +1,6 @@
 {
   "city": "Budapest",
-  "last_verified": "PLACEHOLDER — verify and date before real use",
+  "last_verified": "PLACEHOLDER - verify and date before real use",
   "facts": [
     {
       "category": "transit",
@@ -8,7 +8,7 @@
     },
     {
       "category": "cost",
-      "text": "The thermal baths (Széchenyi, Gellért) charge notably more for a locker versus a private cabin, and towel/robe rental is a separate, often-missed extra cost — factor this in before budgeting a bath visit as just the entry fee."
+      "text": "The thermal baths (Széchenyi, Gellért) charge notably more for a locker versus a private cabin, and towel/robe rental is a separate, often-missed extra cost - factor this in before budgeting a bath visit as just the entry fee."
     },
     {
       "category": "tourist_trap_warning",
@@ -16,7 +16,7 @@
     },
     {
       "category": "activity",
-      "text": "The Parliament building interior is only accessible via guided tour (not free wandering) and requires advance booking — tours sell out, especially in summer."
+      "text": "The Parliament building interior is only accessible via guided tour (not free wandering) and requires advance booking - tours sell out, especially in summer."
     },
     {
       "category": "practical",

@@ -67,7 +67,7 @@ function lodging(venue: string | null): ItineraryItem {
  * a bed. The baseline every fixture below deviates from by exactly one
  * thing, so a failing check names the deviation and nothing else. */
 function goodDay(n: number, date: string, withLodging = true): ItineraryDay {
-  // Two activities and no stretch over four hours — which is what a day
+  // Two activities and no stretch over four hours - which is what a day
   // someone travelled for actually looks like. The earlier version of this
   // fixture had one sight and a six-hour void between lunch and dinner, and
   // called itself the baseline; the gap check caught it on its first run.
@@ -112,7 +112,7 @@ function baseline(): ItineraryDay[] {
   const days = [goodDay(1, DATES[0]), goodDay(2, DATES[1]), goodDay(3, DATES[2], false)];
   days[0].items.unshift(
     item({ type: "transport", title: "Flight to Denpasar", venue_name: null, time: "06:00", is_flight: true, cost_estimate_eur: 700 }),
-    // A flight alone is not an arrival — the onward leg is part of the day.
+    // A flight alone is not an arrival - the onward leg is part of the day.
     item({ type: "transport", title: "Car to Ubud", venue_name: null, time: "07:30", cost_estimate_eur: 25 })
   );
   return days;
@@ -130,7 +130,7 @@ function firedChecksWith(days: ItineraryDay[], accommodation: SkeletonAccommodat
   return assessQuality(itinerary(days), BRIEF, plan(), accommodation).findings.map((f) => f.check);
 }
 
-heading("ACCEPTANCE GATE — every invariant, against a real past failure");
+heading("ACCEPTANCE GATE - every invariant, against a real past failure");
 
 section("a clean itinerary passes");
 {
@@ -143,7 +143,7 @@ section("a clean itinerary passes");
   check("passed is true", report.passed);
 }
 
-section("missing meals — the Bali day-02 failure");
+section("missing meals - the Bali day-02 failure");
 {
   const days = baseline();
   // Day 2 goes from a morning sight straight to the hotel.
@@ -160,7 +160,7 @@ section("missing meals — the Bali day-02 failure");
 section("meals identified by clock time, not just by the word");
 {
   const days = baseline();
-  // Same three meals, none of them named "lunch" — a Bulgarian-language
+  // Same three meals, none of them named "lunch" - a Bulgarian-language
   // trip writes none of these words, so the gate must not depend on them.
   days[1].items = [
     item({ type: "meal", title: "Баница и кафе", venue_name: "A", time: "08:30", cost_estimate_eur: 8 }),
@@ -172,7 +172,7 @@ section("meals identified by clock time, not just by the word");
   check("no false meal gap on a non-English day", !firedChecks(days).includes("meals_present"));
 }
 
-section("duplicate venue — the Chisinau failure");
+section("duplicate venue - the Chisinau failure");
 {
   const days = baseline();
   (days[2].items.find((i) => i.type === "meal") as ItineraryItem).venue_name = "Cafe 1";
@@ -202,7 +202,7 @@ section("duplicate venue — the Chisinau failure");
   );
 }
 
-section("generic accommodation — the Bali hotel failure");
+section("generic accommodation - the Bali hotel failure");
 {
   const days = baseline();
   for (const day of days) {
@@ -212,7 +212,7 @@ section("generic accommodation — the Bali hotel failure");
   const finding = report.findings.find((f) => f.check === "lodging_named");
   check("lodging_named fires", !!finding);
   check(
-    "is a warning, not a defect — sometimes there is genuinely no property to name",
+    "is a warning, not a defect - sometimes there is genuinely no property to name",
     finding?.severity === "warning"
   );
   check("a warning alone still passes the gate", report.passed);
@@ -228,7 +228,7 @@ section("wrong number of nights");
   check("says how many it found vs needed", finding?.detail === "1 accommodation item(s) for a 2-night trip", finding?.detail);
 }
 
-section("a day with nothing to do — the Bali day-01 failure");
+section("a day with nothing to do - the Bali day-01 failure");
 {
   const days = baseline();
   // Flight, transfer, hotel. No activity, no meals.
@@ -294,13 +294,13 @@ section("the things the traveler actually asked for");
   const wantsTrevi: TripBriefInput = { ...BRIEF, must_see: ["Trevi Fountain", "Pantheon"] };
   const days = baseline();
 
-  // Nothing in the trip mentions either — the worst silent failure there is.
+  // Nothing in the trip mentions either - the worst silent failure there is.
   let report = assessQuality(itinerary(days), wantsTrevi, plan());
   const dropped = report.findings.filter((f) => f.check === "must_see_covered");
   check("both dropped must-sees are reported", dropped.length === 2, `${dropped.length}`);
   check("as defects", dropped.every((f) => f.severity === "defect"));
 
-  // Present as an item — covered.
+  // Present as an item - covered.
   const withTrevi = baseline();
   withTrevi[1].items.push(item({ title: "Toss a coin at the Trevi Fountain", venue_name: "Trevi Fountain", time: "17:00" }));
   withTrevi[1].items.push(item({ title: "Visit the Pantheon", venue_name: "Pantheon", time: "11:00" }));
@@ -309,7 +309,7 @@ section("the things the traveler actually asked for");
     !firedChecks2(withTrevi, wantsTrevi).includes("must_see_covered")
   );
 
-  // Explained away in the skip list — allowed, because it was said out loud.
+  // Explained away in the skip list - allowed, because it was said out loud.
   const explained = itinerary(baseline());
   explained.things_to_skip = [
     { item: "Trevi Fountain", reasoning: "Rebuilt scaffolding all November, nothing to see" },
@@ -330,7 +330,7 @@ section("the things the traveler actually asked for");
 
   // A real Rome run reported "Vatican City" as dropped while the itinerary
   // contained the Vatican Museums, the Sistine Chapel and St. Peter's
-  // Basilica — all three located in Vatican City. The word "City" lives in
+  // Basilica - all three located in Vatican City. The word "City" lives in
   // the location field, which the check wasn't reading.
   const inLocation = baseline();
   inLocation[1].items.push(
@@ -377,7 +377,7 @@ section("the budget stamp against the actual bill");
   const infeasible = itinerary(baseline());
   infeasible.budget_feasibility = { feasible: false, min_realistic_total_eur: 900, reasoning: "r" };
   check(
-    "an honestly-infeasible trip is not also flagged — it already said so",
+    "an honestly-infeasible trip is not also flagged - it already said so",
     !assessQuality(infeasible, tight, plan()).findings.some((f) => f.check === "budget_matches_items")
   );
 
@@ -397,7 +397,7 @@ section("arriving with time to actually see it");
   const finding = report.findings.find((f) => f.check === "time_to_visit");
   check("time_to_visit fires on a ticket bought an hour before closing", !!finding);
   check("it names the margin", finding?.detail.includes("60 min") === true, finding?.detail);
-  check("a warning — the traveler may still want to go", finding?.severity === "warning");
+  check("a warning - the traveler may still want to go", finding?.severity === "warning");
 
   const roomy = baseline();
   const ok = roomy[1].items.find((i) => i.type === "activity") as ItineraryItem;
@@ -456,7 +456,7 @@ section("a day with nothing in it, and hours nobody accounted for");
   );
   check("gaps are warnings, not defects", report.findings.find((f) => f.check === "day_has_gap")?.severity === "warning");
 
-  // Written downtime closes the gap — the point is that the time is
+  // Written downtime closes the gap - the point is that the time is
   // accounted for, not that it is filled with activity.
   const withDowntime = baseline();
   withDowntime[1].items = [
@@ -471,7 +471,7 @@ section("a day with nothing in it, and hours nobody accounted for");
   check("written downtime is not a gap", !firedChecks(withDowntime).includes("day_has_gap"));
   check("and that day has enough in it", !firedChecks(withDowntime).includes("day_not_empty"));
 
-  // An arrival day is allowed to be lighter — the flight takes the rest.
+  // An arrival day is allowed to be lighter - the flight takes the rest.
   check("the arrival day is not held to the full-day bar", !firedChecks(baseline()).includes("day_not_empty"));
 
   // A quiet evening after dinner is an evening, not a hole.
@@ -491,7 +491,7 @@ section("a flight is not a complete arrival");
   const finding = report.findings.find((f) => f.check === "transport_legs");
   check("transport_legs fires on a flight with no ground leg", !!finding);
   check("names the day", finding?.detail === "day 1 has a flight but no way to or from the airport", finding?.detail);
-  check("a warning — some cities have one obvious link", finding?.severity === "warning");
+  check("a warning - some cities have one obvious link", finding?.severity === "warning");
   check("and the baseline, which has the transfer, does not fire", !firedChecks(baseline()).includes("transport_legs"));
 }
 
@@ -500,18 +500,18 @@ section("meal prices against Google's price tier");
   const days = baseline();
   const dinner = days[0].items.find((i) => i.type === "meal" && i.time === "19:30") as ItineraryItem;
   dinner.google_price_level = "very_expensive";
-  dinner.cost_estimate_eur = 40; // for two — EUR 20 each at a very expensive venue
+  dinner.cost_estimate_eur = 40; // for two - EUR 20 each at a very expensive venue
   const fired = firedChecks(days);
   check("price_matches_tier fires on a clear understatement", fired.includes("price_matches_tier"));
   check(
-    "it is a warning, not a defect — a cheap lunch at a pricey place is real",
+    "it is a warning, not a defect - a cheap lunch at a pricey place is real",
     assessQuality(itinerary(days), BRIEF, plan()).findings.find((f) => f.check === "price_matches_tier")?.severity === "warning"
   );
 
   const plausible = baseline();
   const d2 = plausible[0].items.find((i) => i.type === "meal" && i.time === "19:30") as ItineraryItem;
   d2.google_price_level = "very_expensive";
-  d2.cost_estimate_eur = 120; // EUR 60 each — consistent with the tier
+  d2.cost_estimate_eur = 120; // EUR 60 each - consistent with the tier
   check("a consistent price does not fire", !firedChecks(plausible).includes("price_matches_tier"));
 
   const noTier = baseline();
@@ -575,12 +575,12 @@ section("what actually moves the verified percentage");
   }
   const venuesOnly = assessQuality(itinerary(verified), BRIEF, plan());
   check(
-    "Places-confirmed venues alone do not reach 100% — flights and beds are still unbacked",
+    "Places-confirmed venues alone do not reach 100% - flights and beds are still unbacked",
     venuesOnly.groundedPercent > 0 && venuesOnly.groundedPercent < 100,
     `${venuesOnly.groundedPercent}%`
   );
 
-  // 2. A flight with a real Google Flights link counts — the scoring bug.
+  // 2. A flight with a real Google Flights link counts - the scoring bug.
   //    Flights are deliberately never web-searched BECAUSE the link is the
   //    verification mechanism, and the score used to ignore it entirely.
   const flight = verified[0].items.find((i) => i.is_flight);
@@ -593,7 +593,7 @@ section("what actually moves the verified percentage");
   );
   // 3. Grounded lodging and transport count via source_urls rather than
   //    Places. A ground transfer is the one item type with no automatic
-  //    verification path — no Places entry, no flight link — so including
+  //    verification path - no Places entry, no flight link - so including
   //    one here proves the score has no structural ceiling rather than
   //    quietly capping at whatever fraction happens to be verifiable.
   for (const d of verified) {
@@ -642,7 +642,7 @@ section("what actually moves the verified percentage");
 section("a lost plan is reported, not silently skipped");
 {
   // The single-call fallback produces no day plan. The meal check cannot
-  // run without one — but the run must not therefore look clean.
+  // run without one - but the run must not therefore look clean.
   const report = assessQuality(itinerary(baseline()), BRIEF, []);
   check("still returns a report", report.itemCount > 0);
   check(

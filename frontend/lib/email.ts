@@ -1,9 +1,9 @@
-// Transactional email via Resend's REST API — plain fetch, no SDK
+// Transactional email via Resend's REST API - plain fetch, no SDK
 // dependency, same "no new infra beyond a key" pattern as
 // GOOGLE_PLACES_API_KEY/AMADEUS_API_KEY in the worker. Used only for magic
 // links right now. Free tier (100/day, 3000/month as of writing) comfortably
 // covers a small subscriber base; swap RESEND_API_KEY/EMAIL_FROM if you
-// outgrow it or prefer a different provider — this file is the only place
+// outgrow it or prefer a different provider - this file is the only place
 // that would need to change.
 
 const RESEND_API_URL = "https://api.resend.com/emails";
@@ -13,7 +13,7 @@ export class EmailNotConfiguredError extends Error {}
 // Carries Resend's own reason (parsed from its JSON error body when
 // possible, e.g. "The yourdecide.com domain is not verified" or a rate-
 // limit message) so the API route can show it directly instead of a
-// generic "couldn't send" message — the alternative is whoever's testing
+// generic "couldn't send" message - the alternative is whoever's testing
 // sign-in has no way to tell a bad EMAIL_FROM domain apart from a rate
 // limit apart from anything else without going and checking Resend's own
 // dashboard by hand.
@@ -30,7 +30,7 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) {
-    throw new EmailNotConfiguredError("RESEND_API_KEY / EMAIL_FROM are not set — cannot send magic links.");
+    throw new EmailNotConfiguredError("RESEND_API_KEY / EMAIL_FROM are not set - cannot send magic links.");
   }
 
   const res = await fetch(RESEND_API_URL, {
@@ -43,13 +43,13 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
       from,
       to,
       subject: "Your decide sign-in link",
-      // Hex values are hardcoded, not var(--x) — email clients strip CSS
+      // Hex values are hardcoded, not var(--x) - email clients strip CSS
       // custom properties, and this needs to render the same in Gmail/
       // Apple Mail/Outlook regardless of what globals.css defines. #2c6a4c
       // is --brand-teal, kept in sync by hand since there's no shared build
       // step between this file and the app's CSS. A bare "click this link,
       // expires in 15 minutes" email with no branding reads as templated/
-      // phishy to both spam filters and a human glancing at it — a visible
+      // phishy to both spam filters and a human glancing at it - a visible
       // "decide" name, a real heading, and a styled button in place of a
       // raw URL are what actually change that, more than any one Resend
       // setting does.
@@ -68,11 +68,11 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
             <a href="${verifyUrl}" style="color: #2c6a4c; word-break: break-all;">${verifyUrl}</a>
           </p>
           <p style="font-size: 12px; line-height: 1.5; color: #8a7d68; margin: 24px 0 0; border-top: 1px solid #e3d5b3; padding-top: 16px;">
-            If you didn't request this, you can safely ignore this email — no account changes will be made.
+            If you didn't request this, you can safely ignore this email - no account changes will be made.
           </p>
         </div>
       `,
-      text: `decide\n\nSign in to decide\n\nClick the link below to sign in. This link works once and expires in 15 minutes.\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email — no account changes will be made.`,
+      text: `decide\n\nSign in to decide\n\nClick the link below to sign in. This link works once and expires in 15 minutes.\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email - no account changes will be made.`,
     }),
     signal: AbortSignal.timeout(8_000),
   });
@@ -80,7 +80,7 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
   if (!res.ok) {
     const bodyText = await res.text().catch(() => "");
     // Resend's error responses are JSON ({"statusCode":...,"message":"...",
-    // "name":"..."}) — pull out .message when present for a clean, specific
+    // "name":"..."}) - pull out .message when present for a clean, specific
     // reason (unverified domain, rate limit, invalid "from" format, etc.);
     // fall back to the raw body for anything that doesn't parse.
     let reason = bodyText;
@@ -88,7 +88,7 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
       const parsed = JSON.parse(bodyText);
       if (typeof parsed?.message === "string") reason = parsed.message;
     } catch {
-      // not JSON — keep the raw text
+      // not JSON - keep the raw text
     }
     throw new EmailSendFailedError(res.status, reason || "no further detail returned");
   }

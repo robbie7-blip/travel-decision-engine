@@ -16,14 +16,14 @@ interface AccountState {
   quota?: { used: number; limit: number };
   // False for an account that's "paid" via the owner-override allowlist
   // (see lib/account.ts's resolvePlan) rather than a real Stripe
-  // subscription — nothing for the billing portal to manage in that case.
+  // subscription - nothing for the billing portal to manage in that case.
   hasStripeSubscription?: boolean;
 }
 
 /** Shows the signed-in visitor's plan + usage, or a sign-in box if not
  * signed in yet. Also where a magic-link click and a post-checkout Stripe
  * redirect both land (see the ?signedIn= / ?checkout= / ?error= query
- * params handled below) — one page for "start here" and "here's your
+ * params handled below) - one page for "start here" and "here's your
  * account" rather than splitting sign-in across a separate route. */
 export default function AccountPage() {
   const [language, setLanguageState] = useState<Language>("en");
@@ -45,7 +45,7 @@ export default function AccountPage() {
       setError(dict.account.invalidLink);
     } else if (errorCode) {
       // Anything else (missing_token, server, ...) used to fail silently
-      // here — the page would just sit on "not signed in" with no
+      // here - the page would just sit on "not signed in" with no
       // indication anything had gone wrong, which is a big part of why
       // this class of bug was so hard to diagnose from the outside: a
       // real click that hit a real server error looked identical to
@@ -118,7 +118,7 @@ export default function AccountPage() {
   const planName = account?.plan === "paid" ? t.account.paidPlanName : t.account.freePlanName;
 
   // Same teal → gold → red ramp the rest of the app already uses for
-  // confidence tiers ("grounded" / "unverified" / "infeasible") — reused
+  // confidence tiers ("grounded" / "unverified" / "infeasible") - reused
   // here because it's the same underlying meaning: fine, getting close,
   // over. Aliased vars, not new colors, per the 6-color system.
   const quotaPercent = account?.quota ? Math.min(100, Math.round((account.quota.used / Math.max(account.quota.limit, 1)) * 100)) : 0;
@@ -129,7 +129,7 @@ export default function AccountPage() {
   return (
     <div style={{ minHeight: "100%" }}>
       {/* Header stays 1450 (matching the rest of the site) even though this
-          page's own content column below is narrower — see the comment on
+          page's own content column below is narrower - see the comment on
           ask/page.tsx's SiteHeader call for why. */}
       <SiteHeader
         language={language}
@@ -143,7 +143,7 @@ export default function AccountPage() {
         {/* Outer 1450 matches the header's own width (see SiteHeader.tsx)
             so this page's content starts at the same left edge as every
             other page's, regardless of how narrow its own reading column
-            is — the 560 below controls line length, not position. */}
+            is - the 560 below controls line length, not position. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 700 }}>
           <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 20px", color: "var(--brand-teal)" }}>

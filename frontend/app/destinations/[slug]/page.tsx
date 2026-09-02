@@ -44,7 +44,7 @@ export async function generateMetadata({
   const title = t.metaDetailTitle.replace("{city}", displayCity);
   const description = t.metaDetailDescription.replace("{city}", displayCity);
   // The OG image itself (opengraph-image.tsx in this folder) stays
-  // English-only regardless of language here — Next's file-convention
+  // English-only regardless of language here - Next's file-convention
   // image routes don't receive searchParams at all, so there's no ?lang=
   // value to forward to it. See that file's header for the confirmed
   // Next.js limitation.
@@ -57,8 +57,8 @@ export async function generateMetadata({
 }
 
 // Colors reuse the same CSS variables the rest of the app uses for the same
-// meaning — tourist-trap warnings get the same tone as a budget-integrity
-// warning — independent of language; only the label text is translated.
+// meaning - tourist-trap warnings get the same tone as a budget-integrity
+// warning - independent of language; only the label text is translated.
 const CATEGORY_COLOR: Record<string, string> = {
   transit: "var(--grounded)",
   cost: "var(--accent-1)",
@@ -113,7 +113,7 @@ export default async function DestinationPage({
       ? all.slice(0, 3)
       : [all[(currentIndex + 1) % all.length], all[(currentIndex + 2) % all.length], all[(currentIndex + 3) % all.length]];
 
-  // Structured data for search engines — a lightweight TouristDestination
+  // Structured data for search engines - a lightweight TouristDestination
   // entry, not a substitute for the meta description above, just a machine-
   // readable version of the same facts for rich-result eligibility.
   const jsonLd = {
@@ -134,10 +134,10 @@ export default async function DestinationPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <div style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
-        {/* 1450, not this page's own 780px content width below — see the
+        {/* 1450, not this page's own 780px content width below - see the
             comment on ask/page.tsx's SiteHeader call for why the header
             stays pinned to the site-wide width regardless. Two rows,
-            matching SiteHeader.tsx — see that file's header comment. */}
+            matching SiteHeader.tsx - see that file's header comment. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
             <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
@@ -198,7 +198,7 @@ export default async function DestinationPage({
       </div>
 
       {/* Outer 1450 matches the header above so this page's content starts
-          at the same left edge as every other page's — see the same fix on
+          at the same left edge as every other page's - see the same fix on
           account/page.tsx. Top margin moved to padding on the outer div
           since it now also carries the horizontal padding. */}
       <div style={{ padding: "36px clamp(32px, 8%, 180px) 0" }}>
@@ -259,7 +259,7 @@ export default async function DestinationPage({
                     marginBottom: 12,
                   }}
                 >
-                  {/* A rule, not a dot — the same marker the itinerary and
+                  {/* A rule, not a dot - the same marker the itinerary and
                       the homepage legend use since the confidence dots were
                       replaced. This was the last dot left on the site. */}
                   <span

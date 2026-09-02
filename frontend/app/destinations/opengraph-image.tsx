@@ -1,10 +1,10 @@
-// Social share image for the /destinations index — same branding as the
+// Social share image for the /destinations index - same branding as the
 // per-city guide image (see [slug]/opengraph-image.tsx) and the trip
 // share image, just without a specific city's photo to feature.
 //
 // English-only, not a locale gap that's fixable here: Next's
 // opengraph-image.tsx file convention only ever passes `params` to this
-// function, never `searchParams` — confirmed by trying it (a ?lang=bg
+// function, never `searchParams` - confirmed by trying it (a ?lang=bg
 // request still throws "Cannot destructure property 'lang' of undefined"
 // inside this function, and the build's static-prerender pass also has no
 // searchParams at all). See https://github.com/vercel/next.js/discussions/56314.
@@ -18,7 +18,7 @@ import { listDestinationSlugs } from "@/lib/destinations";
 import { TRANSLATIONS } from "@/lib/i18n";
 
 export const runtime = "nodejs";
-export const alt = "decide — destination guides";
+export const alt = "decide - destination guides";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

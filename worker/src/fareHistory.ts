@@ -1,7 +1,7 @@
 // Accumulates a price history of our own, one observation at a time.
 //
 // This exists because real "should I buy now or wait?" is not a prompting
-// problem — it needs historical prices for the specific route, and no model
+// problem - it needs historical prices for the specific route, and no model
 // can supply those. The codebase already paid for that lesson once: see the
 // header of engine/flightPricing.ts, where a confident "€150, likely with
 // one connection" guess turned out to be a real €43 nonstop, which is why
@@ -10,12 +10,12 @@
 // Third-party price metrics (see fetchPriceMetrics) answer "is this cheap
 // for this route" today, but their coverage is partial and they're someone
 // else's dataset. Every generation with an origin already fetches one real,
-// timestamped market fare — recording those costs one Redis write and, over
+// timestamped market fare - recording those costs one Redis write and, over
 // months, produces something no prompt can substitute for and no competitor
 // has: our own price curves for the routes our travellers actually fly.
 //
 // Deliberately write-only for now. Nothing reads this yet, and that's the
-// point — the data has to exist before any feature can stand on it, and
+// point - the data has to exist before any feature can stand on it, and
 // starting to collect late is the one mistake that can't be undone later.
 
 import type Redis from "ioredis";

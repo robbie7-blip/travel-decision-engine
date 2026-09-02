@@ -15,7 +15,7 @@ async function loadList(redis: ReturnType<typeof getRedis>): Promise<ShowcaseTri
   return raw.map((r) => (typeof r === "string" ? (JSON.parse(r) as ShowcaseTrip) : r));
 }
 
-// Rewrites the whole list rather than lrem/lset-ing a single value — Upstash
+// Rewrites the whole list rather than lrem/lset-ing a single value - Upstash
 // auto-deserializes JSON-looking strings on read, so a value read back as an
 // object won't byte-for-byte match the JSON string it was written as,
 // which is what lrem needs. Fine at this scale (an admin-curated list, not
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
   const entry: ShowcaseTrip = { jobId: job.id, destinations: job.brief.destinations, addedAt: Date.now() };
   const updated = [...existing, entry].slice(-MAX_SHOWCASE_ENTRIES);
   await saveList(redis, updated);
-  // The whole point of curating this trip is that it keeps showing up —
+  // The whole point of curating this trip is that it keeps showing up -
   // don't let it quietly drop off the gallery on the normal 30-day job TTL.
   await redis.expire(jobKey(job.id), CURATED_JOB_TTL_SECONDS);
 
