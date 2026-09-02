@@ -7,6 +7,8 @@ import {
   MAX_TRIP_QA_IMAGE_BYTES,
   MAX_TRIP_QA_MESSAGE_LENGTH,
   TRIP_QA_IMAGE_MAX_EDGE_PX,
+  LOCAL_VOICES,
+  type LocalVoice,
   type TripQAContext,
   type TripQAImage,
   type TripQAMessage,
@@ -91,6 +93,10 @@ interface TripQAProps {
  * than a blank wait followed by the whole answer at once. */
 export function TripQA({ context, language, t }: TripQAProps) {
   const [messages, setMessages] = useState<TripQAMessage[]>([]);
+  // null is "Anyone", the plain assistant this feature had before. It is
+  // the default on purpose: a picker that forces a choice before the first
+  // question turns a text box into a form.
+  const [voice, setVoice] = useState<LocalVoice | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -179,7 +185,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
       const res = await fetch("/api/trip-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, context, language }),
+        body: JSON.stringify({ messages: next, context, language, voice }),
       });
 
       if (!res.ok) {
@@ -236,6 +242,47 @@ export function TripQA({ context, language, t }: TripQAProps) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Who you're asking. Shown only before the first question: mid
+          conversation it would be a second control competing with the
+          input, and switching voice halfway through an exchange reads as
+          the person you were talking to being replaced. */}
+      {messages.length === 0 && (
+        <div>
+          <div
+            className="font-ui"
+            style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 8 }}
+          >
+            {t.tripQA.voiceHeading}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {([null, ...LOCAL_VOICES] as (LocalVoice | null)[]).map((option) => {
+              const active = voice === option;
+              return (
+                <button
+                  key={option ?? "any"}
+                  type="button"
+                  onClick={() => setVoice(option)}
+                  aria-pressed={active}
+                  className="font-ui voice-chip"
+                  data-active={active}
+                  title={option ? t.tripQA.voices[option].blurb : undefined}
+                >
+                  <span style={{ fontWeight: 600 }}>
+                    {option ? t.tripQA.voices[option].label : t.tripQA.voiceAnyone}
+                  </span>
+                  {option && <span className="voice-chip-blurb">{t.tripQA.voices[option].blurb}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {/* Says plainly that this is a point of view, not a person. The
+              prompt refuses to invent a biography; this is the same
+              promise made where the traveler can see it. */}
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
+            {t.tripQA.voiceNote}
+          </div>
+        </div>
+      )}
       {messages.length === 0 && examples.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {examples.map((prompt) => (

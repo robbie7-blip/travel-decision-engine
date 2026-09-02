@@ -36,6 +36,8 @@ import {
   MAX_TRIP_QA_IMAGES_SENT,
   MAX_TRIP_QA_MESSAGE_LENGTH,
   TRIP_QA_IMAGE_MEDIA_TYPES,
+  isLocalVoice,
+  type LocalVoice,
   type TripQAContext,
   type TripQAImage,
   type TripQAMessage,
@@ -174,6 +176,52 @@ travel advisory, a disease outbreak, a political situation), say plainly that yo
 current information and the traveler should check an official source (their government's travel \
 advisory site, the CDC, etc.) - don't state something time-sensitive as settled fact.`;
 
+// The chosen local perspective, appended to the system prompt.
+//
+// The point is not costume. It is that a real local's answer is anchored
+// in a particular life: a cook tells you where the good tomatoes come from
+// and which "traditional" place is for tourists, someone who works nights
+// knows which streets are actually fine at 2am and which bus still runs.
+// A flat assistant voice averages all of that away and gives you the
+// guidebook.
+//
+// Two hard rules in every voice, both about honesty rather than tone.
+// It must not invent a name, a family or a biography and present them as a
+// real person, because a traveler acting on "my cousin runs a place on
+// that street" deserves that to be true. And a perspective is not a licence
+// to be more certain: the same uncertainty rules above still apply, and a
+// local voice makes it MORE tempting to state a stale opening time as
+// personal knowledge.
+const LOCAL_VOICE_PROMPT: Record<LocalVoice, string> = {
+  neighbour: `Answer as someone who has lived in this destination for years and is fond of it \
+without being starry-eyed about it: the neighbour who tells you which street is worth the walk, \
+which square is only worth it before nine in the morning, and where the queue is a tourist queue.`,
+  cook: `Answer as someone who cooks and eats in this destination for a living: markets, what is \
+actually in season right now, which dish is genuinely local and which one is on every menu for \
+visitors, what a normal portion and a normal price look like, and where people who work in \
+kitchens eat on their day off.`,
+  night: `Answer as someone whose day in this destination runs late: which areas are genuinely \
+fine to walk through after dark and which are just quiet rather than safe, what is still open, \
+how people actually get home, which last transport is real and which one you should not count on.`,
+  family: `Answer as someone raising a family in this destination: what works with children and \
+what does not, distances and pacing with small legs, where a bathroom and a bench actually are, \
+which famous thing is worth the queue with kids in tow and which is a bad hour of everyone's life.`,
+};
+
+/** The chosen perspective as prompt text, plus the guardrails that hold in
+ * every one of them. Empty when no voice is picked, which is the default. */
+function voiceInstruction(voice: LocalVoice | null): string {
+  if (!voice) return "";
+  return `\n\nLOCAL PERSPECTIVE: ${LOCAL_VOICE_PROMPT[voice]}
+
+Speak in the first person from that perspective and let it shape WHICH details you reach for. Two \
+things this never changes. Do not invent a name, a family, a workplace or any other biography and \
+present it as a real person - you are decide answering from a local point of view, not a specific \
+human being, and if you are asked who you are, say exactly that plainly. And do not become more \
+confident than you have grounds to be: a lived-in voice makes it tempting to state an opening time \
+or a current price as personal knowledge, and the honesty rules above still hold in full.`;
+}
+
 function languageLabel(language: Language): string {
   return language === "bg" ? "Bulgarian (български)" : "English";
 }
@@ -243,7 +291,7 @@ function isValidMessage(m: unknown): m is TripQAMessage {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { messages?: unknown; context?: TripQAContext; language?: Language };
+  let body: { messages?: unknown; context?: TripQAContext; language?: Language; voice?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -359,6 +407,10 @@ export async function POST(request: NextRequest) {
     ];
   }
 
+  // Unrecognised or absent -> no voice, which is the plain assistant the
+  // feature had before. Never trust the client to hand back a valid one.
+  const voice: LocalVoice | null = isLocalVoice(body.voice) ? body.voice : null;
+
   const client = createAnthropicClient({ apiKey });
   const encoder = new TextEncoder();
   const modelParams = {
@@ -371,7 +423,11 @@ export async function POST(request: NextRequest) {
           (isPaid ? SYSTEM_PROMPT + WEB_SEARCH_ADDENDUM : SYSTEM_PROMPT) +
           (carriesImages ? PHOTO_ADDENDUM : ""),
       },
-      { type: "text" as const, text: contextBlock(body.context, language) },
+      // The voice rides with the trip context rather than in the block
+      // above, so the long, static instructions stay byte-identical across
+      // requests and keep whatever prompt caching they earn. This block is
+      // per-request anyway.
+      { type: "text" as const, text: contextBlock(body.context, language) + voiceInstruction(voice) },
     ],
     ...(isPaid
       ? { tools: [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES }] }

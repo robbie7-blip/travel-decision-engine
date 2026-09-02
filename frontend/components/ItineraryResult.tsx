@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ConfidenceTag, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
 import { TripQA } from "./TripQA";
+import { TripVisitedPrompt } from "./TripVisitedPrompt";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
@@ -697,6 +698,12 @@ export function ItineraryResult({
           t={t}
         />
       </div>
+
+      {/* Last thing on the page, and only once the trip is actually over -
+          see TripVisitedPrompt. This is the one moment someone is certain
+          to be thinking about this specific trip, which is exactly when
+          "add it to your map" is worth asking. */}
+      <TripVisitedPrompt destinations={destinations} endDate={endDate} t={t} language={language} />
     </div>
   );
 }

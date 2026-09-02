@@ -309,15 +309,39 @@ section("the things the traveler actually asked for");
     !firedChecks2(withTrevi, wantsTrevi).includes("must_see_covered")
   );
 
-  // Explained away in the skip list - allowed, because it was said out loud.
+  // Explained away in the skip list. Still not a silent drop, so still not
+  // a defect - but it is no longer indistinguishable from having actually
+  // been delivered. "Too far to walk, so we skipped it" is the most common
+  // way a must-see is lost, and the prompt now says to solve that with
+  // transport instead; the warning is how we find out whether it does.
   const explained = itinerary(baseline());
   explained.things_to_skip = [
     { item: "Trevi Fountain", reasoning: "Rebuilt scaffolding all November, nothing to see" },
     { item: "Pantheon", reasoning: "Closed for restoration on both free days" },
   ];
+  const explainedFindings = assessQuality(explained, wantsTrevi, plan()).findings.filter(
+    (f) => f.check === "must_see_covered"
+  );
   check(
     "a must-see openly skipped is NOT a silent drop",
-    !assessQuality(explained, wantsTrevi, plan()).findings.some((f) => f.check === "must_see_covered")
+    !explainedFindings.some((f) => f.severity === "defect")
+  );
+  check(
+    "but an explained-away must-see is recorded as a warning",
+    explainedFindings.length === 2 && explainedFindings.every((f) => f.severity === "warning"),
+    `${explainedFindings.length} finding(s)`
+  );
+
+  // The distinction the warning exists to draw: delivered on a day beats
+  // explained away in prose, and only the first is silent.
+  const delivered = baseline();
+  delivered[1].items.push(item({ title: "Trevi Fountain", venue_name: "Trevi Fountain", time: "17:00" }));
+  delivered[1].items.push(item({ title: "Pantheon", venue_name: "Pantheon", time: "11:00" }));
+  check(
+    "a must-see reached by taxi rather than skipped raises nothing at all",
+    assessQuality(itinerary(delivered), wantsTrevi, plan()).findings.filter(
+      (f) => f.check === "must_see_covered"
+    ).length === 0
   );
 
   // Loose matching: how someone types it vs how the itinerary writes it.

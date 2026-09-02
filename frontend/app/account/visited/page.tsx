@@ -6,6 +6,8 @@ import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VisitedMap } from "@/components/VisitedMap";
 import { VisitedFlags } from "@/components/VisitedFlags";
+import { VisitedPhotoWall } from "@/components/VisitedPhotoWall";
+import { deletePhotosForPlace, placeKeyFor } from "@/lib/visitedPhotos";
 import { VisitedTimeline } from "@/components/VisitedTimeline";
 import { VisitedChronology } from "@/components/VisitedChronology";
 import { VisitedZoomableMap } from "@/components/VisitedZoomableMap";
@@ -59,7 +61,7 @@ const BADGE_COLORS: Record<string, string> = {
   half_the_world: "var(--brand-red)",
 };
 
-type Tab = "map" | "globe" | "zoomable" | "flags" | "timeline" | "chronology" | "pins";
+type Tab = "map" | "globe" | "zoomable" | "flags" | "timeline" | "chronology" | "pins" | "photos";
 
 /** The Been-style visited-countries tracker. Local-storage-first, same as
  * the Been app itself - marking a country visited needs no account, it
@@ -165,8 +167,16 @@ export default function VisitedPage() {
 
   function toggle(code: string) {
     const next = { ...entries };
-    if (next[code]) delete next[code];
-    else next[code] = { code };
+    if (next[code]) {
+      delete next[code];
+      // Un-marking a country takes its photos with it. Left behind they
+      // would sit in IndexedDB with no row on the Photos tab to reach them
+      // through, and re-adding the country later would surprise someone
+      // with pictures they thought they had deleted.
+      void deletePhotosForPlace(placeKeyFor(code));
+    } else {
+      next[code] = { code };
+    }
     applyEntries(next, code);
   }
 
@@ -309,6 +319,7 @@ export default function VisitedPage() {
     { id: "timeline", label: v.tabTimeline, color: "var(--brand-green)" },
     { id: "chronology", label: v.tabChronology, color: "var(--brand-red)" },
     { id: "pins", label: v.tabPins, color: "var(--brand-teal)" },
+    { id: "photos", label: v.photosTab, color: "var(--brand-coral)" },
   ];
 
   return (
@@ -464,6 +475,7 @@ export default function VisitedPage() {
               />
             )}
             {tab === "flags" && <VisitedFlags codes={[...codes]} onToggle={toggle} emptyLabel={v.flagsEmpty} language={language} />}
+            {tab === "photos" && <VisitedPhotoWall codes={[...codes]} t={t} language={language} />}
             {tab === "timeline" && (
               <VisitedTimeline
                 entries={entryList}

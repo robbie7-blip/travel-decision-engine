@@ -1077,3 +1077,118 @@ p {
     justify-content: center;
   }
 }
+
+/* The "who are you asking" picker on Ask a Local. A chip rather than a
+   radio because it is optional: the default is Anyone, and the point is to
+   look like a choice worth making rather than a field that must be filled
+   before the box below can be used. */
+.voice-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  color: var(--ink-soft);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.voice-chip:hover {
+  border-color: var(--line-strong);
+  background: var(--bg-panel-raised);
+}
+
+.voice-chip[data-active="true"] {
+  border-color: var(--brand-teal);
+  background: var(--brand-teal);
+  color: #ffffff;
+}
+
+/* Selection is carried by the fill AND the pressed state on the button,
+   not by colour alone - the same WCAG 1.4.1 reason the confidence dots
+   became tags. */
+.voice-chip-blurb {
+  font-size: 11px;
+  color: var(--ink-dim);
+  line-height: 1.35;
+}
+
+.voice-chip[data-active="true"] .voice-chip-blurb {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+@media (pointer: coarse) {
+  .voice-chip {
+    min-height: 44px;
+  }
+}
+
+/* Photo thumbnails on Places you've been. The add button matches the
+   thumbnail size so a row of photos and the button to add another read as
+   one strip rather than a grid with a control bolted on the end. */
+.photo-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: var(--bg-panel-raised);
+  color: var(--ink-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.photo-add:hover:not(:disabled) {
+  border-color: var(--brand-teal);
+  color: var(--brand-teal);
+}
+
+.photo-add:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Sits on the thumbnail's corner. Solid rather than translucent because a
+   photo can be any colour underneath it, and a × that disappears against
+   a bright sky is a delete control nobody can find. */
+.photo-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-panel);
+}
+
+.photo-remove:hover {
+  border-color: var(--infeasible);
+  color: var(--infeasible);
+}
+
+@media (pointer: coarse) {
+  /* 44px would swallow the thumbnail it sits on, so this one grows only to
+     where a thumb can reliably hit it and the whole tile stays visible. */
+  .photo-remove {
+    width: 32px;
+    height: 32px;
+    top: -10px;
+    right: -10px;
+    font-size: 18px;
+  }
+}

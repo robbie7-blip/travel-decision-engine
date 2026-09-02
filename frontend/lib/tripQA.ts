@@ -66,6 +66,25 @@ export interface TripQAContext {
 
 // A single message beyond this length is almost certainly not a genuine
 // quick trip question - bounds worst-case token cost per request.
+// Which local the traveler wants to hear from. "Ask a Local" answered in a
+// single flat assistant voice, which is a fine encyclopaedia and a poor
+// local: the useful thing about asking a person who lives somewhere is
+// that a night-bus driver, a chef and a grandmother give you three
+// different true answers to "where should I eat".
+//
+// These are voices, not people. Nothing here invents a named human or
+// claims a real person is answering - see LOCAL_VOICE_PROMPT in
+// app/api/trip-questions/route.ts, which is explicit that this is still
+// decide answering, in a chosen local perspective. Naming a fictional
+// "Marco from Trastevere" would be a nicer demo and a lie.
+export type LocalVoice = "neighbour" | "cook" | "night" | "family";
+
+export const LOCAL_VOICES: LocalVoice[] = ["neighbour", "cook", "night", "family"];
+
+export function isLocalVoice(value: unknown): value is LocalVoice {
+  return typeof value === "string" && (LOCAL_VOICES as string[]).includes(value);
+}
+
 export const MAX_TRIP_QA_MESSAGE_LENGTH = 800;
 
 // The client keeps the full visible conversation, but only this many most

@@ -6,6 +6,7 @@
 // LANGUAGE_LABEL in lib/engine/prompt.ts), driven by the same Language value.
 
 import type { ConfidenceTier, Language } from "./types";
+import type { LocalVoice } from "./tripQA";
 import type { JobStatus } from "./jobs";
 
 export const LANGUAGE_NAMES: Record<Language, string> = {
@@ -318,6 +319,14 @@ export interface Dictionary {
     // fills what was otherwise a lot of empty space under the input box on
     // a fresh /ask visit, and doubles as a hint at the kind of question
     // this is for (packing/safety/customs, not itinerary planning).
+    /** The "who are you asking" picker. These are perspectives, not
+     * invented people: see LOCAL_VOICES in lib/tripQA.ts and the prompt in
+     * app/api/trip-questions/route.ts, which is explicit that decide is
+     * still the one answering. */
+    voiceHeading: string;
+    voiceAnyone: string;
+    voiceNote: string;
+    voices: Record<LocalVoice, { label: string; blurb: string }>;
     examplePrompts: string[];
     // The trip-page variant of the above, with {destination} and {month}
     // placeholders filled from the itinerary's own brief.
@@ -386,6 +395,23 @@ export interface Dictionary {
     statsPercent: string; // "{percent}" placeholder
     statsContinents: string; // "{count}" / "{total}" placeholders
     signInPrompt: string;
+    photos: {
+      add: string;
+      adding: string;
+      remove: string;
+      deviceOnly: string;
+      tooMany: string; // "{max}"
+      tooLarge: string;
+      failed: string;
+    };
+    /** The prompt at the end of a finished itinerary. */
+    tripPrompt: {
+      heading: string;
+      body: string; // "{places}"
+      addButton: string;
+      added: string; // "{places}"
+      undo: string;
+    };
     signInButton: string;
     signInSent: string;
     badges: Record<
@@ -421,6 +447,11 @@ export interface Dictionary {
       tabChronology: string;
       tabPins: string;
       flagsEmpty: string;
+      /** The Photos tab. Device-local by design (see lib/visitedPhotos.ts),
+       * which is why deviceOnly is copy and not a footnote. */
+      photosTab: string;
+      photosEmpty: string;
+      photosIntro: string;
       timelineEmpty: string;
       timelineDateUnknown: string;
       timelineSetDate: string;
@@ -735,6 +766,15 @@ const en: Dictionary = {
     photoUnreadable: "Couldn't read that image - try a different photo.",
     photoProOnly: "Photos are a Pro feature. Snap the minibar card, a menu, a sign - anything you're looking at - and ask about it.",
     photoProOnlyCta: "See Pro",
+    voiceHeading: "Who are you asking?",
+    voiceAnyone: "Anyone",
+    voiceNote: "Still decide answering, just from that point of view.",
+    voices: {
+      neighbour: { label: "A neighbour", blurb: "Lives here, knows which queue is worth it" },
+      cook: { label: "Someone who cooks", blurb: "Markets, seasons, where kitchen staff eat" },
+      night: { label: "Someone up late", blurb: "After dark, last transport, what's open" },
+      family: { label: "A parent", blurb: "With kids: distances, benches, what's worth it" },
+    },
     examplePrompts: [
       "What should I pack for Lisbon in October?",
       "Is it safe to walk around at night in Mexico City?",
@@ -822,6 +862,22 @@ const en: Dictionary = {
     statsPercent: "{percent}% of the world",
     statsContinents: "{count} of {total} continents",
     signInPrompt: "Sign in to sync this list across devices - no password needed.",
+    photos: {
+      add: "+ Photo",
+      adding: "Adding...",
+      remove: "Remove this photo",
+      deviceOnly: "Kept on this device only.",
+      tooMany: "That's the limit of {max} photos for this place.",
+      tooLarge: "That photo is too large. Try one under 12MB.",
+      failed: "Couldn't save that photo on this device.",
+    },
+    tripPrompt: {
+      heading: "Been here now?",
+      body: "Add {places} to the places you've been, and keep a photo or two with it.",
+      addButton: "Add to my map",
+      added: "{places} added to your map.",
+      undo: "Undo",
+    },
     signInButton: "Email me a sign-in link",
     signInSent: "Check your email for a sign-in link.",
     badges: {
@@ -855,6 +911,9 @@ const en: Dictionary = {
       tabChronology: "Chronology",
       tabPins: "Map Pins",
       flagsEmpty: "Mark a country visited and its flag shows up here.",
+      photosTab: "Photos",
+      photosEmpty: "Mark a country visited and you can add photos to it here.",
+      photosIntro: "Photos stay on this device. They are not uploaded anywhere, so they will not show up on your other devices, and clearing your browser data removes them.",
       timelineEmpty: "Mark a country visited to start your timeline.",
       timelineDateUnknown: "Date unknown",
       timelineSetDate: "Set the date",
@@ -1170,6 +1229,15 @@ const bg: Dictionary = {
     photoUnreadable: "Снимката не може да бъде прочетена - опитайте с друга.",
     photoProOnly: "Снимките са функция на Pro. Снимайте картата на минибара, меню, табела - каквото гледате - и попитайте за него.",
     photoProOnlyCta: "Виж Pro",
+    voiceHeading: "Кого питате?",
+    voiceAnyone: "Все едно кого",
+    voiceNote: "Отговаря пак decide, просто от тази гледна точка.",
+    voices: {
+      neighbour: { label: "Съсед", blurb: "Живее тук, знае за коя опашка си струва" },
+      cook: { label: "Човек, който готви", blurb: "Пазари, сезони, къде се хранят готвачите" },
+      night: { label: "Човек, който е буден до късно", blurb: "След мръкване, последен транспорт, какво работи" },
+      family: { label: "Родител", blurb: "С деца: разстояния, пейки, кое си струва" },
+    },
     examplePrompts: [
       "Какво да си взема за Лисабон през октомври?",
       "Безопасно ли е да се разхождам вечер в Мексико Сити?",
@@ -1250,6 +1318,22 @@ const bg: Dictionary = {
     statsPercent: "{percent}% от света",
     statsContinents: "{count} от {total} континента",
     signInPrompt: "Влезте, за да синхронизирате списъка на други устройства - без парола.",
+    photos: {
+      add: "+ Снимка",
+      adding: "Добавяне...",
+      remove: "Премахни тази снимка",
+      deviceOnly: "Пази се само на това устройство.",
+      tooMany: "Това е границата от {max} снимки за това място.",
+      tooLarge: "Снимката е твърде голяма. Пробвайте под 12MB.",
+      failed: "Снимката не можа да се запази на това устройство.",
+    },
+    tripPrompt: {
+      heading: "Вече бяхте там?",
+      body: "Добавете {places} към местата, където сте били, и запазете снимка или две.",
+      addButton: "Добави към картата ми",
+      added: "{places} е добавено към картата ви.",
+      undo: "Отмени",
+    },
     signInButton: "Изпрати ми линк за вход",
     signInSent: "Проверете имейла си за линк за вход.",
     badges: {
@@ -1283,6 +1367,9 @@ const bg: Dictionary = {
       tabChronology: "По години",
       tabPins: "Пинове",
       flagsEmpty: "Отбележете държава като посетена и флагът ѝ ще се появи тук.",
+      photosTab: "Снимки",
+      photosEmpty: "Отбележете държава като посетена и ще можете да добавяте снимки тук.",
+      photosIntro: "Снимките остават на това устройство. Не се качват никъде, така че няма да се появят на другите ви устройства, а изчистването на данните на браузъра ги премахва.",
       timelineEmpty: "Отбележете държава като посетена, за да започнете хронологията си.",
       timelineDateUnknown: "Неизвестна дата",
       timelineSetDate: "Задай дата",

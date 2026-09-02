@@ -560,7 +560,24 @@ export function assessQuality(
     .flatMap((d) => d.items.flatMap((i) => [i.title, i.venue_name ?? "", i.location, i.reasoning]))
     .join(" ");
   for (const wanted of brief.must_see ?? []) {
-    if (mentions(itemText, wanted) || mentions(narrative, wanted)) continue;
+    if (mentions(itemText, wanted)) continue;
+    if (mentions(narrative, wanted)) {
+      // In the narrative but not in the days: it was asked for, and what
+      // came back was an explanation instead of a plan. Sometimes that is
+      // the honest answer (closed for the dates, a full day each way), so
+      // this is not a defect. But it was previously indistinguishable from
+      // a must-see that was properly delivered, which meant the most
+      // common way to lose one - "too far to walk, so we skipped it" -
+      // left no trace at all. The prompt now says to solve that with
+      // transport rather than by dropping the place; this is how often
+      // that instruction is actually being followed.
+      findings.push({
+        check: "must_see_covered",
+        severity: "warning",
+        detail: `"${wanted}" was asked for but only appears as an explanation, not as a real item on a day`,
+      });
+      continue;
+    }
     findings.push({
       check: "must_see_covered",
       severity: "defect",
