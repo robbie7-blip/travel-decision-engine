@@ -22,7 +22,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createAnthropicClient } from "@/lib/anthropicClient";
+import { createAnthropicClient, isMissingWorkspaceIdError } from "@/lib/anthropicClient";
 import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
@@ -107,7 +107,33 @@ whatever you searched.`;
 // raw provider error — never leak "Model provider error: 529 {...}" into
 // the UI, that's both ugly and actively undermines trust in the product.
 const MAX_MODEL_ATTEMPTS = 2;
-const FALLBACK_REPLY = "Give me a second and try asking again, I'm a little overloaded right now.";
+
+// Two different failures, two different sentences, because "try again in a
+// second" is only true for one of them.
+//
+// A transient overload really does clear on a retry. A CONFIGURATION
+// failure — a key that has expired, or an identity-linked key with no
+// ANTHROPIC_WORKSPACE_ID — never will, and telling someone to try again is
+// sending them into a loop that cannot end. Both used to produce the same
+// friendly line, which meant a dead API key looked exactly like a busy
+// server: the traveler retried forever and the owner had no signal at all
+// unless they happened to open Vercel's runtime logs.
+const FALLBACK_REPLY: Record<Language, string> = {
+  en: "Give me a second and try asking again, I'm a little overloaded right now.",
+  bg: "Дай ми секунда и опитай пак, в момента съм малко претоварен.",
+};
+
+// Deliberately does NOT say "try again": it would not work. Says the fault
+// is ours, because it is.
+const MISCONFIGURED_REPLY: Record<Language, string> = {
+  en: "Ask a Local is temporarily unavailable. That's a problem on our side, not with your question.",
+  bg: "\u201eПитай местен\u201c временно не работи. Проблемът е при нас, не във въпроса ти.",
+};
+
+/** A failure that no number of retries will fix. */
+function isConfigurationError(e: unknown): boolean {
+  return isMissingWorkspaceIdError(e) || e instanceof Anthropic.AuthenticationError;
+}
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable travel assistant helping with practical trip \
 questions: what to pack, whether an area is safe at night, whether to bring insect repellent or a \
@@ -356,12 +382,23 @@ export async function POST(request: NextRequest) {
             // A well-formed response with no text content is rare but not
             // impossible — same fallback as a hard failure, since an empty
             // reply is just as unhelpful to the traveler either way.
-            controller.enqueue(encoder.encode(FALLBACK_REPLY));
+            controller.enqueue(encoder.encode(FALLBACK_REPLY[language]));
           }
           controller.close();
           return;
         } catch (e) {
           console.error(`[trip-questions] model attempt ${attempt} failed:`, e);
+          // No point spending a second call on a credential that cannot
+          // work, and no point telling the traveler to try again.
+          if (isConfigurationError(e)) {
+            console.error(
+              "[trip-questions] THIS IS A CONFIGURATION FAILURE, not an overload — " +
+                "check ANTHROPIC_API_KEY and ANTHROPIC_WORKSPACE_ID on this deployment"
+            );
+            if (!sentAnyText) controller.enqueue(encoder.encode(MISCONFIGURED_REPLY[language]));
+            controller.close();
+            return;
+          }
           if (sentAnyText) {
             // Partial text already reached the client — retrying now would
             // just glue a second, unrelated attempt onto a half-finished
@@ -370,7 +407,7 @@ export async function POST(request: NextRequest) {
             return;
           }
           if (attempt >= MAX_MODEL_ATTEMPTS) {
-            controller.enqueue(encoder.encode(FALLBACK_REPLY));
+            controller.enqueue(encoder.encode(FALLBACK_REPLY[language]));
             controller.close();
             return;
           }

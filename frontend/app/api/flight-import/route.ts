@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createAnthropicClient } from "@/lib/anthropicClient";
+import { createAnthropicClient, isMissingWorkspaceIdError } from "@/lib/anthropicClient";
 import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, FLIGHT_IMPORT_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
@@ -182,7 +182,24 @@ export async function POST(request: NextRequest) {
     const countryCodes = [...new Set(flights.filter((f) => f.isPast).map((f) => f.arrivalCountryCode))];
     const result: FlightImportResult = { flights, countryCodes };
     return NextResponse.json(result);
-  } catch {
+  } catch (e) {
+    // Logged, not swallowed. This catch used to be a bare `catch {}` that
+    // told the traveler "couldn't read that confirmation, try pasting the
+    // full email text" for EVERY failure — including an expired API key or
+    // a missing workspace id. That blames the person's email for a fault
+    // that is entirely ours, sends them off to re-copy text that was
+    // already fine, and leaves no trace anywhere of what actually broke.
+    console.error("[flight-import] failed:", e);
+    if (isMissingWorkspaceIdError(e) || e instanceof Anthropic.AuthenticationError) {
+      console.error(
+        "[flight-import] THIS IS A CONFIGURATION FAILURE — check ANTHROPIC_API_KEY and " +
+          "ANTHROPIC_WORKSPACE_ID on this deployment"
+      );
+      return NextResponse.json(
+        { detail: "Flight import is temporarily unavailable. That's on us, not your email." },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { detail: "Couldn't read that confirmation. Try pasting the full email text." },
       { status: 502 }
