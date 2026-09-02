@@ -8,11 +8,21 @@
      of these six more deliberately (or more sparingly); don't reach
      for a new color.
 
-       1. TEAL   brand / trust / primary interactive. Matches
-          logo-icon.svg's line color exactly, so the wordmark and every
-          "verified" / primary-button / focus moment in the UI reads as
-          one identity with the mark next to it — not a UI blue that
-          happens to sit near a differently-colored logo.
+       1. GREEN  brand / trust / primary interactive. Was a teal, and
+          the name --brand-teal is kept only because renaming it would
+          touch a hundred call sites for no behavioural gain — read it
+          as "the brand colour". Matches logo-icon.svg's line color
+          exactly, so the wordmark and every "verified" /
+          primary-button / focus moment reads as one identity with the
+          mark beside it.
+
+          Green because nobody large in travel owns it. Booking and
+          Expedia are both navy-and-yellow, Airbnb is coral; the deep
+          blue this briefly was is that same category uniform, which
+          solved looking like an AI product by looking like an OTA
+          instead. Green reads considered rather than transactional,
+          and it is the one part of the spectrum this category has
+          left alone.
        2. CORAL  the logo's dot color, and now ONLY that plus focus
           feedback. It used to carry the headline, the tagline and a
           signature coral-into-gold gradient, and coral over a cream
@@ -28,13 +38,13 @@
        5. GREEN  success / feasible / upgrade.
        6. RED    error / infeasible ONLY.
      ============================================================ */
-  --brand-teal: #1f6f8a;
+  --brand-teal: #2c6a4c;
   --brand-coral: #d9643f;
   --brand-gold: #e8a23f;
   /* The gold at a value that can be read rather than only seen — the
      numerals and section rules use this, the tier chip keeps the brighter
      one. */
-  --brand-gold-ink: #9a660f;
+  --brand-gold-ink: #8a6412;
   --brand-purple: #7d5ba6;
   --brand-green: #3f7a4a;
   --brand-red: #b8452f;
@@ -61,9 +71,9 @@
      amount of changing the dots was going to move it. Warmth now comes from
      the typography and the space around it rather than from the paper being
      yellow. */
-  --bg: #faf8f3;
+  --bg: #faf8f1;
   --bg-panel: #ffffff;
-  --bg-panel-raised: #f2efe8;
+  --bg-panel-raised: #f1efe4;
   --line: #e2ded4;
   --line-strong: #bab5a8;
 
@@ -76,14 +86,12 @@
      the eye to fall. This is a deep sea blue for the hero band, with the
      headline reversed out of it.
 
-     It is not a new hue. It is --brand-teal taken down to the value it
-     needs to hold white type, so the masthead, the trust tier and the
-     primary button all still read as one identity. Blue and gold is also
-     about as far from cream and clay as the warm half of the spectrum
-     gets, which is the other thing this had to be. */
-  --deep: #0f3a4b;
-  --deep-ink: #f6f2e8;
-  --deep-soft: #b9cdd6;
+     It is not a new hue. It is the brand green taken down to the value
+     it needs to hold warm off-white type, so the masthead, the trust
+     tier and the primary button all still read as one identity. */
+  --deep: #1b3a2c;
+  --deep-ink: #f4f1e4;
+  --deep-soft: #b3c9b8;
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
 
   /* Confidence-tier colors — aliases onto the six above, not separate
@@ -337,6 +345,22 @@ button {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 32px clamp(20px, 3vw, 36px);
+}
+
+/* The form's own title. Serif, sized like a section heading, over a rule
+   in the brand green — the panel announces itself instead of opening on a
+   field label. */
+.form-heading {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.form-heading + .trip-form-grid {
+  padding-top: 22px;
+  border-top: 2px solid var(--brand-teal);
+  margin-top: 14px;
 }
 
 /* A heading over each group of fields, so a form this long reads as three

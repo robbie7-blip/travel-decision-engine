@@ -139,7 +139,12 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
     // page stopped showing where the product starts, and the form read as
     // text that happened to be lying on the page.
     <div className="form-panel">
+      {/* The panel needed a name. Without one the form opened straight onto
+          a field label, which is how it ended up reading as text lying on
+          the page rather than as the thing the whole page is for. */}
+      <div className="form-heading font-display">{t.form.heading}</div>
       <div className="trip-form-grid">
+        <div className="form-group-label">{t.form.groupWhere}</div>
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label={t.form.destinations}>
             <input
@@ -311,6 +316,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             nextMonthLabel={t.form.calendarNextMonth}
           />
         </div>
+        <div className="form-group-label">{t.form.groupWho}</div>
         <Field label={t.form.partySize}>
           <input
             type="number"
@@ -362,6 +368,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             <option value="walking">{t.form.transportWalking}</option>
           </select>
         </Field>
+        <div className="form-group-label">{t.form.groupTaste}</div>
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label={t.form.interests}>
             <input

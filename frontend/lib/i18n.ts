@@ -128,6 +128,13 @@ export interface Dictionary {
     mobilityPlaceholder: string;
     hardNo: string;
     hardNoPlaceholder: string;
+    /** A heading over the form, and three over its groups. A form this
+     * long reads as a wall of inputs without them; with them it reads as
+     * three short questions, which is what it actually is. */
+    heading: string;
+    groupWhere: string;
+    groupWho: string;
+    groupTaste: string;
     submit: string;
     submitting: string;
     reassurance: string;
@@ -562,6 +569,10 @@ const en: Dictionary = {
     mobilityPlaceholder: "limited walking",
     hardNo: "Hard constraints (optional, comma-separated)",
     hardNoPlaceholder: "no overnight trains, no early mornings",
+    heading: "Tell us the trip",
+    groupWhere: "Where and when",
+    groupWho: "Who's going",
+    groupTaste: "What you're into",
     submit: "Generate itinerary",
     submitting: "Deciding…",
     reassurance: "Takes about a minute - we check live prices as we plan, not guesses.",
@@ -987,6 +998,10 @@ const bg: Dictionary = {
     mobilityPlaceholder: "ограничено ходене пеш",
     hardNo: "Твърди ограничения (по избор, разделени със запетая)",
     hardNoPlaceholder: "без нощни влакове, без ранни сутрини",
+    heading: "Разкажи ни за пътуването",
+    groupWhere: "Къде и кога",
+    groupWho: "Кой пътува",
+    groupTaste: "Какво харесваш",
     submit: "Генерирай маршрут",
     submitting: "Решаваме…",
     reassurance: "Отнема около минута - проверяваме актуални цени, докато планираме, не гадаем.",
