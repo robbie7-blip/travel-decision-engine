@@ -133,11 +133,12 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
   }
 
   return (
-    // No card. The form sits directly on the page ground between the same
-    // hairline rules that divide every other section — a panel inside those
-    // was a frame around a frame, and a rounded white box with a drop
-    // shadow is app furniture rather than anything a guide would print.
-    <div>
+    // A real panel again, but not the old card. White against the warm
+    // page ground with one hairline and generous padding — no drop shadow,
+    // no coloured border. Removing it entirely was an over-correction: the
+    // page stopped showing where the product starts, and the form read as
+    // text that happened to be lying on the page.
+    <div className="form-panel">
       <div className="trip-form-grid">
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label={t.form.destinations}>
@@ -187,7 +188,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               <div style={{ marginTop: 12 }}>
                 <div
                   className="font-ui"
-                  style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
+                  style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
                 >
                   {t.form.compareDates}
                 </div>
@@ -238,7 +239,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                   styling without a popover-reopening side effect. */}
               <div
                 className="font-ui"
-                style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
+                style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
               >
                 {t.form.arrivalDate}
               </div>
@@ -295,7 +296,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               side effect. */}
           <div
             className="font-ui"
-            style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}
+            style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
           >
             {t.form.dates}
           </div>
@@ -414,11 +415,11 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         disabled={submitting}
         className="font-ui btn-primary"
         style={{
-          marginTop: 12,
+          marginTop: 24,
           width: "100%",
-          padding: "14px 18px",
+          padding: "18px 18px",
           fontWeight: 700,
-          fontSize: 13,
+          fontSize: 16,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
           cursor: submitting ? "default" : "pointer",

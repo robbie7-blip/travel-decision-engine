@@ -97,15 +97,19 @@ export function Stamp({ ok, color, children }: { ok: boolean; color?: string; ch
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label style={{ display: "block", marginBottom: 16 }}>
+    <label style={{ display: "block", marginBottom: 20 }}>
+      {/* Was 11px uppercase in --ink-dim with 0.08em tracking: a caption,
+          floating over a field that had no edges of its own. On the one
+          surface that has to be obviously fillable, the label should read
+          as a question being asked, so it is sentence-size, sentence-case
+          and in the darker ink. */}
       <div
         className="font-ui"
         style={{
-          fontSize: 11,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--ink-dim)",
-          marginBottom: 6,
+          fontSize: 13,
+          fontWeight: 600,
+          color: "var(--ink-soft)",
+          marginBottom: 7,
         }}
       >
         {label}
@@ -148,18 +152,23 @@ export function LegalSection({ heading, children }: { heading: string; children:
   );
 }
 
+/** The shared field look, for the controls that build their own trigger
+ * rather than being a plain <input> inside .trip-form-grid — the two date
+ * pickers. Kept in step with the CSS by hand, which is the price of those
+ * controls not being inputs.
+ *
+ * Matches the rest of the form: white fill, a border you can see, and a
+ * 48px target. It used to be a recessed beige box with an inset shadow,
+ * which made the one field a traveler cannot skip the only field that
+ * looked like it belonged to a different form. */
 export const inputStyle: CSSProperties = {
   width: "100%",
-  background: "var(--bg-panel-raised)",
+  minHeight: 48,
+  background: "var(--bg-panel)",
   border: "1px solid var(--line-strong)",
-  borderRadius: 8,
-  padding: "10px 13px",
+  borderRadius: 6,
+  padding: "12px 14px",
   color: "var(--ink)",
-  fontSize: 14,
+  fontSize: 15,
   boxSizing: "border-box",
-  // A recessed inset shadow gives the field real depth against the panel
-  // it sits on — before this, --bg-panel-raised and --bg-panel were close
-  // enough in lightness that a 1px --line border alone barely registered,
-  // so every field read as flush with the panel instead of as an input.
-  boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
 };

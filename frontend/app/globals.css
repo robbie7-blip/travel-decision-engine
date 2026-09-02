@@ -258,53 +258,103 @@ button {
   cursor: default;
 }
 
-/* The form, as a form rather than as an app surface.
-   Was: a 2px teal border on every field with a 4px left edge, a left-to-
-   right tint behind the text, a coral focus glow, and the whole grid inside
-   a white card with a 2px teal border and a 24px coloured shadow. That is a
-   lot of chrome for six inputs, and heavy tinted borders around every field
-   is a strong AI-product tell.
+/* The form.
+   ...
+   This is the product. Everything else on the page is an argument for
+   using it, and it is the one surface where restraint is the wrong
+   instinct — a previous pass stripped the fields to a single hairline
+   underneath, which is handsome on a printed page and, on screen, reads
+   as loose text rather than as somewhere to type. An input has to look
+   fillable before it looks tasteful.
 
-   Now: fields are a single hairline rule underneath, which is what a
-   printed form looks like. Focus darkens the rule and thickens it, so the
-   feedback is unmistakable without a coloured halo. */
+   So: real boxes. A white fill against the warm page ground, a border
+   dark enough to see without being shouted, 48px of height so the field
+   is a target rather than a line, and a focus state that changes two
+   things at once (colour and weight) so it is unmistakable. The chrome
+   that went away and is not coming back is the decoration — the tinted
+   gradients, the 4px coloured left edges, the coral halo. */
 .trip-form-grid input,
 .trip-form-grid select,
 .trip-form-grid textarea {
-  border: none !important;
-  border-bottom: 1px solid var(--line-strong) !important;
-  border-radius: 0 !important;
-  padding: 10px 2px !important;
+  width: 100%;
+  min-height: 48px;
+  background: var(--bg-panel) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 6px !important;
+  padding: 12px 14px !important;
   font-size: 15px !important;
-  background: transparent !important;
-  transition: border-color 0.15s ease !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease !important;
 }
 
+.trip-form-grid textarea {
+  min-height: 76px;
+  line-height: 1.5;
+}
+
+.trip-form-grid input:hover,
+.trip-form-grid select:hover,
+.trip-form-grid textarea:hover {
+  border-color: var(--ink-dim) !important;
+}
+
+/* Two changes at once — the border goes to the brand colour AND gains a
+   ring — so focus is legible for someone who can't separate the two hues.
+   No offset outline on top of it; the ring is the outline. */
 .trip-form-grid input:focus,
 .trip-form-grid select:focus,
 .trip-form-grid textarea:focus {
   outline: none !important;
-  border-bottom-color: var(--ink) !important;
-  border-bottom-width: 2px !important;
-  padding-bottom: 9px !important;
+  border-color: var(--brand-teal) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-teal) 22%, transparent) !important;
 }
 
 .trip-form-grid input::placeholder,
 .trip-form-grid textarea::placeholder {
   color: var(--ink-dim);
-  opacity: 0.65;
+  opacity: 0.7;
 }
 
 .trip-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0 32px;
+  gap: 0 28px;
 }
 
 @media (max-width: 560px) {
   .trip-form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* The panel the form sits in. Not the old card — no drop shadow, no
+   coloured border — but a real surface: white against the warm ground,
+   one hairline, and enough padding that the fields have room to be
+   fields. The page needs to show where the product starts. */
+.form-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 32px clamp(20px, 3vw, 36px);
+}
+
+/* A heading over each group of fields, so a form this long reads as three
+   short questions instead of one wall of inputs. */
+.form-group-label {
+  grid-column: 1 / -1;
+  margin: 4px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-gold-ink);
+}
+
+.form-group-label:not(:first-child) {
+  margin-top: 22px;
 }
 
 /* Default (desktop) state: a normal inline flex row. The mobile media query
