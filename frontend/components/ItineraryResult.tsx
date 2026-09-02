@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ConfidenceDot, inputStyle, SectionLabel, Stamp } from "./ui";
+import { ConfidenceTag, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
 import { TripQA } from "./TripQA";
 import { submitFeedback } from "@/lib/api";
@@ -438,7 +438,10 @@ export function ItineraryResult({
                     aria-label={expanded ? t.result.evidenceHide : t.result.evidenceShow}
                     style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
                   >
-                    <ConfidenceDot tier={item.confidence_tier ?? "inferred"} />
+                    <ConfidenceTag
+                      tier={item.confidence_tier ?? "inferred"}
+                      label={t.tierTag[item.confidence_tier ?? "inferred"]}
+                    />
                   </button>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>

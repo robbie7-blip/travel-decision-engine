@@ -133,15 +133,11 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
   }
 
   return (
-    <div
-      style={{
-        background: "var(--bg-panel)",
-        border: "1px solid var(--line)",
-        borderRadius: 8,
-        padding: 24,
-        boxShadow: "var(--shadow-panel)",
-      }}
-    >
+    // No card. The form sits directly on the page ground between the same
+    // hairline rules that divide every other section — a panel inside those
+    // was a frame around a frame, and a rounded white box with a drop
+    // shadow is app furniture rather than anything a guide would print.
+    <div>
       <div className="trip-form-grid">
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label={t.form.destinations}>

@@ -49,6 +49,15 @@ export interface Dictionary {
     step3Body: string;
   };
   tierLegend: Record<ConfidenceTier, string>;
+  /** The one- or two-word version, shown on every itinerary line.
+   *
+   * Exists because until now four of the five tiers were distinguished on
+   * an item row by NOTHING but the colour of a 9px dot — inlineTierLabel
+   * only ever had an entry for single_source. That is WCAG 1.4.1, colour
+   * as the sole carrier of meaning, on the one feature this product is
+   * built around: a colourblind traveler could not read the trust system
+   * at all. tierLegend is too long to sit on every line; this isn't. */
+  tierTag: Record<ConfidenceTier, string>;
   jobStatus: Record<JobStatus, string>;
   // Cycled through (one at a time, every few seconds) while a job is
   // "running" instead of showing one static "Generating…" message for the
@@ -483,6 +492,13 @@ const en: Dictionary = {
     conflicting: "sources disagree",
     inferred: "unverified guess",
   },
+  tierTag: {
+    verified: "verified",
+    fact_grounded: "checked",
+    single_source: "1 source",
+    conflicting: "conflict",
+    inferred: "estimate",
+  },
   jobStatus: {
     pending: "Queued…",
     running: "Generating - checking live prices, this can take a minute or two…",
@@ -899,6 +915,13 @@ const bg: Dictionary = {
     single_source: "един източник",
     conflicting: "не съвпадат",
     inferred: "честно предположение",
+  },
+  tierTag: {
+    verified: "проверено",
+    fact_grounded: "по данни",
+    single_source: "1 източник",
+    conflicting: "разнобой",
+    inferred: "оценка",
   },
   jobStatus: {
     pending: "На опашка…",

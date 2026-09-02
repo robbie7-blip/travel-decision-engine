@@ -112,10 +112,12 @@ export function SiteHeader({
                     fontSize: "clamp(10px, 2.6vw, 14px)",
                     fontWeight: 500,
                     letterSpacing: "0.06em",
-                    // The readable cut of the brand coral, not the
-                    // display one — this is 14px text on the warm header,
-                    // where --accent-1 measured 2.93:1.
-                    color: "var(--brand-coral-ink)",
+                    // Ink, not coral. The mark below the wordmark keeps the
+                    // coral dot; the tagline no longer echoes it. A coral
+                    // line of caps directly under a serif wordmark on a warm
+                    // ground was doing more than its share of the
+                    // resemblance this redesign is undoing.
+                    color: "var(--ink-dim)",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
                     marginTop: 8,

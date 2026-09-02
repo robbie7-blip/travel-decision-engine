@@ -5,7 +5,7 @@
 // result.tierExplainer instead of writing new copy, so this can never drift
 // from what the item-level evidence toggle actually says.
 
-import { ConfidenceDot } from "./ui";
+import { ConfidenceRule } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
 import type { ConfidenceTier } from "@/lib/types";
 
@@ -45,7 +45,7 @@ export function TrustFooter({ t }: { t: Dictionary }) {
               }}
             >
               <div style={{ marginTop: 2 }}>
-                <ConfidenceDot tier={tier} />
+                <ConfidenceRule tier={tier} />
               </div>
               <div>
                 <div

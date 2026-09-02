@@ -15,7 +15,7 @@ import { CurrencySwitcher, useCurrency } from "@/components/CurrencySwitcher";
 import { RecentTrips } from "@/components/RecentTrips";
 import { SiteHeader } from "@/components/SiteHeader";
 import { TrustFooter } from "@/components/TrustFooter";
-import { ConfidenceDot } from "@/components/ui";
+import { ConfidenceRule } from "@/components/ui";
 import { ApiError, createGenerateJob } from "@/lib/api";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
@@ -124,22 +124,12 @@ export default function Home() {
         extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
       />
       <div style={{ padding: "16px clamp(32px, 8%, 180px) 36px", borderBottom: "1px solid var(--line)", position: "relative" }}>
-        {/* Decorative background elements */}
-        <svg
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            width: 200,
-            height: 200,
-            opacity: 0.13,
-            pointerEvents: "none",
-          }}
-          viewBox="0 0 200 200"
-        >
-          <circle cx="150" cy="50" r="60" fill="var(--color-blue)" />
-          <circle cx="100" cy="120" r="80" fill="var(--color-purple)" />
-        </svg>
+        {/* The two decorative circle blobs that used to sit here and at the
+            bottom of the form section are gone. Large soft translucent
+            overlapping circles are one of the most recognisable AI-product
+            motifs going, and they were doing no work: pointer-events none,
+            13% opacity, purely atmospheric. An editorial page earns its
+            atmosphere from margin and type, not from wallpaper. */}
 
         {/* 1550 matches the large header variant's own cap above so this
             section's left edge lines up with the logo instead of drifting
@@ -198,10 +188,6 @@ export default function Home() {
             className="font-ui scroll-row-mobile"
             style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap", alignItems: "center" }}
           >
-            <svg style={{ width: 20, height: 20, opacity: 0.5, marginRight: 4 }} viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="var(--color-blue)" strokeWidth="1.5" />
-              <path d="M 12 6 L 14 10 L 18 10 L 15 13 L 16 17 L 12 14 L 8 17 L 9 13 L 6 10 L 10 10 Z" fill="var(--color-blue)" opacity="0.4" />
-            </svg>
             {(
               ["verified", "fact_grounded", "single_source", "conflicting", "inferred"] as const
             ).map((tier) => (
@@ -212,13 +198,10 @@ export default function Home() {
                   color: "var(--ink-dim)",
                   display: "flex",
                   alignItems: "center",
-                  border: "1px solid var(--line)",
-                  borderRadius: 999,
-                  padding: "5px 12px 5px 10px",
-                  transition: "all 0.2s ease",
                 }}
               >
-                <ConfidenceDot tier={tier} /> {t.tierLegend[tier]}
+                <ConfidenceRule tier={tier} />
+                {t.tierLegend[tier]}
               </span>
             ))}
           </div>
@@ -229,104 +212,49 @@ export default function Home() {
 
       <div style={{ padding: "18px clamp(32px, 8%, 180px)", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        {/* Was three cards, each with an 80px outlined circle holding an
+            icon and a filled numbered circle beneath it, on a tinted
+            gradient panel. Circles-with-icons in a three-up grid is the
+            house style of every AI product landing page, and none of it
+            said anything the words underneath didn't say better.
+
+            An editorial guide numbers its steps and sets them in a row of
+            columns divided by rules. The numeral does the work the circle
+            was doing, at a size that reads as typography rather than as a
+            badge. */}
         <div id="how-it-works" style={{ scrollMarginTop: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, textAlign: "center", color: "var(--brand-teal)" }}>
-            {t.howItWorks}
-          </h2>
-          <div
-            className="step-cards"
+          <h2
+            className="font-ui"
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 20,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "var(--ink-dim)",
+              margin: "0 0 20px",
+              paddingBottom: 10,
+              borderBottom: "1px solid var(--line)",
             }}
           >
+            {t.howItWorks}
+          </h2>
+          <div className="step-rows">
             {[
-              {
-                title: t.howItWorksSteps.step1Title,
-                body: t.howItWorksSteps.step1Body,
-                icon: (
-                  <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
-                    <circle cx="40" cy="40" r="35" fill="rgba(31, 111, 138, 0.1)" stroke="var(--color-blue)" strokeWidth="2"/>
-                    {/* y-offset tuned to 17.5 (not 20) so the drawn glyph
-                        (y 8-37 pre-translate) centers on the circle's true
-                        midpoint (y=40) instead of sitting a few px low —
-                        was visibly offset from steps 2/3 below, which sit a
-                        few px high with their own un-tuned offsets. */}
-                    <g transform="translate(20, 17.5)">
-                      <rect x="8" y="8" width="24" height="24" fill="none" stroke="var(--color-blue)" strokeWidth="2" rx="2"/>
-                      <circle cx="20" cy="20" r="3" fill="var(--color-blue)"/>
-                      <line x1="8" y1="32" x2="32" y2="32" stroke="var(--color-blue)" strokeWidth="2"/>
-                      <line x1="8" y1="37" x2="32" y2="37" stroke="var(--color-blue)" strokeWidth="1.5" opacity="0.5"/>
-                    </g>
-                  </svg>
-                )
-              },
-              {
-                title: t.howItWorksSteps.step2Title,
-                body: t.howItWorksSteps.step2Body,
-                icon: (
-                  <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
-                    <circle cx="40" cy="40" r="35" fill="rgba(125, 91, 166, 0.1)" stroke="var(--color-purple)" strokeWidth="2"/>
-                    {/* y-offset tuned to 19 (not 15) — see step 1's comment
-                        above; this glyph's own bounds (y 5-37 pre-translate)
-                        center a few px high of the circle's midpoint at the
-                        untuned offset. */}
-                    <g transform="translate(15, 19)">
-                      <path d="M 25 5 L 35 15 L 25 25 L 15 15 Z" fill="var(--color-purple)" opacity="0.3" stroke="var(--color-purple)" strokeWidth="2"/>
-                      <circle cx="25" cy="15" r="3" fill="var(--color-purple)"/>
-                      <line x1="5" y1="35" x2="45" y2="35" stroke="var(--color-purple)" strokeWidth="2"/>
-                      <circle cx="15" cy="35" r="2" fill="var(--color-purple)"/>
-                      <circle cx="35" cy="35" r="2" fill="var(--color-purple)"/>
-                    </g>
-                  </svg>
-                )
-              },
-              {
-                title: t.howItWorksSteps.step3Title,
-                body: t.howItWorksSteps.step3Body,
-                icon: (
-                  <svg viewBox="0 0 80 80" style={{ width: 52, height: 52, marginBottom: 12 }}>
-                    <circle cx="40" cy="40" r="35" fill="rgba(232, 162, 63, 0.1)" stroke="var(--accent-2)" strokeWidth="2"/>
-                    {/* y-offset tuned to 20 (not 15) — see step 1's comment
-                        above; this glyph's bounds (y 5-35 pre-translate)
-                        center a few px high of the circle's midpoint at the
-                        untuned offset. */}
-                    <g transform="translate(15, 20)">
-                      <rect x="5" y="10" width="40" height="25" fill="none" stroke="var(--accent-2)" strokeWidth="2" rx="2"/>
-                      <path d="M 15 10 L 20 5 L 25 10" fill="none" stroke="var(--accent-2)" strokeWidth="2" strokeLinecap="round"/>
-                      <path d="M 35 10 L 40 5 L 45 10" fill="none" stroke="var(--accent-2)" strokeWidth="2" strokeLinecap="round"/>
-                      <line x1="10" y1="25" x2="40" y2="25" stroke="var(--accent-2)" strokeWidth="1.5" opacity="0.5"/>
-                      <line x1="10" y1="30" x2="35" y2="30" stroke="var(--accent-2)" strokeWidth="1.5" opacity="0.5"/>
-                    </g>
-                  </svg>
-                )
-              },
+              { title: t.howItWorksSteps.step1Title, body: t.howItWorksSteps.step1Body },
+              { title: t.howItWorksSteps.step2Title, body: t.howItWorksSteps.step2Body },
+              { title: t.howItWorksSteps.step3Title, body: t.howItWorksSteps.step3Body },
             ].map((step, i) => (
-              <div key={i} data-step={i}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
-                  {step.icon}
-                </div>
+              <div key={i} className="step-row">
                 <div
-                  className="font-ui"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 24,
-                    height: 24,
-                    borderRadius: "50%",
-                    background: "var(--grounded)",
-                    color: "var(--bg-panel)",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    margin: "0 auto 8px",
-                  }}
+                  className="font-display"
+                  style={{ fontSize: 34, lineHeight: 1, color: "var(--line-strong)", marginBottom: 10 }}
                 >
-                  {i + 1}
+                  {String(i + 1).padStart(2, "0")}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, textAlign: "center" }}>{step.title}</div>
-                <div style={{ fontSize: 12.5, color: "var(--ink-dim)", lineHeight: 1.45, textAlign: "center" }}>{step.body}</div>
+                <div className="font-display" style={{ fontSize: 19, fontWeight: 600, marginBottom: 6 }}>
+                  {step.title}
+                </div>
+                <div style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6 }}>{step.body}</div>
               </div>
             ))}
           </div>
@@ -335,25 +263,6 @@ export default function Home() {
       </div>
 
       <div style={{ padding: "36px clamp(32px, 8%, 180px)", borderBottom: "1px solid var(--line)", position: "relative" }}>
-        {/* Decorative background illustration */}
-        <svg
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: 250,
-            height: 250,
-            opacity: 0.12,
-            pointerEvents: "none",
-          }}
-          viewBox="0 0 250 250"
-        >
-          <circle cx="125" cy="125" r="100" fill="none" stroke="var(--accent-2)" strokeWidth="2" />
-          <circle cx="125" cy="125" r="70" fill="none" stroke="var(--color-purple)" strokeWidth="2" />
-          <circle cx="125" cy="125" r="40" fill="none" stroke="var(--color-blue)" strokeWidth="2" />
-          <path d="M 125 25 L 225 125 L 125 225 L 25 125 Z" fill="none" stroke="var(--color-coral)" strokeWidth="1.5" opacity="0.5" />
-        </svg>
-
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
         <div style={{ position: "relative", zIndex: 1 }}>
           <TripForm

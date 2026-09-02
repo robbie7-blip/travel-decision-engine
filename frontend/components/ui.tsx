@@ -9,19 +9,59 @@ const TIER_COLOR: Record<ConfidenceTier, string> = {
   inferred: "var(--tier-inferred)",
 };
 
-export function ConfidenceDot({ tier }: { tier: ConfidenceTier }) {
+/** The confidence marker on every itinerary line.
+ *
+ * Was a 9px coloured circle. Two problems with that, and replacing it fixes
+ * both at once.
+ *
+ * It failed WCAG 1.4.1. inlineTierLabel only ever carried a string for
+ * single_source, so for the other four tiers the colour of that dot was the
+ * ONLY thing distinguishing them — on the feature this product is built
+ * around. A colourblind traveler could not read the trust system at all,
+ * and everyone else had to learn a five-colour legend before the page meant
+ * anything.
+ *
+ * And a row of small coloured dots down the left margin is, visually, the
+ * house style of the thing reviewers kept saying this looked like. A word
+ * in a ruled tag is what a printed guide would do, reads without a legend,
+ * and is not a circle. */
+export function ConfidenceTag({ tier, label }: { tier: ConfidenceTier; label: string }) {
   return (
     <span
-      className={tier === "verified" ? "dot-verified" : undefined}
+      className="font-ui"
       style={{
         display: "inline-block",
-        width: 9,
-        height: 9,
-        borderRadius: "50%",
+        flexShrink: 0,
+        borderLeft: `3px solid ${TIER_COLOR[tier]}`,
+        paddingLeft: 6,
+        fontSize: 9.5,
+        lineHeight: 1.5,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "var(--ink-dim)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/** The same marker with no text, for the legend rows where the full label
+ * already sits beside it — a rule rather than a dot, so the legend and the
+ * itinerary use the same vocabulary. */
+export function ConfidenceRule({ tier }: { tier: ConfidenceTier }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-block",
+        width: 3,
+        alignSelf: "stretch",
+        minHeight: 14,
         background: TIER_COLOR[tier],
         marginRight: 8,
         flexShrink: 0,
-        marginTop: 6,
       }}
     />
   );

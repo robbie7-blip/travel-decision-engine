@@ -13,13 +13,14 @@
           "verified" / primary-button / focus moment in the UI reads as
           one identity with the mark next to it — not a UI blue that
           happens to sit near a differently-colored logo.
-       2. CORAL  action / energy. The logo's dot color. Reserved for
-          moments that want attention: the headline, the primary CTA,
-          hover/focus feedback. Deliberately NOT reused as generic
-          decoration, so it still reads as "look here" when it appears.
-       3. GOLD   secondary accent, paired with coral in the one
-          signature gradient (the headline). Also the "sources
-          disagree" confidence tier.
+       2. CORAL  the logo's dot color, and now ONLY that plus focus
+          feedback. It used to carry the headline, the tagline and a
+          signature coral-into-gold gradient, and coral over a cream
+          ground under a serif is precisely the combination that made
+          this product look like somebody else's. The mark keeps it;
+          the page does not.
+       3. GOLD   the "sources disagree" confidence tier, and the logo's
+          own upper strokes. No longer half of a headline gradient.
        4. PURPLE narrow and deliberate: the "single source" confidence
           tier ONLY. Not reused decoratively elsewhere — the one time
           it shows up, it means something specific instead of just
@@ -34,24 +35,33 @@
   --brand-green: #3f7a4a;
   --brand-red: #b8452f;
 
-  --ink: #2b241c;
-  --ink-soft: #4a4136;
+  --ink: #1b1a17;
+  --ink-soft: #45423c;
   /* Was #8a7d68, which measured 3.28:1 against --bg-panel-raised and
      3.57:1 against --bg — under the 4.5:1 WCAG AA needs for body text.
      This is the color of nearly all secondary text in the product (form
      labels, helper copy, dates, ratings, opening hours, the sub-lines
      under itinerary items), so it was the single most widespread
      accessibility problem on the site and a one-token fix. Same warm
-     neutral, enough darker to clear AA on every background it lands on:
-     4.78:1 on the raised panel, 5.21:1 on the page, higher on white.
+     neutral, enough darker to clear AA on every background it lands on
+     (5.58:1 on the raised panel, 6.10:1 on the page, higher on white
+     against the current paper).
      scripts/checkContrast.mjs asserts this and fails the build if it
      ever drifts back up. */
-  --ink-dim: #6f6350;
-  --bg: #f7f1e2;
-  --bg-panel: #fffdf8;
-  --bg-panel-raised: #f1e7d2;
-  --line: #e3d5b3;
-  --line-strong: #cbb98c;
+  --ink-dim: #605c54;
+  /* Cool paper, not parchment.
+     ...
+     The old ground was #f7f1e2 — a warm cream — under a coral accent and a
+     serif. That combination is the thing reviewers kept recognising: it is
+     the same small corner of colour space as the Anthropic identity, and no
+     amount of changing the dots was going to move it. Warmth now comes from
+     the typography and the space around it rather than from the paper being
+     yellow. */
+  --bg: #f6f5f2;
+  --bg-panel: #ffffff;
+  --bg-panel-raised: #edebe6;
+  --line: #dedbd4;
+  --line-strong: #b8b4aa;
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
 
   /* Confidence-tier colors — aliases onto the six above, not separate
@@ -66,7 +76,7 @@
      "lowest-confidence guess," and a punchy brand color here would fight
      that meaning by making an inferred line look as trustworthy as a
      verified one. */
-  --tier-inferred: #a89a82;
+  --tier-inferred: #8f8b82;
 
   /* logo-icon.svg is a static asset that can't read this file's
      variables — --brand-teal above IS that exact hex already, this just
@@ -77,7 +87,7 @@
 
   /* The same coral, dark enough to be read as text rather than seen as
      decoration. Not a seventh hue — it's the one brand coral, at the
-     value it has to sit at to clear 4.5:1 on the warm backgrounds.
+     value it has to sit at to clear 4.5:1 on the page grounds.
      --brand-coral itself measured 2.93:1 behind the header tagline, the
      worst contrast anywhere on the page. Use --brand-coral for fills,
      borders, icons and headline-sized type; use this for anything that
@@ -125,7 +135,7 @@ body {
 
 body {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f7f1e2 0%, #f2eff0 100%);
+  background: var(--bg);
 }
 
 input:focus,
@@ -177,11 +187,17 @@ button {
   font-synthesis-weight: none;
 }
 
+/* Was a coral-into-gold gradient on the hero headline. A two-colour warm
+   gradient across a large serif is a strong, recognisable signature, and it
+   was not ours. The headline now sets in ink, which is what an editorial
+   page does with its biggest piece of type: the size and the face carry it,
+   not the colour.
+
+   Kept as a class rather than removed so the call sites don't all need
+   touching, and so there is one place to change if a treatment is ever
+   wanted here again. */
 .gradient-text {
-  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
 }
 
 /* Solid teal (brand/trust — see the COLOR SYSTEM block above), not
@@ -220,39 +236,47 @@ button {
   cursor: default;
 }
 
-/* FORM STYLING ENHANCEMENTS */
+/* The form, as a form rather than as an app surface.
+   Was: a 2px teal border on every field with a 4px left edge, a left-to-
+   right tint behind the text, a coral focus glow, and the whole grid inside
+   a white card with a 2px teal border and a 24px coloured shadow. That is a
+   lot of chrome for six inputs, and heavy tinted borders around every field
+   is a strong AI-product tell.
+
+   Now: fields are a single hairline rule underneath, which is what a
+   printed form looks like. Focus darkens the rule and thickens it, so the
+   feedback is unmistakable without a coloured halo. */
 .trip-form-grid input,
 .trip-form-grid select,
 .trip-form-grid textarea {
-  border: 2px solid var(--color-blue) !important;
-  border-left: 4px solid var(--color-blue) !important;
-  border-radius: 8px !important;
-  padding: 12px 16px !important;
+  border: none !important;
+  border-bottom: 1px solid var(--line-strong) !important;
+  border-radius: 0 !important;
+  padding: 10px 2px !important;
   font-size: 15px !important;
-  transition: all 0.2s ease !important;
-  background: linear-gradient(to right, color-mix(in srgb, var(--color-blue) 2%, white), white) !important;
+  background: transparent !important;
+  transition: border-color 0.15s ease !important;
 }
 
-/* Focus uses coral (the action color), not purple — purple is reserved
-   for the single-source confidence tier specifically (see the COLOR
-   SYSTEM block at the top of this file). */
 .trip-form-grid input:focus,
 .trip-form-grid select:focus,
 .trip-form-grid textarea:focus {
   outline: none !important;
-  border-color: var(--color-coral) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-coral) 15%, transparent) !important;
+  border-bottom-color: var(--ink) !important;
+  border-bottom-width: 2px !important;
+  padding-bottom: 9px !important;
 }
 
-.trip-form-grid input::placeholder {
+.trip-form-grid input::placeholder,
+.trip-form-grid textarea::placeholder {
   color: var(--ink-dim);
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
 .trip-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0 20px;
+  gap: 0 32px;
 }
 
 @media (max-width: 560px) {
@@ -410,19 +434,10 @@ button {
   }
 }
 
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(31, 111, 138, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(31, 111, 138, 0);
-  }
-}
-
-.dot-verified {
-  animation: pulse-glow 2.2s ease-in-out infinite;
-}
+/* pulse-glow and .dot-verified are gone with the confidence dots. A small
+   coloured circle quietly pulsing next to a line was the single most
+   AI-product thing on the page, and it was decorating the tier that needs
+   the least help being believed. */
 
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -454,96 +469,68 @@ button {
    clean. At 6%/10% (the original strength) this sat close enough to the
    page's own --bg to barely read as distinct from the plain background
    around it — pushed up well past that here. */
-div[id="how-it-works"] {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blue) 20%, var(--bg-panel)), color-mix(in srgb, var(--color-coral) 16%, var(--bg-panel)));
-  border-radius: 16px;
-  padding: 28px 24px;
-  border: 1px solid color-mix(in srgb, var(--color-blue) 30%, transparent);
-  box-shadow: 0 6px 24px rgba(31, 111, 138, 0.1);
+
+/* The How-it-works steps, as columns divided by rules rather than cards.
+   The tinted panel, the white card backgrounds, the coloured borders and
+   the hover-lift are all gone — see the note in page.tsx. What is left is
+   a rule, a numeral and two sizes of type, which is how a printed guide
+   does this and needs no decoration to read as deliberate. */
+.step-rows {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
 }
 
-/* Step cards - enhanced styling with colored backgrounds.
-   Scoped to .step-cards (see page.tsx). This used to be selected as
-   div[style*="display: grid"] > div — every div on the site whose INLINE
-   style contained "display: grid", and every direct div child of it. That
-   is 19 grids across 14 files, and it was quietly turning things into
-   white cards that were never meant to be cards: the date picker's
-   Mon-Sun header row rendered as seven floating white pills with borders,
-   drop shadows and a hover lift, sitting above the plain day numbers.
-   Matching on the text of an inline style attribute is not a selector,
-   it's a coincidence — a class says what it means and hits only what it
-   means. */
-.step-cards > div {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid color-mix(in srgb, var(--color-blue) 15%, transparent);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+.step-row {
+  padding: 0 28px;
+  border-left: 1px solid var(--line);
 }
 
-/* Step 1 - teal (brand/primary) */
-.step-cards > div[data-step="0"] {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blue) 8%, transparent), color-mix(in srgb, var(--color-blue) 3%, transparent));
-  border-color: color-mix(in srgb, var(--color-blue) 20%, transparent) !important;
+.step-row:first-child {
+  padding-left: 0;
+  border-left: none;
 }
 
-/* Step 2 - purple (this is the one deliberate decorative use of the
-   single-source tier's purple outside the tier system itself — three
-   steps need three distinct colors, and reusing an existing brand color
-   here still beats introducing a 7th hue). */
-.step-cards > div[data-step="1"] {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-purple) 8%, transparent), color-mix(in srgb, var(--color-purple) 3%, transparent));
-  border-color: color-mix(in srgb, var(--color-purple) 20%, transparent) !important;
+.step-row:last-child {
+  padding-right: 0;
 }
 
-/* Step 3 - gold (secondary accent) */
-.step-cards > div[data-step="2"] {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-2) 8%, transparent), color-mix(in srgb, var(--accent-2) 3%, transparent));
-  border-color: color-mix(in srgb, var(--accent-2) 20%, transparent) !important;
+@media (max-width: 720px) {
+  /* Vertical rules between stacked blocks read as nothing, so they become
+     horizontal ones between rows instead. */
+  .step-rows {
+    grid-template-columns: 1fr;
+  }
+
+  .step-row {
+    padding: 20px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .step-row:first-child {
+    padding-top: 0;
+    border-top: none;
+  }
 }
 
-.step-cards > div:hover {
-  border-color: var(--color-blue) !important;
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--color-blue) 20%, transparent);
-  transform: translateY(-4px);
-}
-
+/* The tinted How-it-works panel is gone with the cards — the section now
+   sits on the page ground like every other, separated by the same hairline
+   rules the rest of the layout uses. */
 /* Confidence legend pills - each one now colored by its own tier instead
    of a uniform blue border, so the legend itself previews the palette
    used throughout the app (verified/fact-grounded cyan, single-source
    purple, conflicting amber, inferred neutral) rather than looking like
    one generic chip style repeated five times. */
+/* The confidence legend, as ruled tags rather than tinted pills.
+   Each entry keeps its tier colour, but on a 3px left rule (the same
+   vocabulary the itinerary lines now use) instead of a coloured fill, a
+   coloured border and a scale-up on hover. */
 span[data-tier] {
-  transition: all 0.2s ease;
-  background: white;
-  border-width: 1.5px !important;
-}
-
-span[data-tier="verified"],
-span[data-tier="fact_grounded"] {
-  border-color: var(--grounded) !important;
-  background: color-mix(in srgb, var(--grounded) 10%, white) !important;
-}
-
-span[data-tier="single_source"] {
-  border-color: var(--tier-single-source) !important;
-  background: color-mix(in srgb, var(--tier-single-source) 10%, white) !important;
-}
-
-span[data-tier="conflicting"] {
-  border-color: var(--unverified) !important;
-  background: color-mix(in srgb, var(--unverified) 10%, white) !important;
-}
-
-span[data-tier="inferred"] {
-  border-color: var(--tier-inferred) !important;
-  background: color-mix(in srgb, var(--tier-inferred) 10%, white) !important;
-}
-
-span[data-tier]:hover {
-  transform: scale(1.08);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  background: transparent;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 2px 0 !important;
 }
 
 /* Removed: a[style*="color: var(--grounded)"], which turned any link
@@ -784,23 +771,10 @@ h1, h2, h3 {
 }
 
 /* How It Works heading with accent underline */
-div[id="how-it-works"] h2 {
-  position: relative;
-  padding-bottom: 12px;
-  margin-bottom: 24px !important;
-}
-
-div[id="how-it-works"] h2::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(90deg, var(--color-blue), var(--color-coral));
-  border-radius: 2px;
-}
+/* The centred teal-into-coral bar that used to underline this heading is
+   gone with the rest of the gradient work. The heading now carries a plain
+   full-width hairline set in page.tsx, which is the same rule every other
+   division on the page uses. */
 
 p {
   letter-spacing: 0.01em;
@@ -823,14 +797,9 @@ p {
    band is wanted again it should be a class on the element that wants
    it. */
 
-/* Decorative background elements */
-.trip-form-grid {
-  background: linear-gradient(135deg, white, color-mix(in srgb, var(--color-blue) 1%, transparent));
-  padding: 32px;
-  border-radius: 16px;
-  border: 2px solid color-mix(in srgb, var(--color-blue) 25%, transparent);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-blue) 12%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-blue) 5%, transparent);
-}
+/* The card the form used to sit in — white on the page ground, 2px teal
+   border, 24px coloured shadow — is gone. The section already has rules
+   above and below it; a second frame inside those was pure decoration. */
 
 /* ============================================================
    TOUCH TARGETS
