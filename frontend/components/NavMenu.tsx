@@ -6,7 +6,7 @@
 // use SiteHeader's onLanguageChange callback directly) can still drop in
 // the same full nav menu instead of hand-rolling their own header markup.
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Dictionary } from "@/lib/i18n";
@@ -62,8 +62,21 @@ const NAV_ICONS: Record<string, ReactNode> = {
   ),
 };
 
-export function NavMenu({ t, language }: { t: Dictionary; language: Language }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+/** The id the toggle and the panel use to point at each other. They are
+ * rendered in two different rows of the header now, so the relationship
+ * has to be stated rather than implied by adjacency. */
+export const NAV_LINKS_ID = "site-nav-links";
+
+export function NavMenu({
+  t,
+  language,
+  open,
+}: {
+  t: Dictionary;
+  language: Language;
+  /** Controlled by SiteHeader, which also renders the toggle above. */
+  open: boolean;
+}) {
   const pathname = usePathname();
   const langSuffix = language === "bg" ? "?lang=bg" : "";
 
@@ -85,28 +98,14 @@ export function NavMenu({ t, language }: { t: Dictionary; language: Language }) 
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setMenuOpen((open) => !open)}
-        className="nav-menu-toggle font-ui"
-        aria-expanded={menuOpen}
-        style={{
-          border: "1px solid var(--line)",
-          borderRadius: 999,
-          padding: "6px 14px",
-          fontSize: 12,
-          letterSpacing: "0.04em",
-          background: "transparent",
-          color: "var(--ink-soft)",
-          cursor: "pointer",
-        }}
-      >
-        {menuOpen ? t.navMenuClose : t.navMenuOpen} {menuOpen ? "✕" : "☰"}
-      </button>
       {/* gap 4px - .nav-link is now a standalone pill (background + radius,
           see globals.css), not divider-separated running text, so it needs
           a little breathing room between items instead of the old 0. */}
-      <div className={menuOpen ? "nav-links-row nav-links-row--open" : "nav-links-row"} style={{ alignItems: "center", gap: 4 }}>
+      <div
+        id={NAV_LINKS_ID}
+        className={open ? "nav-links-row nav-links-row--open" : "nav-links-row"}
+        style={{ alignItems: "center", gap: 4 }}
+      >
         {links.map((link) => (
           <Link
             key={link.href}

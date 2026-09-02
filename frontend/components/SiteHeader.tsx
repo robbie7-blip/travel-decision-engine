@@ -27,7 +27,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { AccountControl } from "./AccountControl";
-import { NavMenu } from "./NavMenu";
+import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "./HeaderNav";
 import { LANGUAGE_NAMES } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
@@ -81,6 +81,7 @@ export function SiteHeader({
       }}
     >
       <div style={{ maxWidth: large ? 1550 : maxWidth, margin: "0 auto" }}>
+        <HeaderNavProvider>
         {/* Row 1: logo (+ tagline on large) on the left, every account/
             language/context control on the right - no nav here, so this
             row's own space need is small regardless of how many nav links
@@ -136,6 +137,14 @@ export function SiteHeader({
               </Link>
             )}
             {extraControls}
+            {/* Sign in, the language switch and the mobile Menu button stay
+                together as one unit. Left as loose siblings they wrapped
+                independently, and on a narrow screen the Menu button was
+                the one pushed onto a line of its own - which is the thing
+                moving it up here was meant to stop. Grouped, the three
+                either all fit beside the logo or all drop to the next line
+                together. */}
+            <div className="header-account-group">
             <AccountControl language={language} t={t} />
             <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
               {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
@@ -159,6 +168,8 @@ export function SiteHeader({
                 </button>
               ))}
             </div>
+            <HeaderNavToggle t={t} />
+            </div>
           </div>
         </div>
 
@@ -166,19 +177,11 @@ export function SiteHeader({
             Booking.com's tab strip below its own top bar. Only this row's
             content (7 links) has to fit the available width, which is why
             it can stay inline much further down than the old combined row
-            could. */}
-        <div
-          className="header-nav-row"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            borderTop: "1px solid var(--line)",
-            padding: "10px 0",
-          }}
-        >
-          <NavMenu t={t} language={language} />
-        </div>
+            could. On mobile the toggle that opens it lives up in row 1
+            instead, and this row is removed from the layout until it is
+            opened - see components/HeaderNav.tsx. */}
+        <HeaderNavRow t={t} language={language} />
+        </HeaderNavProvider>
       </div>
     </div>
   );

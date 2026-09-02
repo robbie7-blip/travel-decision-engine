@@ -466,6 +466,27 @@ button {
   .nav-menu-toggle {
     display: inline-flex !important;
   }
+
+  /* The toggle now sits up in the header's first row, next to Sign in and
+     the language switch (see components/HeaderNav.tsx), so with the menu
+     closed this second row holds nothing at all. Without this it stayed as
+     an empty strip with a divider above it, which is the "lone second
+     line" the move was meant to remove in the first place. */
+  .header-nav-row--collapsed {
+    display: none !important;
+  }
+}
+
+/* Sign in + language switch + the mobile Menu button, as one unit. nowrap
+   is the whole point: these three wrap together or not at all, so the
+   Menu button can never end up alone on a line the way it did when it
+   lived in its own row. Comfortably narrow enough to sit beside the logo
+   on a 390px phone. */
+.header-account-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
 }
 
 /* Hidden on desktop - only meaningful once the rule above turns it on

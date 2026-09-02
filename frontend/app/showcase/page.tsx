@@ -13,7 +13,7 @@ import { computeTrustScore } from "@/lib/trustScore";
 import { SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
 import { AccountControl } from "@/components/AccountControl";
 import { Stamp } from "@/components/ui";
-import { NavMenu } from "@/components/NavMenu";
+import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "@/components/HeaderNav";
 import { TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
@@ -104,6 +104,7 @@ export default async function ShowcasePage({
             comment on ask/page.tsx's SiteHeader call for why. Two rows,
             matching SiteHeader.tsx - see that file's header comment. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+          <HeaderNavProvider>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
             <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -113,6 +114,7 @@ export default async function ShowcasePage({
               </span>
             </Link>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+              <div className="header-account-group">
               <AccountControl language={language} t={t} />
               <div
                 className="font-ui lang-toggle"
@@ -148,10 +150,11 @@ export default async function ShowcasePage({
                 </Link>
               </div>
             </div>
+            <HeaderNavToggle t={t} />
+            </div>
           </div>
-          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", borderTop: "1px solid var(--line)", padding: "10px 0" }}>
-            <NavMenu t={t} language={language} />
-          </div>
+          <HeaderNavRow t={t} language={language} />
+          </HeaderNavProvider>
         </div>
       </div>
 

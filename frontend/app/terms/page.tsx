@@ -13,7 +13,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountControl } from "@/components/AccountControl";
-import { NavMenu } from "@/components/NavMenu";
+import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "@/components/HeaderNav";
 import { LegalSection } from "@/components/ui";
 import { TRANSLATIONS } from "@/lib/i18n";
 import { OPERATOR_NAME, CONTACT_EMAIL } from "@/lib/legal";
@@ -45,6 +45,7 @@ export default async function TermsPage({
     <div style={{ minHeight: "100%" }}>
       <div style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+          <HeaderNavProvider>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
             <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -54,6 +55,7 @@ export default async function TermsPage({
               </span>
             </Link>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+              <div className="header-account-group">
               <AccountControl language={language} t={t} />
               <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
                 <Link href="/terms" data-active={language === "en"} style={{ padding: "6px 12px", fontSize: 11, letterSpacing: "0.04em", textDecoration: "none", background: "transparent", color: "var(--ink-dim)" }}>
@@ -64,10 +66,11 @@ export default async function TermsPage({
                 </Link>
               </div>
             </div>
+            <HeaderNavToggle t={t} />
+            </div>
           </div>
-          <div className="header-nav-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", borderTop: "1px solid var(--line)", padding: "10px 0" }}>
-            <NavMenu t={t} language={language} />
-          </div>
+          <HeaderNavRow t={t} language={language} />
+          </HeaderNavProvider>
         </div>
       </div>
 
