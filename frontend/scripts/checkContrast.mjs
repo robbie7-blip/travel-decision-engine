@@ -88,6 +88,11 @@ const PAIRS = [
   { fg: "--infeasible", bg: "--bg", min: AA_NORMAL, note: "error text on the page" },
   { fg: "--accent-green", bg: "--bg-panel", min: AA_NORMAL, note: "success text" },
   { fg: "--brand-teal", bg: "--bg", min: AA_NORMAL, note: "section headings" },
+  { fg: "--brand-gold-ink", bg: "--bg", min: AA_NORMAL, note: "the step numerals and section rules" },
+  // The hero band reverses out of a deep ground, so its pairs run the other
+  // way round and none of the checks above touch them.
+  { fg: "--deep-ink", bg: "--deep", min: AA_NORMAL, note: "the headline on the hero band" },
+  { fg: "--deep-soft", bg: "--deep", min: AA_NORMAL, note: "the subhead and legend on the band" },
 ];
 
 const css = await readFile(CSS, "utf8");

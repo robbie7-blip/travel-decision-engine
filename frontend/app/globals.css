@@ -31,6 +31,10 @@
   --brand-teal: #1f6f8a;
   --brand-coral: #d9643f;
   --brand-gold: #e8a23f;
+  /* The gold at a value that can be read rather than only seen — the
+     numerals and section rules use this, the tier chip keeps the brighter
+     one. */
+  --brand-gold-ink: #9a660f;
   --brand-purple: #7d5ba6;
   --brand-green: #3f7a4a;
   --brand-red: #b8452f;
@@ -57,11 +61,29 @@
      amount of changing the dots was going to move it. Warmth now comes from
      the typography and the space around it rather than from the paper being
      yellow. */
-  --bg: #f6f5f2;
+  --bg: #faf8f3;
   --bg-panel: #ffffff;
-  --bg-panel-raised: #edebe6;
-  --line: #dedbd4;
-  --line-strong: #b8b4aa;
+  --bg-panel-raised: #f2efe8;
+  --line: #e2ded4;
+  --line-strong: #bab5a8;
+
+  /* The deep end of the palette, and the reason the page has a pulse.
+     ...
+     A first pass at this redesign took the parchment out and put nothing
+     back, which read as grey and, fairly, as depressing — the wrong note
+     entirely for a product whose whole job is to make someone want to go
+     somewhere. The fix is not more colour everywhere; it is somewhere for
+     the eye to fall. This is a deep sea blue for the hero band, with the
+     headline reversed out of it.
+
+     It is not a new hue. It is --brand-teal taken down to the value it
+     needs to hold white type, so the masthead, the trust tier and the
+     primary button all still read as one identity. Blue and gold is also
+     about as far from cream and clay as the warm half of the spectrum
+     gets, which is the other thing this had to be. */
+  --deep: #0f3a4b;
+  --deep-ink: #f6f2e8;
+  --deep-soft: #b9cdd6;
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
 
   /* Confidence-tier colors — aliases onto the six above, not separate
@@ -470,6 +492,45 @@ button {
    page's own --bg to barely read as distinct from the plain background
    around it — pushed up well past that here. */
 
+/* The hero band. One deep surface at the top of the page, everything
+   below it on paper — the contrast is the whole point, and it is doing the
+   job the decorative circles used to pretend to do. */
+.hero {
+  background: var(--deep);
+  color: var(--deep-ink);
+}
+
+.hero h1 {
+  color: var(--deep-ink);
+}
+
+/* The demo link and anything else that reads as a link inside the band. */
+.hero a {
+  color: #7fc4d8;
+}
+
+/* The tier rules, lifted for the dark ground. Brand teal on deep sea blue
+   is very nearly the same colour, so the legend's markers vanished — a
+   cosmetic loss rather than a meaning one now that each entry carries its
+   own words, but a row of invisible marks looks broken. Same hues, raised
+   to where they read against the band. */
+.hero [data-tier-rule="verified"],
+.hero [data-tier-rule="fact_grounded"] {
+  background: #7fc4d8 !important;
+}
+
+.hero [data-tier-rule="single_source"] {
+  background: #b9a1dd !important;
+}
+
+.hero [data-tier-rule="conflicting"] {
+  background: #f0b95f !important;
+}
+
+.hero [data-tier-rule="inferred"] {
+  background: #a8a294 !important;
+}
+
 /* The How-it-works steps, as columns divided by rules rather than cards.
    The tinted panel, the white card backgrounds, the coloured borders and
    the hover-lift are all gone — see the note in page.tsx. What is left is
@@ -484,6 +545,14 @@ button {
 .step-row {
   padding: 0 28px;
   border-left: 1px solid var(--line);
+}
+
+/* Gold, not grey. The numerals were --line-strong, which is the colour of
+   a hairline and reads as one — three faint marks doing nothing. At the
+   gold they become the second colour on the light half of the page and
+   the eye has somewhere to go after the hero. */
+.step-row > :first-child {
+  color: var(--brand-gold-ink) !important;
 }
 
 .step-row:first-child {

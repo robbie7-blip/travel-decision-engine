@@ -123,7 +123,13 @@ export default function Home() {
         t={t}
         extraControls={<CurrencySwitcher currency={currency} setCurrency={setCurrency} label={t.currencyLabel} />}
       />
-      <div style={{ padding: "16px clamp(32px, 8%, 180px) 36px", borderBottom: "1px solid var(--line)", position: "relative" }}>
+      {/* The hero reversed out of deep sea blue.
+          The grey version of this page was accurate about what it removed
+          and wrong about what it left: a travel product that opens on a
+          flat light page has no moment in it. This is that moment — one
+          deep band, the headline in warm off-white, everything below it
+          light and workmanlike. Nothing decorative was added to get it. */}
+      <div className="hero" style={{ padding: "44px clamp(32px, 8%, 180px) 40px", position: "relative" }}>
         {/* The two decorative circle blobs that used to sit here and at the
             bottom of the form section are gone. Large soft translucent
             overlapping circles are one of the most recognisable AI-product
@@ -139,7 +145,7 @@ export default function Home() {
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
         <div style={{ position: "relative", zIndex: 1 }}>
           <h1
-            className="font-display gradient-text"
+            className="font-display"
             style={{
               fontWeight: 600,
               fontStyle: "italic",
@@ -164,7 +170,7 @@ export default function Home() {
               was instead splitting mid-sentence-2 ("...never" / "overstated."
               on separate lines) — the forced break fixes that by always
               landing exactly on the sentence boundary. */}
-          <p style={{ color: "var(--ink-dim)", fontSize: 15, lineHeight: 1.6, maxWidth: 820, margin: 0 }}>
+          <p style={{ color: "var(--deep-soft)", fontSize: 16, lineHeight: 1.65, maxWidth: 820, margin: 0 }}>
             {t.subheadLine1} <br className="subhead-break" />
             {t.subheadLine2}
           </p>
@@ -195,7 +201,7 @@ export default function Home() {
                 key={tier}
                 data-tier={tier}
                 style={{
-                  color: "var(--ink-dim)",
+                  color: "var(--deep-soft)",
                   display: "flex",
                   alignItems: "center",
                 }}
@@ -230,10 +236,10 @@ export default function Home() {
               fontWeight: 600,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: "var(--ink-dim)",
-              margin: "0 0 20px",
+              color: "var(--brand-gold-ink)",
+              margin: "0 0 24px",
               paddingBottom: 10,
-              borderBottom: "1px solid var(--line)",
+              borderBottom: "2px solid var(--brand-gold-ink)",
             }}
           >
             {t.howItWorks}

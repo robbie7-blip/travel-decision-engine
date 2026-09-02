@@ -54,6 +54,7 @@ export function ConfidenceRule({ tier }: { tier: ConfidenceTier }) {
   return (
     <span
       aria-hidden="true"
+      data-tier-rule={tier}
       style={{
         display: "inline-block",
         width: 3,
