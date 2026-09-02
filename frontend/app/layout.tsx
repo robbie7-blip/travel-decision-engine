@@ -92,7 +92,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1f6f8a",
+  // The colour the phone paints its own chrome with. It was still the old
+  // teal, so on Android the browser bar sat in the previous brand colour
+  // above a green site.
+  themeColor: "#2c6a4c",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
