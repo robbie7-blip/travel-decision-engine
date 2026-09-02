@@ -175,6 +175,19 @@ export async function POST(request: NextRequest) {
     // Billed whether or not the parse below succeeds.
     await recordSpend(redis, estimateCostUsd(response.usage)).catch(() => {});
 
+    // A truncated response is broken JSON, and broken JSON lands in the
+    // catch below as "couldn't read that confirmation" — which blames the
+    // traveler's email for a cap of ours. A long multi-leg booking is
+    // exactly the case that hits this, and it is the case where getting it
+    // right matters most.
+    if (response.stop_reason === "max_tokens") {
+      console.error(`[flight-import] hit the ${MAX_TOKENS}-token ceiling before finishing the JSON`);
+      return NextResponse.json(
+        { detail: "That confirmation has more flights than we can read at once. Try pasting one trip at a time." },
+        { status: 502 }
+      );
+    }
+
     const blocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
     const flights = toImportedFlights(JSON.parse(extractJson(blocks[blocks.length - 1]?.text ?? "")));
 

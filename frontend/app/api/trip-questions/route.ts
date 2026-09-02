@@ -45,7 +45,17 @@ import type { Language } from "@/lib/types";
 export const runtime = "nodejs";
 
 const MODEL = "claude-sonnet-5";
-const MAX_TOKENS = 500;
+// 500 was too tight for the questions people actually ask. A traveler
+// asked "Sharm El-Sheikh or Hurghada for a family weekend in January?" —
+// a real comparison, and the right answer is a short list of differences
+// per option. It ran out of room and stopped at "minimizing transfer time
+// and", mid-sentence, with nothing anywhere saying it had been cut.
+//
+// This is a ceiling, not a spend: output is billed on what the model
+// actually writes, and the system prompt still asks for a few sentences.
+// Raising it costs nothing on the short answers and stops truncating the
+// legitimately longer ones.
+const MAX_TOKENS = 1500;
 
 // Pro-only: gives a signed-in Pro traveler's questions the same
 // web_search tool the itinerary engine uses (see worker/src/index.ts's
@@ -125,6 +135,14 @@ const FALLBACK_REPLY: Record<Language, string> = {
 
 // Deliberately does NOT say "try again": it would not work. Says the fault
 // is ours, because it is.
+// Appended when the answer hit the token ceiling, so a sentence that stops
+// halfway reads as an interruption rather than as the model's own idea of a
+// finished thought.
+const TRUNCATED_SUFFIX: Record<Language, string> = {
+  en: "\n\n(That got cut off — ask me to keep going and I'll finish it.)",
+  bg: "\n\n(Прекъснах се — кажи ми да продължа и ще довърша.)",
+};
+
 const MISCONFIGURED_REPLY: Record<Language, string> = {
   en: "Ask a Local is temporarily unavailable. That's a problem on our side, not with your question.",
   bg: "\u201eПитай местен\u201c временно не работи. Проблемът е при нас, не във въпроса ти.",
@@ -213,7 +231,7 @@ function isValidMessage(m: unknown): m is TripQAMessage {
   if (trimmed.length === 0 && !hasImage) return false;
   // The length cap only ever guarded against an unreasonably long typed
   // *question* (see MAX_TRIP_QA_MESSAGE_LENGTH's own comment) — it was
-  // never meant to apply to the assistant's own replies. At MAX_TOKENS=500
+  // never meant to apply to the assistant's own replies. At MAX_TOKENS
   // a normal reply routinely runs past 800 characters, so applying this
   // cap to both roles meant a single longer-than-usual answer would get
   // stored client-side, resent as history on the next turn, and reject
@@ -377,6 +395,16 @@ export async function POST(request: NextRequest) {
           // Billed whether or not any text actually streamed, same principle
           // as the worker's onUsage in callModel — record it right away.
           await recordSpend(redis, estimateCostUsd(finalMessage.usage));
+
+          // A truncated answer used to be indistinguishable from a finished
+          // one: stop_reason was never read, so the traveler got a sentence
+          // that stopped mid-word and no log line existed to say why.
+          if (finalMessage.stop_reason === "max_tokens") {
+            console.warn(
+              `[trip-questions] answer hit the ${MAX_TOKENS}-token ceiling and was truncated`
+            );
+            if (sentAnyText) controller.enqueue(encoder.encode(TRUNCATED_SUFFIX[language]));
+          }
 
           if (!sentAnyText) {
             // A well-formed response with no text content is rare but not
