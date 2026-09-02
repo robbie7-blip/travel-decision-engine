@@ -259,12 +259,16 @@ export default async function DestinationPage({
                     marginBottom: 12,
                   }}
                 >
+                  {/* A rule, not a dot — the same marker the itinerary and
+                      the homepage legend use since the confidence dots were
+                      replaced. This was the last dot left on the site. */}
                   <span
+                    aria-hidden="true"
                     style={{
                       display: "inline-block",
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
+                      width: 3,
+                      alignSelf: "stretch",
+                      minHeight: 14,
                       background: color,
                       flexShrink: 0,
                     }}

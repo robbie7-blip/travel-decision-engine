@@ -21,17 +21,12 @@ function CheckIcon({ color }: { color: string }) {
   );
 }
 
-// Same tinted-circle icon-in-a-badge treatment as the homepage's "How it
-// works" section (app/page.tsx) — reused here so the pricing page carries
-// the same visual identity instead of inventing its own icon style.
-function ValuePropIcon({ tint, stroke, path }: { tint: string; stroke: string; path: ReactNode }) {
-  return (
-    <svg viewBox="0 0 80 80" style={{ width: 44, height: 44, marginBottom: 10 }}>
-      <circle cx="40" cy="40" r="35" fill={tint} stroke={stroke} strokeWidth="2" />
-      {path}
-    </svg>
-  );
-}
+// The tinted-circle icon badges that used to live here are gone. They
+// were a deliberate copy of the homepage's "How it works" treatment, so
+// when that became three numbered columns divided by rules, this became
+// the last place on the site still drawing icons inside circles — the
+// exact motif the redesign set out to remove. It now reuses .step-rows,
+// the same class the homepage uses, so the two cannot drift again.
 
 /** Standalone pricing page — a signed-in visitor trades the anonymous
  * per-IP trial limit for a per-email monthly quota (see lib/account.ts).
@@ -110,7 +105,7 @@ export default function PricingPage() {
             same fix on account/page.tsx. */}
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1200 }}>
-          <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 8px", color: "var(--brand-teal)" }}>
+          <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 8px", color: "var(--ink)" }}>
             {t.account.pricingHeading}
           </h1>
           <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 32px", lineHeight: 1.5, maxWidth: 620 }}>
@@ -127,7 +122,7 @@ export default function PricingPage() {
       <div style={{ padding: "0 clamp(32px, 8%, 180px) 40px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1200 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 24 }}>
+          <div className="step-rows">
             {[
               {
                 tint: "rgba(31, 111, 138, 0.1)",
@@ -164,13 +159,15 @@ export default function PricingPage() {
                   </g>
                 ),
               },
-            ].map((v, i) => (
-              <div key={i}>
-                <ValuePropIcon tint={v.tint} stroke={v.stroke} path={v.path} />
-                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>
+            ].map((_, i) => (
+              <div key={i} className="step-row">
+                <div className="font-display" style={{ fontSize: 34, lineHeight: 1, marginBottom: 10 }}>
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <div className="font-display" style={{ fontSize: 19, fontWeight: 600, marginBottom: 6, color: "var(--ink)" }}>
                   {t.account.valueProps[i].title}
                 </div>
-                <div style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5 }}>{t.account.valueProps[i].body}</div>
+                <div style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6 }}>{t.account.valueProps[i].body}</div>
               </div>
             ))}
           </div>

@@ -88,8 +88,11 @@ export function LoadingScreen({
           height: 40,
           borderRadius: "50%",
           border: "3px solid var(--line)",
-          borderTopColor: "var(--accent-1)",
-          borderRightColor: "var(--accent-2)",
+          // Was coral over gold, from the palette this design left behind.
+          // The spinner itself stays a circle — that is what a spinner is,
+          // not the decorative motif the redesign removed.
+          borderTopColor: "var(--brand-teal)",
+          borderRightColor: "var(--brand-gold)",
           animation: "decide-spin 0.8s linear infinite",
         }}
       />
