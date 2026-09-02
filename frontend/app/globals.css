@@ -184,8 +184,12 @@ button {
   font-family: inherit;
 }
 
+/* Two entries, one typeface — the second carries the Cyrillic cuts and is
+   fetched only on pages that render them, same arrangement as .font-ui.
+   Before this, the display face had no Cyrillic at all and every Bulgarian
+   heading dropped to Georgia. */
 .font-display {
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), var(--font-display-cyrillic), Georgia, serif;
 }
 
 /* The interface class: nav, chips, labels, buttons, form controls, the
@@ -818,7 +822,7 @@ a {
   font-size: 20px;
   font-weight: 700;
   flex-shrink: 0;
-  font-family: var(--font-display, inherit);
+  font-family: var(--font-display), var(--font-display-cyrillic), Georgia, serif;
 }
 
 .account-plan-badge {

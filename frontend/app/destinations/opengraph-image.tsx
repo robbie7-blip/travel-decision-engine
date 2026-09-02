@@ -34,8 +34,8 @@ const MARK_SVG = `
       <stop offset="1" stop-color="#8a7d68"/>
     </linearGradient>
     <linearGradient id="m" x1="50" y1="10" x2="50" y2="72" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4f9aa8"/>
-      <stop offset="1" stop-color="#1f6f8a"/>
+      <stop offset="0" stop-color="#4f9a72"/>
+      <stop offset="1" stop-color="#2c6a4c"/>
     </linearGradient>
   </defs>
   <path d="M18 15 Q 34 40 50 72" fill="none" stroke="url(#l)" stroke-width="3.5" stroke-linecap="round" opacity="0.65"/>
@@ -49,11 +49,11 @@ export default async function DestinationsIndexOgImage() {
   const t = TRANSLATIONS.en.destinations;
   const count = listDestinationSlugs().length;
 
-  let fraunces: Buffer | null = null;
+  let literata: Buffer | null = null;
   try {
-    fraunces = await readFile(join(process.cwd(), "lib/fonts/fraunces-600.ttf"));
+    literata = await readFile(join(process.cwd(), "lib/fonts/literata-600.ttf"));
   } catch {
-    fraunces = null;
+    literata = null;
   }
 
   return new ImageResponse(
@@ -66,13 +66,13 @@ export default async function DestinationsIndexOgImage() {
           flexDirection: "column",
           background: "#f7f1e2",
           padding: "60px 72px",
-          fontFamily: fraunces ? "Fraunces" : undefined,
+          fontFamily: literata ? "Literata" : undefined,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img width={52} height={52} src={MARK_DATA_URI} alt="" />
-          <span style={{ fontSize: 28, fontWeight: 600, color: "#1f6f8a" }}>decide</span>
+          <span style={{ fontSize: 28, fontWeight: 600, color: "#2c6a4c" }}>decide</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", gap: 24 }}>
           <div style={{ display: "flex", fontSize: 64, fontWeight: 600, color: "#2b241c", lineHeight: 1.15 }}>
@@ -86,7 +86,7 @@ export default async function DestinationsIndexOgImage() {
     ),
     {
       ...size,
-      fonts: fraunces ? [{ name: "Fraunces", data: fraunces, weight: 600, style: "normal" }] : undefined,
+      fonts: literata ? [{ name: "Literata", data: literata, weight: 600, style: "normal" }] : undefined,
     }
   );
 }

@@ -45,7 +45,7 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
       subject: "Your decide sign-in link",
       // Hex values are hardcoded, not var(--x) — email clients strip CSS
       // custom properties, and this needs to render the same in Gmail/
-      // Apple Mail/Outlook regardless of what globals.css defines. #1f6f8a
+      // Apple Mail/Outlook regardless of what globals.css defines. #2c6a4c
       // is --brand-teal, kept in sync by hand since there's no shared build
       // step between this file and the app's CSS. A bare "click this link,
       // expires in 15 minutes" email with no branding reads as templated/
@@ -55,17 +55,17 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
       // setting does.
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #2b241c;">
-          <div style="font-size: 22px; font-weight: 700; color: #1f6f8a; margin-bottom: 24px;">decide</div>
+          <div style="font-size: 22px; font-weight: 700; color: #2c6a4c; margin-bottom: 24px;">decide</div>
           <h1 style="font-size: 18px; font-weight: 600; margin: 0 0 12px; color: #2b241c;">Sign in to decide</h1>
           <p style="font-size: 14px; line-height: 1.6; color: #4a4136; margin: 0 0 24px;">
             Click the button below to sign in. This link works once and expires in 15 minutes.
           </p>
-          <a href="${verifyUrl}" style="display: inline-block; background: #1f6f8a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 8px; margin-bottom: 8px;">
+          <a href="${verifyUrl}" style="display: inline-block; background: #2c6a4c; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 8px; margin-bottom: 8px;">
             Sign in to decide
           </a>
           <p style="font-size: 13px; line-height: 1.5; color: #8a7d68; margin: 24px 0 0;">
             If the button doesn't work, copy and paste this link into your browser:<br>
-            <a href="${verifyUrl}" style="color: #1f6f8a; word-break: break-all;">${verifyUrl}</a>
+            <a href="${verifyUrl}" style="color: #2c6a4c; word-break: break-all;">${verifyUrl}</a>
           </p>
           <p style="font-size: 12px; line-height: 1.5; color: #8a7d68; margin: 24px 0 0; border-top: 1px solid #e3d5b3; padding-top: 16px;">
             If you didn't request this, you can safely ignore this email — no account changes will be made.

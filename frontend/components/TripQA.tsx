@@ -13,6 +13,24 @@ import {
 } from "@/lib/tripQA";
 import type { Language } from "@/lib/types";
 
+/** The trip's start month, in the reading language, for the starter
+ * questions. Returns "" on a missing or unparseable date, which leaves the
+ * packing question reading "...for Rome in?" — so the caller only reaches
+ * for it when a date is present. */
+function monthName(date: string | undefined, language: Language): string {
+  if (!date) return "";
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat(language === "bg" ? "bg-BG" : "en-GB", {
+      month: "long",
+      timeZone: "UTC",
+    }).format(parsed);
+  } catch {
+    return "";
+  }
+}
+
 /** Downscales a picked photo to TRIP_QA_IMAGE_MAX_EDGE_PX on its long edge
  * and re-encodes it as JPEG, in the browser, before anything is uploaded.
  * Three things this has to get right:
@@ -201,11 +219,26 @@ export function TripQA({ context, language, t }: TripQAProps) {
     setDraft(prompt);
   }
 
+  // On a trip page the starter questions name the trip's own city and
+  // month; on /ask, where there is no trip, they stay the generic set.
+  // Falls back to generic if the brief somehow has no destination, so an
+  // odd job record produces plain questions rather than "{destination}".
+  const examples = (() => {
+    const destination = context?.destinations?.[0]?.trim();
+    if (!destination) return t.tripQA.examplePrompts;
+    const month = monthName(context?.start_date, language);
+    return t.tripQA.examplePromptsForTrip
+      // Without a usable date the packing question would read "...in ?",
+      // so drop it rather than ship a sentence with a hole in it.
+      .filter((p) => month || !p.includes("{month}"))
+      .map((p) => p.replace(/\{destination\}/g, destination).replace(/\{month\}/g, month));
+  })();
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {messages.length === 0 && t.tripQA.examplePrompts.length > 0 && (
+      {messages.length === 0 && examples.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {t.tripQA.examplePrompts.map((prompt) => (
+          {examples.map((prompt) => (
             <button
               key={prompt}
               type="button"

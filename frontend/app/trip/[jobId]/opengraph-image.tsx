@@ -1,4 +1,4 @@
-// Per-trip social share image. Bundles the Fraunces weight already used for
+// Per-trip social share image. Bundles the Literata weight already used for
 // the "decide" wordmark (frontend/lib/fonts, SIL OFL) so a shared trip link
 // renders on-brand in iMessage/Slack/WhatsApp instead of a bare URL.
 
@@ -26,8 +26,8 @@ const MARK_SVG = `
       <stop offset="1" stop-color="#8a7d68"/>
     </linearGradient>
     <linearGradient id="m" x1="50" y1="10" x2="50" y2="72" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4f9aa8"/>
-      <stop offset="1" stop-color="#1f6f8a"/>
+      <stop offset="0" stop-color="#4f9a72"/>
+      <stop offset="1" stop-color="#2c6a4c"/>
     </linearGradient>
   </defs>
   <path d="M18 15 Q 34 40 50 72" fill="none" stroke="url(#l)" stroke-width="3.5" stroke-linecap="round" opacity="0.65"/>
@@ -42,7 +42,7 @@ const MAX_SUMMARY_LENGTH = 150;
 // Same thresholds as trustScoreColor in ItineraryResult.tsx, in hex since
 // this renderer (satori) doesn't resolve CSS custom properties.
 function trustScoreColor(percent: number): string {
-  if (percent >= 80) return "#1f6f8a"; // --grounded
+  if (percent >= 80) return "#2c6a4c"; // --grounded
   if (percent >= 50) return "#c97f1e"; // --unverified
   return "#b8452f"; // --infeasible
 }
@@ -64,11 +64,11 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
   const feasible = job?.result?.budget_feasibility?.feasible;
   const trustScore = job?.result ? computeTrustScore(job.result) : null;
 
-  let fraunces: Buffer | null = null;
+  let literata: Buffer | null = null;
   try {
-    fraunces = await readFile(join(process.cwd(), "lib/fonts/fraunces-600.ttf"));
+    literata = await readFile(join(process.cwd(), "lib/fonts/literata-600.ttf"));
   } catch {
-    fraunces = null;
+    literata = null;
   }
 
   return new ImageResponse(
@@ -81,13 +81,13 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
           flexDirection: "column",
           background: "#f7f1e2",
           padding: "60px 72px",
-          fontFamily: fraunces ? "Fraunces" : undefined,
+          fontFamily: literata ? "Literata" : undefined,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img width={52} height={52} src={MARK_DATA_URI} alt="" />
-          <span style={{ fontSize: 28, fontWeight: 600, color: "#1f6f8a" }}>decide</span>
+          <span style={{ fontSize: 28, fontWeight: 600, color: "#2c6a4c" }}>decide</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", gap: 24 }}>
           <div style={{ display: "flex", fontSize: 58, fontWeight: 600, color: "#2b241c", lineHeight: 1.15, maxWidth: 1000 }}>
@@ -103,8 +103,8 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
               <div
                 style={{
                   display: "flex",
-                  border: `3px solid ${feasible ? "#1f6f8a" : "#b8452f"}`,
-                  color: feasible ? "#1f6f8a" : "#b8452f",
+                  border: `3px solid ${feasible ? "#2c6a4c" : "#b8452f"}`,
+                  color: feasible ? "#2c6a4c" : "#b8452f",
                   fontSize: 22,
                   fontWeight: 700,
                   letterSpacing: 2,
@@ -139,7 +139,7 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
     ),
     {
       ...size,
-      fonts: fraunces ? [{ name: "Fraunces", data: fraunces, weight: 600, style: "normal" }] : undefined,
+      fonts: literata ? [{ name: "Literata", data: literata, weight: 600, style: "normal" }] : undefined,
     }
   );
 }

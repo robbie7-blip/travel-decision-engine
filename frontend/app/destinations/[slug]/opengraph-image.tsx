@@ -2,7 +2,7 @@
 // sharing a guide link fell back to the site's generic OG metadata (no
 // photo, no city name), even for cities that now have a real photo. Mirrors
 // the pattern and branding of trip/[jobId]/opengraph-image.tsx: same
-// bundled Fraunces weight, same mark, same 1200x630 size.
+// bundled Literata weight, same mark, same 1200x630 size.
 //
 // English-only, not a locale gap that's fixable here: Next's
 // opengraph-image.tsx file convention only ever passes `params` to this
@@ -36,8 +36,8 @@ const MARK_SVG = `
       <stop offset="1" stop-color="#8a7d68"/>
     </linearGradient>
     <linearGradient id="m" x1="50" y1="10" x2="50" y2="72" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4f9aa8"/>
-      <stop offset="1" stop-color="#1f6f8a"/>
+      <stop offset="0" stop-color="#4f9a72"/>
+      <stop offset="1" stop-color="#2c6a4c"/>
     </linearGradient>
   </defs>
   <path d="M18 15 Q 34 40 50 72" fill="none" stroke="url(#l)" stroke-width="3.5" stroke-linecap="round" opacity="0.65"/>
@@ -50,12 +50,12 @@ const MARK_DATA_URI = `data:image/svg+xml;base64,${Buffer.from(MARK_SVG).toStrin
 // Same palette + hash as DestinationBanner.tsx, for cities without a real
 // photo yet — keeps the fallback share image on-brand rather than blank.
 const PALETTES: [string, string][] = [
-  ["#1f6f8a", "#5fc9d9"],
+  ["#1b3a2c", "#4f9a72"],
   ["#d9643f", "#e8a23f"],
   ["#2b241c", "#4a4136"],
-  ["#7d5ba6", "#5fc9d9"],
+  ["#7d5ba6", "#4f9a72"],
   ["#e8a23f", "#d9643f"],
-  ["#1f6f8a", "#7d5ba6"],
+  ["#2c6a4c", "#7d5ba6"],
 ];
 
 function paletteFor(slug: string): [string, string] {
@@ -104,11 +104,11 @@ export default async function DestinationOgImage({ params }: { params: Promise<{
   }
   const [from, to] = paletteFor(slug);
 
-  let fraunces: Buffer | null = null;
+  let literata: Buffer | null = null;
   try {
-    fraunces = await readFile(join(process.cwd(), "lib/fonts/fraunces-600.ttf"));
+    literata = await readFile(join(process.cwd(), "lib/fonts/literata-600.ttf"));
   } catch {
-    fraunces = null;
+    literata = null;
   }
 
   return new ImageResponse(
@@ -120,7 +120,7 @@ export default async function DestinationOgImage({ params }: { params: Promise<{
           display: "flex",
           position: "relative",
           background: photoDataUri ? "#2b241c" : `linear-gradient(135deg, ${from}, ${to})`,
-          fontFamily: fraunces ? "Fraunces" : undefined,
+          fontFamily: literata ? "Literata" : undefined,
         }}
       >
         {photoDataUri && (
@@ -177,7 +177,7 @@ export default async function DestinationOgImage({ params }: { params: Promise<{
     ),
     {
       ...size,
-      fonts: fraunces ? [{ name: "Fraunces", data: fraunces, weight: 600, style: "normal" }] : undefined,
+      fonts: literata ? [{ name: "Literata", data: literata, weight: 600, style: "normal" }] : undefined,
     }
   );
 }

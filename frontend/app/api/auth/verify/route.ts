@@ -78,8 +78,8 @@ export async function GET(request: NextRequest) {
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f7f1e2; color: #2b241c;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
     .box { text-align: center; }
-    .brand { font-size: 20px; font-weight: 700; color: #1f6f8a; margin-bottom: 12px; }
-    button { font-family: inherit; background: #1f6f8a; color: white; border: none; border-radius: 8px;
+    .brand { font-size: 20px; font-weight: 700; color: #2c6a4c; margin-bottom: 12px; }
+    button { font-family: inherit; background: #2c6a4c; color: white; border: none; border-radius: 8px;
              padding: 12px 24px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 12px; }
     #fallback { display: none; }
   </style>

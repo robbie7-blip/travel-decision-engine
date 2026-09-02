@@ -1,17 +1,39 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Fraunces, DM_Mono, Inter } from "next/font/google";
+import { Literata, DM_Mono, Inter } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { AppSplash } from "@/components/AppSplash";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getSiteUrl } from "@/lib/siteUrl";
 import "./globals.css";
 
-const fraunces = Fraunces({
+// The headline face. This was Fraunces, which had two problems at once:
+// it's the display serif a lot of AI products picked in 2024, so the site
+// read as one of them — and it ships no Cyrillic, so every heading on the
+// Bulgarian site was quietly falling back to Georgia.
+//
+// Literata was drawn for e-readers, which is exactly the constraint this
+// design has: the display face isn't only doing 38px hero lines, it's also
+// doing 18-19px card titles and the logo. Faces with more display
+// personality (Playfair, and Garamond from the other direction) thin out
+// or break up at that size. Variable weight axis, so the 400/600 the
+// layouts ask for come from one file rather than two.
+const literata = Literata({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["400", "600"],
   style: ["normal", "italic"],
+});
+
+// Cyrillic cuts of the same face, split out for the same reason as the
+// interface font below: next/font preloads every declared subset, and a
+// single list would preload the Cyrillic file on English pages. Off the
+// preload list, the stylesheet's unicode-range fetches it only where a
+// Cyrillic character actually renders.
+const literataCyrillic = Literata({
+  subsets: ["cyrillic"],
+  variable: "--font-display-cyrillic",
+  style: ["normal", "italic"],
+  preload: false,
 });
 
 // The interface font: nav, chips, labels, buttons, the whole generation
@@ -58,10 +80,16 @@ const interCyrillic = Inter({
 // times and the English-only admin pages. DM Mono has no Cyrillic, so if
 // a Bulgarian string ever lands in one of these, it'll fall through the
 // stack to the system monospace rather than render in DM Mono.
+// Not preloaded: since .font-mono stopped being the default for interface
+// text, most pages — the homepage included — render no monospace at all,
+// and the preload links were pulling both weights down on every one of
+// them. Dropping the hint doesn't stop the font loading where it's
+// actually used; it just stops announcing it where it isn't.
 const dmMono = DM_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   weight: ["400", "500"],
+  preload: false,
 });
 
 const siteUrl = getSiteUrl();
@@ -108,7 +136,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // silently take the whole declaration with it.
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${interCyrillic.variable} ${dmMono.variable}`}
+      className={`${literata.variable} ${literataCyrillic.variable} ${inter.variable} ${interCyrillic.variable} ${dmMono.variable}`}
     >
       <body>
         <AppSplash />

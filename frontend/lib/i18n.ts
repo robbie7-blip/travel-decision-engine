@@ -319,6 +319,9 @@ export interface Dictionary {
     // a fresh /ask visit, and doubles as a hint at the kind of question
     // this is for (packing/safety/customs, not itinerary planning).
     examplePrompts: string[];
+    // The trip-page variant of the above, with {destination} and {month}
+    // placeholders filled from the itinerary's own brief.
+    examplePromptsForTrip: string[];
     // 3 icon cards shown above the Q&A box on the standalone /ask page —
     // the page used to be just a heading and a plain input, with nothing
     // hinting at scope before you typed something.
@@ -663,7 +666,7 @@ const en: Dictionary = {
   showcase: {
     navLabel: "Real examples",
     pageTitle: "Real trips decide has already planned",
-    pageDescription: "Full itineraries, not mockups - every confidence dot, budget stamp, and trust score exactly as generated.",
+    pageDescription: "Full itineraries, not mockups - every confidence tag, budget stamp, and trust score exactly as generated.",
     emptyState: "No examples here yet - check back soon.",
     viewTrip: "View full itinerary →",
     daysLabel: "{count} days",
@@ -737,6 +740,19 @@ const en: Dictionary = {
       "Is it safe to walk around at night in Mexico City?",
       "What's a local custom I shouldn't accidentally break in Tokyo?",
       "Do I need to tip in Berlin restaurants?",
+    ],
+    // The same four questions, aimed at the trip the traveler is actually
+    // looking at. On a trip page the generic set above named four cities,
+    // none of which was the one on screen — a Rome itinerary offering
+    // "what should I pack for Lisbon" reads as though the feature hasn't
+    // read the page it's sitting on. {destination} and {month} are filled
+    // from the trip's own brief; the generic set still serves /ask, which
+    // has no trip behind it.
+    examplePromptsForTrip: [
+      "What should I pack for {destination} in {month}?",
+      "Is it safe to walk around {destination} at night?",
+      "What's a local custom I shouldn't accidentally break in {destination}?",
+      "Do I need to tip in {destination} restaurants?",
     ],
     topics: [
       { title: "Packing", body: "What to bring for the season, the climate, and what you're actually planning to do there." },
@@ -1085,7 +1101,7 @@ const bg: Dictionary = {
   showcase: {
     navLabel: "Реални примери",
     pageTitle: "Реални пътувания, планирани от decide",
-    pageDescription: "Пълни планове, не макети - всяка точка на увереност, печат за бюджет и оценка на доверие точно както са генерирани.",
+    pageDescription: "Пълни планове, не макети - всеки етикет за увереност, печат за бюджет и оценка на доверие точно както са генерирани.",
     emptyState: "Все още няма примери тук - провери отново скоро.",
     viewTrip: "Виж целия план →",
     daysLabel: "{count} дни",
@@ -1159,6 +1175,12 @@ const bg: Dictionary = {
       "Безопасно ли е да се разхождам вечер в Мексико Сити?",
       "Кой местен обичай да внимавам да не наруша в Токио?",
       "Трябва ли да оставям бакшиш в ресторантите в Берлин?",
+    ],
+    examplePromptsForTrip: [
+      "Какво да си взема за {destination} през {month}?",
+      "Безопасно ли е да се разхождам вечер в {destination}?",
+      "Кой местен обичай да внимавам да не наруша в {destination}?",
+      "Трябва ли да оставям бакшиш в ресторантите в {destination}?",
     ],
     topics: [
       { title: "Багаж", body: "Какво да вземете според сезона, климата и с какво всъщност ще се занимавате там." },

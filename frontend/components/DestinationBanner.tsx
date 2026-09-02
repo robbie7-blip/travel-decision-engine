@@ -13,12 +13,12 @@
 // happened on the index page's narrower cards.
 
 const PALETTES: [string, string][] = [
-  ["#1f6f8a", "#5fc9d9"], // teal — the button/lodging-verified gradient
+  ["#1b3a2c", "#4f9a72"], // the hero band's deep green, opening up
   ["#d9643f", "#e8a23f"], // terracotta -> gold — the headline gradient
   ["#2b241c", "#4a4136"], // ink -> ink-soft — a moodier night variant
-  ["#7d5ba6", "#5fc9d9"], // single-source purple -> teal
+  ["#7d5ba6", "#4f9a72"], // single-source purple -> green
   ["#e8a23f", "#d9643f"], // gold -> terracotta, reversed
-  ["#1f6f8a", "#7d5ba6"], // teal -> purple
+  ["#2c6a4c", "#7d5ba6"], // brand green -> purple
 ];
 
 function paletteFor(slug: string): [string, string] {
@@ -84,7 +84,7 @@ export function DestinationBanner({
         x={56}
         y={compact ? height - 70 : height - 80}
         style={{
-          fontFamily: "var(--font-display), Georgia, serif",
+          fontFamily: "var(--font-display), var(--font-display-cyrillic), Georgia, serif",
           fontWeight: 600,
           fontSize: compact ? 100 : 92,
           fill: "#fffdf8",
