@@ -216,8 +216,24 @@ export default async function WhyDecidePage({
       </div>
 
       <div style={{ padding: "48px clamp(32px, 8%, 180px) 64px" }}>
-        <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
-          <h2 className="font-display" style={{ fontSize: "clamp(22px, 3.5vw, 28px)", fontWeight: 600, margin: "0 0 24px", color: "var(--ink)" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
+          {/* Wide enough for the closing line to sit on one line at full
+              size in both languages — at 620 it broke after "deciding" and
+              left "it." alone on the second line, directly above the
+              button, which read as a typo rather than a line break.
+              text-wrap: balance keeps the two halves even rather than
+              orphaning a word again once the viewport is too narrow to fit
+              it whole. */}
+          <h2
+            className="font-display"
+            style={{
+              fontSize: "clamp(22px, 3.5vw, 28px)",
+              fontWeight: 600,
+              margin: "0 0 24px",
+              color: "var(--ink)",
+              textWrap: "balance",
+            }}
+          >
             {wd.ctaHeading}
           </h2>
           <Link
