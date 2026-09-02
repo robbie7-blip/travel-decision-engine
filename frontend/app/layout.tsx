@@ -5,6 +5,7 @@ import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistratio
 import { AppSplash } from "@/components/AppSplash";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { LAUNCH_DEVICES, launchImageHref, launchMediaQuery } from "@/lib/launchScreens";
 import "./globals.css";
 
 // The headline face. This was Fraunces, which had two problems at once:
@@ -138,6 +139,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${literata.variable} ${literataCyrillic.variable} ${inter.variable} ${interCyrillic.variable} ${dmMono.variable}`}
     >
+      {/* Installed-on-iOS launch screens. Without these iOS shows plain
+          white — it does not read the manifest's background_color — so
+          opening the app flashed white before AppSplash could paint.
+          These images are that same splash, so the first frame is already
+          the right screen. See lib/launchScreens.ts. React hoists these
+          into <head>. */}
+      {LAUNCH_DEVICES.map((device) => (
+        <link
+          key={launchImageHref(device)}
+          rel="apple-touch-startup-image"
+          href={launchImageHref(device)}
+          media={launchMediaQuery(device)}
+        />
+      ))}
       <body>
         <AppSplash />
         {children}

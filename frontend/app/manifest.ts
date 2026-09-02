@@ -9,7 +9,10 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "It doesn't list options. It decides for you.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f7f1e2",
+    // Must match --bg in globals.css. It didn't: this was the parchment
+    // from two palettes ago, so an Android launch faded from one
+    // off-white into a slightly different one.
+    background_color: "#faf8f1",
     theme_color: "#2c6a4c",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

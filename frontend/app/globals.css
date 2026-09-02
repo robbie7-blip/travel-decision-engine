@@ -92,6 +92,11 @@
   --deep: #1b3a2c;
   --deep-ink: #f4f1e4;
   --deep-soft: #b3c9b8;
+  /* The band's equivalent of --line. Borders inside the hero were using
+     --line, which is a hairline drawn for the parchment ground and reads
+     as a bright white ring against the green. Translucent so it sits on
+     the band at the same weight --line sits on the page. */
+  --deep-line: rgba(244, 241, 228, 0.32);
   --shadow-panel: 0 2px 10px rgba(43, 36, 28, 0.06), 0 1px 3px rgba(43, 36, 28, 0.05);
 
   /* Confidence-tier colors — aliases onto the six above, not separate
@@ -464,9 +469,18 @@ button {
 }
 
 /* Hidden on desktop — only meaningful once the rule above turns it on
-   under the mobile breakpoint. */
+   under the mobile breakpoint.
+
+   align-items matters here even though the button looks like plain text:
+   the mobile rule turns it into an inline-flex, and the touch-target
+   block below gives it min-height 44px on a finger device. A flex box
+   taller than its content, with no alignment set, leaves "Menu ☰" sitting
+   at the top of the pill rather than in the middle of it — which is
+   exactly how it rendered on a phone. */
 .nav-menu-toggle {
   display: none;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Hero subhead's forced break between its two sentences (see page.tsx) —

@@ -119,7 +119,15 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-export function SectionLabel({ children }: { children: ReactNode }) {
+/** tone="onDeep" for the reversed palette inside the hero band, where the
+ * default --ink-dim is a dark grey on dark green. */
+export function SectionLabel({
+  children,
+  tone = "default",
+}: {
+  children: ReactNode;
+  tone?: "default" | "onDeep";
+}) {
   return (
     <div
       className="font-ui"
@@ -127,7 +135,7 @@ export function SectionLabel({ children }: { children: ReactNode }) {
         fontSize: 11,
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        color: "var(--ink-dim)",
+        color: tone === "onDeep" ? "var(--deep-soft)" : "var(--ink-dim)",
         marginBottom: 12,
       }}
     >
