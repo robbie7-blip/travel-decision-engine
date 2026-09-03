@@ -6,6 +6,7 @@ import { WeatherStrip } from "./WeatherStrip";
 import { TripQA } from "./TripQA";
 import { TripVisitedPrompt } from "./TripVisitedPrompt";
 import { DayMap } from "./DayMap";
+import { TripCover } from "./TripCover";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
@@ -273,6 +274,28 @@ export function ItineraryResult({
 
   return (
     <div>
+      {/* The cover carries the stamps, so the page opens on the place, the
+          dates and the two verdicts rather than on a paragraph. */}
+      <TripCover
+        destinations={destinations}
+        startDate={startDate}
+        endDate={endDate}
+        dayCount={result.days?.length ?? 0}
+        t={t}
+        language={language}
+      >
+        {result.budget_feasibility && (
+          <Stamp ok={result.budget_feasibility.feasible}>
+            {result.budget_feasibility.feasible ? t.result.budgetFeasible : t.result.budgetNotFeasible}
+          </Stamp>
+        )}
+        {trustScore.totalCount > 0 && (
+          <Stamp ok color={trustScoreColor(trustScore.percent)}>
+            {trustScore.percent}% {t.result.trustScoreLabel}
+          </Stamp>
+        )}
+      </TripCover>
+
       <h2
         className="font-display"
         style={{
@@ -311,19 +334,8 @@ export function ItineraryResult({
 
       {result.budget_feasibility && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-            <Stamp ok={result.budget_feasibility.feasible}>
-              {result.budget_feasibility.feasible ? t.result.budgetFeasible : t.result.budgetNotFeasible}
-            </Stamp>
-            {trustScore.totalCount > 0 && (
-              <Stamp ok color={trustScoreColor(trustScore.percent)}>
-                {trustScore.percent}% {t.result.trustScoreLabel}
-              </Stamp>
-            )}
-          </div>
           <div
             style={{
-              marginTop: 12,
               padding: "14px 16px",
               background: "var(--bg-panel-raised)",
               border: "1px solid var(--line)",

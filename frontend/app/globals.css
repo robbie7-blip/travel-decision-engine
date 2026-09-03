@@ -1352,3 +1352,97 @@ p {
   font-weight: 700;
   flex-shrink: 0;
 }
+
+/* ============================================================
+   The trip cover
+   ============================================================ */
+
+/* Opens a finished itinerary on the place rather than on a paragraph.
+   Two states: with a real photo of the city (the destination-guide images
+   already in the repo), and without, which is most of the world - see
+   components/TripCover.tsx on why the fallback is green rather than a
+   stock photo of somewhere else. */
+.trip-cover {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  min-height: 200px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--deep);
+}
+
+.trip-cover-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Dark at the bottom where the type sits, clear at the top where the
+   picture is. Two gradients, not one: the vertical wash alone left the
+   11px eyebrow sitting over whatever the photo happened to have on the
+   left, which for a pale building is not readable. The horizontal one
+   guarantees the type side is dark no matter what the image is doing, so
+   the cover cannot become unreadable when a new photo is added. */
+.trip-cover-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, rgba(18, 26, 21, 0.78) 0%, rgba(18, 26, 21, 0.42) 45%, rgba(18, 26, 21, 0.1) 100%),
+    linear-gradient(
+      to bottom,
+      rgba(18, 26, 21, 0.1) 0%,
+      rgba(18, 26, 21, 0.4) 55%,
+      rgba(18, 26, 21, 0.8) 100%
+    );
+}
+
+.trip-cover[data-has-photo="false"] .trip-cover-scrim {
+  background: linear-gradient(to bottom, rgba(20, 30, 24, 0) 0%, rgba(20, 30, 24, 0.35) 100%);
+}
+
+.trip-cover-body {
+  position: relative;
+  padding: 28px 26px 22px;
+  width: 100%;
+}
+
+.trip-cover-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 253, 248, 0.82);
+  margin-bottom: 8px;
+}
+
+.trip-cover-title {
+  margin: 0;
+  font-size: clamp(26px, 5vw, 40px);
+  font-weight: 600;
+  line-height: 1.1;
+  color: #fffdf8;
+}
+
+.trip-cover-stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+@media (max-width: 600px) {
+  .trip-cover {
+    min-height: 168px;
+  }
+
+  .trip-cover-body {
+    padding: 22px 18px 18px;
+  }
+}

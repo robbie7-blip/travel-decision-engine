@@ -169,6 +169,8 @@ export interface Dictionary {
       heading: string;
       note: string;
     };
+    /** The cover at the top of a finished itinerary. "{count}" days. */
+    dayCount: string;
     closedTemporarily: string;
     /** Shown next to a venue we confirmed is open on the day it is scheduled. */
     openOnThisDay: string;
@@ -643,6 +645,7 @@ const en: Dictionary = {
       heading: "The shape of the day",
       note: "Verified stops only, plotted to scale. Straight lines show the order, not the route.",
     },
+    dayCount: "{count} days",
     closedTemporarily: "Temporarily closed (Google)",
     openOnThisDay: "✓ Open on this day",
     closedPermanently: "Permanently closed (Google)",
@@ -1137,6 +1140,7 @@ const bg: Dictionary = {
       heading: "Формата на деня",
       note: "Само потвърдени места, нанесени в мащаб. Правите линии показват реда, не маршрута.",
     },
+    dayCount: "{count} дни",
     closedTemporarily: "Временно затворено (Google)",
     openOnThisDay: "✓ Отворено в този ден",
     closedPermanently: "Трайно затворено (Google)",

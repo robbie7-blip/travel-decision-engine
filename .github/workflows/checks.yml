@@ -79,6 +79,10 @@ jobs:
       # person. The prompts ask the model not to write one and the worker
       # strips any that survive; this covers the copy we write ourselves.
       - run: npm run check:dashes
+      # The trip cover's list of which cities have a photo is a hand-copy
+      # of a directory listing, because the trip page is client-rendered
+      # and cannot read the filesystem. This is what stops it drifting.
+      - run: npm run check:covers
       # Catches what typecheck alone misses - a server component importing
       # something client-only, a bad route export, a failed page render.
       - run: npm run build

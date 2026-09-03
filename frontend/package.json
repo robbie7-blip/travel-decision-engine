@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "check:contrast": "node scripts/checkContrast.mjs",
-    "check:dashes": "node scripts/checkDashes.mjs"
+    "check:dashes": "node scripts/checkDashes.mjs",
+    "check:covers": "node scripts/checkCoverPhotos.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
