@@ -466,7 +466,11 @@ npm run dev
    left unset (generation still works, just skips that check):
    - `GOOGLE_PLACES_API_KEY` - real rating/open-closed/Maps-link
      verification for named meal/activity venues (see
-     `engine/venueVerification.ts`).
+     `engine/venueVerification.ts`). **Set this on Vercel as well**, not
+     only here: the same key is what `frontend/app/api/venue-photo/route.ts`
+     uses to serve the one real photograph per day on a finished
+     itinerary. Missing on the frontend, verification still works and the
+     photos simply never appear.
    - `AMADEUS_API_KEY` / `AMADEUS_API_SECRET` - a real, live-checked flight
      price for the arrival flight item, replacing the model's own guessed
      fare (see `engine/flightPricing.ts`). Sign up free at

@@ -29,6 +29,10 @@ const MAX_WIDTH_PX = 800;
  * must never do is forward an arbitrary caller-supplied path to Google. */
 const PHOTO_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
 
+/** Once per process, not once per request: a page with four photos would
+ * otherwise print the same warning four times on every view. */
+let warnedAboutMissingKey = false;
+
 export async function GET(request: NextRequest) {
   const name = request.nextUrl.searchParams.get("name") ?? "";
   if (!PHOTO_NAME.test(name)) {
@@ -39,7 +43,22 @@ export async function GET(request: NextRequest) {
   // No key configured is not an error worth surfacing to a traveler - the
   // itinerary is complete without pictures, and every other Places-derived
   // signal degrades the same silent way.
-  if (!apiKey) return new NextResponse(null, { status: 404 });
+  //
+  // It IS worth one log line, though. This key has historically only been
+  // set on the worker, because until now only the worker used it, so the
+  // likeliest reason a deployment shows no photos is that it was never
+  // added to the frontend's environment. Silent to the traveler, visible
+  // to whoever is looking at the logs wondering where the pictures went.
+  if (!apiKey) {
+    if (!warnedAboutMissingKey) {
+      warnedAboutMissingKey = true;
+      console.warn(
+        "[venue-photo] GOOGLE_PLACES_API_KEY is not set on the frontend, so day photos will not render. " +
+          "It is the same key the worker uses; see the deployment notes in README.md."
+      );
+    }
+    return new NextResponse(null, { status: 404 });
+  }
 
   const url =
     `https://places.googleapis.com/v1/${name}/media` +
