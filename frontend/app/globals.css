@@ -1289,3 +1289,66 @@ p {
     min-height: 64px;
   }
 }
+
+/* ============================================================
+   The day map
+   ============================================================ */
+
+/* Flat SVG, no tile layer - see components/DayMap.tsx for why. */
+.day-map {
+  margin: 16px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-panel);
+}
+
+.day-map-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.day-map-pin-label {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.day-map-scale {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 11px;
+}
+
+/* The plot's caption, and the only version of it a screen reader gets. */
+.day-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-panel-raised);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.day-map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.day-map-legend-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--brand-teal);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}

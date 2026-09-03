@@ -5,6 +5,7 @@ import { ConfidenceTag, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
 import { TripQA } from "./TripQA";
 import { TripVisitedPrompt } from "./TripVisitedPrompt";
+import { DayMap } from "./DayMap";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
@@ -603,6 +604,13 @@ export function ItineraryResult({
                 </div>
               );
             })}
+
+            {/* The day as a shape, after the list rather than before it:
+                the plot answers "how spread out is this?", which is a
+                question you have once you have read what the day contains.
+                Renders nothing when fewer than two stops carry
+                coordinates. */}
+            <DayMap items={day.items} t={t} />
           </div>
         ))}
 

@@ -162,6 +162,13 @@ export interface Dictionary {
     // Google Places verification on named-venue items (see worker/src/engine/
     // venueVerification.ts) - "{count}" placeholder for googleRatingCount.
     googleRatingCount: string;
+    /** The day map (components/DayMap.tsx). alt doubles as the screen
+     * reader description, since the plot itself carries no text. */
+    map: {
+      alt: string;
+      heading: string;
+      note: string;
+    };
     closedTemporarily: string;
     /** Shown next to a venue we confirmed is open on the day it is scheduled. */
     openOnThisDay: string;
@@ -631,6 +638,11 @@ const en: Dictionary = {
       avgRain: "Avg rain",
     },
     googleRatingCount: "{count} reviews",
+    map: {
+      alt: "A plot of the day's verified stops, in order.",
+      heading: "The shape of the day",
+      note: "Verified stops only, plotted to scale. Straight lines show the order, not the route.",
+    },
     closedTemporarily: "Temporarily closed (Google)",
     openOnThisDay: "✓ Open on this day",
     closedPermanently: "Permanently closed (Google)",
@@ -1120,6 +1132,11 @@ const bg: Dictionary = {
       avgRain: "Ср. валежи",
     },
     googleRatingCount: "{count} отзива",
+    map: {
+      alt: "Схема на потвърдените спирки за деня, по ред.",
+      heading: "Формата на деня",
+      note: "Само потвърдени места, нанесени в мащаб. Правите линии показват реда, не маршрута.",
+    },
     closedTemporarily: "Временно затворено (Google)",
     openOnThisDay: "✓ Отворено в този ден",
     closedPermanently: "Трайно затворено (Google)",

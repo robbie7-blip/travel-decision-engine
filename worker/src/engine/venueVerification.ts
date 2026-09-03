@@ -117,7 +117,7 @@ const MAX_PARALLEL_PLACES = 6;
 const PLACES_RETRY_BACKOFF_MS = [400, 1200];
 const FIELD_MASK =
   "places.rating,places.userRatingCount,places.businessStatus,places.priceLevel,places.id," +
-  "places.displayName,places.location,places.regularOpeningHours";
+  "places.displayName,places.location,places.regularOpeningHours,places.photos";
 
 interface GeoPoint {
   latitude: number;
@@ -141,6 +141,11 @@ export interface PlacesApiPlace {
   id?: string;
   displayName?: { text?: string };
   location?: GeoPoint;
+  /** Photo resource names, e.g. "places/ChIJ.../photos/AeJ...". Not URLs:
+   * fetching the bytes is a separate, separately billed request, which is
+   * why only the name is stored here and the actual image is pulled on
+   * demand through the app's own proxy. */
+  photos?: { name?: string }[];
   regularOpeningHours?: {
     periods?: PlacesOpeningPeriod[];
     weekdayDescriptions?: string[];
@@ -575,6 +580,23 @@ function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
   if (place.id && place.displayName?.text) {
     item.google_maps_url = buildMapsUrl(place.displayName.text, place.id);
   }
+
+  // The coordinates were already in every response and were being thrown
+  // away. Keeping them is what lets the trip page draw the day as a shape
+  // rather than a list: an itinerary is a route through a city, and until
+  // now the one thing the product knew about geography never reached the
+  // page. Costs nothing - same request, same field mask tier.
+  if (typeof place.location?.latitude === "number" && typeof place.location?.longitude === "number") {
+    item.google_lat = place.location.latitude;
+    item.google_lng = place.location.longitude;
+  }
+
+  // Just the name. Fetching the image is billed per photo, so the decision
+  // about WHICH ones are worth pulling belongs to the page (see
+  // /api/venue-photo), not to this pass - recording the name for every
+  // matched venue is free and leaves that choice open.
+  const photoName = place.photos?.find((p) => typeof p.name === "string" && p.name.length > 0)?.name;
+  if (photoName) item.google_photo_name = photoName;
 }
 
 /** Runs `fn` over `items` with at most `limit` in flight. Same shape as the

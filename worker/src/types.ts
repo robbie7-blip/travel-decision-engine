@@ -133,6 +133,17 @@ export interface ItineraryItem {
   // place Google Places matched (or doesn't appear at all, rather than
   // linking somewhere that might not be the right result).
   google_maps_url?: string;
+  /** The matched venue's real coordinates, from the same Places lookup
+   * that verified it. Present only on verified, named venues - which is
+   * exactly right for a map: a plotted point is itself a claim that the
+   * place exists where the pin says, and an inferred item has not earned
+   * that. Used by components/DayMap.tsx. */
+  google_lat?: number;
+  google_lng?: number;
+  /** A Google Places photo resource name, not a URL. The image is fetched
+   * through /api/venue-photo, which holds the key and does the billing,
+   * so recording the name here costs nothing until something renders it. */
+  google_photo_name?: string;
   // Whether the venue is actually OPEN on the day and at the hour this item
   // is scheduled for, checked against Google's real weekly opening hours.
   //
