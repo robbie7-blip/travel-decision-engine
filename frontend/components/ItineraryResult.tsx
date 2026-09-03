@@ -7,6 +7,7 @@ import { TripQA } from "./TripQA";
 import { TripVisitedPrompt } from "./TripVisitedPrompt";
 import { DayMap } from "./DayMap";
 import { TripCover } from "./TripCover";
+import { DayPhoto } from "./DayPhoto";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
@@ -430,6 +431,11 @@ export function ItineraryResult({
                 </span>
               )}
             </div>
+            {/* One real photo of somewhere the day actually goes, before
+                the list. See DayPhoto: capped at one per day because this
+                is the only element on the page billed per view. */}
+            <DayPhoto items={day.items} />
+
             {day.items.map((item, i) => {
               const key = itemKey(day.day, i);
               const expanded = expandedItems.has(key);

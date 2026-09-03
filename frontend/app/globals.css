@@ -1446,3 +1446,44 @@ p {
     padding: 22px 18px 18px;
   }
 }
+
+/* One photo per day, of a venue the day visits. Wide and shallow so it
+   sets the scene without pushing the day's actual content below the fold
+   on a phone. */
+.day-photo {
+  position: relative;
+  margin: 0 0 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg-panel-raised);
+  aspect-ratio: 16 / 5;
+}
+
+.day-photo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.day-photo-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 14px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fffdf8;
+  /* Its own gradient rather than a solid bar: the caption has to be
+     readable over whatever the photograph puts behind it, and a bar would
+     cut the picture in half. */
+  background: linear-gradient(to top, rgba(18, 26, 21, 0.85), rgba(18, 26, 21, 0));
+}
+
+@media (max-width: 600px) {
+  .day-photo {
+    aspect-ratio: 16 / 7;
+  }
+}
