@@ -325,8 +325,15 @@ export interface Dictionary {
      * still the one answering. */
     voiceHeading: string;
     voiceAnyone: string;
+    voiceAnyoneBlurb: string;
     voiceNote: string;
-    voices: Record<LocalVoice, { label: string; blurb: string }>;
+    /** Label before the chosen character's name, above the thread. */
+    voiceAsking: string;
+    voiceChange: string;
+    /** label is the character, blurb is what they know about, greeting is
+     * the line they open with in their own voice. The greeting is a local
+     * string, not a model call, so switching characters costs nothing. */
+    voices: Record<LocalVoice, { label: string; blurb: string; greeting: string }>;
     examplePrompts: string[];
     // The trip-page variant of the above, with {destination} and {month}
     // placeholders filled from the itinerary's own brief.
@@ -768,12 +775,31 @@ const en: Dictionary = {
     photoProOnlyCta: "See Pro",
     voiceHeading: "Who are you asking?",
     voiceAnyone: "Anyone",
-    voiceNote: "Still decide answering, just from that point of view.",
+    voiceAnyoneBlurb: "Straight answers, no particular angle",
+    voiceNote: "Characters, not real people. It is still decide answering, from the point of view you pick.",
+    voiceAsking: "Asking:",
+    voiceChange: "Change",
     voices: {
-      neighbour: { label: "A neighbour", blurb: "Lives here, knows which queue is worth it" },
-      cook: { label: "Someone who cooks", blurb: "Markets, seasons, where kitchen staff eat" },
-      night: { label: "Someone up late", blurb: "After dark, last transport, what's open" },
-      family: { label: "A parent", blurb: "With kids: distances, benches, what's worth it" },
+      neighbour: {
+        label: "The neighbour",
+        blurb: "Lives here. Knows which queue is worth it.",
+        greeting: "I have lived on this street a long time. Ask me what is worth the walk and what everyone only goes to once.",
+      },
+      cook: {
+        label: "The cook",
+        blurb: "Markets, seasons, where kitchen staff eat.",
+        greeting: "I cook here. Tell me what you feel like eating and I will tell you where it is actually good, and what is in season right now.",
+      },
+      night: {
+        label: "The night owl",
+        blurb: "After dark, last transport, what is still open.",
+        greeting: "My day starts when most people's ends. Ask me what is open late, which streets are genuinely fine, and how you get home.",
+      },
+      family: {
+        label: "The parent",
+        blurb: "With kids: distances, benches, what is worth it.",
+        greeting: "I do this city with small children. Ask me about distances, where you can actually sit down, and which famous thing is worth the queue.",
+      },
     },
     examplePrompts: [
       "What should I pack for Lisbon in October?",
@@ -1231,12 +1257,31 @@ const bg: Dictionary = {
     photoProOnlyCta: "Виж Pro",
     voiceHeading: "Кого питате?",
     voiceAnyone: "Все едно кого",
-    voiceNote: "Отговаря пак decide, просто от тази гледна точка.",
+    voiceAnyoneBlurb: "Прави отговори, без определен ъгъл",
+    voiceNote: "Герои, не истински хора. Отговаря пак decide, от гледната точка, която изберете.",
+    voiceAsking: "Питате:",
+    voiceChange: "Смени",
     voices: {
-      neighbour: { label: "Съсед", blurb: "Живее тук, знае за коя опашка си струва" },
-      cook: { label: "Човек, който готви", blurb: "Пазари, сезони, къде се хранят готвачите" },
-      night: { label: "Човек, който е буден до късно", blurb: "След мръкване, последен транспорт, какво работи" },
-      family: { label: "Родител", blurb: "С деца: разстояния, пейки, кое си струва" },
+      neighbour: {
+        label: "Съседът",
+        blurb: "Живее тук. Знае за коя опашка си струва.",
+        greeting: "Живея на тази улица от много години. Питайте ме за кое си струва да се повърви и къде всеки отива само по веднъж.",
+      },
+      cook: {
+        label: "Готвачът",
+        blurb: "Пазари, сезони, къде се хранят готвачите.",
+        greeting: "Готвя тук. Кажете какво ви се яде и ще ви кажа къде наистина е добро и какво е в сезон сега.",
+      },
+      night: {
+        label: "Нощната птица",
+        blurb: "След мръкване, последен транспорт, какво работи.",
+        greeting: "Денят ми започва, когато на повечето хора свършва. Питайте ме какво работи късно, кои улици са наистина спокойни и как се прибирате.",
+      },
+      family: {
+        label: "Родителят",
+        blurb: "С деца: разстояния, пейки, кое си струва.",
+        greeting: "Обикалям този град с малки деца. Питайте ме за разстояния, къде наистина може да се седне и за коя забележителност си струва опашката.",
+      },
     },
     examplePrompts: [
       "Какво да си взема за Лисабон през октомври?",

@@ -1078,56 +1078,6 @@ p {
   }
 }
 
-/* The "who are you asking" picker on Ask a Local. A chip rather than a
-   radio because it is optional: the default is Anyone, and the point is to
-   look like a choice worth making rather than a field that must be filled
-   before the box below can be used. */
-.voice-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  text-align: left;
-  padding: 8px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg-panel);
-  color: var(--ink-soft);
-  font-size: 12px;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-}
-
-.voice-chip:hover {
-  border-color: var(--line-strong);
-  background: var(--bg-panel-raised);
-}
-
-.voice-chip[data-active="true"] {
-  border-color: var(--brand-teal);
-  background: var(--brand-teal);
-  color: #ffffff;
-}
-
-/* Selection is carried by the fill AND the pressed state on the button,
-   not by colour alone - the same WCAG 1.4.1 reason the confidence dots
-   became tags. */
-.voice-chip-blurb {
-  font-size: 11px;
-  color: var(--ink-dim);
-  line-height: 1.35;
-}
-
-.voice-chip[data-active="true"] .voice-chip-blurb {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-@media (pointer: coarse) {
-  .voice-chip {
-    min-height: 44px;
-  }
-}
-
 /* Photo thumbnails on Places you've been. The add button matches the
    thumbnail size so a row of photos and the button to add another read as
    one strip rather than a grid with a control bolted on the end. */
@@ -1190,5 +1140,152 @@ p {
     top: -10px;
     right: -10px;
     font-size: 18px;
+  }
+}
+
+/* ============================================================
+   Ask a Local characters
+   ============================================================ */
+
+/* Cards, not chips. The picker is the first thing on the page that says
+   this is a conversation with someone rather than a search box, so it gets
+   a portrait, a name and a line in their own voice. auto-fit rather than a
+   fixed column count so the five cards reflow to two columns on a phone
+   and one line on a wide itinerary panel without a breakpoint. */
+.voice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.voice-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.voice-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.voice-card[data-active="true"] {
+  border-color: var(--brand-teal);
+  background: var(--brand-teal);
+  color: #ffffff;
+}
+
+.voice-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.voice-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.voice-card[data-active="true"] .voice-card-name {
+  color: #ffffff;
+}
+
+.voice-card-blurb {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-dim);
+}
+
+.voice-card[data-active="true"] .voice-card-blurb {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* The "Anyone" card has no portrait, so it gets a placeholder the same
+   size as one - otherwise its text starts at a different x than the four
+   beside it and the row looks broken rather than deliberate. */
+.voice-card-any {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  font-size: 16px;
+  color: var(--ink-dim);
+}
+
+.voice-card[data-active="true"] .voice-card-any {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+}
+
+/* The character's opening line. Sits in the panel's raised ground rather
+   than a chat bubble, because it is not part of the conversation - it is
+   never sent back to the model as history. */
+.voice-greeting {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+/* Who you are talking to, once the thread has started. */
+.voice-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  padding-bottom: 4px;
+}
+
+.voice-strip-change {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.voice-strip-change:hover {
+  color: var(--brand-teal);
+}
+
+/* Keeps the portrait aligned to the first line of the answer rather than
+   centred against a paragraph that may run several lines. */
+.voice-bubble-avatar {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+@media (pointer: coarse) {
+  .voice-card {
+    min-height: 64px;
   }
 }

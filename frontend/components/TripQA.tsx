@@ -14,6 +14,7 @@ import {
   type TripQAMessage,
 } from "@/lib/tripQA";
 import type { Language } from "@/lib/types";
+import { VOICE_AVATARS } from "./LocalVoiceAvatar";
 
 /** The trip's start month, in the reading language, for the starter
  * questions. Returns "" on a missing or unparseable date, which leaves the
@@ -242,45 +243,97 @@ export function TripQA({ context, language, t }: TripQAProps) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Who you're asking. Shown only before the first question: mid
-          conversation it would be a second control competing with the
-          input, and switching voice halfway through an exchange reads as
-          the person you were talking to being replaced. */}
+      {/* Who you're asking. Only before the first question: mid
+          conversation a full picker would compete with the input, and
+          swapping character halfway through reads as the person you were
+          talking to being replaced. Once the thread starts, the chosen
+          character shrinks to the strip below instead. */}
       {messages.length === 0 && (
         <div>
           <div
             className="font-ui"
-            style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 8 }}
+            style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 10 }}
           >
             {t.tripQA.voiceHeading}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div className="voice-grid">
             {([null, ...LOCAL_VOICES] as (LocalVoice | null)[]).map((option) => {
               const active = voice === option;
+              const Avatar = option ? VOICE_AVATARS[option] : null;
               return (
                 <button
                   key={option ?? "any"}
                   type="button"
                   onClick={() => setVoice(option)}
                   aria-pressed={active}
-                  className="font-ui voice-chip"
+                  className="font-ui voice-card"
                   data-active={active}
-                  title={option ? t.tripQA.voices[option].blurb : undefined}
                 >
-                  <span style={{ fontWeight: 600 }}>
-                    {option ? t.tripQA.voices[option].label : t.tripQA.voiceAnyone}
+                  {Avatar ? (
+                    <Avatar size={40} inverted={active} />
+                  ) : (
+                    <span className="voice-card-any" aria-hidden>
+                      ?
+                    </span>
+                  )}
+                  <span className="voice-card-text">
+                    <span className="voice-card-name">
+                      {option ? t.tripQA.voices[option].label : t.tripQA.voiceAnyone}
+                    </span>
+                    <span className="voice-card-blurb">
+                      {option ? t.tripQA.voices[option].blurb : t.tripQA.voiceAnyoneBlurb}
+                    </span>
                   </span>
-                  {option && <span className="voice-chip-blurb">{t.tripQA.voices[option].blurb}</span>}
                 </button>
               );
             })}
           </div>
+
+          {/* The character says hello in their own voice. A local string,
+              not a model call, so trying all four costs nothing and the
+              greeting never enters the conversation history that gets sent
+              back to the model. */}
+          {voice && (
+            <div className="voice-greeting">
+              {(() => {
+                const Avatar = VOICE_AVATARS[voice];
+                return <Avatar size={34} />;
+              })()}
+              <span>{t.tripQA.voices[voice].greeting}</span>
+            </div>
+          )}
+
           {/* Says plainly that this is a point of view, not a person. The
               prompt refuses to invent a biography; this is the same
               promise made where the traveler can see it. */}
-          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10 }}>
             {t.tripQA.voiceNote}
           </div>
+        </div>
+      )}
+
+      {/* Mid-conversation: who you are talking to stays visible, and can
+          still be changed - clearing the thread, because a character
+          switching mid-exchange would otherwise be answering for lines
+          somebody else said. */}
+      {messages.length > 0 && voice && (
+        <div className="voice-strip font-ui">
+          {(() => {
+            const Avatar = VOICE_AVATARS[voice];
+            return <Avatar size={26} />;
+          })()}
+          <span style={{ color: "var(--ink-dim)" }}>{t.tripQA.voiceAsking}</span>
+          <span style={{ fontWeight: 600 }}>{t.tripQA.voices[voice].label}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setMessages([]);
+              setVoice(null);
+            }}
+            className="voice-strip-change"
+          >
+            {t.tripQA.voiceChange}
+          </button>
         </div>
       )}
       {messages.length === 0 && examples.length > 0 && (
@@ -314,12 +367,16 @@ export function TripQA({ context, language, t }: TripQAProps) {
             // arrive - show a brief pulse instead of a blank bubble until
             // the first word lands.
             const isPendingAssistant = m.role === "assistant" && m.content === "" && sending && i === messages.length - 1;
-            return (
+            // The character's face beside their own answers, so a thread
+            // with four possible speakers still reads as a conversation
+            // with one of them.
+            const Avatar = m.role === "assistant" && voice ? VOICE_AVATARS[voice] : null;
+            const bubble = (
               <div
                 key={i}
                 style={{
                   alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                  maxWidth: "85%",
+                  maxWidth: Avatar ? "100%" : "85%",
                   padding: "8px 12px",
                   borderRadius: 10,
                   fontSize: 13,
@@ -351,6 +408,16 @@ export function TripQA({ context, language, t }: TripQAProps) {
                 ) : (
                   m.content
                 )}
+              </div>
+            );
+
+            if (!Avatar) return bubble;
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, maxWidth: "92%" }}>
+                <span className="voice-bubble-avatar">
+                  <Avatar size={28} />
+                </span>
+                {bubble}
               </div>
             );
           })}
