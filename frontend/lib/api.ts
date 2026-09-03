@@ -1,5 +1,5 @@
 import type { Itinerary, TripBriefInput } from "./types";
-import type { Job, JobTimings, QualityReport } from "./jobs";
+import type { Job, JobTimings, QualityReport, JobProgress } from "./jobs";
 import type { FeedbackEntry } from "./feedback";
 import { getTestModeKey, TEST_MODE_HEADER } from "./testMode";
 
@@ -41,7 +41,7 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
  * needs it to submit a pushback. */
 export async function pollJob(
   jobId: string,
-  onStatus?: (status: Job["status"], brief: TripBriefInput) => void
+  onStatus?: (status: Job["status"], brief: TripBriefInput, progress?: JobProgress) => void
 ): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput; timings?: JobTimings; quality?: QualityReport }> {
   const start = Date.now();
   for (;;) {
@@ -53,7 +53,7 @@ export async function pollJob(
     }
 
     const job = (await jobResponse.json()) as Job;
-    onStatus?.(job.status, job.brief);
+    onStatus?.(job.status, job.brief, job.progress);
 
     if (job.status === "done") {
       if (!job.result) throw new ApiError("Job finished but returned no result.");

@@ -54,7 +54,15 @@ import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
 import { recordQualitySample } from "./qualityStats";
-import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job, type JobTimings, type RefinementRequest } from "./jobs";
+import {
+  JOBS_QUEUE_KEY,
+  JOB_TTL_SECONDS,
+  jobKey,
+  type Job,
+  type JobTimings,
+  type ProgressDay,
+  type RefinementRequest,
+} from "./jobs";
 import {
   cacheLodgingFacts,
   loadCachedLodgingEntries,
@@ -1196,7 +1204,8 @@ async function generateItineraryTwoPhase(
   }) => void,
   onPlan?: (days: SkeletonDay[], accommodation: SkeletonAccommodation[]) => void,
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
-  cachedLodging: Map<string, CachedLodgingFact> = new Map()
+  cachedLodging: Map<string, CachedLodgingFact> = new Map(),
+  onDayDone?: (day: ItineraryDay) => void
 ): Promise<Itinerary> {
   const startedAt = Date.now();
   const { frame: framePromise, plan: planPromise } = startPhase1(
@@ -1236,11 +1245,15 @@ async function generateItineraryTwoPhase(
   const dayContext: DayContext = { days: plan.days, accommodation };
   onPlan?.(plan.days, accommodation);
   const daysStartedAt = Date.now();
-  const days = await runWithLimit(plan.days, MAX_PARALLEL_DAYS, (day) =>
-    withRateLimitRetry(`day ${day.day}`, () =>
+  const days = await runWithLimit(plan.days, MAX_PARALLEL_DAYS, async (day) => {
+    const generated = await withRateLimitRetry(`day ${day.day}`, () =>
       withOneRetryOf(() => generateDay(client, brief, dayContext, day, onUsage))
-    )
-  );
+    );
+    // Reported the moment each day's own call returns, not when the whole
+    // wave does, so the page fills in one day at a time.
+    onDayDone?.(generated);
+    return generated;
+  });
   const daysMs = Date.now() - daysStartedAt;
   const waves = Math.ceil(days.length / MAX_PARALLEL_DAYS);
   onPhaseTimings?.({ skeletonMs, daysMs, dayCount: days.length, dayWaves: waves, waitedForFrame });
@@ -1304,7 +1317,8 @@ async function generateItinerary(
   timings?: JobTimings,
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
   onPlan?: (days: SkeletonDay[], accommodation: SkeletonAccommodation[]) => void,
-  cachedLodging?: Map<string, CachedLodgingFact>
+  cachedLodging?: Map<string, CachedLodgingFact>,
+  onDayDone?: (day: ItineraryDay) => void
 ): Promise<Itinerary> {
   if (TWO_PHASE_ENABLED) {
     try {
@@ -1324,7 +1338,8 @@ async function generateItinerary(
         },
         onPlan,
         pendingLodging,
-        cachedLodging
+        cachedLodging,
+        onDayDone
       );
     } catch (e) {
       if (timings) {
@@ -1357,6 +1372,11 @@ function generateRefinement(
     callModel(client, brief, buildRefinementPrompt(brief, refinement.baseItinerary, refinement.question), onUsage)
   );
 }
+
+/** How many item titles a finished day contributes to the progress
+ * outline. Enough that a day visibly gains content, short enough that the
+ * job record does not carry a second copy of the whole itinerary. */
+const MAX_PROGRESS_TITLES = 4;
 
 async function writeJob(redis: Redis, job: Job): Promise<void> {
   job.updatedAt = Date.now();
@@ -1429,6 +1449,24 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   console.log(`[worker] processing ${id}: ${job.brief.destinations.join(", ")}`);
   job.status = "running";
   await writeJob(redis, job);
+
+  // What exists so far, published to the job record as it happens, so the
+  // trip page can show the trip being built instead of a spinner. See
+  // JobProgress in jobs.ts for why this is a separate field from `result`.
+  //
+  // Fire and forget, and deliberately: a generation must never get slower
+  // because a progress write was slow, and a failed progress write is a
+  // page that updates a moment later rather than an error. The final
+  // writeJob is the one that has to land.
+  let progressDays: ProgressDay[] = [];
+  const publishProgress = (days: ProgressDay[]): void => {
+    progressDays = days;
+    job.progress = { days, updatedAt: Date.now() };
+    job.updatedAt = Date.now();
+    void writeJob(redis, job).catch((e) => {
+      console.warn(`[worker] progress write failed for ${id}:`, e);
+    });
+  };
 
   let costUsd = 0;
   const onUsage = (usage: ModelUsage) => {
@@ -1536,8 +1574,19 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
           (days, accommodation) => {
             planDays = days;
             planAccommodation = accommodation;
+            publishProgress(
+              days.map((d) => ({ day: d.day, date: d.date, city: d.city, theme: d.theme }))
+            );
           },
-          cachedLodgingEntries
+          cachedLodgingEntries,
+          (generated) => {
+            // Fills in the outline row for this day as its own call lands.
+            const row = progressDays.find((d) => d.day === generated.day);
+            if (!row) return;
+            row.itemCount = generated.items.length;
+            row.titles = generated.items.slice(0, MAX_PROGRESS_TITLES).map((i) => i.title);
+            publishProgress(progressDays);
+          }
         )
       );
     }

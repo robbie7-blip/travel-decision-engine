@@ -60,6 +60,41 @@ export interface Job {
   // Carrying the verdict with the result makes it a field, and makes real
   // traveler traffic the regression signal.
   quality?: QualityReport;
+  /** What exists so far, written while the job is still running.
+   *
+   * The wait is the longest visual moment in the product - the better part
+   * of a minute - and it was a spinner. It is also the moment the traveler
+   * is most engaged, because they just asked for this and are waiting to
+   * see it. The generator already knows the trip's shape long before the
+   * days are written: phase 1 produces the plan (dates, cities, a theme per
+   * day) at roughly the halfway mark, and each day lands separately after
+   * that. This carries both to the page as they happen.
+   *
+   * Deliberately NOT written into `result`. A half-finished itinerary that
+   * looked like a finished one would be saved to recent trips, shared,
+   * exported to a calendar and read as final. This is a separate field the
+   * trip page only renders while status is "running", and the finished
+   * itinerary replaces it wholesale. */
+  progress?: JobProgress;
+}
+
+export interface ProgressDay {
+  day: number;
+  date: string;
+  city: string;
+  /** The plan's one-line intent for the day. Present from phase 1, which
+   * is what makes the outline worth showing before any day is written. */
+  theme: string;
+  /** Fills in when this day's own model call returns. */
+  itemCount?: number;
+  titles?: string[];
+}
+
+export interface JobProgress {
+  /** Set once phase 1 lands, so the page can stop guessing how many days
+   * there will be. */
+  days: ProgressDay[];
+  updatedAt: number;
 }
 
 export type QualitySeverity = "defect" | "warning";

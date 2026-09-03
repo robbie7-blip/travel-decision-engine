@@ -236,6 +236,9 @@ export interface Dictionary {
     planAnother: string;
     notFound: string;
     loading: string;
+    /** The live build during generation. "{places}", "{done}", "{total}". */
+    buildingFor: string;
+    buildingProgress: string;
     didYouKnow: string; // label above the rotating city-fact shown on the loading screen
   };
   // Bookmarks a browser has visited (see lib/recentTrips.ts) - no accounts,
@@ -707,6 +710,8 @@ const en: Dictionary = {
     planAnother: "Plan your own trip",
     notFound: "This trip link has expired or doesn't exist.",
     loading: "Loading your trip…",
+    buildingFor: "Building {places}",
+    buildingProgress: "{done} of {total} days written",
     didYouKnow: "Did you know?",
   },
   recentTrips: {
@@ -1195,6 +1200,8 @@ const bg: Dictionary = {
     planAnother: "Планирайте свое пътуване",
     notFound: "Тази връзка е изтекла или не съществува.",
     loading: "Зареждане на пътуването…",
+    buildingFor: "Изграждаме {places}",
+    buildingProgress: "{done} от {total} дни са готови",
     didYouKnow: "Знаете ли, че?",
   },
   recentTrips: {

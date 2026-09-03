@@ -9,11 +9,11 @@ import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
 import { ItineraryResult } from "./ItineraryResult";
 import { SiteHeader } from "./SiteHeader";
 import { useJobStatusMessage } from "./useJobStatusMessage";
-import { LoadingScreen } from "./LoadingScreen";
+import { TripBuilding } from "./TripBuilding";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
-import type { Job, JobTimings as Timings, QualityReport } from "@/lib/jobs";
+import type { Job, JobTimings as Timings, QualityReport, JobProgress } from "@/lib/jobs";
 import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
 
 /** The page behind a shared/bookmarked /trip/[jobId] link. Loads a job cold
@@ -25,6 +25,9 @@ export function TripView({ jobId }: { jobId: string }) {
   const { currency, setCurrency, rates } = useCurrency();
   const [language, setLanguageState] = useState<Language>("en");
   const [jobStatus, setJobStatus] = useState<Job["status"] | null>(null);
+  // What the worker has finished so far, so the wait shows the trip being
+  // built rather than a spinner. See components/TripBuilding.tsx.
+  const [progress, setProgress] = useState<JobProgress | undefined>(undefined);
   const [loadError, setLoadError] = useState("");
   const [result, setResult] = useState<Itinerary | null>(null);
   const [currentJobId, setCurrentJobId] = useState(jobId);
@@ -51,10 +54,11 @@ export function TripView({ jobId }: { jobId: string }) {
     setJobStatus(null);
     setCurrentJobId(jobId);
 
-    pollJob(jobId, (status, brief) => {
+    pollJob(jobId, (status, brief, jobProgress) => {
       if (cancelled) return;
       setJobStatus(status);
       setLastBrief(brief);
+      setProgress(jobProgress);
     })
       .then(({ itinerary, brief, timings: t, quality: q }) => {
         if (cancelled) return;
@@ -139,7 +143,12 @@ export function TripView({ jobId }: { jobId: string }) {
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
           {!result && !loadError && (
-            <LoadingScreen message={statusMessage ?? t.trip.loading} destinations={lastBrief?.destinations} t={t} />
+            <TripBuilding
+              progress={progress}
+              destinations={lastBrief?.destinations}
+              message={statusMessage ?? t.trip.loading}
+              t={t}
+            />
           )}
           {loadError && (
             <div className="font-ui" style={{ fontSize: 14, color: "var(--infeasible)" }}>

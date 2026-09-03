@@ -1487,3 +1487,136 @@ p {
     aspect-ratio: 16 / 7;
   }
 }
+
+/* ============================================================
+   The trip being built
+   ============================================================ */
+
+/* Replaces the spinner during generation. Every row here is real content
+   the worker has actually produced - see components/TripBuilding.tsx on
+   why there is no progress bar. */
+.trip-building {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  padding: 24px;
+  box-shadow: var(--shadow-panel);
+}
+
+.trip-building-head {
+  margin-bottom: 18px;
+}
+
+.trip-building-title {
+  font-size: clamp(20px, 3.6vw, 28px);
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.trip-building-status {
+  font-size: 13px;
+  color: var(--ink-dim);
+  margin-top: 6px;
+}
+
+.trip-building-count {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-gold-ink);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--brand-gold-ink);
+  margin-bottom: 16px;
+}
+
+.trip-building-days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* A day that has not landed yet is dimmed rather than hidden, so the
+   outline's full length is visible from the moment phase 1 returns and
+   the list never jumps as rows arrive. */
+.trip-building-day {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  opacity: 0.55;
+  transition: opacity 0.4s ease;
+}
+
+.trip-building-day[data-done="true"] {
+  opacity: 1;
+}
+
+.trip-building-day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.trip-building-day-number {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--brand-gold-ink);
+}
+
+.trip-building-day-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.trip-building-day-city {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.trip-building-day-date {
+  color: var(--ink-dim);
+}
+
+.trip-building-tick {
+  margin-left: auto;
+  color: var(--brand-teal);
+  font-size: 14px;
+}
+
+.trip-building-theme {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.trip-building-titles {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trip-building-titles li {
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+/* The rows appear as their day lands, so they fade in. Respecting the
+   reduced-motion preference matters more here than anywhere else on the
+   site, because this is the one screen that changes on its own. */
+@media (prefers-reduced-motion: reduce) {
+  .trip-building-day {
+    transition: none;
+  }
+}
