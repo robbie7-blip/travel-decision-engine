@@ -1620,3 +1620,166 @@ p {
     transition: none;
   }
 }
+
+/* ============================================================
+   The homepage hero gallery
+   ============================================================ */
+
+/* The argument on the left, a real place on the right. minmax(0, ...) on
+   the text column because a grid track defaults to min-content and the
+   long headline would otherwise refuse to shrink and push the photo off
+   the band. */
+.hero-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+}
+
+.hero-gallery {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.hero-gallery-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.hero-gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  animation: hero-gallery-fade ease both;
+}
+
+@keyframes hero-gallery-fade {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hero-gallery-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 40px 18px 16px;
+  color: #fffdf8;
+  background: linear-gradient(to top, rgba(16, 24, 19, 0.85), rgba(16, 24, 19, 0));
+}
+
+.hero-gallery-city {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.hero-gallery-cue {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 253, 248, 0.78);
+}
+
+.hero-gallery-dots {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  /* The frames include bright skies, and a translucent white dot on a pale
+     cloud is invisible. A shadow rather than a plate behind them, so the
+     indicator stays quiet on the darker frames too. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+
+.hero-gallery-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.45);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.hero-gallery-dot[data-active="true"] {
+  background: #fffdf8;
+  transform: scale(1.25);
+}
+
+/* The dot itself stays 8px so the row reads as an indicator rather than a
+   toolbar, but the tap target around it is full size on a finger device. */
+@media (pointer: coarse) {
+  .hero-gallery-dots {
+    gap: 0;
+  }
+
+  .hero-gallery-dot {
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    position: relative;
+  }
+
+  .hero-gallery-dot::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 999px;
+    background: rgba(255, 253, 248, 0.45);
+  }
+
+  .hero-gallery-dot[data-active="true"] {
+    background: transparent;
+    transform: none;
+  }
+
+  .hero-gallery-dot[data-active="true"]::after {
+    background: #fffdf8;
+    transform: scale(1.25);
+  }
+}
+
+/* Stacked on a phone, and shallower: the hero's job below the fold break
+   is to get someone to the form, so the photo sets the scene without
+   becoming the whole first screen. */
+@media (max-width: 860px) {
+  .hero-split {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .hero-gallery {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-gallery-img {
+    animation: none;
+  }
+
+  .hero-gallery-dot {
+    transition: none;
+  }
+}

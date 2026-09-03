@@ -13,6 +13,7 @@ import {
 } from "@/components/TripForm";
 import { CurrencySwitcher, useCurrency } from "@/components/CurrencySwitcher";
 import { RecentTrips } from "@/components/RecentTrips";
+import { HeroGallery } from "@/components/HeroGallery";
 import { SiteHeader } from "@/components/SiteHeader";
 import { TrustFooter } from "@/components/TrustFooter";
 import { ConfidenceRule } from "@/components/ui";
@@ -143,6 +144,11 @@ export default function Home() {
             sitewide, just with a percentage-based width instead of a flat
             maxWidth so the margin actually scales with the real window. */}
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
+        {/* Two columns: the argument on the left, a real place on the
+            right. The type stays on the green rather than over the
+            photograph, which is what keeps the band's contrast a
+            guarantee instead of a hope - see components/HeroGallery.tsx. */}
+        <div className="hero-split">
         <div style={{ position: "relative", zIndex: 1 }}>
           <h1
             className="font-display"
@@ -212,6 +218,8 @@ export default function Home() {
             ))}
           </div>
           <RecentTrips t={t} />
+        </div>
+        <HeroGallery t={t} language={form.language} />
         </div>
         </div>
       </div>
