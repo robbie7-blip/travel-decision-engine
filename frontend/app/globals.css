@@ -1809,3 +1809,201 @@ p {
   color: #fffdf8;
   text-decoration: underline;
 }
+
+/* ============================================================
+   Spin the wheel
+   ============================================================ */
+
+.spin {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: clamp(24px, 5vw, 56px);
+  align-items: start;
+}
+
+.spin-stage {
+  position: relative;
+  grid-row: span 2;
+}
+
+.spin-wheel {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* The long tail is what makes a spin feel like one: fast at first, then
+     a slow settle rather than a linear stop. Duration is set inline so the
+     reduced-motion path can drop it to zero without a second rule. */
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.15, 0.85, 0.15, 1);
+  filter: drop-shadow(0 6px 18px rgba(27, 58, 44, 0.22));
+}
+
+/* The marker the result is read against, at twelve o'clock. Drawn over the
+   wheel rather than on it, so it stays still while the wheel turns. */
+.spin-pointer {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-top: 22px solid var(--brand-coral);
+  z-index: 2;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+}
+
+.spin-label {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.spin-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.spin-button {
+  padding: 14px 34px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.spin-reshuffle {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.spin-reshuffle:hover:not(:disabled) {
+  color: var(--brand-teal);
+}
+
+.spin-reshuffle:disabled,
+.spin-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Reserves its own height so the layout does not jump when the result
+   lands - the one moment on this page where a shift would be felt. */
+.spin-result {
+  min-height: 260px;
+  margin-top: 22px;
+}
+
+.spin-result-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-panel);
+  animation: spin-result-in 420ms ease both;
+}
+
+@keyframes spin-result-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.spin-result-photo {
+  position: relative;
+  aspect-ratio: 16 / 9;
+}
+
+.spin-result-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.spin-result-credit {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  font-size: 10px;
+  color: rgba(255, 253, 248, 0.75);
+  text-decoration: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.spin-result-body {
+  padding: 18px 20px 20px;
+}
+
+.spin-result-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.spin-result-city {
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+  margin: 4px 0 16px;
+}
+
+.spin-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.spin-plan {
+  display: inline-block;
+  padding: 11px 22px;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.spin-guide {
+  font-size: 13px;
+  color: var(--brand-teal);
+}
+
+@media (max-width: 860px) {
+  .spin {
+    grid-template-columns: 1fr;
+  }
+
+  .spin-stage {
+    grid-row: auto;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .spin-result {
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin-wheel {
+    transition: none;
+  }
+
+  .spin-result-card {
+    animation: none;
+  }
+}

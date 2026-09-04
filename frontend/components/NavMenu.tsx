@@ -54,6 +54,12 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <path {...STROKE} d="M6 4h11l-2.5 3.5L17 11H6" />
     </svg>
   ),
+  spin: (
+    <svg {...ICON_PROPS}>
+      <circle {...STROKE} cx="12" cy="12.5" r="8" />
+      <path {...STROKE} d="M12 4.5v16M4 12.5h16M6.3 6.8l11.4 11.4M17.7 6.8 6.3 18.2" />
+    </svg>
+  ),
   pricing: (
     <svg {...ICON_PROPS}>
       <path {...STROKE} d="M12.5 3.5H19a1 1 0 0 1 1 1v6.5a1 1 0 0 1-.3.7l-8 8a1 1 0 0 1-1.4 0l-6.5-6.5a1 1 0 0 1 0-1.4l8-8a1 1 0 0 1 .7-.3Z" />
@@ -85,6 +91,7 @@ export function NavMenu({
     { href: `/destinations${langSuffix}`, label: t.browseDestinations, icon: NAV_ICONS.destinations },
     { href: `/showcase${langSuffix}`, label: t.showcase.navLabel, icon: NAV_ICONS.showcase },
     { href: "/ask", label: t.tripQA.navLink, icon: NAV_ICONS.ask },
+    { href: `/spin${langSuffix}`, label: t.spin.navLink, icon: NAV_ICONS.spin },
     { href: "/account/visited", label: t.visited.homeNavLink, icon: NAV_ICONS.visited },
     { href: "/pricing", label: t.account.navLink, icon: NAV_ICONS.pricing },
   ];

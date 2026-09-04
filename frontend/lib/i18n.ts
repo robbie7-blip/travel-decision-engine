@@ -307,6 +307,22 @@ export interface Dictionary {
   // named to fit the app's existing "opinionated local friend" voice
   // (see SYSTEM_PROMPT in worker/src/engine/prompt.ts) rather than a flat,
   // generic "Q&A" or "Ask a question" label.
+  /** "Spin the wheel" - a way in for someone who has no destination in
+   * mind yet, which is the state the trip form cannot help with. */
+  spin: {
+    navLink: string;
+    pageTitle: string;
+    pageHeading: string;
+    pageSubheading: string;
+    spin: string;
+    spinning: string;
+    again: string;
+    reshuffle: string;
+    youreGoing: string;
+    planIt: string;
+    readGuide: string;
+    note: string;
+  };
   tripQA: {
     navLink: string; // homepage header link to /ask
     pageHeading: string;
@@ -773,6 +789,20 @@ const en: Dictionary = {
     totalCost: "Est. total cost",
     missingJobs: "This comparison link is missing one or both trips.",
     planAnother: "Plan a new comparison",
+  },
+  spin: {
+    navLink: "Spin the wheel",
+    pageTitle: "Spin the wheel",
+    pageHeading: "No idea where to go?",
+    pageSubheading: "Spin it, and plan whatever it lands on. Every city on the wheel is one we have a real guide for.",
+    spin: "Spin",
+    spinning: "Spinning...",
+    again: "Spin again",
+    reshuffle: "New cities",
+    youreGoing: "You're going to",
+    planIt: "Plan this trip",
+    readGuide: "Read the guide first",
+    note: "Twelve of the twenty-four cities we have guides for, drawn at random. It lands where it stops - nothing here is decided in advance.",
   },
   tripQA: {
     navLink: "Ask a Local",
@@ -1263,6 +1293,20 @@ const bg: Dictionary = {
     totalCost: "Прибл. обща цена",
     missingJobs: "На тази връзка за сравнение липсва едно или и двете пътувания.",
     planAnother: "Планирай ново сравнение",
+  },
+  spin: {
+    navLink: "Завърти колелото",
+    pageTitle: "Завърти колелото",
+    pageHeading: "Нямате идея къде да отидете?",
+    pageSubheading: "Завъртете и планирайте каквото се падне. Всеки град на колелото е с истински пътеводител при нас.",
+    spin: "Завърти",
+    spinning: "Върти се...",
+    again: "Завърти пак",
+    reshuffle: "Нови градове",
+    youreGoing: "Отивате в",
+    planIt: "Планирай това пътуване",
+    readGuide: "Първо виж пътеводителя",
+    note: "Дванадесет от двадесет и четирите града с пътеводители, изтеглени на случаен принцип. Пада се там, където спре - нищо тук не е решено предварително.",
   },
   tripQA: {
     navLink: "Питай местен",
