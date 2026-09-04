@@ -16,6 +16,7 @@
 // reads as carelessness, and this product is built on not doing that.
 
 import { coverPhotoFor } from "@/lib/tripCover";
+import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
@@ -52,6 +53,9 @@ export function TripCover({
   children?: React.ReactNode;
 }) {
   const photo = coverPhotoFor(destinations);
+  // Same Wikimedia photographs as the guides, so the same credit
+  // obligation follows them here.
+  const credit = photo ? DESTINATION_PHOTO_CREDITS[photo.slug] : undefined;
   const title = (destinations ?? []).join(" · ");
   const range = formatRange(startDate, endDate, language);
 
@@ -72,6 +76,16 @@ export function TripCover({
         <h1 className="trip-cover-title font-display">{title}</h1>
         {children && <div className="trip-cover-stamps">{children}</div>}
       </div>
+      {credit && (
+        <a
+          className="trip-cover-credit font-ui"
+          href={credit.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer license"
+        >
+          {credit.artist} · {credit.license}
+        </a>
+      )}
     </header>
   );
 }

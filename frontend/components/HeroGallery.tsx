@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { DESTINATION_CITY_NAMES_BG } from "@/lib/destinationCityNamesBg";
+import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
@@ -60,6 +61,10 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
 
   const slug = FRAMES[index];
   const suffix = language === "bg" ? "?lang=bg" : "";
+  // These are Wikimedia photographs and most of their licences require the
+  // photographer, the licence and a link back. Rendered wherever the photo
+  // is, not only on the guide page it came from.
+  const credit = DESTINATION_PHOTO_CREDITS[slug];
 
   return (
     <div
@@ -90,6 +95,17 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
           <span className="hero-gallery-cue">{t.destinations.eyebrow}</span>
         </span>
       </Link>
+
+      {credit && (
+        <a
+          className="hero-gallery-credit font-ui"
+          href={credit.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer license"
+        >
+          {credit.artist} · {credit.license}
+        </a>
+      )}
 
       {/* Which frame you are on, and a way to pick one. Small, because it
           is a nicety rather than navigation. */}

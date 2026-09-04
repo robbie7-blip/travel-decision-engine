@@ -1783,3 +1783,29 @@ p {
     transition: none;
   }
 }
+
+/* Photo attribution. These images are from Wikimedia Commons and most of
+   their licences require the photographer, the licence and a link back, so
+   this is a legal obligation rather than a caption - but it should sit
+   quietly, the way a credit line does in print. Bottom-right, out of the
+   way of the title, and readable against the scrim that is already there
+   for the type. */
+.hero-gallery-credit,
+.trip-cover-credit {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  z-index: 2;
+  font-size: 10px;
+  color: rgba(255, 253, 248, 0.72);
+  text-decoration: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.hero-gallery-credit:hover,
+.trip-cover-credit:hover,
+.hero-gallery-credit:focus-visible,
+.trip-cover-credit:focus-visible {
+  color: #fffdf8;
+  text-decoration: underline;
+}

@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DESTINATION_FACTS_BG } from "./destinationFactsBg";
 import { DESTINATION_CITY_NAMES_BG } from "./destinationCityNamesBg";
+import { DESTINATION_PHOTO_CREDITS, type DestinationPhotoCredit } from "./destinationPhotoCredits";
 import type { Language } from "./types";
 
 const FACTS_DIR = path.join(process.cwd(), "facts");
@@ -19,19 +20,13 @@ const FACTS_DIR = path.join(process.cwd(), "facts");
 // (components/DestinationBanner) until a photo actually exists on disk.
 const PHOTO_DIR = path.join(process.cwd(), "public/destinations");
 const PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
-const PHOTO_CREDITS_PATH = path.join(process.cwd(), "lib/destinationPhotoCredits.json");
 
 export interface DestinationFact {
   category: string;
   text: string;
 }
 
-export interface DestinationPhotoCredit {
-  file: string;
-  artist: string;
-  license: string;
-  sourceUrl: string;
-}
+export type { DestinationPhotoCredit };
 
 export interface DestinationPhoto {
   src: string;
@@ -86,28 +81,13 @@ export function getLocalizedCityName(slug: string, language: Language, fallback:
   return fallback;
 }
 
-let creditsCache: Record<string, DestinationPhotoCredit> | null = null;
-function loadPhotoCredits(): Record<string, DestinationPhotoCredit> {
-  if (creditsCache) return creditsCache;
-  if (!fs.existsSync(PHOTO_CREDITS_PATH)) {
-    creditsCache = {};
-    return creditsCache;
-  }
-  try {
-    creditsCache = JSON.parse(fs.readFileSync(PHOTO_CREDITS_PATH, "utf-8"));
-  } catch {
-    creditsCache = {};
-  }
-  return creditsCache!;
-}
-
 /** Returns a real photo for this destination if one has been fetched onto
  * disk (see scripts/fetch-destination-photos.mjs), otherwise null - callers
  * should fall back to <DestinationBanner> when this returns null. */
 export function getDestinationPhoto(slug: string): DestinationPhoto | null {
   for (const ext of PHOTO_EXTENSIONS) {
     if (fs.existsSync(path.join(PHOTO_DIR, `${slug}${ext}`))) {
-      return { src: `/destinations/${slug}${ext}`, credit: loadPhotoCredits()[slug] ?? null };
+      return { src: `/destinations/${slug}${ext}`, credit: DESTINATION_PHOTO_CREDITS[slug] ?? null };
     }
   }
   return null;

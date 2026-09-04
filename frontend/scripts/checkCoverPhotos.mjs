@@ -52,4 +52,26 @@ if (notJpg.length > 0) {
   process.exit(1);
 }
 
+// Attribution. These are Wikimedia photographs and most of those licences
+// require the photographer, the licence and a link back. This reports
+// rather than fails, because the images were committed long before the
+// manifest was and failing here would block deploys over a pre-existing
+// gap - but it says so every single build, which is the difference
+// between a known debt and a forgotten one.
+const creditsSource = readFileSync(join(ROOT, "lib", "destinationPhotoCredits.ts"), "utf8");
+const creditedBlock = creditsSource.slice(creditsSource.indexOf("DESTINATION_PHOTO_CREDITS"));
+const credited = new Set([...creditedBlock.matchAll(/^\s{2}"([a-z0-9_]+)":/gm)].map((m) => m[1]));
+const uncredited = [...onDisk].filter((slug) => !credited.has(slug)).sort();
+
 console.log(`All ${onDisk.size} destination photos are listed and reachable.`);
+
+if (uncredited.length > 0) {
+  console.warn(
+    `\nWARNING: ${uncredited.length} of ${onDisk.size} photo(s) have no attribution entry.\n` +
+      `  These came from Wikimedia Commons; CC BY and CC BY-SA require credit.\n` +
+      `  Recover it with: node scripts/recover-photo-credits.mjs (needs internet access)\n` +
+      `  Uncredited: ${uncredited.join(", ")}`
+  );
+} else {
+  console.log(`All ${onDisk.size} are attributed.`);
+}
