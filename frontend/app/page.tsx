@@ -296,19 +296,37 @@ export default function Home() {
               <p className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", margin: 0 }}>
                 {t.form.reassurance}
               </p>
-              <Link
-                href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
-                className="font-ui inline-link"
-                style={{
-                  fontSize: 12,
-                  color: "var(--grounded)",
-                  textDecoration: "underline",
-                  display: "inline-block",
-                  marginTop: 6,
-                }}
-              >
-                {t.form.notSurePrompt}
-              </Link>
+              {/* Two ways out of an empty destination field, side by side.
+                  /spin was previously reachable only from the nav menu,
+                  which is behind a tap on mobile - so the one person it was
+                  built for, standing in front of the form with no
+                  destination in mind, was the one person who never saw it. */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px", marginTop: 6 }}>
+                <Link
+                  href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
+                  className="font-ui inline-link"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--grounded)",
+                    textDecoration: "underline",
+                    display: "inline-block",
+                  }}
+                >
+                  {t.form.notSurePrompt}
+                </Link>
+                <Link
+                  href={form.language === "bg" ? "/spin?lang=bg" : "/spin"}
+                  className="font-ui inline-link"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--grounded)",
+                    textDecoration: "underline",
+                    display: "inline-block",
+                  }}
+                >
+                  {t.form.spinPrompt}
+                </Link>
+              </div>
             </div>
           )}
         </div>

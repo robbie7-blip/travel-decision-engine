@@ -140,6 +140,11 @@ export interface Dictionary {
     submitting: string;
     reassurance: string;
     notSurePrompt: string;
+    /** The other way out of an empty destination field: let the wheel
+     * choose. Sits beside notSurePrompt because browsing and spinning are
+     * answers to the same "I don't know where" - one for someone willing
+     * to read, one for someone who wants to be told. */
+    spinPrompt: string;
   };
   result: {
     budgetFeasible: string;
@@ -646,6 +651,7 @@ const en: Dictionary = {
     submitting: "Deciding…",
     reassurance: "Takes about a minute - we check live prices as we plan, not guesses.",
     notSurePrompt: "Not sure where to go yet? Browse destination guides →",
+    spinPrompt: "Or spin the wheel and let it decide →",
   },
   result: {
     budgetFeasible: "Budget: feasible",
@@ -1157,6 +1163,7 @@ const bg: Dictionary = {
     submitting: "Решаваме…",
     reassurance: "Отнема около минута - проверяваме актуални цени, докато планираме, не гадаем.",
     notSurePrompt: "Все още не сте сигурни къде? Разгледайте пътеводителите →",
+    spinPrompt: "Или завъртете колелото и оставете то да реши →",
   },
   result: {
     budgetFeasible: "Бюджет: постижим",

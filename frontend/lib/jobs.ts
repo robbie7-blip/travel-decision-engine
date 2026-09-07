@@ -269,3 +269,51 @@ export function isStalledJob(job: Job): boolean {
 export function jobKey(id: string): string {
   return `job:${id}`;
 }
+
+// ---------------------------------------------------------------------------
+// Worker heartbeat
+//
+// The frontend cannot see the worker. They are two separate deployments on
+// two separate hosts with two separate sets of environment variables, and
+// nothing has ever crossed that gap except jobs on the queue. Both of the
+// real incidents this product has had were the same shape: a credential was
+// missing on one side, the other side had no way to know, and the symptom
+// was silence - generation that failed on every call because the key was
+// identity-linked with no ANTHROPIC_WORKSPACE_ID, and venue photos that
+// never appeared because GOOGLE_PLACES_API_KEY was on the worker but not on
+// Vercel.
+//
+// So the worker says, on a short repeating clock, that it is alive and what
+// it can see. Presence only - which names are set, never a single character
+// of a value - because this is written into Redis and read back onto a web
+// page, and a credential that reaches either of those places has leaked.
+
+export const WORKER_HEARTBEAT_KEY = "worker:heartbeat";
+
+/** How often the worker refreshes the key. */
+export const WORKER_HEARTBEAT_INTERVAL_MS = 30_000;
+
+/** How long the key survives without a refresh.
+ *
+ * Three intervals, so one slow write or one restart doesn't read as an
+ * outage. The TTL is the whole mechanism: nothing deletes this key or marks
+ * the worker down, it simply stops existing shortly after the process that
+ * was writing it stopped running. */
+export const WORKER_HEARTBEAT_TTL_SECONDS = 90;
+
+export interface WorkerHeartbeat {
+  /** When this worker process started (ISO 8601). A startedAt that keeps
+   * changing is a worker in a crash loop, which otherwise looks identical
+   * to a healthy one from outside. */
+  startedAt: string;
+  /** When it last refreshed (ISO 8601). */
+  updatedAt: string;
+  /** Concurrent consumers this process is running. */
+  concurrency: number;
+  /** Names of the environment variables the worker can see. NEVER values. */
+  envPresent: string[];
+  /** Behaviour flags worth knowing when a generation looks wrong: which
+   * model the day calls use, whether two-phase generation is on. */
+  dayModel: string | null;
+  twoPhase: boolean;
+}

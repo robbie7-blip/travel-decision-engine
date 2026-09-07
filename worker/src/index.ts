@@ -57,11 +57,15 @@ import { recordQualitySample } from "./qualityStats";
 import {
   JOBS_QUEUE_KEY,
   JOB_TTL_SECONDS,
+  WORKER_HEARTBEAT_INTERVAL_MS,
+  WORKER_HEARTBEAT_KEY,
+  WORKER_HEARTBEAT_TTL_SECONDS,
   jobKey,
   type Job,
   type JobTimings,
   type ProgressDay,
   type RefinementRequest,
+  type WorkerHeartbeat,
 } from "./jobs";
 import {
   cacheLodgingFacts,
@@ -1841,6 +1845,51 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
   }
 }
 
+/** Environment variables the health page asks about by name. Listing them
+ * explicitly rather than dumping Object.keys(process.env) is the point: the
+ * host injects dozens of its own variables, some of them secrets, and a
+ * blanket dump would put their names on a web page for no benefit. */
+const HEARTBEAT_ENV_NAMES = [
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_WORKSPACE_ID",
+  "REDIS_URL",
+  "GOOGLE_PLACES_API_KEY",
+  "AMADEUS_API_KEY",
+  "AMADEUS_API_SECRET",
+  "BUDGET_ALERT_WEBHOOK_URL",
+] as const;
+
+/** Says the worker is alive, and what it can see, on a repeating clock.
+ *
+ * Fire-and-forget on purpose: a heartbeat that could fail a generation
+ * would be worse than no heartbeat at all. unref() so this timer never
+ * holds the process open by itself. */
+function startHeartbeat(redis: Redis): void {
+  const startedAt = new Date().toISOString();
+
+  const write = async () => {
+    const beat: WorkerHeartbeat = {
+      startedAt,
+      updatedAt: new Date().toISOString(),
+      concurrency: WORKER_CONCURRENCY,
+      // Presence only. Never the value.
+      envPresent: HEARTBEAT_ENV_NAMES.filter((name) => Boolean(process.env[name])),
+      dayModel: DAY_MODEL,
+      twoPhase: TWO_PHASE_ENABLED,
+    };
+    await redis.set(WORKER_HEARTBEAT_KEY, JSON.stringify(beat), "EX", WORKER_HEARTBEAT_TTL_SECONDS);
+  };
+
+  const tick = () => {
+    write().catch((e) => {
+      console.error("[worker] heartbeat write failed:", e);
+    });
+  };
+
+  tick();
+  setInterval(tick, WORKER_HEARTBEAT_INTERVAL_MS).unref();
+}
+
 async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
@@ -1874,6 +1923,7 @@ async function main() {
     JOBS_QUEUE_KEY,
     workspaceId() ? `- workspace ${workspaceId()}` : "- no ANTHROPIC_WORKSPACE_ID set"
   );
+  startHeartbeat(redis);
   await Promise.all(
     Array.from({ length: WORKER_CONCURRENCY }, (_, i) => runConsumer(i, redis, client))
   );

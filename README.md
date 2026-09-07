@@ -401,6 +401,37 @@ webhooks) the first time a day's spend crosses `ALERT_THRESHOLD_RATIO`
 via its own once-per-day Redis flag (`spend:alerted:YYYY-MM-DD`) so it
 doesn't re-fire on every job for the rest of the day.
 
+### Health
+
+Two endpoints, for two different readers.
+
+`/api/health` is public and says almost nothing on purpose - it is
+unauthenticated, so it must not reveal which credentials are set or what
+any error said. It returns `{status, redis, worker}` and, importantly,
+**503 when the product cannot actually produce a trip**: the Next.js app
+stays perfectly healthy while the worker is down, and trips just queue
+forever. Point an uptime monitor at this one.
+
+`/admin/health` (same `ADMIN_PASSWORD` gate as `/admin/stats`) is the
+configuration view, and it exists because the two halves of this product
+cannot see each other. Vercel and Railway have separate environments, so a
+key set on one and missing on the other produces no error anywhere - the
+code degrades politely and nobody finds out. Both incidents this project
+has actually had were that exact shape: an identity-linked API key with no
+`ANTHROPIC_WORKSPACE_ID` on the worker, and `GOOGLE_PLACES_API_KEY` on the
+worker but not on Vercel. The page shows both environments side by side,
+plus a Redis ping and the queue depth.
+
+The worker's half arrives via a heartbeat: `main()` writes
+`worker:heartbeat` every 30s with a 90s TTL (see `WORKER_HEARTBEAT_*` in
+`jobs.ts`), carrying its uptime, concurrency, day model, and **the names**
+of the environment variables it can see. Presence only - never a character
+of a value, since this is written to Redis and read back onto a web page.
+The TTL is the whole liveness mechanism: nothing marks the worker down, the
+key simply stops existing shortly after the process writing it stops.
+Note that a worker running a build from before the heartbeat existed reads
+as down; deploy the worker as well as the frontend.
+
 ### Feedback admin view
 
 `/admin/feedback` lists every `FeedbackEntry` (newest first), reading

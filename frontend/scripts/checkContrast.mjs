@@ -84,6 +84,11 @@ const PAIRS = [
   { fg: "--brand-coral-ink", bg: "--bg-panel-raised", min: AA_NORMAL, note: "the header tagline" },
   { fg: "--brand-coral", bg: "--bg", min: AA_LARGE, note: "the hero headline (large only)" },
   { fg: "--grounded", bg: "--bg-panel", min: AA_NORMAL, note: "verified/source links" },
+  // The three verdict colors on /admin/health, which is small mono type on
+  // the plain page ground. Note the absence of --unverified: the gold reads
+  // at 2.04:1 there, so that page uses it for the 3px card rule only and
+  // sets its DEGRADED text in --brand-gold-ink (covered below).
+  { fg: "--grounded", bg: "--bg", min: AA_NORMAL, note: "the OK verdict on /admin/health" },
   { fg: "--infeasible", bg: "--bg-panel", min: AA_NORMAL, note: "error text on a panel" },
   { fg: "--infeasible", bg: "--bg", min: AA_NORMAL, note: "error text on the page" },
   { fg: "--accent-green", bg: "--bg-panel", min: AA_NORMAL, note: "success text" },
