@@ -1971,6 +1971,38 @@ async function main() {
 // Guarded so a test harness can import processJob without the consumer
 // loop starting and blocking on Redis (see pipeline.test.ts).
 if (process.env.WORKER_NO_AUTOSTART !== "1") {
+  // A net under the whole class of bug that the trip frame just turned out
+  // to have.
+  //
+  // Node's default for an unhandled rejection is to terminate the process.
+  // For a request-per-process server that is a reasonable default. For this
+  // worker it is the wrong trade by a wide margin: it runs several jobs
+  // concurrently, so a promise nobody happened to be awaiting takes down
+  // every OTHER traveler's generation in flight, and each of those is left
+  // stuck at "running" with no error to show until STALE_RUNNING_MS finally
+  // calls it dead. The failing job is usually already handled - its own
+  // await chain has a try/catch waiting for it - and the crash is purely
+  // collateral.
+  //
+  // This deliberately does NOT exit. It is not a way to avoid fixing the
+  // underlying promise: the log line is loud, names itself, and prints the
+  // stack, so an unhandled rejection is still findable in Railway's logs.
+  // What it stops being is silent AND fatal at the same time.
+  //
+  // uncaughtException is intentionally left alone. A rejected promise
+  // nobody observed says nothing about the rest of the process; a thrown
+  // exception that escaped every frame can mean the process is in a state
+  // this code cannot reason about, and continuing on through that is how a
+  // worker starts writing wrong itineraries instead of no itineraries.
+  process.on("unhandledRejection", (reason) => {
+    console.error(
+      "[worker] UNHANDLED REJECTION - a promise failed with nothing awaiting it. " +
+        "The worker is staying up so other jobs survive, but this is a bug: find " +
+        "the promise and either await it or attach a catch.",
+      reason
+    );
+  });
+
   main().catch((e) => {
     console.error("[worker] fatal error:", e);
     process.exit(1);
