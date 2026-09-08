@@ -54,6 +54,7 @@ import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
 import { recordQualitySample } from "./qualityStats";
+import { recordTimingSample } from "./timingStats";
 import {
   JOBS_QUEUE_KEY,
   JOB_TTL_SECONDS,
@@ -1798,6 +1799,10 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // no exit to race - but failures still get logged rather than swallowed.
   void Promise.all([
     recordSpend(redis, costUsd).catch((e) => console.error(`[worker] spend write failed for ${id}:`, e)),
+    // Successful generations only - see recordTimingSample. An error's
+    // duration is not a latency, and errors return fast enough that
+    // counting them would make an outage look like a speed-up.
+    job.status === "done" ? recordTimingSample(redis, jobTimings) : Promise.resolve(),
     job.result
       ? cacheLodgingFacts(redis, job.brief, job.result)
       : Promise.resolve(),

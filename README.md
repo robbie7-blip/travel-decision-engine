@@ -432,6 +432,44 @@ key simply stops existing shortly after the process writing it stops.
 Note that a worker running a build from before the heartbeat existed reads
 as down; deploy the worker as well as the frontend.
 
+### Generation latency
+
+`/admin/stats` carries a latency panel next to the quality one, fed by
+rolling counters the worker writes after every **successful** generation
+(`worker/src/timingStats.ts`, read by `frontend/lib/timingStats.ts`). An
+error's duration is not a latency and errors return fast, so counting them
+would make an outage look like a speed-up.
+
+Every generation has always measured itself in detail, but the numbers
+were visible only on that one trip's page, to the owner, if they still had
+the link - so "are we under 30 seconds" cost a paid generation to ask, and
+mostly went unasked. Same argument as the quality counters, applied to the
+one number this product treats as non-negotiable.
+
+The panel reports **buckets, not an average**: under 20s / 20-30 / 30-45 /
+45-60 / over 60. The boundary between the second and third IS
+`TARGET_TOTAL_MS`, so the first two together are the share that met the
+target. An average is the statistic that hides this particular problem - a
+few two-minute runs among many fast ones reads as "a bit slow" when it is
+really a handful of travelers having a genuinely bad time.
+
+It also counts the three known ways a run loses a large block of time at
+once, each invisible in the total and each with a different fix:
+`waitedForFrame` (the lodging lookup came back without a rate, putting the
+trip frame on the critical path - about twenty seconds), the single-call
+fallback, and day calls needing more than one wave (`MAX_PARALLEL_DAYS`
+below the trip's length).
+
+Stage averages divide by that stage's own run count, not by every job, so
+re-verify - which only runs when something was repaired - reports what it
+costs when it happens rather than a figure diluted by its own absence.
+
+Because the writer and reader duplicate their Redis key names across the
+ioredis/Upstash boundary, `npm run check:stats-keys` fails the build if
+they drift, and also if the quality gate gains a check with no label on
+the page. Both failures are otherwise silent: a mismatched field reads as
+zero, which looks exactly like "no traffic yet".
+
 ### Feedback admin view
 
 `/admin/feedback` lists every `FeedbackEntry` (newest first), reading

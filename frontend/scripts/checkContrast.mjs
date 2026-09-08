@@ -89,6 +89,11 @@ const PAIRS = [
   // at 2.04:1 there, so that page uses it for the 3px card rule only and
   // sets its DEGRADED text in --brand-gold-ink (covered below).
   { fg: "--grounded", bg: "--bg", min: AA_NORMAL, note: "the OK verdict on /admin/health" },
+  // /admin/stats' headline numbers and status text. These sit on the plain
+  // page ground, and the gold that used to colour the amber ones measured
+  // 2.04:1 there - a 32px number nobody could read. Gold now appears on
+  // that page only as a bar fill; its text uses --brand-gold-ink.
+  { fg: "--accent-green", bg: "--bg", min: AA_NORMAL, note: "a healthy stat on /admin/stats" },
   { fg: "--infeasible", bg: "--bg-panel", min: AA_NORMAL, note: "error text on a panel" },
   { fg: "--infeasible", bg: "--bg", min: AA_NORMAL, note: "error text on the page" },
   { fg: "--accent-green", bg: "--bg-panel", min: AA_NORMAL, note: "success text" },
