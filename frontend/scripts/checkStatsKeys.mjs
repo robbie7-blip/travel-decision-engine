@@ -45,6 +45,38 @@ function keyLiterals(path) {
 
 const problems = [];
 
+/** The ids inside a `[{ id: "x", ... }]` table. Bucket and stage ids are
+ * not string literals the key extractor can see - both sides build their
+ * field names as `b:${id}` - so a rename passes the prefix comparison
+ * above while silently zeroing that bar or stage on the page. They have to
+ * be compared as their own lists. */
+function tableIds(path, constName) {
+  const source = readFileSync(path, "utf8");
+  const start = source.indexOf(`export const ${constName}`);
+  if (start === -1) return null;
+  const block = source.slice(start, source.indexOf("] as const", start));
+  return [...block.matchAll(/\{\s*id:\s*"([a-z0-9_]+)"/g)].map((m) => m[1]);
+}
+
+/** `export const NAME = <number or string>;` declarations, so a shared
+ * contract that lives on both sides of the boundary cannot hold two
+ * different values. */
+function exportedConstants(path) {
+  const source = readFileSync(path, "utf8");
+  const out = new Map();
+  for (const [, name, value] of source.matchAll(
+    /export const ([A-Z][A-Z0-9_]*)(?::\s*[^=]+)?\s*=\s*("[^"\n]*"|[0-9_]+(?:\s*\*\s*[0-9_]+)*);/g
+  )) {
+    // Normalise "60 * 60 * 24" style products to their value so a
+    // differently-spelled but equal duration is not a false alarm.
+    const numeric = /^[0-9_\s*]+$/.test(value)
+      ? String(value.split("*").reduce((a, b) => a * Number(b.replace(/_/g, "").trim()), 1))
+      : value;
+    out.set(name, numeric);
+  }
+  return out;
+}
+
 /** The check-id union the worker's quality gate can emit. The frontend
  * lists these by hand to give each one a label, so a new check would
  * otherwise be counted by the worker and displayed by nobody. */
@@ -66,6 +98,9 @@ const PAIRS = [
     reader: join(REPO, "frontend", "lib", "timingStats.ts"),
     // Symmetric: every key one side names, the other names too.
     readerOnlyAllowed: new Set(),
+    // Id tables both files declare. These are the field names' variable
+    // half - "b:" + id - so they need comparing on their own.
+    idTables: ["TIMING_BUCKETS", "TIMING_STAGES"],
   },
   {
     name: "quality counters",
@@ -75,6 +110,7 @@ const PAIRS = [
     // writer gets them from the QualityCheckId type instead. Those are
     // verified against the union separately below.
     readerOnlyAllowed: checkIds,
+    idTables: [],
   },
 ];
 
@@ -94,6 +130,63 @@ for (const pair of PAIRS) {
     problems.push(
       `${pair.name}: the app reads key(s) the worker never writes: ${readerOnly.join(", ")}`
     );
+  }
+
+  // Ids, in order. Order matters as well as membership: the panel treats
+  // the first two buckets as "met the target", so reordering them on one
+  // side alone would report the wrong number with every id still present.
+  for (const table of pair.idTables) {
+    const writerIds = tableIds(pair.writer, table);
+    const readerIds = tableIds(pair.reader, table);
+    if (writerIds === null || readerIds === null) {
+      problems.push(`${pair.name}: ${table} is missing from one side`);
+      continue;
+    }
+    if (writerIds.join(",") !== readerIds.join(",")) {
+      problems.push(
+        `${pair.name}: ${table} ids differ - worker [${writerIds.join(", ")}] vs app [${readerIds.join(", ")}]`
+      );
+    }
+  }
+
+  // Constants declared on both sides must hold the same value. The target
+  // is the one that matters here: the worker buckets against it and the
+  // page labels a tile with it, so two different 30s would put a number
+  // under a heading that contradicts it.
+  const writerConsts = exportedConstants(pair.writer);
+  const readerConsts = exportedConstants(pair.reader);
+  for (const [name, value] of writerConsts) {
+    if (!readerConsts.has(name)) continue;
+    if (readerConsts.get(name) !== value) {
+      problems.push(
+        `${pair.name}: ${name} is ${value} in the worker but ${readerConsts.get(name)} in the app`
+      );
+    }
+  }
+}
+
+// The heartbeat contract, which lives in the jobs.ts mirrors rather than a
+// stats file. Worth the same guard for a sharper reason: the key now gates
+// a public 503 on /api/health, so a one-sided rename does not merely blank
+// a panel, it reports the product as down forever.
+{
+  const writerConsts = exportedConstants(join(REPO, "worker", "src", "jobs.ts"));
+  const readerConsts = exportedConstants(join(REPO, "frontend", "lib", "jobs.ts"));
+  const required = [
+    "JOBS_QUEUE_KEY",
+    "JOB_TTL_SECONDS",
+    "WORKER_HEARTBEAT_KEY",
+    "WORKER_HEARTBEAT_TTL_SECONDS",
+    "WORKER_HEARTBEAT_INTERVAL_MS",
+  ];
+  for (const name of required) {
+    const a = writerConsts.get(name);
+    const b = readerConsts.get(name);
+    if (a === undefined || b === undefined) {
+      problems.push(`jobs.ts mirrors: ${name} is missing from ${a === undefined ? "the worker" : "the app"}`);
+    } else if (a !== b) {
+      problems.push(`jobs.ts mirrors: ${name} is ${a} in the worker but ${b} in the app`);
+    }
   }
 }
 
@@ -129,5 +222,6 @@ if (problems.length > 0) {
 
 console.log(
   `Stats keys agree across the worker/app boundary ` +
-    `(${PAIRS.length} counter sets, ${checkIds.size} quality checks all labelled).`
+    `(${PAIRS.length} counter sets, ${checkIds.size} quality checks all labelled, ` +
+    `bucket/stage ids and the heartbeat contract in step).`
 );

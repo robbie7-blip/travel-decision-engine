@@ -27,12 +27,19 @@ export async function GET() {
     const redis = getRedis();
     const raw = await redis.get<string | WorkerHeartbeat>(WORKER_HEARTBEAT_KEY);
     redisOk = true;
-    // The key carries its own TTL (WORKER_HEARTBEAT_TTL_SECONDS), so its
-    // mere existence is the freshness check - no timestamp comparison, and
-    // no clock skew between two hosts to get wrong.
-    workerOk = raw != null;
+
+    // The key carries its own TTL (WORKER_HEARTBEAT_TTL_SECONDS), so
+    // freshness needs no timestamp comparison and no clock skew between two
+    // hosts to get wrong. Existence is not quite enough on its own,
+    // though: a value this endpoint cannot make sense of is not evidence of
+    // a healthy worker, and answering "ok" to one would be the same false
+    // reassurance the endpoint exists to prevent. So it has to parse and
+    // look like a heartbeat.
+    const beat = raw == null ? null : typeof raw === "string" ? JSON.parse(raw) : raw;
+    workerOk = typeof (beat as WorkerHeartbeat | null)?.updatedAt === "string";
   } catch {
-    // Swallowed on purpose: the message could name the Redis host.
+    // Swallowed on purpose: the message could name the Redis host. A parse
+    // failure lands here too and correctly leaves workerOk false.
   }
 
   const ok = redisOk && workerOk;

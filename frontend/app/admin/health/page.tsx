@@ -57,24 +57,41 @@ async function loadRedisState(): Promise<RedisState> {
     return { ...empty, error: e instanceof Error ? e.message : "Redis is not configured" };
   }
 
+  // Reachability is settled by the ping alone, and nothing after it can
+  // un-settle it. Wrapping the whole sequence in one catch meant a
+  // malformed heartbeat - the very case the JSON.parse below exists to
+  // handle - would be reported as "Redis unreachable, every trip fails at
+  // submit" on a completely healthy system. On a page whose only job is to
+  // say what is actually wrong, that is the worst possible bug.
+  let pingMs: number | null = null;
   try {
     const startedAt = Date.now();
     await redis.ping();
-    const pingMs = Date.now() - startedAt;
-
-    const [queueDepth, raw] = await Promise.all([
-      redis.llen(JOBS_QUEUE_KEY),
-      redis.get<string | WorkerHeartbeat>(WORKER_HEARTBEAT_KEY),
-    ]);
-
-    // Upstash's client parses JSON values for you, except when it doesn't
-    // (older writes, non-JSON strings), so handle both - same as loadJob.
-    const heartbeat = raw == null ? null : typeof raw === "string" ? (JSON.parse(raw) as WorkerHeartbeat) : raw;
-
-    return { reachable: true, pingMs, queueDepth, heartbeat, error: null };
+    pingMs = Date.now() - startedAt;
   } catch (e) {
     return { ...empty, error: e instanceof Error ? e.message : "Redis request failed" };
   }
+
+  let queueDepth: number | null = null;
+  let heartbeat: WorkerHeartbeat | null = null;
+  let error: string | null = null;
+
+  try {
+    const [depth, raw] = await Promise.all([
+      redis.llen(JOBS_QUEUE_KEY),
+      redis.get<string | WorkerHeartbeat>(WORKER_HEARTBEAT_KEY),
+    ]);
+    queueDepth = depth;
+    // Upstash's client parses JSON values for you, except when it doesn't
+    // (older writes, non-JSON strings), so handle both - same as loadJob.
+    heartbeat = raw == null ? null : typeof raw === "string" ? (JSON.parse(raw) as WorkerHeartbeat) : raw;
+  } catch (e) {
+    // Redis answered the ping, so it is up; something about these two
+    // reads is not. Say so instead of blaming the connection.
+    error = e instanceof Error ? e.message : "Could not read the queue or the heartbeat";
+  }
+
+  return { reachable: true, pingMs, queueDepth, heartbeat, error };
 }
 
 // Text and rules take different colours for the same verdict, because the
@@ -170,7 +187,9 @@ export default async function HealthAdminPage() {
   const workerChecks = redis.heartbeat ? checkWorkerEnv(redis.heartbeat) : null;
 
   const frontendVerdict = worstOf(frontendChecks.map(verdictFor));
-  const redisVerdict: Verdict = redis.reachable ? "ok" : "down";
+  // Unreachable is down; reachable but with a failed read is degraded -
+  // the queue still works, we just could not see into it.
+  const redisVerdict: Verdict = !redis.reachable ? "down" : redis.error ? "warn" : "ok";
   // No heartbeat is "down" and not "warn" on purpose. Either the worker is
   // not running, or it is running a build from before the heartbeat
   // existed - and both of those are things to go and look at rather than
@@ -227,11 +246,18 @@ export default async function HealthAdminPage() {
             <Field
               label="Queue depth"
               value={
-                redis.queueDepth === 0
-                  ? "0 (nothing waiting)"
-                  : `${redis.queueDepth} waiting${redis.heartbeat ? "" : " with nothing reading them"}`
+                redis.queueDepth === null
+                  ? "could not be read"
+                  : redis.queueDepth === 0
+                    ? "0 (nothing waiting)"
+                    : `${redis.queueDepth} waiting${redis.heartbeat ? "" : " with nothing reading them"}`
               }
             />
+            {redis.error && (
+              <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: "8px 0 0", lineHeight: 1.7 }}>
+                Redis answered its ping, so the queue itself is up, but reading it failed: {redis.error}
+              </p>
+            )}
           </>
         ) : (
           <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: 0, lineHeight: 1.7 }}>

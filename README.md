@@ -464,11 +464,28 @@ Stage averages divide by that stage's own run count, not by every job, so
 re-verify - which only runs when something was repaired - reports what it
 costs when it happens rather than a figure diluted by its own absence.
 
+Refinements are excluded as well as errors. A refinement is one model call
+answering a follow-up question, with no lodging prefetch and no phase 1 or
+2, so counting those fast runs would inflate the share meeting a target
+they were never about.
+
 Because the writer and reader duplicate their Redis key names across the
-ioredis/Upstash boundary, `npm run check:stats-keys` fails the build if
-they drift, and also if the quality gate gains a check with no label on
-the page. Both failures are otherwise silent: a mismatched field reads as
-zero, which looks exactly like "no traffic yet".
+ioredis/Upstash boundary, `npm run check:stats-keys` (which runs in CI)
+fails on drift in any of four things: the key and field names, the bucket
+and stage id lists **in order** - the panel treats the first two buckets
+as "met the target", so a reorder alone would report the wrong number -
+constants declared on both sides such as `TARGET_TOTAL_MS`, and the
+heartbeat contract in the `jobs.ts` mirrors, where a one-sided rename
+would make `/api/health` return 503 forever. It also fails if the quality
+gate gains a check with no label on the page. Every one of those failures
+is otherwise silent: a mismatched field reads as zero, which looks exactly
+like "no traffic yet".
+
+`npm run check:ci` guards the guards - it fails if any `test:*` or
+`check:*` script is missing from the workflow. Three of them had been
+sitting in `package.json` running nowhere, which is worse than not having
+them: a missing guard is a known gap, a dormant one is a false sense of
+cover.
 
 ### Feedback admin view
 

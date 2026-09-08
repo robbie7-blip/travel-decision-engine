@@ -49,6 +49,13 @@ jobs:
       # serialization regression shows up here as a wall-clock number, with
       # no model call involved.
       - run: npm run test:pipeline
+      # Opening-hours arithmetic - "open on the day we send them" is a
+      # claim the itinerary makes in writing.
+      - run: npm run test:hours
+      # The latency counters' bucketing. The boundary that decides whether
+      # a run "met the 30s target" is a promise, and getting it wrong
+      # produces a panel that is confidently, specifically wrong.
+      - run: npm run test:timing
 
   frontend:
     name: frontend - typecheck + build
@@ -83,6 +90,18 @@ jobs:
       # of a directory listing, because the trip page is client-rendered
       # and cannot read the filesystem. This is what stops it drifting.
       - run: npm run check:covers
+      # The worker writes the stats counters over ioredis and the app reads
+      # them over the Upstash REST client, so both sides spell out the key
+      # names by hand. Drift there is silent: a mismatched field reads as
+      # zero, which looks exactly like "no traffic yet". Also covers the
+      # heartbeat contract, where a one-sided rename would make
+      # /api/health return 503 forever.
+      - run: npm run check:stats-keys
+      # That every guard above actually runs here. Written after three of
+      # them - test:hours, test:timing and check:stats-keys - sat in
+      # package.json catching nothing because nobody added the step. A
+      # dormant guard is worse than a missing one.
+      - run: npm run check:ci
       # Catches what typecheck alone misses - a server component importing
       # something client-only, a bad route export, a failed page render.
       - run: npm run build

@@ -10,7 +10,8 @@
     "check:contrast": "node scripts/checkContrast.mjs",
     "check:dashes": "node scripts/checkDashes.mjs",
     "check:covers": "node scripts/checkCoverPhotos.mjs",
-    "check:stats-keys": "node scripts/checkStatsKeys.mjs"
+    "check:stats-keys": "node scripts/checkStatsKeys.mjs",
+    "check:ci": "node scripts/checkCiScripts.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

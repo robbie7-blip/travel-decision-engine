@@ -1799,10 +1799,19 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // no exit to race - but failures still get logged rather than swallowed.
   void Promise.all([
     recordSpend(redis, costUsd).catch((e) => console.error(`[worker] spend write failed for ${id}:`, e)),
-    // Successful generations only - see recordTimingSample. An error's
-    // duration is not a latency, and errors return fast enough that
-    // counting them would make an outage look like a speed-up.
-    job.status === "done" ? recordTimingSample(redis, jobTimings) : Promise.resolve(),
+    // Successful GENERATIONS only - see recordTimingSample.
+    //
+    // Two exclusions, for two different reasons. An error's duration is not
+    // a latency, and errors return fast enough that counting them would
+    // make an outage look like a speed-up. A refinement is not a generation
+    // at all: it is one model call answering a follow-up question, with no
+    // lodging prefetch and no phase 1 or 2, so it is both much faster and
+    // structurally different. Counting refinements would inflate the share
+    // meeting the 30s target with runs the target was never about, which is
+    // the one number this panel exists to report honestly.
+    job.status === "done" && !job.refinement
+      ? recordTimingSample(redis, jobTimings)
+      : Promise.resolve(),
     job.result
       ? cacheLodgingFacts(redis, job.brief, job.result)
       : Promise.resolve(),
