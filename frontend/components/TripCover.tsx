@@ -20,7 +20,12 @@ import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
-function formatRange(start: string | undefined, end: string | undefined, language: Language): string | null {
+function formatRange(
+  start: string | undefined,
+  end: string | undefined,
+  language: Language,
+  join: string
+): string | null {
   if (!start || !end) return null;
   const from = new Date(`${start}T00:00:00Z`);
   const to = new Date(`${end}T00:00:00Z`);
@@ -29,8 +34,13 @@ function formatRange(start: string | undefined, end: string | undefined, languag
   const sameMonth = from.getUTCMonth() === to.getUTCMonth() && from.getUTCFullYear() === to.getUTCFullYear();
   const dayOnly = new Intl.DateTimeFormat(locale, { day: "numeric", timeZone: "UTC" });
   const full = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-  // "12 to 15 October 2026" rather than repeating the month twice.
-  return sameMonth ? `${dayOnly.format(from)} to ${full.format(to)}` : `${full.format(from)} to ${full.format(to)}`;
+  // "12 to 15 October 2026" rather than repeating the month twice. The
+  // joining word is translated like everything else: Intl localises the
+  // day, month and year, and an English "to" wedged between two Bulgarian
+  // halves was the one word on the cover that gave the game away.
+  return sameMonth
+    ? `${dayOnly.format(from)} ${join} ${full.format(to)}`
+    : `${full.format(from)} ${join} ${full.format(to)}`;
 }
 
 export function TripCover({
@@ -57,7 +67,7 @@ export function TripCover({
   // obligation follows them here.
   const credit = photo ? DESTINATION_PHOTO_CREDITS[photo.slug] : undefined;
   const title = (destinations ?? []).join(" · ");
-  const range = formatRange(startDate, endDate, language);
+  const range = formatRange(startDate, endDate, language, t.result.dateRangeJoin);
 
   if (!title) return null;
 

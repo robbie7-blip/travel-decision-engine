@@ -176,6 +176,10 @@ export interface Dictionary {
     };
     /** The cover at the top of a finished itinerary. "{count}" days. */
     dayCount: string;
+    /** Joins the two halves of the cover's date range. Its own string
+     * because everything around it is localised by Intl and this word was
+     * not, so every Bulgarian trip read "10 TO 12 АПРИЛ". */
+    dateRangeJoin: string;
     closedTemporarily: string;
     /** Shown next to a venue we confirmed is open on the day it is scheduled. */
     openOnThisDay: string;
@@ -671,6 +675,7 @@ const en: Dictionary = {
       note: "Verified stops only, plotted to scale. Straight lines show the order, not the route.",
     },
     dayCount: "{count} days",
+    dateRangeJoin: "to",
     closedTemporarily: "Temporarily closed (Google)",
     openOnThisDay: "✓ Open on this day",
     closedPermanently: "Permanently closed (Google)",
@@ -1183,6 +1188,7 @@ const bg: Dictionary = {
       note: "Само потвърдени места, нанесени в мащаб. Правите линии показват реда, не маршрута.",
     },
     dayCount: "{count} дни",
+    dateRangeJoin: "до",
     closedTemporarily: "Временно затворено (Google)",
     openOnThisDay: "✓ Отворено в този ден",
     closedPermanently: "Трайно затворено (Google)",
