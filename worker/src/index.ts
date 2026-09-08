@@ -1220,6 +1220,31 @@ async function generateItineraryTwoPhase(
     onUsage
   );
 
+  // Mark the frame's rejection as handled the instant it is created.
+  //
+  // Without this, a failing frame call KILLS THE WHOLE WORKER PROCESS.
+  // Nothing awaits framePromise between here and the collection point
+  // below - deliberately, since the frame is meant to run alongside the day
+  // calls - so a rejection in that window is an unhandled rejection, and
+  // Node's default since v15 is to terminate the process. The window is the
+  // entire generation: the plan wait, the lodging wait, and all of phase 2.
+  //
+  // That takes down every OTHER job the process is running too (four at a
+  // time by default), leaving each stuck at "running" until STALE_RUNNING_MS
+  // finally calls it dead. One trip's rate limit becomes four travelers
+  // waiting out a four-minute timeout for a generic error.
+  //
+  // Attaching a no-op catch does not swallow anything: it settles the
+  // "was this rejection observed" question only. Both `await framePromise`
+  // sites below still see the rejection and still throw, into processJob's
+  // handler, which turns it into a real message for the one traveler whose
+  // trip it was.
+  //
+  // Found by running a generation against a deliberately invalid API key and
+  // watching the process exit; reproduced identically on the build before
+  // any of this session's changes.
+  framePromise.catch(() => {});
+
   // Only the PLAN gates phase 2. The frame keeps running alongside the day
   // calls and is collected at the end, where its fields are actually used.
   const plan = await planPromise;
