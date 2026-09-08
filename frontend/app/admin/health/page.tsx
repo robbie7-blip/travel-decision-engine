@@ -21,6 +21,7 @@ import {
   checkWorkerEnv,
   describeAge,
   heartbeatAgeSeconds,
+  isWorkerHeartbeat,
   verdictFor,
   worstOf,
   type CheckedEnv,
@@ -84,7 +85,16 @@ async function loadRedisState(): Promise<RedisState> {
     queueDepth = depth;
     // Upstash's client parses JSON values for you, except when it doesn't
     // (older writes, non-JSON strings), so handle both - same as loadJob.
-    heartbeat = raw == null ? null : typeof raw === "string" ? (JSON.parse(raw) as WorkerHeartbeat) : raw;
+    const parsed = raw == null ? null : typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (parsed !== null && !isWorkerHeartbeat(parsed)) {
+      // Present but unreadable - an older worker build's shape, or a
+      // half-written value. Not the same thing as absent, and saying so
+      // is the difference between "go restart the worker" and "go look at
+      // what is in that key".
+      error = "the heartbeat in Redis is not in a shape this build understands";
+    } else {
+      heartbeat = parsed;
+    }
   } catch (e) {
     // Redis answered the ping, so it is up; something about these two
     // reads is not. Say so instead of blaming the connection.
@@ -194,7 +204,15 @@ export default async function HealthAdminPage() {
   // not running, or it is running a build from before the heartbeat
   // existed - and both of those are things to go and look at rather than
   // note in passing.
-  const workerVerdict: Verdict = workerChecks ? worstOf(workerChecks.map(verdictFor)) : "down";
+  // Down only when we actually looked and found nothing. If the read
+  // itself failed, the worker's state is unknown - saying "anything queued
+  // now will sit untouched" would be the same confident misdiagnosis the
+  // Redis card was just fixed for, one level down.
+  const workerVerdict: Verdict = workerChecks
+    ? worstOf(workerChecks.map(verdictFor))
+    : redis.error
+      ? "warn"
+      : "down";
   const overall = worstOf([frontendVerdict, redisVerdict, workerVerdict]);
 
   const age = redis.heartbeat ? heartbeatAgeSeconds(redis.heartbeat) : null;
@@ -231,6 +249,11 @@ export default async function HealthAdminPage() {
             <Field label="Two-phase" value={redis.heartbeat.twoPhase ? "on" : "off (single-call fallback)"} />
             <div style={{ marginTop: 12 }}>{workerChecks && <EnvTable checks={workerChecks} />}</div>
           </>
+        ) : redis.error ? (
+          <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: 0, lineHeight: 1.7 }}>
+            The heartbeat could not be read, so the worker&rsquo;s state is unknown - this is not a report that
+            it is down. See the Redis card below for what failed.
+          </p>
         ) : (
           <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: 0, lineHeight: 1.7 }}>
             No heartbeat in Redis. Either the worker is not running, or it is running a build from before it

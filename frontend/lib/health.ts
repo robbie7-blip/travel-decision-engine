@@ -168,9 +168,25 @@ export function checkWorkerEnv(heartbeat: WorkerHeartbeat): CheckedEnv[] {
   return WORKER_ENV.map((check) => ({ ...check, present: present.has(check.name) }));
 }
 
-/** How stale the heartbeat is, in seconds. Negative clamped to 0: clock
- * skew between two hosts is normal and "in 3 seconds" reads as a bug. */
-export function heartbeatAgeSeconds(heartbeat: WorkerHeartbeat, now = Date.now()): number {
+/** True when this value actually looks like a heartbeat.
+ *
+ * Anything in Redis under that key could be a value from an older worker
+ * build, a half-written write, or something else entirely. Trusting the
+ * shape gets you "NaNs ago" printed under a card that still says OK, which
+ * is the page lying with confidence. /api/health makes the same check
+ * before it answers 200. */
+export function isWorkerHeartbeat(value: unknown): value is WorkerHeartbeat {
+  const beat = value as WorkerHeartbeat | null;
+  return (
+    typeof beat?.updatedAt === "string" && Number.isFinite(Date.parse(beat.updatedAt))
+  );
+}
+
+/** How stale the heartbeat is, in seconds, or null if it does not carry a
+ * readable timestamp. Negative clamped to 0: clock skew between two hosts
+ * is normal and "in 3 seconds" reads as a bug. */
+export function heartbeatAgeSeconds(heartbeat: WorkerHeartbeat, now = Date.now()): number | null {
+  if (!isWorkerHeartbeat(heartbeat)) return null;
   return Math.max(0, Math.round((now - Date.parse(heartbeat.updatedAt)) / 1000));
 }
 

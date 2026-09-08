@@ -27,6 +27,23 @@ const REPO = resolve(HERE, "..", "..");
 
 const workflow = readFileSync(join(REPO, ".github", "workflows", "checks.yml"), "utf8");
 
+/** The scripts the workflow actually runs.
+ *
+ * Parsed from real `- run:` steps rather than searched for as substrings,
+ * because a substring match has the two holes this script exists to close:
+ * a commented-out `# - run: npm run test:timing` still reads as covered,
+ * and `npm run test:hours-extended` would satisfy a search for
+ * `test:hours`. Both leave a guard dormant while the check says it is
+ * running - the precise failure being guarded against. */
+const RUN_IN_CI = new Set(
+  workflow
+    .split("\n")
+    // A step line, not a comment. YAML comments start with # after
+    // whitespace; a real step starts with "- run:".
+    .filter((line) => /^\s*-\s*run:/.test(line))
+    .flatMap((line) => [...line.matchAll(/npm run ([a-z][a-z0-9:-]*)/g)].map((m) => m[1]))
+);
+
 /** Scripts whose absence from CI is deliberate. Each needs a reason. */
 const NOT_IN_CI = {
   // Aggregates the individual test:* steps the workflow already runs one
@@ -36,7 +53,6 @@ const NOT_IN_CI = {
   // Long-running or interactive, not a check.
   dev: "development server",
   start: "production server",
-  build: "run by the workflow directly, not as a check",
   lint: "not yet enforced - see the eslint config",
 };
 
@@ -48,11 +64,13 @@ for (const [pkgDir, label] of [
 ]) {
   const pkg = JSON.parse(readFileSync(join(REPO, pkgDir, "package.json"), "utf8"));
   const scripts = Object.keys(pkg.scripts ?? {});
-  const guards = scripts.filter((name) => name.startsWith("test:") || name.startsWith("check:"));
-
-  for (const name of guards) {
+  // Every script, not just the test:/check: ones. Scoping the loop to
+  // those prefixes made all five NOT_IN_CI entries unreachable - dead
+  // config documenting a mechanism that could never fire, while the
+  // failure message pointed maintainers at it.
+  for (const name of scripts) {
     if (name in NOT_IN_CI) continue;
-    if (!workflow.includes(`npm run ${name}`)) {
+    if (!RUN_IN_CI.has(name)) {
       problems.push(`${label}: "npm run ${name}" exists but never runs in CI`);
     }
   }
@@ -69,7 +87,7 @@ const frontendScripts = Object.keys(
 );
 const known = new Set([...workerScripts, ...frontendScripts]);
 
-for (const [, name] of workflow.matchAll(/npm run ([a-z][a-z0-9:-]*)/g)) {
+for (const name of RUN_IN_CI) {
   if (!known.has(name)) {
     problems.push(`CI runs "npm run ${name}", which is not a script in either package.json`);
   }
@@ -86,4 +104,4 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log("Every test and check script runs in CI.");
+console.log(`Every script runs in CI, or says why not (${RUN_IN_CI.size} steps).`);

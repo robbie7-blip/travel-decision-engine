@@ -20,9 +20,14 @@ import { markAdminUi } from "@/lib/adminUi";
 
 const TOOLS: { href: string; name: string; blurb: string }[] = [
   {
+    href: "/admin/health",
+    name: "Health",
+    blurb: "Whether the worker is alive, and which credentials each of the two deployments can see.",
+  },
+  {
     href: "/admin/stats",
     name: "Stats",
-    blurb: "Usage counters, conversion funnel, and today's spend against the daily budget.",
+    blurb: "Usage counters, conversion funnel, generation latency, and today's spend against the daily budget.",
   },
   {
     href: "/admin/feedback",
