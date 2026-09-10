@@ -56,6 +56,13 @@ jobs:
       # a run "met the 30s target" is a promise, and getting it wrong
       # produces a panel that is confidently, specifically wrong.
       - run: npm run test:timing
+      # The generation-path defects a full review of index.ts, twoPhase.ts
+      # and checks.ts turned up: a budget correction that always computed
+      # zero, a phantom hotel night on a night spent in transit, an arrival
+      # night labelled as a continuation, and two phase-1 gates loose enough
+      # to let a half-formed plan through. Every one of them passed the six
+      # suites that existed before it.
+      - run: npm run test:generation
 
   frontend:
     name: frontend - typecheck + build

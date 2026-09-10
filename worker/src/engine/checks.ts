@@ -100,7 +100,9 @@ function fillMissingLodgingNights(
   language: TripBriefInput["language"]
 ): void {
   const dayByNumber = new Map(days.map((d) => [d.day, d]));
-  const firstLodgingDay = Math.min(
+  /** The night the stay currently begins on. It moves earlier if a clone
+   * lands before it, because that clone then becomes the arrival. */
+  let arrivalDay = Math.min(
     ...days.filter((d) => d.items.some((i) => i.type === "lodging")).map((d) => d.day)
   );
   for (let dayNum = 1; dayNum <= nights; dayNum++) {
@@ -109,12 +111,24 @@ function fillMissingLodgingNights(
     const reference = nearestLodgingItem(days, dayNum);
     if (!reference) continue;
     const clone: ItineraryItem = { ...reference };
-    // Any night after the first is not an arrival, whatever the item we
-    // copied happened to say. Retimed too: a 13:15 check-in cloned onto a
-    // later night would otherwise sit in the middle of that afternoon.
-    if (dayNum > firstLodgingDay) {
+    if (dayNum > arrivalDay) {
+      // A night after the arrival is not an arrival, whatever the item we
+      // copied happened to say. Retimed too: a 13:15 check-in cloned onto a
+      // later night would otherwise sit in the middle of that afternoon.
       clone.title = clonedNightTitle(language, reference.venue_name);
       clone.time = "21:00";
+    } else {
+      // This clone lands BEFORE the stay began, so it is now the trip's
+      // first night and keeps the reference's arrival wording and time -
+      // and the night we copied from becomes a continuation, because a
+      // trip cannot check in twice.
+      //
+      // Without this the arrival night read "Another night at Hotel X" at
+      // 21:00 for a stay that had not started, and the itinerary contained
+      // no check-in anywhere.
+      reference.title = clonedNightTitle(language, reference.venue_name);
+      reference.time = "21:00";
+      arrivalDay = dayNum;
     }
     day.items.push(clone);
   }
@@ -131,13 +145,29 @@ function fillMissingLodgingNights(
  * can't repair (a trip with NO accommodation items at all despite needing
  * some) has no reference price to clone, so it's logged for our own
  * visibility rather than fabricated or flagged to the traveler. */
-export function checkBudgetIntegrity(itinerary: Itinerary, brief: TripBriefInput): Itinerary {
+export function checkBudgetIntegrity(
+  itinerary: Itinerary,
+  brief: TripBriefInput,
+  /** How many nights phase 1 actually planned a bed for, when a plan
+   * exists. Absent for the single-call path and for refinements, which
+   * produce no plan - those fall back to the date arithmetic below. */
+  plannedLodgingNights?: number
+): Itinerary {
   let nights = 0;
   if (brief.start_date && brief.end_date) {
     const d1 = new Date(brief.start_date);
     const d2 = new Date(brief.end_date);
     nights = Math.max(Math.round((d2.getTime() - d1.getTime()) / 86_400_000), 0);
   }
+
+  // The PLAN is the authority on how many beds a trip needs, when there is
+  // one. The dates only say how many nights the trip lasts, and those are
+  // not the same number: PLAN_SYSTEM explicitly tells the model to set
+  // include_lodging false for a night spent in transit. Trusting the dates
+  // meant an overnight train produced a cloned hotel item for a night
+  // nobody slept in a hotel - a fabricated bill on top of a total this
+  // function's own docstring promises is accurate.
+  if (plannedLodgingNights !== undefined) nights = Math.min(nights, plannedLodgingNights);
 
   const days = itinerary.days ?? [];
   const lodgingItems = days.flatMap((day) => day.items.filter((item) => item.type === "lodging"));
@@ -146,7 +176,15 @@ export function checkBudgetIntegrity(itinerary: Itinerary, brief: TripBriefInput
     console.warn(
       `[checkBudgetIntegrity] 0 accommodation items for a ${nights}-night trip - no reference item to auto-fill from.`
     );
-  } else if (nights > 0 && lodgingItems.length > 0 && lodgingItems.length < nights) {
+  } else if (
+    // needs_lodging, like the warn branch above. A traveler who already has
+    // a bed booked and whose itinerary picked up one stray lodging line
+    // would otherwise have that line cloned onto every remaining night.
+    brief.needs_lodging &&
+    nights > 0 &&
+    lodgingItems.length > 0 &&
+    lodgingItems.length < nights
+  ) {
     fillMissingLodgingNights(days, nights, brief.language);
   }
 

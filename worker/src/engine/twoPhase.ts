@@ -151,7 +151,14 @@ const ALL_MEALS: MealSlot[] = ["breakfast", "lunch", "dinner"];
  * a small annoyance, a full day with no midday meal is a hole. */
 export function requiredMeals(day: SkeletonDay): MealSlot[] {
   const listed = (day.meals ?? []).filter((m): m is MealSlot => ALL_MEALS.includes(m));
-  return listed.length > 0 ? listed : ALL_MEALS;
+  // A COPY of the fallback, never the module-level array itself. This is
+  // the default for every day of every job in a worker running four
+  // generations at once, so one caller sorting or splicing its result
+  // would change the meal contract for every in-flight day - and the
+  // symptom (a day missing a meal, or gaining one) is the exact class of
+  // bug SkeletonDay.meals was introduced to remove, with nothing pointing
+  // back here.
+  return listed.length > 0 ? listed : [...ALL_MEALS];
 }
 
 /** Rules both halves of phase 1 must follow identically. Kept in one place
@@ -443,10 +450,26 @@ export function buildDayPrompt(
   // include no accommodation, and a night silently vanishes from the trip's
   // cost. Hence the fallback for the single-accommodation case, where there
   // is no ambiguity about which entry was meant.
+  //
+  // The fallback is guarded on the TRIP needing exactly one lodging city,
+  // not merely on one entry having come back. Without that, a Rome+Florence
+  // trip whose frame returned accommodation for Rome only would hand the
+  // Rome hotel to every Florence day: the traveler reads "Check in to Hotel
+  // X, Trastevere" on a day spent in Florence, and Places then verifies a
+  // Rome property against a Florence location. One entry for a one-city
+  // trip is a spelling mismatch; one entry for a two-city trip is missing
+  // data, and guessing is worse than the vanished night this fallback was
+  // written to prevent.
+  const lodgingCities = new Set(
+    skeleton.days.filter((d) => d.include_lodging).map((d) => d.city.toLowerCase().trim())
+  );
   const accommodation =
     skeleton.accommodation.find(
       (a) => a.city.toLowerCase().trim() === day.city.toLowerCase().trim()
-    ) ?? (skeleton.accommodation.length === 1 ? skeleton.accommodation[0] : undefined);
+    ) ??
+    (skeleton.accommodation.length === 1 && lodgingCities.size === 1
+      ? skeleton.accommodation[0]
+      : undefined);
 
   const otherAnchors = skeleton.days
     .filter((d) => d.day !== day.day)
@@ -555,7 +578,19 @@ export function isUsableFrame(frame: unknown): frame is TripFrame {
   if (!frame || typeof frame !== "object") return false;
   const f = frame as Partial<TripFrame>;
   if (!f.budget_feasibility || typeof f.trip_summary !== "string") return false;
-  return Array.isArray(f.accommodation);
+  // EVERY list, not just accommodation. mergeSkeleton uses `?? []`, which
+  // only replaces null and undefined - so a frame answering
+  // "key_decisions": "none" passed this gate, survived merge, was recorded
+  // as a finished job, and then hit the trip page, where
+  // `key_decisions.length > 0 && key_decisions.map(...)` finds a truthy
+  // length on a string and no .map. That is a blank page for a generation
+  // the traveler paid for, which is precisely the "half-formed itinerary"
+  // this gate exists to send down the single-call path instead.
+  return (
+    Array.isArray(f.accommodation) &&
+    Array.isArray(f.key_decisions) &&
+    Array.isArray(f.things_to_skip)
+  );
 }
 
 export function isUsablePlan(plan: unknown): plan is TripPlan {
@@ -563,7 +598,26 @@ export function isUsablePlan(plan: unknown): plan is TripPlan {
   const p = plan as Partial<TripPlan>;
   if (!Array.isArray(p.days) || p.days.length === 0) return false;
   return p.days.every(
-    (d) => typeof d?.day === "number" && typeof d?.date === "string" && Array.isArray(d?.anchors)
+    (d) =>
+      typeof d?.day === "number" &&
+      typeof d?.date === "string" &&
+      Array.isArray(d?.anchors) &&
+      // city and include_lodging are both dereferenced downstream without a
+      // guard, and each has its own failure.
+      //
+      // A missing city means `d.city.toLowerCase()` throws in
+      // accommodationFromLodging and in buildDayPrompt - caught far away by
+      // generateItinerary's broad catch, which abandons the parallel path
+      // and regenerates the whole trip in one serial call. That is the
+      // ~2-minute path this design exists to avoid, paid twice, for a
+      // defect this validator was put here to reject.
+      //
+      // A missing include_lodging on every day means no city needs a bed,
+      // so every day is told "no night is spent here" and a multi-night
+      // trip ships with no accommodation at all and every night's cost
+      // absent from the total.
+      typeof d?.city === "string" &&
+      typeof d?.include_lodging === "boolean"
   );
 }
 
@@ -591,7 +645,13 @@ export function applyVerifiedAccommodation(
     name: string | null;
     area: string | null;
     sourceUrls: string[];
-  }
+  },
+  /** What the frame originally guessed per night for this city, captured
+   * before anything overwrote it. Optional: when it is absent the function
+   * falls back to whatever is in the entry, which is correct for a caller
+   * that has not touched it yet and is why the correction can still be a
+   * no-op rather than wrong. */
+  frameEstimatePerNight?: number
 ): void {
   const nights = skeleton.days.filter(
     (d) => d.include_lodging && d.city.toLowerCase().trim() === city.toLowerCase().trim()
@@ -602,6 +662,19 @@ export function applyVerifiedAccommodation(
   );
   const previousPerNight = existing?.cost_per_night_eur ?? 0;
   const hasPrice = verified.costPerNightEur != null;
+  // What the FRAME guessed, which is what min_realistic_total_eur was
+  // written against - not whatever is in the entry right now.
+  //
+  // The correction below used `previousPerNight` and therefore always
+  // computed zero, on both paths. On the fast path the entry was already
+  // built at the verified price by accommodationFromLodging, and on the
+  // waitedForFrame path this function had already overwritten it on an
+  // earlier call that had no budget to correct. So the delta was always
+  // verified minus verified, the log line always read "corrected by 0",
+  // and the trip page showed a minimum estimate priced from a guess next
+  // to items priced from a source - with `feasible` decided against the
+  // guess.
+  const baselinePerNight = frameEstimatePerNight ?? previousPerNight;
 
   const next: SkeletonAccommodation = {
     city: existing?.city ?? city,
@@ -621,8 +694,8 @@ export function applyVerifiedAccommodation(
   // Only correctable once the frame exists - when accommodation is applied
   // before it (the fast path), the caller re-applies against the real
   // budget as soon as the frame lands.
-  if (hasPrice && nights > 0 && previousPerNight > 0 && skeleton.budget_feasibility) {
-    const delta = (verified.costPerNightEur! - previousPerNight) * nights;
+  if (hasPrice && nights > 0 && baselinePerNight > 0 && skeleton.budget_feasibility) {
+    const delta = (verified.costPerNightEur! - baselinePerNight) * nights;
     skeleton.budget_feasibility.min_realistic_total_eur = Math.max(
       0,
       Math.round(skeleton.budget_feasibility.min_realistic_total_eur + delta)

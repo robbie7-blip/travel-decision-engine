@@ -32,7 +32,6 @@ import {
   applyVerifiedAccommodation,
   isUsableFrame,
   isUsablePlan,
-  stripVenueIdentity,
   type MealSlot,
   type SkeletonDay,
   type TripFrame,
@@ -49,7 +48,7 @@ import {
   normalizeLodgingPrices,
   summarizeQuality,
 } from "./engine/quality";
-import { checkVenues, prewarmGeocodes } from "./engine/venueVerification";
+import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -660,7 +659,33 @@ const DAY_MODEL = process.env.DAY_MODEL ?? MODEL;
 // withRateLimitRetry) instead, so the cap can sit above any realistic trip
 // length and a genuine rate limit costs one backoff on one day call rather
 // than a permanent extra wave on all of them.
-const MAX_PARALLEL_DAYS = Number(process.env.MAX_PARALLEL_DAYS ?? 16);
+/** Reads a positive-integer dial, refusing a value that would silently do
+ * nothing.
+ *
+ * Number("") is 0 and Number("four") is NaN, and both make
+ * Array.from({length: Math.min(limit, n)}) empty - so runWithLimit spawns
+ * no workers, Promise.all([]) resolves at once, and the caller gets an
+ * array of holes with no error and no model call made. For MAX_PARALLEL_DAYS
+ * that surfaces several stages later as a TypeError and "Unexpected error
+ * generating itinerary" on every single generation; for WORKER_CONCURRENCY
+ * the process reports itself started, consumes nothing, and keeps
+ * heartbeating as healthy.
+ *
+ * readEffort exists for exactly this reason ("a typo in a dashboard field
+ * is one of the most expensive mistakes available"). These two dials
+ * needed the same treatment. */
+function readPositiveInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 1) {
+    console.warn(`[worker] ${name}="${raw}" is not a positive number - using ${fallback}`);
+    return fallback;
+  }
+  return Math.floor(value);
+}
+
+const MAX_PARALLEL_DAYS = readPositiveInt("MAX_PARALLEL_DAYS", 16);
 
 // Headroom, not a target - you are billed for tokens generated, never for
 // the cap. These are sized for the WORST case rather than the typical one
@@ -838,6 +863,19 @@ async function repairDuplicateVenues(
           ],
         });
         onUsage?.(response.usage);
+        // Named, for the same reason prefetchLodging names it: a truncated
+        // response and malformed JSON have identical symptoms here (the
+        // catch below strips the venue) and completely different fixes.
+        // Without this line, a repair starved by the token cap is
+        // diagnosable only as "bad JSON" - re-creating the exact confusion
+        // that hid a degraded lodging lookup.
+        if (response.stop_reason === "max_tokens") {
+          console.error(
+            `[worker] venue repair for "${item.venue_name}" hit the ${REPAIR_MAX_TOKENS}-token cap before emitting JSON`
+          );
+          stripToUnverified(item);
+          return;
+        }
         const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
         const parsed = JSON.parse(extractJson(textBlocks[textBlocks.length - 1]?.text ?? "")) as {
           title: string | null;
@@ -845,7 +883,17 @@ async function repairDuplicateVenues(
           reasoning: string | null;
         };
         if (!parsed.venue_name || !parsed.title || claimed.has(parsed.venue_name.toLowerCase())) {
-          stripVenueIdentity(item);
+          // stripToUnverified, not stripVenueIdentity. The latter only nulls
+          // venue_name, which left the OLD business's Maps link, star rating
+          // and opening hours sitting on an item whose name had just been
+          // taken away precisely because it could not be stood behind -
+          // exactly what stripToUnverified's own comment calls the worst
+          // version of this. It also matters for detection: duplicate
+          // venues are keyed on venue_name, so nulling it alone made the
+          // item invisible to the duplicate check while item.title still
+          // read "Dinner at Mocoto" on both days. The traveler saw the same
+          // place twice and nothing noticed.
+          stripToUnverified(item);
           return;
         }
         claimed.add(parsed.venue_name.toLowerCase());
@@ -866,7 +914,9 @@ async function repairDuplicateVenues(
         repaired?.push(item);
       } catch (e) {
         console.error(`[worker] venue repair failed for "${item.venue_name}":`, e);
-        stripVenueIdentity(item);
+        // Same reasoning as the fallback above: the whole verified identity
+        // goes, not just the name.
+        stripToUnverified(item);
       }
     })
   );
@@ -1022,6 +1072,16 @@ async function repairMissingMeals(
           ],
         });
         onUsage?.(response.usage);
+        // Named rather than left to surface as a parse error, same as the
+        // lodging lookup and the venue repair. A meal starved by the token
+        // cap leaves the day without its dinner, and "meal repair failed"
+        // with a JSON error is the wrong thing to go and look at.
+        if (response.stop_reason === "max_tokens") {
+          console.error(
+            `[worker] meal repair (${meal}, day ${day.day}) hit the ${REPAIR_MAX_TOKENS}-token cap before emitting JSON`
+          );
+          return;
+        }
         const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
         const parsed = JSON.parse(extractJson(textBlocks[textBlocks.length - 1]?.text ?? "")) as {
           time?: string;
@@ -1256,10 +1316,21 @@ async function generateItineraryTwoPhase(
   // have and phase 2 genuinely cannot start without it.
   let accommodation = accommodationFromLodging(plan, lodging, cachedLodging);
   const waitedForFrame = accommodation === null;
+  /** The frame's own per-night guess per city, which is what the trip's
+   * budget minimum was calculated from. Filled from whichever half of the
+   * fork still holds it. */
+  const frameEstimates = new Map<string, number>();
   let earlyFrame: TripFrame | undefined;
   if (accommodation === null) {
     earlyFrame = await framePromise;
     accommodation = earlyFrame.accommodation ?? [];
+    // Captured BEFORE the loop below overwrites these entries with the
+    // verified rates. min_realistic_total_eur was written against these
+    // numbers, so they are the only valid baseline for correcting it, and
+    // after this loop they are gone.
+    for (const entry of accommodation) {
+      frameEstimates.set(entry.city.toLowerCase().trim(), entry.cost_per_night_eur);
+    }
     for (const { city, result } of lodging) {
       if (!result) continue;
       applyVerifiedAccommodation({ days: plan.days, accommodation }, city, {
@@ -1297,16 +1368,29 @@ async function generateItineraryTwoPhase(
   // the plan and has had the whole of phase 2 to finish.
   const frame = earlyFrame ?? (await framePromise);
   const skeleton = mergeSkeleton({ ...frame, accommodation }, plan);
+  // On the fast path nothing has touched the frame's accommodation - the
+  // verified entries came from the lodging lookup instead - so its guesses
+  // are still here to be read.
+  if (frameEstimates.size === 0) {
+    for (const entry of frame.accommodation ?? []) {
+      frameEstimates.set(entry.city.toLowerCase().trim(), entry.cost_per_night_eur);
+    }
+  }
   // The budget was written against the frame's own accommodation estimate,
   // so it is corrected here once both halves exist.
   for (const { city, result } of lodging) {
     if (!result) continue;
-    applyVerifiedAccommodation(skeleton, city, {
-      costPerNightEur: result.costEstimateEur,
-      name: result.name,
-      area: result.area,
-      sourceUrls: result.sourceUrl ? [result.sourceUrl] : [],
-    });
+    applyVerifiedAccommodation(
+      skeleton,
+      city,
+      {
+        costPerNightEur: result.costEstimateEur,
+        name: result.name,
+        area: result.area,
+        sourceUrls: result.sourceUrl ? [result.sourceUrl] : [],
+      },
+      frameEstimates.get(city.toLowerCase().trim())
+    );
   }
 
   return assembleItinerary(skeleton, days);
@@ -1489,13 +1573,30 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // page that updates a moment later rather than an error. The final
   // writeJob is the one that has to land.
   let progressDays: ProgressDay[] = [];
+  // Two hazards, both ending with a finished job that reads as running.
+  //
+  // writeJob stringifies the job the moment it is CALLED, so a progress
+  // write launched while status is still "running" carries a snapshot with
+  // no result. Nothing stopped that snapshot's SET landing after the final
+  // one - a slow round trip, a reconnect after a blip, or a day call that
+  // returned late - and the traveler then polls a completed job that says
+  // "running" with no itinerary until the frontend calls it stale four
+  // minutes later. So: progress writes are CHAINED (which also stops two of
+  // them landing out of order and showing fewer days than a moment ago),
+  // the chain is awaited before the final write, and once the job has
+  // finished no further progress write is started at all.
+  let progressWrites: Promise<unknown> = Promise.resolve();
+  let jobFinished = false;
   const publishProgress = (days: ProgressDay[]): void => {
+    if (jobFinished) return;
     progressDays = days;
     job.progress = { days, updatedAt: Date.now() };
     job.updatedAt = Date.now();
-    void writeJob(redis, job).catch((e) => {
-      console.warn(`[worker] progress write failed for ${id}:`, e);
-    });
+    progressWrites = progressWrites
+      .then(() => writeJob(redis, job))
+      .catch((e) => {
+        console.warn(`[worker] progress write failed for ${id}:`, e);
+      });
   };
 
   let costUsd = 0;
@@ -1736,7 +1837,14 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     }
 
     itinerary = checkFeasibility(itinerary);
-    itinerary = checkBudgetIntegrity(itinerary, job.brief);
+    itinerary = checkBudgetIntegrity(
+      itinerary,
+      job.brief,
+      // planDays is empty for the single-call path and for refinements, and
+      // undefined is what tells checkBudgetIntegrity to fall back to the
+      // dates rather than to conclude the trip needs no beds at all.
+      planDays.length > 0 ? planDays.filter((d) => d.include_lodging).length : undefined
+    );
 
     // Every day reads top to bottom, always - and AFTER checkBudgetIntegrity,
     // not before it.
@@ -1810,6 +1918,12 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // them here put several Redis round-trips (one per destination, and they
   // were sequential) between a finished itinerary and the traveler seeing
   // it, for no benefit to the person waiting.
+  //
+  // Nothing may write this key after the result does: the door is closed to
+  // new progress writes first, then anything already in flight is allowed
+  // to land, then the finished job is published.
+  jobFinished = true;
+  await progressWrites.catch(() => {});
   await writeJob(redis, job);
 
   const breakdown = Object.entries(timings)
@@ -1853,7 +1967,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 // until the first column's had entirely finished - turning what should be
 // two ~1-minute generations running side by side into one that's additive
 // (2+ minutes before the second column showed anything).
-const WORKER_CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 4);
+const WORKER_CONCURRENCY = readPositiveInt("WORKER_CONCURRENCY", 4);
 
 /** One consumer's loop: block on the queue, process a job, repeat. Uses its
  * own dedicated Redis connection (via redis.duplicate()) purely for the
