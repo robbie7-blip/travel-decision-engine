@@ -1016,10 +1016,29 @@ p {
     min-height: 44px;
   }
 
+  /* The language pill is the one control here whose 1px border sits
+     OUTSIDE the 44px its buttons claim, so it measured 46px between a 44px
+     "Sign in" and a 44px "Menu" and bulged a pixel above and below both.
+     On a 3x phone that is three visible pixels on each edge, which is what
+     reads as "the language switch is not aligned". Matching the other two
+     to it keeps every target at 44px or more and puts all three on one
+     line; shrinking the buttons instead would have cost 2px of touch
+     target to save 2px of height. */
+  .account-control,
+  .nav-menu-toggle {
+    min-height: 46px;
+  }
+
   .lang-toggle a,
   .lang-toggle button {
     min-height: 44px;
     min-width: 44px;
+    /* justify-content does nothing on a block-level button - the same
+       no-op that left the Menu label sitting high in its own pill. The
+       text was already centred by the button's own centring, but a rule
+       that looks like it aligns something should actually align it. */
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
   }
 

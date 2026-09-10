@@ -107,6 +107,10 @@ export function TripQA({ context, language, t }: TripQAProps) {
   const [isPro, setIsPro] = useState<boolean | null>(null);
   const [showProUpsell, setShowProUpsell] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+  /** Whether the traveler is reading the newest message rather than
+   * scrolled back through the thread. */
+  const stuckToBottom = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,6 +167,11 @@ export function TripQA({ context, language, t }: TripQAProps) {
       return;
     }
 
+    // Asking something new means following along again. Whatever they had
+    // scrolled back to re-read, the answer they now want is the one about
+    // to arrive at the bottom.
+    stuckToBottom.current = true;
+
     const next: TripQAMessage[] = [
       ...messages,
       { role: "user", content, ...(pendingImage ? { images: [pendingImage] } : {}) },
@@ -212,6 +221,32 @@ export function TripQA({ context, language, t }: TripQAProps) {
     } finally {
       setSending(false);
     }
+  }
+
+  // Keep the newest words in view as the answer streams in.
+  //
+  // The thread is a fixed-height scroll box and nothing ever scrolled it,
+  // so any answer taller than the box grew downwards out of sight: you
+  // asked a question, the reply arrived, and to read it you had to find
+  // and drag an inner scrollbar. On a phone that is the difference between
+  // a conversation and a puzzle.
+  //
+  // Sticks to the bottom rather than always jumping there. If they have
+  // scrolled up to re-read something, yanking the view back down every
+  // time another chunk lands is worse than the bug being fixed - so this
+  // only follows along while they are already at the end.
+  useEffect(() => {
+    const el = threadRef.current;
+    if (!el || !stuckToBottom.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  function handleThreadScroll() {
+    const el = threadRef.current;
+    if (!el) return;
+    // A line of slack, so "at the bottom" survives sub-pixel rounding and
+    // a part-rendered final line.
+    stuckToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -361,7 +396,14 @@ export function TripQA({ context, language, t }: TripQAProps) {
         </div>
       )}
       {messages.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 420, overflowY: "auto" }}>
+        <div
+          ref={threadRef}
+          onScroll={handleThreadScroll}
+          // So a screen reader announces the reply as it arrives rather
+          // than leaving it to be discovered.
+          aria-live="polite"
+          style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 420, overflowY: "auto" }}
+        >
           {messages.map((m, i) => {
             // The assistant's message starts empty and fills in as chunks
             // arrive - show a brief pulse instead of a blank bubble until

@@ -30,6 +30,28 @@ export function AppSplash() {
       style={{
         position: "fixed",
         inset: 0,
+        // Centred in the area the traveler can actually SEE, not in the
+        // layout viewport.
+        //
+        // "inset: 0" alone resolves against the layout viewport, which on
+        // iOS Safari is not the visible region: the browser's chrome
+        // overlays it, so the box's middle and the visible middle are
+        // different places and the logo sat noticeably high on a real
+        // phone. It measures dead-centre in a desktop browser at a fixed
+        // viewport, which is why this needed a device to notice.
+        //
+        // 100dvh is the dynamic viewport height - it tracks the visible
+        // area as the toolbars collapse and expand, so the centre stays
+        // the centre. Height wins over the "bottom" half of inset for a
+        // fixed element, so the two do not fight; inset stays for the
+        // left/right edges and as the fallback anywhere dvh is unknown.
+        height: "100dvh",
+        // And keep the mark clear of the notch and the home indicator, so
+        // "centred" is centred in the usable space rather than measured
+        // through hardware.
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        boxSizing: "border-box",
         zIndex: 9999,
         display: "flex",
         flexDirection: "column",
