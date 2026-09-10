@@ -11,6 +11,7 @@ import { ALERT_THRESHOLD_RATIO } from "@/lib/costBudget";
 import { loadQualitySnapshot, QUALITY_CHECKS, type QualitySnapshot } from "@/lib/qualityStats";
 import {
   loadTimingSnapshot,
+  ON_TARGET_BUCKETS,
   TARGET_TOTAL_MS,
   TIMING_BUCKETS,
   TIMING_STAGES,
@@ -281,14 +282,17 @@ export default async function StatsAdminPage() {
             </div>
           </div>
 
-          {/* The distribution. The first two bars are, by construction,
-              everything at or under target - the boundary between them and
-              the third IS the target. */}
+          {/* The distribution. The green bars are ON_TARGET_BUCKETS, which is
+              by construction everything at or under target - the boundary
+              between the second bar and the third IS the target. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
-            {TIMING_BUCKETS.map((bucket, i) => {
+            {TIMING_BUCKETS.map((bucket) => {
               const count = timing.buckets[bucket.id] ?? 0;
               const share = timing.jobs > 0 ? count / timing.jobs : 0;
-              const onTarget = i < 2;
+              // From the same list the snapshot sums, not "the first two" -
+              // otherwise adding a bucket paints the wrong bars green while
+              // the percentage above stays right.
+              const onTarget = ON_TARGET_BUCKETS.includes(bucket.id);
               return (
                 <div key={bucket.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
                   <span style={{ flex: "0 0 200px", color: count === 0 ? "var(--ink-dim)" : "var(--ink)" }}>

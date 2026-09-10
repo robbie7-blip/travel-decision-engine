@@ -1010,20 +1010,20 @@ p {
 
 @media (pointer: coarse) {
   .nav-link,
-  .nav-menu-toggle,
-  .account-control,
   .currency-select {
     min-height: 44px;
   }
 
-  /* The language pill is the one control here whose 1px border sits
-     OUTSIDE the 44px its buttons claim, so it measured 46px between a 44px
-     "Sign in" and a 44px "Menu" and bulged a pixel above and below both.
-     On a 3x phone that is three visible pixels on each edge, which is what
-     reads as "the language switch is not aligned". Matching the other two
-     to it keeps every target at 44px or more and puts all three on one
-     line; shrinking the buttons instead would have cost 2px of touch
-     target to save 2px of height. */
+  /* 46px, not 44px, and these two are listed only here.
+     The language pill is the one control in this group whose 1px border
+     sits OUTSIDE the 44px its buttons claim, so it measures 46px - and it
+     sits in a row with these two. At 44px they were a pixel short at the
+     top and bottom of it, which on a 3x phone is three visible pixels on
+     each edge and reads as the language switch being misaligned. Matching
+     them keeps every target at 44px or more; shrinking the pill's buttons
+     instead would have cost 2px of touch target to save 2px of height.
+     Kept out of the 44px rule above so each selector's height is stated
+     once rather than declared and then contradicted three lines later. */
   .account-control,
   .nav-menu-toggle {
     min-height: 46px;
@@ -2045,4 +2045,23 @@ p {
 
 .qa-bubble-user .qa-link {
   color: inherit;
+}
+
+/* Present to assistive tech, absent to everyone else. Used for the one
+   polite announcement Ask a Local makes when an answer finishes (see
+   TripQA) - the thread itself cannot be a live region, because the answer
+   streams in per chunk and a screen reader would read it out in dozens of
+   fragments. Clipped rather than display:none or visibility:hidden, both
+   of which remove it from the accessibility tree along with the pixels. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

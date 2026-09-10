@@ -38,9 +38,17 @@ const workflow = readFileSync(join(REPO, ".github", "workflows", "checks.yml"), 
 const RUN_IN_CI = new Set(
   workflow
     .split("\n")
-    // A step line, not a comment. YAML comments start with # after
-    // whitespace; a real step starts with "- run:".
-    .filter((line) => /^\s*-\s*run:/.test(line))
+    // Any line that IS a run step, in either form YAML allows: the
+    // "- run:" shorthand, or a "run:" key under a "- name:" step. Matching
+    // only the shorthand meant rewriting a step into the named form - a
+    // routine, behaviour-preserving edit - dropped its script out of this
+    // set, and the guard then reported a script that runs on every push as
+    // dormant, with "list it in NOT_IN_CI" offered as the fix.
+    //
+    // Comments are excluded by requiring the line to START with the step
+    // punctuation, so a commented-out "# - run: npm run test:timing" still
+    // counts as not running, which is the whole point.
+    .filter((line) => /^\s*(?:-\s*)?run:/.test(line))
     .flatMap((line) => [...line.matchAll(/npm run ([a-z][a-z0-9:-]*)/g)].map((m) => m[1]))
 );
 
@@ -65,11 +73,15 @@ for (const [pkgDir, label] of [
   const pkg = JSON.parse(readFileSync(join(REPO, pkgDir, "package.json"), "utf8"));
   const scripts = Object.keys(pkg.scripts ?? {});
   // Every script, not just the test:/check: ones. Scoping the loop to
-  // those prefixes made all five NOT_IN_CI entries unreachable - dead
-  // config documenting a mechanism that could never fire, while the
-  // failure message pointed maintainers at it.
+  // those prefixes made every NOT_IN_CI entry unreachable - dead config
+  // documenting a mechanism that could never fire, while the failure
+  // message pointed maintainers at it.
   for (const name of scripts) {
-    if (name in NOT_IN_CI) continue;
+    // Object.hasOwn, not "in": "in" walks the prototype chain, so a
+    // script named toString or constructor would be silently exempted
+    // with no entry and no reason - this guard creating the dormant state
+    // it exists to prevent.
+    if (Object.hasOwn(NOT_IN_CI, name)) continue;
     if (!RUN_IN_CI.has(name)) {
       problems.push(`${label}: "npm run ${name}" exists but never runs in CI`);
     }

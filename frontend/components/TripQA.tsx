@@ -242,6 +242,13 @@ export function TripQA({ context, language, t }: TripQAProps) {
     el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  /** The last assistant message, but only once it has finished arriving -
+   * empty while streaming, so the announcement happens on completion
+   * rather than on every chunk. */
+  const lastMessage = messages[messages.length - 1];
+  const finishedAnswer =
+    !sending && lastMessage?.role === "assistant" ? lastMessage.content : "";
+
   function handleThreadScroll() {
     const el = threadRef.current;
     if (!el) return;
@@ -396,13 +403,23 @@ export function TripQA({ context, language, t }: TripQAProps) {
           ))}
         </div>
       )}
+      {/* The single announcement Ask a Local makes to a screen reader: the
+          finished answer, once.
+          
+          The thread itself must NOT be a live region. appendToAssistant
+          fires setMessages per streamed chunk, so a live region wrapping
+          the thread reads the reply out in dozens of partial fragments and
+          reads the traveler's own question back to them first. A live
+          region also has to exist BEFORE the text changes to announce it,
+          which is why this is always rendered rather than toggled on when
+          the answer completes. */}
+      <span className="sr-only" aria-live="polite">
+        {finishedAnswer}
+      </span>
       {messages.length > 0 && (
         <div
           ref={threadRef}
           onScroll={handleThreadScroll}
-          // So a screen reader announces the reply as it arrives rather
-          // than leaving it to be discovered.
-          aria-live="polite"
           style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 420, overflowY: "auto" }}
         >
           {messages.map((m, i) => {
@@ -449,6 +466,14 @@ export function TripQA({ context, language, t }: TripQAProps) {
                   <span className="font-ui" style={{ color: "var(--ink-dim)" }}>
                     {t.tripQA.thinking}
                   </span>
+                ) : m.role === "user" ? (
+                  // The traveler's own words, verbatim. Linkifying these
+                  // would apply the MODEL's conventions to a human's
+                  // typing: "what does [[this]] mean on my ticket?" would
+                  // lose its brackets and turn into a map search, and a
+                  // booking URL they pasted would be relabelled so the
+                  // message no longer shows what they sent.
+                  m.content
                 ) : (
                   // Segments, never innerHTML - see lib/linkify.ts. A place
                   // the local names becomes a Maps search for it; a source

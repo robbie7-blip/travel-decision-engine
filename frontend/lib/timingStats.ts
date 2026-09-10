@@ -27,9 +27,16 @@ export const TIMING_BUCKETS = [
 
 export type TimingBucketId = (typeof TIMING_BUCKETS)[number]["id"];
 
-/** The first two buckets are, by construction, everything at or under the
- * target - the boundary between u30 and u45 is TARGET_TOTAL_MS itself. */
-const ON_TARGET_BUCKETS: TimingBucketId[] = ["u20", "u30"];
+/** The buckets that count as meeting the target - by construction the ones
+ * below TARGET_TOTAL_MS, since the boundary between u30 and u45 IS the
+ * target.
+ *
+ * Exported because the panel paints these bars green and the snapshot sums
+ * them into the headline percentage, and those two must not be able to
+ * disagree. The panel previously hardcoded "the first two", which is a
+ * third copy of the boundary: adding an "under 10s" row would have kept
+ * the total right and painted the wrong bars. */
+export const ON_TARGET_BUCKETS: readonly TimingBucketId[] = ["u20", "u30"];
 
 export const TIMING_STAGES = [
   { id: "lodging", label: "Lodging prefetch" },
@@ -76,7 +83,14 @@ function num(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export const EMPTY_TIMING_SNAPSHOT: TimingSnapshot = {
+/** A fresh empty snapshot each call.
+ *
+ * A factory rather than a shared constant for the same reason
+ * qualityStats.ts uses EMPTY_BY_CHECK(): loadTimingSnapshot returns this on
+ * the no-data path, Next.js keeps module state across requests in one
+ * server instance, and a single caller mutating snapshot.buckets would
+ * corrupt the constant for every later request in that instance. */
+export const emptyTimingSnapshot = (): TimingSnapshot => ({
   jobs: 0,
   dayCount: 0,
   avgTotalMs: 0,
@@ -89,7 +103,7 @@ export const EMPTY_TIMING_SNAPSHOT: TimingSnapshot = {
   waitedForFrame: 0,
   fellBackToSingleCall: 0,
   multiWave: 0,
-};
+});
 
 /** Aggregates the last `windowDays` days of counters into one snapshot.
  *
@@ -103,7 +117,7 @@ export async function loadTimingSnapshot(redis: Redis, windowDays = 30): Promise
   const cutoff = new Date(Date.now() - windowDays * 86400000).toISOString().slice(0, 10);
   const days = seen.filter((d) => d >= cutoff).sort();
 
-  if (days.length === 0) return EMPTY_TIMING_SNAPSHOT;
+  if (days.length === 0) return emptyTimingSnapshot();
 
   const hashes = await Promise.all(
     days.map((day) => redis.hgetall<Record<string, string | number>>(dayHashKey(day)))

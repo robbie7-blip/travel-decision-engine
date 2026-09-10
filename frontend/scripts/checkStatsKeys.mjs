@@ -210,6 +210,57 @@ if (orphanLabels.length > 0) {
   );
 }
 
+// The heartbeat's env-var list, which is the third hand-copied list across
+// this same deploy boundary and the one with the loudest failure. The
+// worker reports the names it can see; the frontend decides what each one
+// means. Add a name to only the frontend's list and /admin/health prints
+// it MISSING forever on a perfectly healthy worker, and - because a
+// "required" one drops the verdict to DOWN - the whole page reads as
+// broken. Add it to only the worker's and it is collected and never shown.
+{
+  const workerSource = readFileSync(join(REPO, "worker", "src", "index.ts"), "utf8");
+  const start = workerSource.indexOf("const HEARTBEAT_ENV_NAMES");
+  const workerNames =
+    start === -1
+      ? null
+      : new Set(
+          [...workerSource.slice(start, workerSource.indexOf("] as const", start)).matchAll(/"([A-Z][A-Z0-9_]*)"/g)].map(
+            (m) => m[1]
+          )
+        );
+
+  const healthSource = readFileSync(join(REPO, "frontend", "lib", "health.ts"), "utf8");
+  const workerEnvStart = healthSource.indexOf("export const WORKER_ENV");
+  const frontendNames =
+    workerEnvStart === -1
+      ? null
+      : new Set(
+          [...healthSource.slice(workerEnvStart, healthSource.indexOf("\n];", workerEnvStart)).matchAll(/name:\s*"([A-Z][A-Z0-9_]*)"/g)].map(
+            (m) => m[1]
+          )
+        );
+
+  if (!workerNames || !frontendNames) {
+    problems.push("heartbeat env list: could not find HEARTBEAT_ENV_NAMES or WORKER_ENV to compare");
+  } else {
+    // Sets, not sequences: the worker filters by name and the frontend's
+    // order is only display order.
+    const workerOnly = [...workerNames].filter((n) => !frontendNames.has(n)).sort();
+    const frontendOnly = [...frontendNames].filter((n) => !workerNames.has(n)).sort();
+    if (workerOnly.length > 0) {
+      problems.push(
+        `heartbeat env list: the worker reports ${workerOnly.join(", ")}, which /admin/health never shows`
+      );
+    }
+    if (frontendOnly.length > 0) {
+      problems.push(
+        `heartbeat env list: /admin/health expects ${frontendOnly.join(", ")}, which the worker never reports ` +
+          `(they would read MISSING on a healthy worker)`
+      );
+    }
+  }
+}
+
 if (problems.length > 0) {
   console.error("Stats keys have drifted between the worker and the app.\n");
   for (const problem of problems) console.error(`  ${problem}`);
@@ -223,5 +274,5 @@ if (problems.length > 0) {
 console.log(
   `Stats keys agree across the worker/app boundary ` +
     `(${PAIRS.length} counter sets, ${checkIds.size} quality checks all labelled, ` +
-    `bucket/stage ids and the heartbeat contract in step).`
+    `bucket/stage ids, the heartbeat contract and its env list in step).`
 );

@@ -46,12 +46,12 @@ export function AppSplash() {
         // fixed element, so the two do not fight; inset stays for the
         // left/right edges and as the fallback anywhere dvh is unknown.
         height: "100dvh",
-        // And keep the mark clear of the notch and the home indicator, so
-        // "centred" is centred in the usable space rather than measured
-        // through hardware.
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        boxSizing: "border-box",
+        // No safe-area padding here on purpose. env(safe-area-inset-*)
+        // resolves to 0 unless the viewport opts in with
+        // viewport-fit=cover, which this app deliberately does not - so
+        // padding for the notch would be two declarations that compute to
+        // nothing and a comment claiming otherwise. Without cover, the
+        // layout viewport already excludes the unsafe areas.
         zIndex: 9999,
         display: "flex",
         flexDirection: "column",

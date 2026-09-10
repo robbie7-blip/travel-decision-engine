@@ -173,12 +173,34 @@ export function checkWorkerEnv(heartbeat: WorkerHeartbeat): CheckedEnv[] {
  * Anything in Redis under that key could be a value from an older worker
  * build, a half-written write, or something else entirely. Trusting the
  * shape gets you "NaNs ago" printed under a card that still says OK, which
- * is the page lying with confidence. /api/health makes the same check
- * before it answers 200. */
+ * is the page lying with confidence.
+ *
+ * EVERY field is checked, not just the timestamp. An earlier version
+ * checked updatedAt alone, which let a heartbeat carrying nothing else
+ * through - and then the page rendered "Started: Invalid Date",
+ * "Consumers: undefined", "Two-phase: off (single-call fallback)" as a
+ * positive claim about a flag that was simply absent, and every worker
+ * credential as MISSING because envPresent was not an array. That sends
+ * the owner hunting for credentials that are set and a fallback that is
+ * not happening: worse than reporting nothing, on the one page whose job
+ * is saying what is actually wrong.
+ *
+ * /api/health calls this too, so the public 200 and the admin page's
+ * verdict cannot disagree about what counts as a live worker. */
 export function isWorkerHeartbeat(value: unknown): value is WorkerHeartbeat {
-  const beat = value as WorkerHeartbeat | null;
+  if (typeof value !== "object" || value === null) return false;
+  const beat = value as Partial<WorkerHeartbeat>;
   return (
-    typeof beat?.updatedAt === "string" && Number.isFinite(Date.parse(beat.updatedAt))
+    typeof beat.updatedAt === "string" &&
+    Number.isFinite(Date.parse(beat.updatedAt)) &&
+    typeof beat.startedAt === "string" &&
+    Number.isFinite(Date.parse(beat.startedAt)) &&
+    typeof beat.concurrency === "number" &&
+    Number.isFinite(beat.concurrency) &&
+    Array.isArray(beat.envPresent) &&
+    beat.envPresent.every((name) => typeof name === "string") &&
+    (beat.dayModel === null || typeof beat.dayModel === "string") &&
+    typeof beat.twoPhase === "boolean"
   );
 }
 

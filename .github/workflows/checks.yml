@@ -102,6 +102,17 @@ jobs:
       # package.json catching nothing because nobody added the step. A
       # dormant guard is worse than a missing one.
       - run: npm run check:ci
+      # The link boundary in an Ask a Local answer. This is where model
+      # output becomes an href, and the module's claim that "javascript:"
+      # and "data:" cannot reach a rendered anchor was enforced by nothing
+      # until this suite - a typecheck reads a regex without caring what it
+      # matches.
+      - run: npm run test:linkify
+      # The reader half of the latency counters. The worker's suite covers
+      # which bucket a total lands in; this covers the number the panel
+      # actually prints against the 30-second promise, plus the per-stage
+      # divisor that makes re-verify's average honest.
+      - run: npm run test:stats
       # Catches what typecheck alone misses - a server component importing
       # something client-only, a bad route export, a failed page render.
       - run: npm run build
