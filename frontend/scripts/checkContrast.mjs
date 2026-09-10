@@ -89,6 +89,11 @@ const PAIRS = [
   // at 2.04:1 there, so that page uses it for the 3px card rule only and
   // sets its DEGRADED text in --brand-gold-ink (covered below).
   { fg: "--grounded", bg: "--bg", min: AA_NORMAL, note: "the OK verdict on /admin/health" },
+  // Links inside an Ask a Local answer. The traveler's own bubble is not
+  // here because its link inherits the bubble's text colour rather than
+  // taking one of its own - that pair is --bg-panel on --accent-green,
+  // covered by whatever governs the bubble text itself.
+  { fg: "--grounded", bg: "--bg-panel-raised", min: AA_NORMAL, note: "a link in an Ask a Local answer" },
   // /admin/stats' headline numbers and status text. These sit on the plain
   // page ground, and the gold that used to colour the amber ones measured
   // 2.04:1 there - a 32px number nobody could read. Gold now appears on

@@ -109,7 +109,8 @@ const WEB_SEARCH_ADDENDUM = `\n\nYou also have a web_search tool available for t
 current/time-sensitive detail would actually change the answer (today's weather, whether a specific place is \
 still open, a current price, a real advisory), not for background knowledge you already know. When you do use \
 it, answer based on what you actually found, and you no longer need the "I don't have live info" hedge for \
-whatever you searched.`;
+whatever you searched. When a search gives you the actual URL behind a claim, paste it - that is the one case \
+where you genuinely have a link rather than a guess at one, and it becomes tappable.`;
 
 // Anthropic's backend occasionally returns a transient 529 "overloaded"
 // error - confirmed happening in practice. One immediate retry (no
@@ -174,7 +175,23 @@ guessing.
 Be honest about uncertainty: for anything time-sensitive or safety-critical (a specific current \
 travel advisory, a disease outbreak, a political situation), say plainly that you don't have live, \
 current information and the traveler should check an official source (their government's travel \
-advisory site, the CDC, etc.) - don't state something time-sensitive as settled fact.`;
+advisory site, the CDC, etc.) - don't state something time-sensitive as settled fact.
+
+PLACES: when you name a specific place the traveler could actually walk to - a restaurant, a bar, a \
+museum, a shop, a station - wrap the name in double square brackets the FIRST time you mention it, \
+like [[Roscioli]] or [[Sant'Eustachio Il Caffe]]. That becomes a tappable map link.
+
+Only mark real, specific, named places. Not cities, countries or neighbourhoods, and never a generic \
+description: "[[a good trattoria nearby]]" is wrong, and so is "[[Trastevere]]". Mark each place once, \
+on its first mention. If you are not naming somewhere specific, don't use the brackets at all - an \
+answer with no place in it should have none.
+
+Never write a Google Maps URL yourself. The brackets are how a map link gets made, and a maps address \
+you compose from memory points at the wrong place often enough to be worse than no link.
+
+URLS: don't invent them. Paste a URL only if you genuinely have it in front of you, in which case \
+write it plainly and it will become a link. Otherwise name where to look ("the museum's own site", \
+"your airline's app") instead of guessing an address.`;
 
 // The chosen local perspective, appended to the system prompt.
 //

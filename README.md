@@ -401,6 +401,34 @@ webhooks) the first time a day's spend crosses `ALERT_THRESHOLD_RATIO`
 via its own once-per-day Redis flag (`spend:alerted:YYYY-MM-DD`) so it
 doesn't re-fire on every job for the rest of the day.
 
+### Links in an Ask a Local answer
+
+Answers render as segments (`frontend/lib/linkify.ts`), never through
+`dangerouslySetInnerHTML`. The text is model output, and on the photo path
+it is partly a reading of an image the traveler supplied, so React's
+escaping is the point: text stays text, and the only anchors that exist
+are ones built from a URL the module validated with `URL()` and confirmed
+to be http(s). A `javascript:` or `data:` string in an answer renders as
+the plain text it is.
+
+Place names are **not** model-written Maps URLs. The model marks a place
+as `[[Roscioli]]` and the module builds a Google Maps *search* link from
+the name, with the trip's city appended when it is missing. Same reasoning
+as the flight link being a deterministic Google Flights search and an
+itinerary item's map link being built from a place id Places actually
+returned: a Maps URL carries a place id or CID, and a hallucinated one
+does not fail loudly, it resolves confidently to the wrong restaurant. A
+search for a name that exists lands on it; a search for an invented name
+lands on "no results", which is honest and visibly different from being
+sent to the wrong door.
+
+Residual `[[`/`]]` are stripped from the rendered text, so a malformed or
+nested marker degrades to plain words rather than leaking the prompt
+convention into a sentence. While an answer is still streaming, a URL or
+marker that runs to the end of the text stays text until the rest lands -
+a link that is wrong for one chunk is a link a traveler can tap in that
+chunk.
+
 ### Health
 
 Two endpoints, for two different readers.

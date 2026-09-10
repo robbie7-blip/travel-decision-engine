@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { linkifyAnswer } from "@/lib/linkify";
 import Link from "next/link";
 import type { Dictionary } from "@/lib/i18n";
 import {
@@ -416,6 +417,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
             const bubble = (
               <div
                 key={i}
+                className={m.role === "user" ? "qa-bubble qa-bubble-user" : "qa-bubble"}
                 style={{
                   alignSelf: m.role === "user" ? "flex-end" : "flex-start",
                   maxWidth: Avatar ? "100%" : "85%",
@@ -448,7 +450,30 @@ export function TripQA({ context, language, t }: TripQAProps) {
                     {t.tripQA.thinking}
                   </span>
                 ) : (
-                  m.content
+                  // Segments, never innerHTML - see lib/linkify.ts. A place
+                  // the local names becomes a Maps search for it; a source
+                  // it cites becomes the page. Both are built here from a
+                  // validated URL rather than taken from the model.
+                  linkifyAnswer(m.content, {
+                    near: context?.destinations?.[0]?.trim(),
+                    // The last message is still arriving while sending, so
+                    // a URL at the very end of it may be half-delivered.
+                    streaming: sending && i === messages.length - 1,
+                  }).map((seg, segIndex) =>
+                    seg.kind === "text" ? (
+                      seg.text
+                    ) : (
+                      <a
+                        key={segIndex}
+                        href={seg.href}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        className="qa-link"
+                      >
+                        {seg.text}
+                      </a>
+                    )
+                  )
                 )}
               </div>
             );
