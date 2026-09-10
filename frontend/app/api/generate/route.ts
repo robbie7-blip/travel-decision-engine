@@ -139,11 +139,27 @@ export async function POST(request: NextRequest) {
   }
 
   // Soft personalization signal (see the visited_countries comment in
-  // lib/types.ts) - resolved from the traveler's own trusted account
-  // record, never from client input (parseTripBrief's allowlist already
-  // dropped anything the client tried to pass under this key). A failure
-  // here should never block generation, so it's swallowed the same way
-  // recordEvent below is.
+  // lib/types.ts) - resolved from the traveler's own trusted account record
+  // and NEVER from client input.
+  //
+  // That was the intent from the start, and the code didn't do it.
+  // parseTripBrief deliberately passes the field through, because
+  // /api/refine re-validates a brief the client echoed back and would
+  // otherwise lose personalization on every follow-up. This route is the
+  // one that's supposed to overwrite it - and it only did so when the
+  // lookup found at least one country, so a request from a signed-in
+  // account with nothing visited kept whatever the client sent, and an
+  // anonymous request kept it unconditionally, with no account to overwrite
+  // from at all. Either way an arbitrary client-supplied array reached the
+  // prompt under a key the prompt trusts.
+  //
+  // So the client's value is dropped first, always, and only then replaced
+  // by what the account actually says. A failure in the lookup leaves the
+  // field absent rather than falling back to the client's copy - a missing
+  // soft signal is a slightly less personal itinerary; a trusted-by-name
+  // client array is a prompt-injection surface.
+  brief = { ...brief };
+  delete brief.visited_countries;
   if (email) {
     try {
       // Already fetched above for a non-test-mode request; only test mode,

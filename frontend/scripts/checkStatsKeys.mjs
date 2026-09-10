@@ -178,6 +178,14 @@ for (const pair of PAIRS) {
     "WORKER_HEARTBEAT_KEY",
     "WORKER_HEARTBEAT_TTL_SECONDS",
     "WORKER_HEARTBEAT_INTERVAL_MS",
+    // The trip-length cap. Both sides enforce it - the app rejects an
+    // over-long brief at the door, the worker refuses it again before its
+    // first model call - and the whole point of two enforcement points is
+    // that they agree. Raised on one side only, the app would accept briefs
+    // the worker then refuses (a 202 followed by a failed job the traveler
+    // paid a quota slot for); lowered on one side only, the worker would
+    // refuse trips the form happily offers.
+    "MAX_TRIP_DAYS",
   ];
   for (const name of required) {
     const a = writerConsts.get(name);

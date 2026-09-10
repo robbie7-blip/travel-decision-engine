@@ -4,6 +4,7 @@ import { DateRangePicker } from "./DateRangePicker";
 import { SingleDatePicker } from "./SingleDatePicker";
 import { Field, inputStyle } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
+import { MAX_TRIP_DAYS, tripDayCount } from "@/lib/validation";
 import type { Language, TripBriefInput } from "@/lib/types";
 
 // Form-local shape: comma-separated fields stay strings while being typed;
@@ -131,6 +132,14 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
   function update<K extends keyof TripFormState>(key: K, val: TripFormState[K]) {
     onChange({ ...value, [key]: val });
   }
+
+  // /api/generate rejects a range longer than MAX_TRIP_DAYS, because every
+  // planned day is a paid model call. Checking it here too means the
+  // traveler sees it beside the calendar they set it in, instead of filling
+  // in the remaining eight fields and getting a 400. Null while the range
+  // is incomplete or unparseable - the server is still the authority.
+  const dayCount = value.start_date && value.end_date ? tripDayCount(value.start_date, value.end_date) : null;
+  const tooLong = dayCount !== null && dayCount > MAX_TRIP_DAYS;
 
   return (
     // A real panel again, but not the old card. White against the warm
@@ -315,6 +324,15 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             prevMonthLabel={t.form.calendarPrevMonth}
             nextMonthLabel={t.form.calendarNextMonth}
           />
+          {tooLong && (
+            <div
+              className="font-ui"
+              role="alert"
+              style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 7, lineHeight: 1.5 }}
+            >
+              {t.form.datesTooLong.replace("{days}", String(dayCount)).replace("{max}", String(MAX_TRIP_DAYS))}
+            </div>
+          )}
         </div>
         <div className="form-group-label">{t.form.groupWho}</div>
         <Field label={t.form.partySize}>
@@ -419,7 +437,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
 
       <button
         onClick={onSubmit}
-        disabled={submitting}
+        disabled={submitting || tooLong}
         className="font-ui btn-primary"
         style={{
           marginTop: 24,
@@ -429,7 +447,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
           fontSize: 16,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
-          cursor: submitting ? "default" : "pointer",
+          cursor: submitting || tooLong ? "default" : "pointer",
         }}
       >
         {submitting ? (submittingLabel ?? t.form.submitting) : t.form.submit}

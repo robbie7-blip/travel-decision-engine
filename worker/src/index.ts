@@ -57,9 +57,11 @@ import { recordTimingSample } from "./timingStats";
 import {
   JOBS_QUEUE_KEY,
   JOB_TTL_SECONDS,
+  MAX_TRIP_DAYS,
   WORKER_HEARTBEAT_INTERVAL_MS,
   WORKER_HEARTBEAT_KEY,
   WORKER_HEARTBEAT_TTL_SECONDS,
+  briefSpanDays,
   jobKey,
   type Job,
   type JobTimings,
@@ -1550,6 +1552,31 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     return;
   }
   const job: Job = JSON.parse(raw);
+
+  // The trip-length cap, enforced again on the side that pays for it.
+  //
+  // /api/generate rejects an over-long range (see MAX_TRIP_DAYS in
+  // frontend/lib/validation.ts), and this is the same rule restated where
+  // the money is actually spent. That is not redundant: this process takes
+  // whatever is on the queue, phase 2 makes one model call per planned day,
+  // and the day count comes entirely from these two date strings. Anything
+  // that ever enqueues a job without going through that route - an older
+  // frontend build mid-deploy, a job already on the queue when the cap
+  // shipped, a future admin or replay path - would otherwise commission
+  // one call per day for as long a span as it asked for.
+  //
+  // Refused before the first model call, so an over-long brief costs
+  // nothing, and refused rather than truncated: a 30-day answer to a
+  // 90-day question is a wrong itinerary, not a smaller one.
+  const spanDays = briefSpanDays(job.brief);
+  if (spanDays !== null && spanDays > MAX_TRIP_DAYS) {
+    console.error(`[worker] job ${id} spans ${spanDays} days, over the ${MAX_TRIP_DAYS}-day cap - refusing before any model call`);
+    job.status = "error";
+    job.error = `Trips are limited to ${MAX_TRIP_DAYS} days - this one is ${spanDays}. Please split it into shorter stretches.`;
+    job.updatedAt = Date.now();
+    await writeJob(redis, job);
+    return;
+  }
 
   // Started before the status write, not after it. Amadeus is the slowest
   // thing that doesn't depend on anything, so it should be in flight during

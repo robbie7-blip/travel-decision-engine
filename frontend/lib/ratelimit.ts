@@ -10,9 +10,17 @@
 // bigger cost-control layer (auth, payments, Cloudflare-level bot
 // protection) if abuse turns out to be from many rotating IPs rather than
 // one repeat offender.
+//
+// Every limit below is read through envInt rather than Number(). These are
+// the numbers that stand between a public endpoint and an unbounded
+// Anthropic bill, and the naive read fails OPEN: an env var set to an empty
+// string gives 0 (Ratelimit.slidingWindow(0) rejects everything - the whole
+// site down), and a typo gives NaN, which is worse in the other direction
+// because a NaN limit compares false against every count. See envNumber.ts.
 
 import { Ratelimit } from "@upstash/ratelimit";
 import type { Redis } from "@upstash/redis";
+import { envInt } from "./envNumber";
 
 export interface RateLimitConfig {
   perHour: number;
@@ -21,14 +29,14 @@ export interface RateLimitConfig {
 }
 
 export const GENERATE_RATE_LIMIT: RateLimitConfig = {
-  perHour: Number(process.env.GENERATE_RATE_LIMIT_PER_HOUR ?? 5),
-  perDay: Number(process.env.GENERATE_RATE_LIMIT_PER_DAY ?? 20),
+  perHour: envInt("GENERATE_RATE_LIMIT_PER_HOUR", 5),
+  perDay: envInt("GENERATE_RATE_LIMIT_PER_DAY", 20),
   prefix: "ratelimit:generate",
 };
 
 export const FEEDBACK_RATE_LIMIT: RateLimitConfig = {
-  perHour: Number(process.env.FEEDBACK_RATE_LIMIT_PER_HOUR ?? 30),
-  perDay: Number(process.env.FEEDBACK_RATE_LIMIT_PER_DAY ?? 100),
+  perHour: envInt("FEEDBACK_RATE_LIMIT_PER_HOUR", 30),
+  perDay: envInt("FEEDBACK_RATE_LIMIT_PER_DAY", 100),
   prefix: "ratelimit:feedback",
 };
 
@@ -37,8 +45,8 @@ export const FEEDBACK_RATE_LIMIT: RateLimitConfig = {
 // fill) - a more generous limit reflects that real per-call cost, not a
 // looser attitude toward abuse.
 export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
-  perHour: Number(process.env.TRIP_QUESTIONS_RATE_LIMIT_PER_HOUR ?? 20),
-  perDay: Number(process.env.TRIP_QUESTIONS_RATE_LIMIT_PER_DAY ?? 60),
+  perHour: envInt("TRIP_QUESTIONS_RATE_LIMIT_PER_HOUR", 20),
+  perDay: envInt("TRIP_QUESTIONS_RATE_LIMIT_PER_DAY", 60),
   prefix: "ratelimit:trip-questions",
 };
 
@@ -48,8 +56,8 @@ export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
 // legitimately paste a run of these in one sitting, so the hourly allowance
 // is deliberately generous; the daily cap is what actually bounds abuse.
 export const FLIGHT_IMPORT_RATE_LIMIT: RateLimitConfig = {
-  perHour: Number(process.env.FLIGHT_IMPORT_RATE_LIMIT_PER_HOUR ?? 40),
-  perDay: Number(process.env.FLIGHT_IMPORT_RATE_LIMIT_PER_DAY ?? 120),
+  perHour: envInt("FLIGHT_IMPORT_RATE_LIMIT_PER_HOUR", 40),
+  perDay: envInt("FLIGHT_IMPORT_RATE_LIMIT_PER_DAY", 120),
   prefix: "ratelimit:flight-import",
 };
 
@@ -60,8 +68,8 @@ export const FLIGHT_IMPORT_RATE_LIMIT: RateLimitConfig = {
 // target email, since that would need its own separate check to avoid
 // leaking "this email has requested N links" as a side channel.
 export const AUTH_RATE_LIMIT: RateLimitConfig = {
-  perHour: Number(process.env.AUTH_RATE_LIMIT_PER_HOUR ?? 5),
-  perDay: Number(process.env.AUTH_RATE_LIMIT_PER_DAY ?? 15),
+  perHour: envInt("AUTH_RATE_LIMIT_PER_HOUR", 5),
+  perDay: envInt("AUTH_RATE_LIMIT_PER_DAY", 15),
   prefix: "ratelimit:auth",
 };
 

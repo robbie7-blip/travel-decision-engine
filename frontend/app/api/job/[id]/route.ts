@@ -4,9 +4,31 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { jobKey, stallReason, type Job } from "@/lib/jobs";
+import { jobKey, stallReason, WORKER_HEARTBEAT_KEY, type Job, type WorkerHeartbeat } from "@/lib/jobs";
+import { isWorkerHeartbeat } from "@/lib/health";
 
 export const runtime = "nodejs";
+
+/** True when a worker is currently heartbeating.
+ *
+ * The heartbeat key carries a TTL and nothing renews it but a live process,
+ * so its presence is the only direct evidence this deployment has that the
+ * worker exists at all (see the note above WORKER_HEARTBEAT_KEY in jobs.ts).
+ *
+ * A read failure returns null, not false: "we could not ask" must not be
+ * reported to a traveler as "the planner is down". */
+async function workerIsAlive(redis: {
+  get: <T>(key: string) => Promise<T | null>;
+}): Promise<boolean | null> {
+  try {
+    const raw = await redis.get<string | WorkerHeartbeat>(WORKER_HEARTBEAT_KEY);
+    if (raw == null) return false;
+    const beat = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return isWorkerHeartbeat(beat);
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -45,14 +67,51 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   // the queue has no consumer - a retry there just buys them another five
   // minutes of spinner.
   const stall = stallReason(job);
+
+  // "Still pending after 90s" does NOT mean nothing is consuming the queue.
+  //
+  // The worker runs WORKER_CONCURRENCY consumers (4 by default) and a real
+  // generation takes the better part of a minute, so the fifth simultaneous
+  // submission legitimately waits behind the first four - and was being
+  // told "the trip planner is offline right now, so this never started"
+  // while its job sat in a live queue and then ran to completion at full
+  // cost. Every traveler who believed that message and resubmitted
+  // commissioned a second real generation, which lengthened the queue,
+  // which made the next one wait longer.
+  //
+  // The heartbeat is the fact that settles it: if a worker is writing one,
+  // the queue has a consumer and this job is queued, not abandoned. So it
+  // is left alone as "pending" and the page keeps waiting.
+  //
+  // Checked only on the pending verdict. A restart mid-generation is a real
+  // dead job whether or not the worker came back up afterwards, so the
+  // heartbeat says nothing useful about it.
+  if (stall === "worker_offline") {
+    const alive = await workerIsAlive(redis);
+    // null (the read failed) falls through to the offline message, same as
+    // before - we can't prove the worker is there, and a job this old with
+    // no evidence of a consumer is more likely stalled than queued.
+    if (alive === true) {
+      return NextResponse.json(job);
+    }
+  }
+
   if (stall) {
     return NextResponse.json({
       ...job,
       status: "error",
+      // Neither message claims "nothing was charged" any more, because that
+      // wasn't true. Quota is consumed at enqueue (see consumeQuota in
+      // /api/generate) and is not given back here - this route is a reader,
+      // and polling means it would run several times per stalled job. An
+      // interrupted generation has also already spent real model calls. The
+      // honest version says what happened and what to do; overstating it
+      // ("nothing was charged") is the kind of reassurance that turns into
+      // a support conversation about a missing generation slot.
       error:
         stall === "worker_restarted"
-          ? "This generation stopped unexpectedly - the server restarted while it was running. Nothing was charged for the unfinished part. Please try again."
-          : "The trip planner is offline right now, so this never started. Nothing was charged. We're on it - please try again shortly.",
+          ? "This generation stopped unexpectedly - the server restarted while it was running. Please try again."
+          : "The trip planner isn't picking up new trips right now, so this one never started. We're on it - please try again shortly.",
     } satisfies Job);
   }
 

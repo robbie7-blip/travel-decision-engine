@@ -317,3 +317,72 @@ export interface WorkerHeartbeat {
   dayModel: string | null;
   twoPhase: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Trip length
+//
+// The single most expensive thing a request can get wrong, and for a long
+// while nothing checked it on either side.
+//
+// Phase 2 of generation makes ONE MODEL CALL PER PLANNED DAY, plus a Google
+// Places pass over that day's venues, and the day count comes entirely from
+// the brief's start_date and end_date. Both were validated as "a non-empty
+// string" and nothing else, so `{"start_date":"2026-01-01","end_date":
+// "2026-12-31"}` was a valid brief that commissioned 365 day calls from one
+// HTTP request. The daily spend cap does not catch it: checkDailyBudget is
+// a READ taken before the job runs, so the job that blows past the cap is
+// the one that was never measured against it.
+//
+// This lives in the jobs.ts mirrors, next to the queue keys, because both
+// sides need the same number: the app rejects an over-long brief at the
+// door (a 400 the traveler can act on), and the worker refuses it again
+// before its first model call, since it takes whatever is on the queue and
+// is the side that actually spends. check:stats-keys holds the two copies
+// to the same value.
+//
+// 30 is comfortably past any trip the product is designed for - the pace
+// and budget models assume a holiday, not a season.
+
+export const MAX_TRIP_DAYS = 30;
+
+/** A calendar date as YYYY-MM-DD in UTC, or null if it isn't one.
+ *
+ * Deliberately stricter than Date.parse, which accepts "2026-13-45" and
+ * rolls it over into the next year, along with bare years and a dozen other
+ * shapes that would reach the prompt as a date nobody typed. UTC so the day
+ * arithmetic can't be shifted by the host's timezone - the app and the
+ * worker run in different ones. */
+export function parseCalendarDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // Rejects a day that doesn't exist in that month - 2026-02-30 would
+  // otherwise silently become March 2.
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  return date;
+}
+
+/** Inclusive day count between two calendar dates, or null if either isn't
+ * one or they're out of order. */
+export function tripDayCount(startIso: string, endIso: string): number | null {
+  const start = parseCalendarDate(startIso);
+  const end = parseCalendarDate(endIso);
+  if (!start || !end) return null;
+  if (end.getTime() < start.getTime()) return null;
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
+/** How many days a brief covers, or null when its dates don't parse.
+ *
+ * Null means "can't tell", never "zero" - a caller enforcing the cap must
+ * not treat an unreadable brief as a short one. */
+export function briefSpanDays(brief: Pick<TripBriefInput, "start_date" | "end_date">): number | null {
+  if (typeof brief?.start_date !== "string" || typeof brief?.end_date !== "string") return null;
+  return tripDayCount(brief.start_date.trim(), brief.end_date.trim());
+}

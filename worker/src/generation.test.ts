@@ -14,6 +14,7 @@ import { isOpenAt, namesLikelyMatch, normalizeName, stripToUnverified } from "./
 import { assessQuality } from "./engine/quality";
 import type { SkeletonAccommodation, SkeletonDay } from "./engine/twoPhase";
 import { checkBudgetIntegrity } from "./engine/checks";
+import { MAX_TRIP_DAYS, briefSpanDays, tripDayCount } from "./jobs";
 import { check, finish, heading, section } from "./testutil";
 import type { Itinerary, ItineraryItem, TripBriefInput } from "./types";
 
@@ -339,6 +340,52 @@ section("the quality gate does not report false defects");
     emptyDay1 === undefined,
     JSON.stringify(emptyDay1?.detail)
   );
+}
+
+section("the trip-length cap, on the side that pays for it");
+
+// processJob refuses an over-long brief before its first model call. That
+// is not just a restatement of the app's check: this process takes whatever
+// is on the queue, and phase 2 makes ONE MODEL CALL PER PLANNED DAY, so a
+// brief that got past the door - an older frontend mid-deploy, a job
+// already queued when the cap shipped, any future replay path - would
+// otherwise commission one call per day for as long a span as it asked for.
+{
+  check(
+    "a year-long brief is over the cap",
+    (briefSpanDays(brief({ start_date: "2026-01-01", end_date: "2026-12-31" })) ?? 0) > MAX_TRIP_DAYS,
+    String(briefSpanDays(brief({ start_date: "2026-01-01", end_date: "2026-12-31" })))
+  );
+  check(
+    "the default six-day brief is not",
+    (briefSpanDays(brief()) ?? 0) <= MAX_TRIP_DAYS,
+    String(briefSpanDays(brief()))
+  );
+
+  // The boundary from both sides, computed rather than typed - a hand-typed
+  // "2026-04-39" is how the app-side version of this test first failed
+  // against correct code.
+  const endAfter = (days: number) =>
+    new Date(Date.parse("2026-04-10T00:00:00Z") + (days - 1) * 86400000).toISOString().slice(0, 10);
+  check(
+    `exactly ${MAX_TRIP_DAYS} days passes`,
+    briefSpanDays(brief({ start_date: "2026-04-10", end_date: endAfter(MAX_TRIP_DAYS) })) === MAX_TRIP_DAYS
+  );
+  check(
+    `${MAX_TRIP_DAYS + 1} days does not`,
+    (briefSpanDays(brief({ start_date: "2026-04-10", end_date: endAfter(MAX_TRIP_DAYS + 1) })) ?? 0) > MAX_TRIP_DAYS
+  );
+
+  // Null means "can't tell", and the cap check must not read that as a
+  // short trip - nor as a long one. An unreadable brief runs; the app is
+  // what rejects malformed dates, and refusing here on an unparseable
+  // string would break every trip whose dates the app already accepted in
+  // a shape this parser happens not to know.
+  check("an unreadable brief spans null, not zero", briefSpanDays(brief({ start_date: "next spring" })) === null);
+  check("a missing date spans null", briefSpanDays({ start_date: "2026-04-10" } as never) === null);
+  check("reversed dates span null rather than a negative", tripDayCount("2026-04-14", "2026-04-10") === null);
+  check("2026-02-30 is not a date", tripDayCount("2026-02-30", "2026-03-02") === null);
+  check("a real leap day is", tripDayCount("2028-02-28", "2028-02-29") === 2);
 }
 
 finish();

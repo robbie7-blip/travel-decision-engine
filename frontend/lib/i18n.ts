@@ -104,6 +104,13 @@ export interface Dictionary {
     // Shown under the calendar once a start date is picked but no end date
     // yet, prompting the second click.
     datesPickEnd: string;
+    // Shown under the calendar when the chosen range is longer than
+    // MAX_TRIP_DAYS (see lib/validation.ts), which /api/generate rejects.
+    // The cap exists because every planned day is a paid model call; saying
+    // so here means the traveler learns it from the calendar rather than
+    // from a 400 after filling in the whole form. {days} is their range,
+    // {max} the cap.
+    datesTooLong: string;
     // Screen-reader-only labels on DateRangePicker/SingleDatePicker's month
     // arrows (see those files) - not visible text, but real content for a
     // screen-reader user, so still needs both languages like everything else.
@@ -625,6 +632,7 @@ const en: Dictionary = {
     dates: "Dates",
     datesPlaceholder: "Select start and end dates",
     datesPickEnd: "Now pick the end date",
+    datesTooLong: "That's {days} days. We plan trips up to {max} days - pick a shorter stretch, or plan it in parts.",
     calendarPrevMonth: "Previous month",
     calendarNextMonth: "Next month",
     partySize: "Party size",
@@ -1138,6 +1146,7 @@ const bg: Dictionary = {
     dates: "Дати",
     datesPlaceholder: "Избери начална и крайна дата",
     datesPickEnd: "Сега избери крайната дата",
+    datesTooLong: "Това са {days} дни. Планираме пътувания до {max} дни - избери по-кратък период или го планирай на части.",
     calendarPrevMonth: "Предишен месец",
     calendarNextMonth: "Следващ месец",
     partySize: "Брой пътуващи",

@@ -12,6 +12,7 @@ import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
 import { formatMoney, type Currency, type FxRates } from "@/lib/currency";
+import { hoursLineFor, splitIntoSentences } from "@/lib/resultFormat";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
 import type { GooglePriceLevel, Itinerary, ItineraryItem, Language } from "@/lib/types";
@@ -34,20 +35,6 @@ function trustScoreColor(percent: number): string {
   if (percent >= 80) return "var(--grounded)";
   if (percent >= 50) return "var(--unverified)";
   return "var(--infeasible)";
-}
-
-/** Splits the model's free-text budget reasoning into sentences for display
- * as bullet points, since the reasoning itself is unstructured prose (no
- * schema field breaks it into a list) - a period/!/? followed by whitespace
- * and then a capital letter or a currency symbol is a safe-enough split
- * point given this app's plain, short-sentence prompt style (see WRITING
- * STYLE in the system prompt). Worst case a sentence splits oddly; the
- * underlying text is never altered or dropped either way. */
-function splitIntoSentences(text: string): string[] {
-  return text
-    .split(/(?<=[.!?])\s+(?=[A-Z€])/)
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 const feedbackButtonStyle = {
@@ -150,8 +137,24 @@ function ItemFeedback({
   );
 }
 
-function itemKey(day: number, index: number): string {
-  return `${day}-${index}`;
+/** Identity for one itinerary row, for React's reconciler and for the
+ * expanded-evidence set.
+ *
+ * Deliberately built from the item's own content rather than its position.
+ * A refine ("swap the Tuesday dinner") returns a whole new itinerary, and
+ * with a positional key React reused the existing DOM node for whatever now
+ * sits at that index - so an evidence panel the traveler had opened stayed
+ * open on a DIFFERENT venue, showing the previous place's source links
+ * under the new place's name, and the per-item feedback control kept the
+ * "thanks" state it earned for a rating of something else entirely. Both of
+ * those are the trust surface; getting them wrong is worse than a visual
+ * glitch.
+ *
+ * The index stays in the key as a tiebreaker, because two rows in one day
+ * legitimately can share a time and title (a two-part activity split across
+ * a lunch break), and React keys have to be unique among siblings. */
+function itemKey(day: number, index: number, item: ItineraryItem): string {
+  return `${day}|${item.time ?? ""}|${item.venue_name ?? item.title ?? ""}|${index}`;
 }
 
 /** The "how do we know this?" disclosure - a tier-specific plain-language
@@ -350,9 +353,18 @@ export function ItineraryResult({
                   .replace("{total}", String(trustScore.totalCount))}
               </p>
             )}
-            <div style={{ color: "var(--ink-soft)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
-              {t.result.minEstimate}: {formatMoney(result.budget_feasibility.min_realistic_total_eur, currency, rates)}
-            </div>
+            {/* The figure is typed as a required number, but the type
+                describes the model's contract, not what actually arrived -
+                an absent or non-numeric value reached formatMoney and
+                rendered "€NaN" next to the words "minimum estimate", which
+                is worse than showing nothing. Number-checked here rather
+                than inside formatMoney because a caller with no figure
+                should omit the line, not print a zero. */}
+            {Number.isFinite(result.budget_feasibility.min_realistic_total_eur) && (
+              <div style={{ color: "var(--ink-soft)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+                {t.result.minEstimate}: {formatMoney(result.budget_feasibility.min_realistic_total_eur, currency, rates)}
+              </div>
+            )}
             <ul style={{ margin: 0, paddingLeft: 18, color: "var(--ink-soft)", fontSize: 14, lineHeight: 1.6 }}>
               {splitIntoSentences(result.budget_feasibility.reasoning).map((sentence, i) => (
                 <li key={i} style={{ marginBottom: 4 }}>
@@ -437,11 +449,11 @@ export function ItineraryResult({
             <DayPhoto items={day.items} />
 
             {day.items.map((item, i) => {
-              const key = itemKey(day.day, i);
+              const key = itemKey(day.day, i, item);
               const expanded = expandedItems.has(key);
               return (
                 <div
-                  key={i}
+                  key={key}
                   className="hover-card"
                   style={{
                     display: "flex",
@@ -557,15 +569,8 @@ export function ItineraryResult({
                       <div className="font-ui" style={{ fontSize: 11, color: "var(--grounded)", marginTop: 4 }}>
                         {t.result.openOnThisDay}
                         {(() => {
-                          // weekdayDescriptions is Monday-first from Google;
-                          // pick the line for this item's own weekday.
-                          const parsed = Date.parse(`${day.date}T00:00:00Z`);
-                          if (!Number.isFinite(parsed)) return null;
-                          const mondayFirst = (new Date(parsed).getUTCDay() + 6) % 7;
-                          const line = item.google_opening_hours?.[mondayFirst];
-                          if (!line) return null;
-                          // "Tuesday: 11:00 AM - 10:00 PM" -> just the hours.
-                          const hours = line.slice(line.indexOf(":") + 1).trim();
+                          const hours = hoursLineFor(item.google_opening_hours, day.date);
+                          if (!hours) return null;
                           return <span style={{ color: "var(--ink-dim)" }}> · {hours}</span>;
                         })()}
                       </div>

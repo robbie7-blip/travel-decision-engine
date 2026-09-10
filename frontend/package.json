@@ -14,7 +14,10 @@
     "check:ci": "node scripts/checkCiScripts.mjs",
     "test:linkify": "tsx lib/linkify.test.ts",
     "test:stats": "tsx lib/timingStats.test.ts",
-    "test": "npm run test:linkify && npm run test:stats"
+    "test:validation": "tsx lib/validation.test.ts",
+    "test:result-format": "tsx lib/resultFormat.test.ts",
+    "test:env-number": "tsx lib/envNumber.test.ts",
+    "test": "npm run test:linkify && npm run test:stats && npm run test:validation && npm run test:result-format && npm run test:env-number"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

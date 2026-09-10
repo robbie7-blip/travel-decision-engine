@@ -120,6 +120,31 @@ jobs:
       # actually prints against the 30-second promise, plus the per-stage
       # divisor that makes re-verify's average honest.
       - run: npm run test:stats
+      # The door every paid generation comes through. parseTripBrief checked
+      # that start_date and end_date were non-empty strings and nothing
+      # else - not that they were dates, not their order, and not how far
+      # apart they were. Since the worker makes one model call per planned
+      # day, a single request carrying 2026-01-01 to 2026-12-31 commissioned
+      # 365 of them, and the daily spend cap cannot catch it: that check is
+      # a read taken BEFORE the job runs.
+      - run: npm run test:validation
+      # The two bits of formatting on the finished trip page. One rendered
+      # every Bulgarian budget explanation as a single run-on bullet
+      # (splitting on [A-Z], which no Cyrillic capital is) and threw during
+      # render on a field nothing guarantees, blanking a paid-for
+      # itinerary. The other picked the opening-hours line by index
+      # arithmetic on a Google array ordering that isn't guaranteed, so the
+      # page could print the wrong day's hours under a green "open on this
+      # day" badge.
+      - run: npm run test:result-format
+      # How numeric environment variables are read. A variable saved blank
+      # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
+      # Number("") is 0 - which set the free monthly quota to zero (every
+      # account locked out, pricing page advertising 0) and the generate
+      # rate limit to zero (every request rejected, sitewide). A typo gave
+      # NaN, which compares false against everything and stops a limit
+      # limiting. Neither had an error path.
+      - run: npm run test:env-number
       # Catches what typecheck alone misses - a server component importing
       # something client-only, a bad route export, a failed page render.
       - run: npm run build
