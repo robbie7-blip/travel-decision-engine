@@ -10,6 +10,8 @@
 // Run: npm run test:generation
 
 import { applyVerifiedAccommodation, isUsableFrame, isUsablePlan, requiredMeals } from "./engine/twoPhase";
+import { isOpenAt, namesLikelyMatch, normalizeName, stripToUnverified } from "./engine/venueVerification";
+import { assessQuality } from "./engine/quality";
 import type { SkeletonAccommodation, SkeletonDay } from "./engine/twoPhase";
 import { checkBudgetIntegrity } from "./engine/checks";
 import { check, finish, heading, section } from "./testutil";
@@ -228,6 +230,115 @@ section("the meal fallback is a copy, not the shared array");
   const second = requiredMeals(noMeals);
   check("mutating one result does not shrink the next", second.length === 3, `got ${second.length}`);
   check("and the fallback is still all three meals", second.join(",") === "breakfast,lunch,dinner", second.join(","));
+}
+
+section("a venue's name is compared in its own script");
+
+// normalize() was [^a-z0-9\s] -> " ", which replaces every Cyrillic, Greek
+// and CJK character with a space. So a Bulgarian name normalized to
+// nothing, namesLikelyMatch returned false against a PERFECT Google match,
+// and checkVenues deleted the item - every named meal and activity on a
+// Bulgarian itinerary, silently.
+check("identical Cyrillic names match", namesLikelyMatch("Ресторант Мазалат", "Ресторант Мазалат"));
+check("a Cyrillic partial matches", namesLikelyMatch("Мазалат", "Ресторант Мазалат"));
+check("different Cyrillic names still do not", !namesLikelyMatch("Витоша Хижа", "Ресторант Мазалат"));
+check("identical Greek names match", namesLikelyMatch("Ελληνικό Εστιατόριο", "Ελληνικό Εστιατόριο"));
+// No spaces to split on, so word overlap cannot answer it and containment can.
+check("identical CJK names match", namesLikelyMatch("寿司さいとう", "寿司さいとう"));
+check("different CJK names do not", !namesLikelyMatch("寿司さいとう", "ラーメン一蘭"));
+check("the documented Latin case still works", namesLikelyMatch("Restaurante Vegetariano Apfel", "Apfel Vegetariano"));
+check("a wrong business is still rejected", !namesLikelyMatch("Roscioli", "Joe's Diner"));
+check("accents are still folded", normalizeName("Café Ñandú") === "cafe nandu", normalizeName("Café Ñandú"));
+
+section("a 12-hour clock time is not read as morning");
+
+// The schema asks for HH:MM and nothing enforces it. "7:30 PM" parsed to
+// 450 minutes - half past seven in the MORNING - so a dinner was measured
+// against a restaurant's evening hours, found closed, and deleted.
+{
+  const evening = {
+    regularOpeningHours: {
+      periods: [0, 1, 2, 3, 4, 5, 6].map((d) => ({
+        open: { day: d, hour: 18, minute: 0 },
+        close: { day: d, hour: 23, minute: 0 },
+      })),
+    },
+  };
+  check("19:30 is open", isOpenAt(evening as never, "2027-05-03", "19:30") === true);
+  check('"7:30 PM" is open too', isOpenAt(evening as never, "2027-05-03", "7:30 PM") === true);
+  check('"7:30 pm" lowercase', isOpenAt(evening as never, "2027-05-03", "7:30 pm") === true);
+  check('"7:30 AM" is correctly closed', isOpenAt(evening as never, "2027-05-03", "7:30 AM") === false);
+  check('"12:30 AM" is midnight, not midday', isOpenAt(evening as never, "2027-05-03", "12:30 AM") === false);
+}
+
+section("a rejected venue leaves nothing behind to plot or photograph");
+
+// applyPlaceData writes coordinates and a photo name BEFORE the confidence
+// checks run, and stripToUnverified did not clear them - so the map still
+// pinned, and the day still showed a photograph of, the exact business
+// whose name had just been stripped because it could not be stood behind.
+{
+  const item: ItineraryItem = {
+    time: "20:00", type: "meal", title: "Dinner", venue_name: "Somewhere",
+    location: "Rome", cost_estimate_eur: 30, reasoning: "r", source_confidence: "grounded",
+    google_lat: 41.9, google_lng: 12.5, google_photo_name: "places/x/photos/y",
+    google_rating: 4.6, google_maps_url: "https://maps.google.com/?cid=1",
+  };
+  stripToUnverified(item);
+  check("no coordinates survive", item.google_lat === undefined && item.google_lng === undefined);
+  check("no photo survives", item.google_photo_name === undefined);
+  check("and the rating and link still go", item.google_rating === undefined && item.google_maps_url === undefined);
+}
+
+section("the quality gate does not report false defects");
+
+// Both of these fire on trips the pipeline is meant to support, and neither
+// can be repaired - so they became permanent failures in the rolling
+// counters for itineraries that were correct.
+{
+  const plan: SkeletonDay[] = [1, 2, 3, 4].map((d) => ({
+    day: d, date: `2027-05-0${d}`, city: "Rome", theme: "t",
+    // Night 3 is spent on a train, exactly as PLAN_SYSTEM instructs.
+    include_lodging: d !== 3 && d !== 4,
+    anchors: [], meals: ["breakfast", "lunch", "dinner"], transport_note: null,
+  }));
+  const activity = (title: string): ItineraryItem => ({
+    time: "10:00", type: "activity", title, venue_name: title, location: "Rome",
+    cost_estimate_eur: 10, reasoning: "r", source_confidence: "grounded",
+  });
+  const train = (): ItineraryItem => ({
+    time: "22:00", type: "transport", title: "Night train to Vienna", venue_name: null,
+    location: "Rome", cost_estimate_eur: 60, reasoning: "r", source_confidence: "inferred",
+    is_flight: false,
+  });
+  const itinerary: Itinerary = {
+    budget_feasibility: { feasible: true, min_realistic_total_eur: 900, reasoning: "r" },
+    trip_summary: "s", key_decisions: [], things_to_skip: [],
+    days: [1, 2, 3, 4].map((d) => ({
+      day: d, date: `2027-05-0${d}`, feasibility_flag: null,
+      items: [
+        ...(d === 1 ? [train()] : []),
+        activity(`Sight ${d}`),
+        ...(d === 2 ? [activity("Second sight")] : []),
+        ...(plan[d - 1].include_lodging ? [bed("Check in to Hotel X", "15:00")] : []),
+      ],
+    })),
+  };
+  const report = assessQuality(itinerary, brief({ end_date: "2027-05-05" }), plan);
+  const lodgingDefect = report.findings.find((f) => f.check === "lodging_per_night");
+  check(
+    "two beds for a plan asking for two is not a defect",
+    lodgingDefect === undefined,
+    JSON.stringify(lodgingDefect?.detail)
+  );
+  // Day 1 carries a rail journey and one activity. Keying the exemption on
+  // is_flight held it to the full-day floor and reported a defect.
+  const emptyDay1 = report.findings.find((f) => f.check === "day_not_empty" && f.day === 1);
+  check(
+    "a rail arrival day is exempt like a flight one",
+    emptyDay1 === undefined,
+    JSON.stringify(emptyDay1?.detail)
+  );
 }
 
 finish();

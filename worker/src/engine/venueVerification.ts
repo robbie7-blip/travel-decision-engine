@@ -205,7 +205,22 @@ function cityPart(location: string): string {
  * for this item) rather than throwing if both fail - a geocoding hiccup
  * should never block generation. */
 function geocode(location: string, cache: Map<string, Promise<GeoPoint | null>>): Promise<GeoPoint | null> {
-  const key = cityPart(location);
+  // A destination already in the cache wins over the last comma segment.
+  //
+  // cityPart takes what follows the FINAL comma, so "Trastevere, Rome,
+  // Italy" - a location merely more precise than the prompt's example -
+  // resolved to "Italy". Open-Meteo answers that (a country centroid, or
+  // the town called Italy in Texas), so the full-string fallback never
+  // ran, the bad point was cached for the whole trip, and every venue then
+  // sat further than MAX_MATCH_DISTANCE_KM from it and was rejected on
+  // distance despite a perfect name match. The same total loss as a name
+  // mismatch, from a more specific address.
+  //
+  // prewarmGeocodes seeds this cache with the brief's own destinations, so
+  // the city the traveler actually asked for is usually already a key.
+  const segments = location.split(",").map((part) => part.trim()).filter(Boolean);
+  const known = segments.find((segment) => cache.has(segment));
+  const key = known ?? cityPart(location);
   const cached = cache.get(key);
   if (cached) return cached;
 
@@ -230,20 +245,50 @@ function geocode(location: string, cache: Map<string, Promise<GeoPoint | null>>)
  * happen in practice: three real, currently-operating restaurants all came
  * back "permanently closed" in one run, which is far more consistent with
  * mismatched listings than three coincidentally-wrong real closures. */
-function namesLikelyMatch(venueName: string, placeName: string): boolean {
-  const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "") // strip accents (combining diacritical marks)
-      .replace(/[^a-z0-9\s]/g, " ")
-      .split(/\s+/)
-      .filter((w) => w.length > 2); // skip short/common words (a, at, de, do...)
+export function namesLikelyMatch(venueName: string, placeName: string): boolean {
+  const a = normalizeName(venueName);
+  const b = normalizeName(placeName);
 
-  const venueWords = new Set(normalize(venueName));
-  const placeWords = normalize(placeName);
-  if (venueWords.size === 0 || placeWords.length === 0) return false;
-  return placeWords.some((w) => venueWords.has(w));
+  // Nothing comparable left on one side. Returning false here meant
+  // ASSERTING a mismatch, and this function's only consequence is deletion
+  // - so an inability to compare two names used to delete the item. Text
+  // Search already matched by name; not being able to tokenize its answer
+  // is not evidence it matched the wrong business.
+  if (!a || !b) return true;
+
+  const words = (t: string) => t.split(" ").filter((w) => w.length > 2);
+  const venueWords = new Set(words(a));
+  const placeWords = words(b);
+  if (venueWords.size > 0 && placeWords.length > 0) {
+    return placeWords.some((w) => venueWords.has(w));
+  }
+
+  // Scripts that do not separate words, and names made entirely of short
+  // ones. "寿司さいとう" has no spaces to split on, so word overlap cannot
+  // answer the question and containment can.
+  return a.includes(b) || b.includes(a);
+}
+
+/** Case, accents and punctuation removed, every script kept.
+ *
+ * The previous normalization was `[^a-z0-9\s]` -> " ", which replaces every
+ * Cyrillic, Greek, Hebrew, Arabic and CJK character with a space. So a
+ * Bulgarian venue name normalized to nothing, namesLikelyMatch returned
+ * false against a PERFECT Google match, and checkVenues deleted the item -
+ * every named meal and activity on a Bulgarian itinerary, silently. The
+ * app ships Bulgarian as a first-class language and has curated guides for
+ * Athens, Tokyo, Bangkok and Dubai, so this was not a hypothetical script.
+ *
+ * \p{L} and \p{N} keep letters and digits in any script; \p{M} strips the
+ * combining marks that NFD just separated out. */
+export function normalizeName(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Pulls the venue's proper name out of a title phrased as "... at X" or
@@ -451,6 +496,19 @@ export function stripToUnverified(item: ItineraryItem): void {
   item.google_open_on_visit = undefined;
   item.google_opening_hours = undefined;
   item.google_minutes_until_close = undefined;
+  // The coordinates and the photograph go too, and for the same reason.
+  //
+  // applyPlaceData writes these before the confidence checks run, so an
+  // item rejected for being permanently closed or badly rated kept them.
+  // DayMap plots anything with numeric coordinates and labels the pin from
+  // the title; DayPhoto renders anything with a photo name. So the page
+  // showed a pin and a hero photograph OF THE EXACT BUSINESS whose name
+  // had just been stripped because it could not be stood behind - which
+  // types.ts states is impossible ("a plotted point is itself a claim that
+  // the place exists where the pin says").
+  item.google_lat = undefined;
+  item.google_lng = undefined;
+  item.google_photo_name = undefined;
 }
 
 /** How long the venue stays open after the scheduled arrival, in minutes.
@@ -508,8 +566,20 @@ function scheduledMinutes(time: string | undefined): number | null {
   if (!time) return null;
   const m = /(\d{1,2})[:.](\d{2})/.exec(time);
   if (m) {
-    const h = Number(m[1]);
+    let h = Number(m[1]);
     const min = Number(m[2]);
+    // AM/PM, because the schema asks for HH:MM and nothing enforces it.
+    //
+    // "7:30 PM" parsed to 450 minutes, i.e. half past seven in the
+    // MORNING. isOpenAt then measured a dinner against a restaurant's
+    // 18:00-23:00 hours, found it closed, and checkVenues deleted the item
+    // - the day lost its dinner and nobody was told. The same digits also
+    // mis-sorted the item to the top of the day.
+    const meridiem = /\b(am|pm)\b/i.exec(time);
+    if (meridiem && h >= 1 && h <= 12) {
+      const isPm = meridiem[1].toLowerCase() === "pm";
+      h = isPm ? (h === 12 ? 12 : h + 12) : h === 12 ? 0 : h;
+    }
     if (h >= 0 && h <= 23 && min >= 0 && min <= 59) return h * 60 + min;
   }
   const t = time.toLowerCase();

@@ -586,10 +586,26 @@ export function isUsableFrame(frame: unknown): frame is TripFrame {
   // length on a string and no .map. That is a blank page for a generation
   // the traveler paid for, which is precisely the "half-formed itinerary"
   // this gate exists to send down the single-call path instead.
-  return (
-    Array.isArray(f.accommodation) &&
-    Array.isArray(f.key_decisions) &&
-    Array.isArray(f.things_to_skip)
+  if (!Array.isArray(f.accommodation) || !Array.isArray(f.key_decisions) || !Array.isArray(f.things_to_skip)) {
+    return false;
+  }
+  // The ENTRIES too, not just that it is an array.
+  //
+  // Every consumer dereferences entry.city and entry.cost_per_night_eur
+  // without a guard: perNightRateFor, buildDayPrompt, the frame-estimate
+  // snapshot in generateItineraryTwoPhase. A missing city threw a
+  // TypeError deep inside a finished generation and the traveler got
+  // "Unexpected error generating itinerary" for an itinerary that existed;
+  // a blank one matched every lodging item in the trip via
+  // "location".includes(""), rewriting every night's price to that entry's
+  // rate.
+  return f.accommodation.every(
+    (entry) =>
+      entry !== null &&
+      typeof entry === "object" &&
+      typeof (entry as SkeletonAccommodation).city === "string" &&
+      typeof (entry as SkeletonAccommodation).cost_per_night_eur === "number" &&
+      Number.isFinite((entry as SkeletonAccommodation).cost_per_night_eur)
   );
 }
 

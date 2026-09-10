@@ -60,8 +60,6 @@ function formatCachedFact(city: string, fact: CachedLodgingFact): string {
   );
 }
 
-/** Returns a map of destination -> ready-to-inject prompt text, for
- * destinations that have a non-expired cached lodging lookup. */
 /** The structured cache entries behind loadCachedLodgingFacts.
  *
  * The formatted-string version is what the prompt needs; this is what the
@@ -95,25 +93,24 @@ export async function loadCachedLodgingEntries(
   return out;
 }
 
+/** The same entries, formatted for the prompt.
+ *
+ * A pure formatter over loadCachedLodgingEntries rather than a second read.
+ * It used to issue its own redis.get and its own JSON.parse per city, and
+ * index.ts calls both functions together in one Promise.all over the same
+ * destinations - so a three-city trip made six round trips where three
+ * would do, parsed every entry twice through two copies of the same
+ * try/catch, and left open the possibility of the two disagreeing about
+ * which cities are cached. That last one matters: `missing` is computed
+ * from this function's answer and decides which cities get a live search. */
 export async function loadCachedLodgingFacts(
   redis: Redis,
   destinations: string[]
 ): Promise<Record<string, string>> {
-  const entries = await Promise.all(
-    destinations.map(async (city) => {
-      const raw = await redis.get(cacheKey(city));
-      if (!raw) return null;
-      try {
-        const fact = JSON.parse(raw) as CachedLodgingFact;
-        return [city, formatCachedFact(city, fact)] as const;
-      } catch {
-        return null;
-      }
-    })
-  );
+  const entries = await loadCachedLodgingEntries(redis, destinations);
   const result: Record<string, string> = {};
-  for (const entry of entries) {
-    if (entry) result[entry[0]] = entry[1];
+  for (const [city, fact] of entries) {
+    result[city] = formatCachedFact(city, fact);
   }
   return result;
 }
@@ -147,20 +144,47 @@ export async function cacheLodgingFacts(redis: Redis, brief: TripBriefInput, iti
         const dest = matchDestination(item.location, brief.destinations);
         if (!dest || seen.has(dest)) continue;
         seen.add(dest);
+
+        // A price this cache would inject as fact, so it has to be one.
+        //
+        // There was no check at all. A lodging item shipping at 0 - the
+        // exact failure quality.ts's prices_present check exists for - was
+        // cached, and for the next ~20h every generation for that city was
+        // told "the typical mid-range rate was verified via live search at
+        // approx EUR0/night, do not perform a new accommodation search".
+        // So the search that would have found the real number was
+        // suppressed, and the trip's largest line was priced at zero. An
+        // omitted field read "approx EURundefined/night". The prefetch's
+        // own write path guards with `costEstimateEur != null &&
+        // sourceUrl`; this shared one guarded with nothing.
+        const price = item.cost_estimate_eur;
+        if (!Number.isFinite(price) || price <= 0) continue;
+
         // Collected and awaited together: these are independent keys, and
         // writing them one after another made a multi-city trip pay one
         // Redis round-trip per destination in sequence.
         writes.push(
-          writeCachedLodgingFact(redis, dest, {
-            costEstimateEur: item.cost_estimate_eur,
-            sourceUrls: item.source_urls ?? [],
-            sourceAgreement: item.source_agreement ?? null,
-            // Carry the property forward when the finished item names one -
-            // otherwise this path would keep overwriting a named cache entry
-            // with an unnamed one on every generation, quietly undoing the
-            // prefetch's work for that city.
-            name: item.venue_name ?? undefined,
-          })
+          (async () => {
+            // MERGED with what is already there, not written over it.
+            //
+            // The comment this replaces claimed to carry the property
+            // forward, and did not: `item.venue_name ?? undefined` is
+            // undefined for an unnamed item, JSON.stringify drops the key,
+            // and redis.set REPLACES the value - so a named entry became an
+            // unnamed one, which is precisely what it said must not happen.
+            // Reachable on every generation where checkVenues could not
+            // confirm the property but the item kept its source_urls, and
+            // `area` was dropped unconditionally because this path never
+            // passed it. One extra GET, off the traveler's clock entirely.
+            const existing = (await loadCachedLodgingEntries(redis, [dest])).get(dest);
+            await writeCachedLodgingFact(redis, dest, {
+              costEstimateEur: price,
+              sourceUrls: item.source_urls ?? [],
+              sourceAgreement: item.source_agreement ?? null,
+              name: item.venue_name ?? existing?.name,
+              area: existing?.area,
+            });
+          })()
         );
       }
     }

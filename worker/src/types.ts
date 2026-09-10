@@ -177,7 +177,7 @@ export interface ItineraryItem {
   // (Google Flights runs its own fresh search when opened), but a real,
   // always-present place to check today's actual price.
   flight_search_url?: string;
-  // Set by attachFlightPrices when the provider has price history for this
+  // Set by applyFlightPricing when the provider has price history for this
   // route - see FarePriceContext.
   fare_price_context?: FarePriceContext;
 }

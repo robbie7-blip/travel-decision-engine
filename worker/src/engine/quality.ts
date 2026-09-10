@@ -107,7 +107,23 @@ function perNightRateFor(
   accommodation: SkeletonAccommodation[]
 ): number | null {
   const location = (item.location ?? "").toLowerCase();
-  const match = accommodation.find((a) => location.includes(a.city.toLowerCase().trim()));
+  // An entry with no city, or a blank one, matches NOTHING rather than
+  // everything.
+  //
+  // "".includes("") is true, so an accommodation entry with city "" was the
+  // first match for every lodging item in the trip - normalizeLodgingPrices
+  // then rewrote every night in every city to that entry's rate, silently
+  // changing the largest line in the itinerary, and the
+  // lodging_price_per_night check afterwards agreed with the corrupted
+  // figure. A missing city was worse: `a.city.toLowerCase()` threw inside
+  // normalizeLodgingPrices, inside processJob's try, so a fully generated
+  // itinerary was discarded and the traveler got "Unexpected error
+  // generating itinerary". isUsableFrame validates that accommodation is an
+  // array but nothing about the entries in it, so both shapes get here.
+  const match = accommodation.find((a) => {
+    const city = (a.city ?? "").toLowerCase().trim();
+    return city.length > 0 && location.includes(city);
+  });
   if (match) return match.cost_per_night_eur;
   return accommodation.length === 1 ? accommodation[0].cost_per_night_eur : null;
 }
@@ -191,11 +207,20 @@ function mentions(haystack: string, wanted: string): boolean {
     v
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\p{M}/gu, "")
+      // \p{L}\p{N}, not [a-z0-9]: the ASCII class replaced every Cyrillic,
+      // Greek and CJK character with a space, so a Bulgarian must-see
+      // normalized to nothing and the `words.length === 0` guard below
+      // reported it as DELIVERED on an itinerary that never mentioned it.
+      // The check the comment above calls the one this product can least
+      // afford to get wrong was inert in the app's own second language.
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
       .split(/\s+/)
       .filter((w) => w.length > 2 && !REQUEST_STOPWORDS.has(w));
   const words = normalize(wanted);
+  // Still true when there is nothing to look for - a must-see of "!!!" is
+  // not a dropped requirement - but this is now reached only for input
+  // that genuinely carries no letters or digits in any script.
   if (words.length === 0) return true;
   const hay = new Set(normalize(haystack));
   const matched = words.filter((w) => hay.has(w)).length;
@@ -216,8 +241,18 @@ function isNamedVenueSlot(item: ItineraryItem): boolean {
   return item.type === "meal" || item.type === "activity";
 }
 
+/** A venue name reduced to its letters and digits, for equality only.
+ *
+ * Every script, for the same reason as above: this returned "" for any
+ * Cyrillic, Greek or CJK name, and duplicateVenueItems skips an empty key -
+ * so a Bulgarian venue booked on two different days was never reported as
+ * a duplicate and the repair that would have replaced it never ran. */
 function normalizeVenue(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^\p{L}\p{N}]/gu, "");
 }
 
 /** Which meal a written item represents - same logic the meal repair uses,
@@ -357,7 +392,19 @@ export function assessQuality(
 
   // --- lodging, one per night ----------------------------------------
   if (brief.needs_lodging) {
-    const nights = countNights(brief);
+    // The PLAN is the authority on how many beds a trip needs, exactly as
+    // in checkBudgetIntegrity - and this is its twin, which was missed when
+    // that one was fixed.
+    //
+    // PLAN_SYSTEM tells the model to set include_lodging false for a night
+    // spent in transit, so a 3-night trip with an overnight train
+    // legitimately has 2 lodging items. Counting from the DATES made that a
+    // permanent DEFECT that nothing can repair: report.passed went false,
+    // the finding landed on the job and in the rolling quality counters,
+    // and every overnight-transit trip reported a failure that was not one
+    // - the false alarm this file says it can least afford.
+    const nights =
+      plan.length > 0 ? plan.filter((d) => d.include_lodging).length : countNights(brief);
     const lodgingItems = days.flatMap((d) => d.items.filter((i) => i.type === "lodging"));
     if (nights > 0 && lodgingItems.length !== nights) {
       findings.push({
@@ -381,9 +428,20 @@ export function assessQuality(
   }
 
   // --- days that aren't days -------------------------------------------
+  const firstDay = Math.min(...days.map((d) => d.day));
+  const lastDay = Math.max(...days.map((d) => d.day));
   for (const day of days) {
     const activities = day.items.filter((i) => i.type === "activity");
-    const isTravelDay = day.items.some((i) => i.is_flight === true);
+    // An arrival or departure day is exempt because the JOURNEY eats half
+    // of it, not because the journey happens to be a flight.
+    //
+    // Keying on is_flight held a rail or coach arrival to the full-day
+    // floor, so an overnight train plus one real activity read as a DEFECT
+    // and drove a repair that padded a day that was already correctly
+    // full. The first and last day of the trip are known from `days`, so
+    // the mode of travel does not need to come into it.
+    const isTravelDay =
+      day.day === firstDay || day.day === lastDay || day.items.some((i) => i.is_flight === true);
     const floor = isTravelDay ? MIN_ACTIVITIES_PER_TRAVEL_DAY : MIN_ACTIVITIES_PER_FULL_DAY;
     if (activities.length < floor) {
       findings.push({

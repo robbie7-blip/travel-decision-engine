@@ -141,17 +141,27 @@ async function resolveIataCode(token: string, cityName: string): Promise<string 
       signal: AbortSignal.timeout(IATA_TIMEOUT_MS),
     });
     if (!res.ok) {
+      // NOT cached. "Amadeus did not answer" is not "this city has no
+      // airport", and the two were being recorded identically: one 5s
+      // timeout, 429 or 500 wrote null into the cache, and the `has(key)`
+      // check above then returned it forever - so every later job for that
+      // city in this process silently fell back to link-only pricing until
+      // the process restarted, with only the first failure logged. The
+      // header's rationale ("a city's IATA code is stable for far longer
+      // than one generation") is true of an ANSWER, not of a failed
+      // request. Same distinction the sibling Places module draws between
+      // "no such business" and "did not answer".
       console.warn(`[flightPricing] IATA lookup for "${cityName}" rejected: HTTP ${res.status}`);
-      iataCache.set(key, null);
       return null;
     }
     const data = (await res.json()) as { data?: Array<{ iataCode?: string }> };
     const code = data.data?.[0]?.iataCode ?? null;
+    // A definitive answer, including a definitive "nothing matches this
+    // name", is worth remembering. Only a failure to get one is not.
     iataCache.set(key, code);
     return code;
   } catch (e) {
     logFailure(`IATA lookup for "${cityName}"`, e);
-    iataCache.set(key, null);
     return null;
   }
 }
@@ -269,10 +279,22 @@ export interface FareObservation {
   daysBeforeDeparture: number;
 }
 
-// Matches the same title convention flightLinks.ts relies on (the system
-// prompt has the model consistently title these "Flight X to Y").
+/** The structured flag, not the title.
+ *
+ * This matched /\bflight\b/i, which is the exact bug flightLinks.ts was
+ * rewritten to remove - and its comment claiming to share that convention
+ * was stale, because flightLinks keys on is_flight. Two failures came out
+ * of it. On a Bulgarian trip the leg is titled "Полет от София до Рим", so
+ * nothing matched, applyFlightPricing returned early, and no Bulgarian
+ * generation ever received a live fare, its price context, or a recorded
+ * fare observation - silently, with the model's guessed number left in
+ * place. On an English trip a transport item reading "Taxi to the airport
+ * for the flight home" matched FIRST and had the round-trip fare written
+ * over its EUR 30, marked grounded, with no source url.
+ *
+ * prompt.ts sets is_flight for precisely this reason. */
 function isFlightItem(item: ItineraryItem): boolean {
-  return item.type === "transport" && /\bflight\b/i.test(item.title) && item.cost_estimate_eur > 0;
+  return item.type === "transport" && item.is_flight === true && item.cost_estimate_eur > 0;
 }
 
 /** Replaces the model's own guessed fare on the arrival flight item with a
@@ -288,6 +310,16 @@ export interface PrefetchedFare {
   fareEur: number;
   metrics: { firstEur: number; thirdEur: number } | null;
   adults: number;
+  /** The price history entry this fare produced.
+   *
+   * Carried on the fare itself rather than in a module-level variable. It
+   * used to be stashed in one `lastObservation` shared by the whole
+   * process, and the worker runs four jobs at once - comparison mode
+   * creates two by design. Two concurrent lookups meant the second
+   * overwrote the first, and thirty seconds later BOTH jobs recorded the
+   * second one's route and fare: one observation lost, the other
+   * double-counted, in the only price history this product has. */
+  observation: FareObservation;
 }
 
 /** The Amadeus half of flight pricing, which depends ONLY on the trip brief
@@ -322,7 +354,7 @@ export async function fetchFarePricing(brief: TripBriefInput): Promise<Prefetche
   console.log(`[flightPricing] amadeus lookups took ${Date.now() - startedAt}ms`);
   if (fare == null) return null;
 
-  lastObservation = {
+  const observation: FareObservation = {
     originCode,
     destinationCode,
     departureDate,
@@ -330,10 +362,8 @@ export async function fetchFarePricing(brief: TripBriefInput): Promise<Prefetche
     observedAt: Date.now(),
     daysBeforeDeparture: Math.round((new Date(`${departureDate}T00:00:00Z`).getTime() - Date.now()) / 86_400_000),
   };
-  return { fareEur: fare, metrics, adults };
+  return { fareEur: fare, metrics, adults, observation };
 }
-
-let lastObservation: FareObservation | null = null;
 
 /** Applies an already-fetched fare to the itinerary. Pure bookkeeping - no
  * network - so it adds nothing to the critical path. */
@@ -357,7 +387,7 @@ export function applyFlightPricing(
       ? `Checked live: this is today's real round-trip fare for the group, not a guess.`
       : `Checked live: this is today's real round-trip fare, not a guess.`;
 
-  if (lastObservation) onFareObserved?.(lastObservation);
+  if (prefetched.observation) onFareObserved?.(prefetched.observation);
 
   if (metrics) {
     const perPassenger = fare / adults;
@@ -367,92 +397,5 @@ export function applyFlightPricing(
       typicalHighEur: Math.round(metrics.thirdEur * adults),
     };
   }
-  return itinerary;
-}
-
-export async function attachFlightPrices(
-  itinerary: Itinerary,
-  brief: TripBriefInput,
-  onFareObserved?: (obs: FareObservation) => void
-): Promise<Itinerary> {
-  const apiKey = process.env.AMADEUS_API_KEY;
-  const apiSecret = process.env.AMADEUS_API_SECRET;
-  if (!apiKey || !apiSecret) return itinerary;
-  if (!brief.origin?.trim() || brief.needs_flight === false) return itinerary;
-  if (brief.destinations.length === 0) return itinerary;
-
-  const days = itinerary.days ?? [];
-  const firstDay = days[0];
-  const arrivalItem = firstDay?.items.find(isFlightItem);
-  if (!arrivalItem) return itinerary; // not a flight trip, or already free/unmatched
-
-  const token = await getAccessToken(apiKey, apiSecret);
-  if (!token) return itinerary;
-
-  const origin = brief.origin.trim();
-  const destination = brief.destinations[0];
-  const [originCode, destinationCode] = await Promise.all([
-    resolveIataCode(token, origin),
-    resolveIataCode(token, destination),
-  ]);
-  if (!originCode || !destinationCode) return itinerary;
-
-  const departureDate = brief.arrival_date?.trim() || brief.start_date;
-  const returnDate = brief.end_date;
-
-  // Both calls need only the token and the two IATA codes, so they run
-  // together rather than back to back. Sequentially these stacked their
-  // timeouts (8s + 6s) onto a provider whose own test environment this
-  // module already documents as slow - pure added latency for no ordering
-  // reason, since neither result feeds the other.
-  const startedAt = Date.now();
-  const [fare, metrics] = await Promise.all([
-    searchCheapestFare(token, originCode, destinationCode, departureDate, returnDate, brief.party_size),
-    fetchPriceMetrics(token, originCode, destinationCode, departureDate, false),
-  ]);
-  console.log(`[flightPricing] amadeus lookups took ${Date.now() - startedAt}ms`);
-  if (fare == null) return itinerary;
-
-  arrivalItem.cost_estimate_eur = Math.round(fare);
-  arrivalItem.source_confidence = "grounded";
-  arrivalItem.source_urls = arrivalItem.flight_search_url ? [arrivalItem.flight_search_url] : [];
-  arrivalItem.source_agreement = null;
-  arrivalItem.reasoning =
-    brief.party_size > 1
-      ? `Checked live: this is today's real round-trip fare for the group, not a guess.`
-      : `Checked live: this is today's real round-trip fare, not a guess.`;
-
-  // Every real fare we look up is worth keeping, whether or not the
-  // provider has history for this route today. This is the only place a
-  // genuine, timestamped market price passes through the system, so it's
-  // the one chance to accumulate a price history of our own - the thing
-  // any future "will this get cheaper?" would have to be built on, and
-  // something no amount of prompting can substitute for.
-  const msPerDay = 86_400_000;
-  const daysBeforeDeparture = Math.round(
-    (new Date(`${departureDate}T00:00:00Z`).getTime() - Date.now()) / msPerDay
-  );
-  onFareObserved?.({
-    originCode,
-    destinationCode,
-    departureDate,
-    fareEur: Math.round(fare),
-    observedAt: Date.now(),
-    daysBeforeDeparture,
-  });
-
-  // Per-passenger, because the quartiles the provider returns are for one
-  // traveller - comparing a family's total against them would read as
-  // wildly expensive on every group trip.
-  const adults = Math.max(1, Math.min(brief.party_size, 9));
-  const perPassenger = fare / adults;
-  if (metrics) {
-    arrivalItem.fare_price_context = {
-      level: perPassenger <= metrics.firstEur ? "low" : perPassenger <= metrics.thirdEur ? "typical" : "high",
-      typicalLowEur: Math.round(metrics.firstEur * adults),
-      typicalHighEur: Math.round(metrics.thirdEur * adults),
-    };
-  }
-
   return itinerary;
 }

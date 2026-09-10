@@ -472,7 +472,7 @@ export function ItineraryResult({
                           // in practice (a model estimate is not a live price check) - rather
                           // than show a number that might flatly contradict the real, current
                           // price one tap away, point straight at the real price instead of
-                          // asserting our own. Only applies when NOT grounded - attachFlightPrices
+                          // asserting our own. Only applies when NOT grounded - applyFlightPricing
                           // (worker/src/engine/flightPricing.ts) replaces this guess with a real,
                           // live-checked fare and marks it "grounded" when it succeeds, in which
                           // case the real number is shown below like any other grounded price.
