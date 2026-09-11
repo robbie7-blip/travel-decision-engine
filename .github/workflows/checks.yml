@@ -92,6 +92,23 @@ jobs:
       # observed, since Node exits the process on an unhandled rejection and
       # this worker runs four jobs at once.
       - run: npm run test:race-fallback
+      # Bounded parallelism, shared by the day calls and the Places
+      # lookups. Promise.all rejects on the first failure but does not stop
+      # the other workers, so they kept pulling the next index and issuing
+      # the next paid call for output the caller had already decided to
+      # discard - a whole extra wave of day calls on a trip longer than
+      # MAX_PARALLEL_DAYS, up to fourteen at the 30-day cap. Reverting the
+      # early exit makes this suite report all twenty items started.
+      - run: npm run test:concurrency
+      # The Places pass - the code that DELETES venues - which had no
+      # direct test at all. Three silent venue-deletion bugs have lived in
+      # that file, and the live rehearsal cannot reach it (it runs without a
+      # Places key, so checkVenues returns immediately). fetch is stubbed,
+      # so no key and no network. The load-bearing case: removing the
+      # "we could not ask" / "it does not exist" distinction makes this
+      # suite report every item deleted - a Places outage emptying whole
+      # trips.
+      - run: npm run test:venues
 
   frontend:
     name: frontend - typecheck + build

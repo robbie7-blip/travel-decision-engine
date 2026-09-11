@@ -52,6 +52,7 @@ import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueV
 import { assertUsableItinerary } from "./engine/shape";
 import { modelSupportsEffort } from "./engine/modelCaps";
 import { waitForLiveOrFallback } from "./engine/raceFallback";
+import { runWithLimit } from "./engine/concurrency";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -746,19 +747,6 @@ const LODGING_GRACE_MS = readPositiveInt("LODGING_GRACE_MS", 3000);
 const SKELETON_MAX_TOKENS = 24000;
 const DAY_MAX_TOKENS = 16000;
 
-async function runWithLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    for (;;) {
-      const i = next++;
-      if (i >= items.length) return;
-      results[i] = await fn(items[i]);
-    }
-  });
-  await Promise.all(workers);
-  return results;
-}
 
 /** One phase-2 call: expands a single already-planned day into real items.
  * No tools declared at all - every price that needed a live lookup was

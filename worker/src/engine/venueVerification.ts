@@ -31,6 +31,7 @@
 // hard-reject a match that lands too far from where it should be, even if
 // the name lined up.
 
+import { runWithLimit } from "./concurrency";
 import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem } from "../types";
 
 // Below this, a venue is dropped rather than shown.
@@ -672,18 +673,6 @@ function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
 /** Runs `fn` over `items` with at most `limit` in flight. Same shape as the
  * day-call limiter in index.ts, kept local so this module stays independent
  * of the worker's entry point. */
-async function runWithLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      for (;;) {
-        const i = next++;
-        if (i >= items.length) return;
-        await fn(items[i]);
-      }
-    })
-  );
-}
 
 /** Starts the geocode lookups for a trip's destinations before anything
  * needs them, and hands back the cache checkVenues will use.
