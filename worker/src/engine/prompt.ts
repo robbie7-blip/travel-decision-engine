@@ -332,7 +332,18 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
             `this real departure timing. Leave enough time to reach the airport or station and ` +
             `do not schedule anything that would not be finished well before then. An early ` +
             `departure means the last day is mostly travel and should be planned as such; a late ` +
-            `one leaves room for a real day out, noting that luggage may need storing.`
+            `one leaves room for a real day out, noting that luggage may need storing. ` +
+            // The meal contract is set by the PLAN's `meals` field, not by
+            // whoever writes the day - so a departure instruction aimed only
+            // at the day puts the two in conflict. On the 102.4s Rome run
+            // the plan kept breakfast on a day with an 07:00 flight, the day
+            // call correctly left it out, and the gate reported "day 3 has
+            // no breakfast" as a defect. Naming the field is what ties this
+            // to the plan's own existing rule ("no breakfast if they land or
+            // set off before it").
+            `This applies to the day's MEALS list too: drop any meal the departure time actually ` +
+            `removes, so a day that starts with a pre-dawn airport run does not still ask for ` +
+            `breakfast. Do not keep a meal the traveler cannot physically eat.`
         );
       } else {
         lines.push(

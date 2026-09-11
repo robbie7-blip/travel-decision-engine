@@ -560,17 +560,45 @@ async function callModel(
   return parsed;
 }
 
+/** Counts silent retries, so a doubled stage stops being a mystery.
+ *
+ * A retry here is INVISIBLE and costs a whole extra model call. On the
+ * 102.4s generation, phase 1 read `plan 68.8s, frame 31.6s` - the plan
+ * being the half every comment in this file calls the fast one - and 68.8s
+ * is almost exactly twice a single call. A retried plan is the obvious
+ * explanation and there was no way to confirm it: nothing logged, nothing
+ * on the job record, nothing on the diagnostics line.
+ *
+ * That matters more since isUsablePlan was tightened to require `city` and
+ * `include_lodging` on every day. That gate is right - a missing
+ * include_lodging shipped a multi-night trip with no accommodation - but it
+ * now costs a full extra plan call whenever the model omits one field, and
+ * it did so without saying a word. */
+const retryCounts = new Map<string, number>();
+
+/** Retries counted for `label` since the last reset. */
+export function retriesFor(label: string): number {
+  return retryCounts.get(label) ?? 0;
+}
+
+export function resetRetryCounts(): void {
+  retryCounts.clear();
+}
+
 /** Generic over the call's result type so the two-phase generator's skeleton
  * and per-day calls get the same one-retry treatment the single-call path
  * has always had - malformed JSON is non-deterministic, and a retry costs
  * far less than failing a whole generation over it. */
-async function withOneRetryOf<T>(fn: () => Promise<T>): Promise<T> {
+async function withOneRetryOf<T>(fn: () => Promise<T>, label = "model call"): Promise<T> {
   try {
     return await fn();
   } catch (e) {
     if (e instanceof ModelOutputError) {
       // Model occasionally returns malformed JSON - non-deterministic,
-      // one retry usually succeeds.
+      // one retry usually succeeds. Counted and logged, because the retry
+      // doubles this stage and used to do it in silence.
+      retryCounts.set(label, (retryCounts.get(label) ?? 0) + 1);
+      console.warn(`[worker] ${label} came back unusable (${e.message}) - retrying once, which doubles this stage`);
       return await fn();
     }
     throw e;
@@ -1231,7 +1259,8 @@ function startPhase1(
           buildFramePrompt(brief, cachedLodgingFacts),
           isUsableFrame,
           onUsage
-        )
+        ),
+      "trip frame"
       )
     ).then((frame) => {
       onHalfTiming?.("frame", Date.now() - startedAt);
@@ -1246,7 +1275,8 @@ function startPhase1(
           buildPlanPrompt(brief),
           isUsablePlan,
           onUsage
-        )
+        ),
+      "day plan"
       )
     ).then((plan) => {
       onHalfTiming?.("plan", Date.now() - startedAt);
@@ -1435,7 +1465,7 @@ async function generateItineraryTwoPhase(
   const daysStartedAt = Date.now();
   const days = await runWithLimit(plan.days, MAX_PARALLEL_DAYS, async (day) => {
     const generated = await withRateLimitRetry(`day ${day.day}`, () =>
-      withOneRetryOf(() => generateDay(client, brief, dayContext, day, onUsage))
+      withOneRetryOf(() => generateDay(client, brief, dayContext, day, onUsage), `day ${day.day}`)
     );
     // Reported the moment each day's own call returns, not when the whole
     // wave does, so the page fills in one day at a time.
@@ -1665,6 +1695,10 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // Refused before the first model call, so an over-long brief costs
   // nothing, and refused rather than truncated: a 30-day answer to a
   // 90-day question is a wrong itinerary, not a smaller one.
+  // Per-job, so one job's retries are not attributed to another - this
+  // process runs four at a time.
+  resetRetryCounts();
+
   const spanDays = briefSpanDays(job.brief);
   if (spanDays !== null && spanDays > MAX_TRIP_DAYS) {
     console.error(`[worker] job ${id} spans ${spanDays} days, over the ${MAX_TRIP_DAYS}-day cap - refusing before any model call`);
@@ -2029,6 +2063,23 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   }
 
   jobTimings.totalMs = Date.now() - jobStartedAt;
+  // Every retry that fired, so a doubled stage names itself instead of
+  // being inferred from arithmetic on the timing line.
+  {
+    const fired: Record<string, number> = {};
+    for (const label of ["trip frame", "day plan"]) {
+      const n = retriesFor(label);
+      if (n > 0) fired[label] = n;
+    }
+    let dayRetries = 0;
+    for (let d = 1; d <= 40; d++) dayRetries += retriesFor(`day ${d}`);
+    if (dayRetries > 0) fired["day calls"] = dayRetries;
+    if (Object.keys(fired).length > 0) {
+      jobTimings.retries = fired;
+      console.warn(`[worker] retries this job: ${JSON.stringify(fired)} - each one is a whole extra model call`);
+    }
+  }
+
   jobTimings.lodgingPrefetchMs = timings.lodgingPrefetch;
   jobTimings.generateMs = timings.generate;
   jobTimings.repairsMs = timings.repairs;

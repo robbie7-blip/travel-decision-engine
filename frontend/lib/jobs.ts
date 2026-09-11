@@ -160,6 +160,21 @@ export interface JobTimings {
    * time being a guess. */
   planMs?: number;
   frameMs?: number;
+  /** Silent retries, per stage, that each cost a whole extra model call.
+   *
+   * A malformed or unusable response is retried once (see withOneRetryOf),
+   * and that retry used to happen in complete silence - no log, nothing on
+   * the job. On the 102.4s generation phase 1 read "plan 68.8s, frame
+   * 31.6s": the plan is the half every comment calls the FAST one, and
+   * 68.8s is almost exactly twice a single call. A retried plan was the
+   * obvious explanation and there was no way to confirm it.
+   *
+   * It matters more since isUsablePlan was tightened to require `city` and
+   * `include_lodging` on every day. That gate is right - a missing
+   * include_lodging shipped a multi-night trip with no accommodation - but
+   * it costs a full extra plan call whenever the model omits one field. A
+   * doubled stage should say so rather than be inferred from arithmetic. */
+  retries?: Record<string, number>;
   /** True when phase 2 stopped waiting for the live accommodation lookup
    * and used the frame's estimate instead - see LODGING_GRACE_MS. Distinct
    * from lodgingShort, which means the lookup ANSWERED and came back empty;

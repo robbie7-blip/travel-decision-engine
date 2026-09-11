@@ -120,6 +120,19 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
               cost. A missing rate is the expensive one: it is what puts the
               frame on the critical path above, and the two used to be
               indistinguishable from here. */}
+          {/* Every silent retry, named. Each is a whole extra model call,
+              and until now a retried stage just read as a slow one - the
+              102.4s run showed "plan 68.8s, frame 31.6s" with no way to see
+              that 68.8s was two calls. */}
+          {timings.retries && Object.keys(timings.retries).length > 0 && (
+            <div style={{ color: "var(--infeasible)", marginTop: 4 }}>
+              ⚠ retried:{" "}
+              {Object.entries(timings.retries)
+                .map(([label, n]) => `${label}${n > 1 ? ` x${n}` : ""}`)
+                .join(", ")}{" "}
+              - each retry is a whole extra model call and doubles that stage
+            </div>
+          )}
           {/* Distinct from the lines below: this means the lookup had NOT
               answered yet and phase 2 stopped holding the trip open for it,
               rather than answering and coming back empty. */}
