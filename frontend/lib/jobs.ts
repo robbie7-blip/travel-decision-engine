@@ -145,6 +145,27 @@ export interface JobTimings {
   /** Phase 1 - the trip frame and the day plan, which run concurrently, so
    * this is the slower of the two rather than their sum. */
   skeletonMs?: number;
+  /** The two halves of phase 1, timed separately, and the wait for the live
+   * accommodation lookup.
+   *
+   * skeletonMs is the MAX of all three, which is the right answer to "when
+   * could phase 2 start" and useless for "what should I fix". On the first
+   * measured 58.5s generation it read 29.2s - identical to the
+   * accommodation lookup - and there was no way to tell from outside
+   * whether the frame had landed at 12s or at 29s, which is the difference
+   * between the bounded wait saving fourteen seconds and saving two.
+   *
+   * Latency in this pipeline has now been diagnosed by reasoning four times
+   * and been wrong three of them. These are the numbers that stop the fifth
+   * time being a guess. */
+  planMs?: number;
+  frameMs?: number;
+  /** True when phase 2 stopped waiting for the live accommodation lookup
+   * and used the frame's estimate instead - see LODGING_GRACE_MS. Distinct
+   * from lodgingShort, which means the lookup ANSWERED and came back empty;
+   * this means it had not answered yet and was no longer worth waiting
+   * for. */
+  accommodationWaitAbandoned?: boolean;
   /** Phase 2 - wall time for all day calls together, not their sum. */
   daysMs?: number;
   dayCount?: number;

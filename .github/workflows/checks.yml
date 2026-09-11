@@ -81,6 +81,17 @@ jobs:
       # because the two mistakes differ in size: omitting effort costs a
       # little speed, sending it where it is refused costs the generation.
       - run: npm run test:model-caps
+      # The bounded wait that took the accommodation lookup off the
+      # critical path. On the first measured 58.5s generation that lookup
+      # WAS the critical path - 16.5s, then a retry that also came back
+      # empty, 29.2s total - while a fully built fallback (the trip frame's
+      # own estimate) sat ready. Two cases here are the difference between a
+      # slow trip and no trip: a REJECTED frame must never win the race (or
+      # one recoverable failure abandons the lookup too and the job has
+      # neither figure), and an abandoned lookup's later rejection must stay
+      # observed, since Node exits the process on an unhandled rejection and
+      # this worker runs four jobs at once.
+      - run: npm run test:race-fallback
 
   frontend:
     name: frontend - typecheck + build

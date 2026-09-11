@@ -51,6 +51,7 @@ import {
 import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
 import { assertUsableItinerary } from "./engine/shape";
 import { modelSupportsEffort } from "./engine/modelCaps";
+import { waitForLiveOrFallback } from "./engine/raceFallback";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -714,6 +715,22 @@ function readPositiveInt(name: string, fallback: number): number {
 
 const MAX_PARALLEL_DAYS = readPositiveInt("MAX_PARALLEL_DAYS", 16);
 
+/** How long phase 2 keeps waiting for the live accommodation lookup after
+ * the trip frame - the fallback - is already in hand.
+ *
+ * Not a timeout on the lookup itself, which keeps running and still writes
+ * what it finds to the accommodation cache for the next generation. This is
+ * only how long the trip being generated NOW is willing to be held open for
+ * a better number once it already has a usable one.
+ *
+ * Three seconds because the two outcomes are asymmetric. Waiting a moment
+ * longer buys a real nightly price and a named hotel, which is worth a
+ * little; waiting indefinitely is what made a 58.5s generation, and the
+ * seconds after the frame lands are pure loss when the lookup is going to
+ * come back empty anyway - which on the run this was written for, after a
+ * retry, is exactly what it did. */
+const LODGING_GRACE_MS = readPositiveInt("LODGING_GRACE_MS", 3000);
+
 // Headroom, not a target - you are billed for tokens generated, never for
 // the cap. These are sized for the WORST case rather than the typical one
 // because hitting a cap here is catastrophically expensive relative to the
@@ -1204,8 +1221,18 @@ function startPhase1(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage) => void,
+  onHalfTiming?: (half: "frame" | "plan", ms: number) => void
 ): { frame: Promise<TripFrame>; plan: Promise<TripPlan> } {
+  // Each half is timed on its own. skeletonMs is the MAX of the plan, the
+  // frame and the accommodation lookup, which is the right number for "when
+  // could phase 2 start" and useless for "what should I fix": on the first
+  // measured 58.5s run it read 29.2s, identical to the lookup, and there
+  // was no way to tell from outside whether the frame had landed at 12s or
+  // at 29s - the difference between the bounded wait below saving fourteen
+  // seconds and saving two. Latency here has now been diagnosed by
+  // reasoning four times and been wrong three, so it gets measured.
+  const startedAt = Date.now();
   return {
     frame: withRateLimitRetry("trip frame", () =>
       withOneRetryOf(() =>
@@ -1218,7 +1245,10 @@ function startPhase1(
           onUsage
         )
       )
-    ),
+    ).then((frame) => {
+      onHalfTiming?.("frame", Date.now() - startedAt);
+      return frame;
+    }),
     plan: withRateLimitRetry("day plan", () =>
       withOneRetryOf(() =>
         generatePhase1Half<TripPlan>(
@@ -1230,7 +1260,10 @@ function startPhase1(
           onUsage
         )
       )
-    ),
+    ).then((plan) => {
+      onHalfTiming?.("plan", Date.now() - startedAt);
+      return plan;
+    }),
   };
 }
 
@@ -1295,6 +1328,9 @@ async function generateItineraryTwoPhase(
     dayCount: number;
     dayWaves: number;
     waitedForFrame: boolean;
+    planMs?: number;
+    frameMs?: number;
+    accommodationWaitAbandoned?: boolean;
   }) => void,
   onPlan?: (days: SkeletonDay[], accommodation: SkeletonAccommodation[]) => void,
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
@@ -1302,11 +1338,17 @@ async function generateItineraryTwoPhase(
   onDayDone?: (day: ItineraryDay) => void
 ): Promise<Itinerary> {
   const startedAt = Date.now();
+  let planMs: number | undefined;
+  let frameMs: number | undefined;
   const { frame: framePromise, plan: planPromise } = startPhase1(
     client,
     brief,
     cachedLodgingFacts,
-    onUsage
+    onUsage,
+    (half, ms) => {
+      if (half === "plan") planMs = ms;
+      else frameMs = ms;
+    }
   );
 
   // Mark the frame's rejection as handled the instant it is created.
@@ -1337,7 +1379,35 @@ async function generateItineraryTwoPhase(
   // Only the PLAN gates phase 2. The frame keeps running alongside the day
   // calls and is collected at the end, where its fields are actually used.
   const plan = await planPromise;
-  const lodging = (await pendingLodging) ?? [];
+
+  // Bounded wait, not an unconditional one.
+  //
+  // The live accommodation lookup is an optimisation with a fully built
+  // fallback: when it comes back empty the frame's own estimate is used.
+  // This await was nonetheless unconditional, so on the first measured
+  // 58.5s generation the lookup owned the critical path - 16.5s, then a
+  // retry that also came back empty, 29.2s total - and spent the extra
+  // seconds arriving exactly where the fallback already was.
+  //
+  // The frame resolving is the signal that waiting has begun to cost
+  // something: before that, phase 2 could not have started anyway. After
+  // it, every further second is spent on a number we have a substitute
+  // for. So the wait stops a grace period after the frame is ready.
+  //
+  // Null means "stopped waiting", and flows into exactly the same
+  // accommodation === null branch an empty lookup already took - the
+  // fallback is not new code, it is the path this run was heading for.
+  const liveLodging = pendingLodging
+    ? await waitForLiveOrFallback(pendingLodging, framePromise, LODGING_GRACE_MS)
+    : [];
+  const accommodationWaitAbandoned = Boolean(pendingLodging) && liveLodging === null;
+  if (accommodationWaitAbandoned) {
+    console.warn(
+      `[worker] accommodation lookup still running ${LODGING_GRACE_MS}ms after the trip frame - ` +
+        `using the frame's estimate rather than holding phase 2 open for it`
+    );
+  }
+  const lodging = liveLodging ?? [];
 
   // The frame's accommodation is a fallback for the live lookup, so when
   // the lookup covered every city that needs a bed there is nothing left to
@@ -1386,7 +1456,16 @@ async function generateItineraryTwoPhase(
   });
   const daysMs = Date.now() - daysStartedAt;
   const waves = Math.ceil(days.length / MAX_PARALLEL_DAYS);
-  onPhaseTimings?.({ skeletonMs, daysMs, dayCount: days.length, dayWaves: waves, waitedForFrame });
+  onPhaseTimings?.({
+    skeletonMs,
+    daysMs,
+    dayCount: days.length,
+    dayWaves: waves,
+    waitedForFrame,
+    planMs,
+    frameMs,
+    accommodationWaitAbandoned,
+  });
   console.log(
     `[worker] phase 1 (plan${waitedForFrame ? " + frame, lodging incomplete" : " only, frame ran alongside days"}) ` +
       `${skeletonMs}ms, ${days.length} day(s) in ${daysMs}ms ` +
@@ -1473,6 +1552,9 @@ async function generateItinerary(
         (t) => {
           if (timings) {
             timings.skeletonMs = t.skeletonMs;
+            timings.planMs = t.planMs;
+            timings.frameMs = t.frameMs;
+            if (t.accommodationWaitAbandoned) timings.accommodationWaitAbandoned = true;
             timings.daysMs = t.daysMs;
             timings.dayCount = t.dayCount;
             timings.dayWaves = t.dayWaves;

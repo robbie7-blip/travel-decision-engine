@@ -82,7 +82,18 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
           </div>
           <div>
             phase 1 ({timings.waitedForFrame ? "plan + frame ⚠ accommodation came back short" : "plan only, frame ran alongside days"}){" "}
-            {secs(timings.skeletonMs)} · {timings.dayCount ?? "-"} day(s){" "}
+            {secs(timings.skeletonMs)}
+            {/* The halves, separately. skeletonMs is the MAX of plan, frame
+                and the accommodation lookup, so on its own it cannot say
+                which of them to fix - the first measured 58.5s run showed
+                29.2s here and 29.2s for the lookup, leaving the frame's own
+                timing unknown and the fix unguessable. */}
+            {(timings.planMs != null || timings.frameMs != null) && (
+              <span style={{ color: "var(--ink-dim)" }}>
+                {" "}(plan {secs(timings.planMs)}, frame {secs(timings.frameMs)})
+              </span>
+            )}{" "}
+            · {timings.dayCount ?? "-"} day(s){" "}
             {secs(timings.daysMs)}
             {timings.dayWaves != null && (
               // Anything above 1 means the day calls didn't all run at once,
@@ -100,6 +111,15 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
               cost. A missing rate is the expensive one: it is what puts the
               frame on the critical path above, and the two used to be
               indistinguishable from here. */}
+          {/* Distinct from the lines below: this means the lookup had NOT
+              answered yet and phase 2 stopped holding the trip open for it,
+              rather than answering and coming back empty. */}
+          {timings.accommodationWaitAbandoned && (
+            <div style={{ color: "var(--unverified)", marginTop: 4 }}>
+              ⚠ stopped waiting for the accommodation lookup once the frame was ready - used the
+              frame&rsquo;s estimate
+            </div>
+          )}
           {timings.lodgingShort?.map((s) => (
             <div
               key={`${s.city}-${s.missing}`}
