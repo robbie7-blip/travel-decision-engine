@@ -73,6 +73,14 @@ jobs:
       # either. Verified end to end: without this gate the same response
       # loses the generation, with it the retry succeeds.
       - run: npm run test:shape
+      # Which models are sent output_config.effort. DAY_MODEL exists to
+      # invite a swap to a faster day model, and the obvious candidate
+      # (Haiku 4.5) is one of the two models that REJECT that field - so the
+      # dial as shipped pointed at a configuration where every day call
+      # 400s and the whole generation fails. The predicate is an allowlist
+      # because the two mistakes differ in size: omitting effort costs a
+      # little speed, sending it where it is refused costs the generation.
+      - run: npm run test:model-caps
 
   frontend:
     name: frontend - typecheck + build

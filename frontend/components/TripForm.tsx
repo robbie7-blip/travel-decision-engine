@@ -32,6 +32,8 @@ export interface TripFormState {
   transport_preference: string;
   arrival_date: string;
   arrival_time: string;
+  departure_date: string;
+  departure_time: string;
   // Compare mode: same trip (dates/budget/party/pace/etc.), a second
   // destination - the toggle is separate from the text so unchecking it
   // doesn't need to also clear whatever was typed.
@@ -69,6 +71,8 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   transport_preference: "",
   arrival_date: "",
   arrival_time: "",
+  departure_date: "",
+  departure_time: "",
   compareEnabled: false,
   compareDestinations: "",
   compareUseDifferentDates: false,
@@ -116,6 +120,8 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     transport_preference: (form.transport_preference || undefined) as TripBriefInput["transport_preference"],
     arrival_date: form.needs_flight ? undefined : form.arrival_date.trim() || undefined,
     arrival_time: form.needs_flight ? undefined : form.arrival_time.trim() || undefined,
+    departure_date: form.needs_flight ? undefined : form.departure_date.trim() || undefined,
+    departure_time: form.needs_flight ? undefined : form.departure_time.trim() || undefined,
   };
 }
 
@@ -272,6 +278,32 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                 value={value.arrival_time}
                 onChange={(e) => update("arrival_time", e.target.value)}
                 placeholder={t.form.arrivalTimePlaceholder}
+              />
+            </Field>
+            <div>
+              {/* Plain <div> rather than <Field>, same label-click reason as
+                  the arrival date above. */}
+              <div
+                className="font-ui"
+                style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
+              >
+                {t.form.departureDate}
+              </div>
+              <SingleDatePicker
+                date={value.departure_date}
+                onChange={(date) => update("departure_date", date)}
+                language={value.language}
+                placeholder={t.form.departureDatePlaceholder}
+                prevMonthLabel={t.form.calendarPrevMonth}
+                nextMonthLabel={t.form.calendarNextMonth}
+              />
+            </div>
+            <Field label={t.form.departureTime}>
+              <input
+                style={inputStyle}
+                value={value.departure_time}
+                onChange={(e) => update("departure_time", e.target.value)}
+                placeholder={t.form.departureTimePlaceholder}
               />
             </Field>
           </>

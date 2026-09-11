@@ -90,6 +90,15 @@ export interface Dictionary {
     arrivalDatePlaceholder: string;
     arrivalTime: string;
     arrivalTimePlaceholder: string;
+    // The departure half of a pre-booked trip. Only arrival was collected
+    // for a long while, so the last day was planned with no idea when the
+    // traveler actually leaves - and departure is the more constraining of
+    // the two: a 07:00 flight home means the last day is a transfer and
+    // nothing else.
+    departureDate: string;
+    departureDatePlaceholder: string;
+    departureTime: string;
+    departureTimePlaceholder: string;
     // How the traveler wants to get around locally (see transport_preference
     // on TripBriefInput) - always shown, optional, defaults to no preference.
     transportPreference: string;
@@ -624,6 +633,10 @@ const en: Dictionary = {
     arrivalDatePlaceholder: "Select your arrival date",
     arrivalTime: "Arrival time (optional)",
     arrivalTimePlaceholder: "e.g. 8pm, or 'evening'",
+    departureDate: "Departure date (optional)",
+    departureDatePlaceholder: "Select your departure date",
+    departureTime: "Departure time (optional)",
+    departureTimePlaceholder: "e.g. 7am, or 'late evening'",
     transportPreference: "Preferred way to get around (optional)",
     transportNoPreference: "No preference",
     transportPublicTransit: "Public transit (metro/bus/train)",
@@ -1138,6 +1151,10 @@ const bg: Dictionary = {
     arrivalDatePlaceholder: "Избери дата на пристигане",
     arrivalTime: "Час на пристигане (по избор)",
     arrivalTimePlaceholder: "напр. 20:00, или 'вечерта'",
+    departureDate: "Дата на отпътуване (по избор)",
+    departureDatePlaceholder: "Избери дата на отпътуване",
+    departureTime: "Час на отпътуване (по избор)",
+    departureTimePlaceholder: "напр. 07:00, или 'късно вечерта'",
     transportPreference: "Предпочитан начин на придвижване (по избор)",
     transportNoPreference: "Без предпочитание",
     transportPublicTransit: "Градски транспорт (метро/автобус/влак)",

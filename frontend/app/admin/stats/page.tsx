@@ -356,9 +356,9 @@ export default async function StatsAdminPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
             {[
               {
-                label: "Waited for the trip frame (lodging came back short)",
+                label: "Waited for the trip frame (accommodation came back short)",
                 count: timing.waitedForFrame,
-                fix: "fix the lodging lookup and phase 2 stops waiting",
+                fix: "fix the accommodation lookup and phase 2 stops waiting",
               },
               {
                 label: "Fell back to the single-call path",

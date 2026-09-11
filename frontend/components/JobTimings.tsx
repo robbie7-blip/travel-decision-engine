@@ -76,12 +76,12 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
             generation {secs(timings.totalMs)}
           </div>
           <div>
-            lodging prefetch {secs(timings.lodgingPrefetchMs)} · generate {secs(timings.generateMs)} · verify{" "}
+            accommodation lookup {secs(timings.lodgingPrefetchMs)} · generate {secs(timings.generateMs)} · verify{" "}
             {secs(timings.venuesAndFlightsMs)} · repairs {secs(timings.repairsMs)} · re-verify{" "}
             {secs(timings.verifyRepairsMs)}
           </div>
           <div>
-            phase 1 ({timings.waitedForFrame ? "plan + frame ⚠ lodging came back short" : "plan only, frame ran alongside days"}){" "}
+            phase 1 ({timings.waitedForFrame ? "plan + frame ⚠ accommodation came back short" : "plan only, frame ran alongside days"}){" "}
             {secs(timings.skeletonMs)} · {timings.dayCount ?? "-"} day(s){" "}
             {secs(timings.daysMs)}
             {timings.dayWaves != null && (
@@ -96,7 +96,7 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
               </span>
             )}
           </div>
-          {/* Which half of the lodging lookup came back empty, and what it
+          {/* Which half of the accommodation lookup came back empty, and what it
               cost. A missing rate is the expensive one: it is what puts the
               frame on the critical path above, and the two used to be
               indistinguishable from here. */}
@@ -105,7 +105,7 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
               key={`${s.city}-${s.missing}`}
               style={{ color: s.missing === "rate" ? "var(--infeasible)" : "var(--unverified)", marginTop: 4 }}
             >
-              ⚠ {s.city}: lodging {s.missing === "rate" ? "rate" : "property"} came back empty after a retry
+              ⚠ {s.city}: accommodation {s.missing === "rate" ? "price" : "property"} came back empty after a retry
               {s.missing === "rate"
                 ? " - this is what made phase 1 wait for the frame"
                 : " - accommodation fell back to a generic line"}

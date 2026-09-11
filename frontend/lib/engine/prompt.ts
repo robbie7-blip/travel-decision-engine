@@ -315,6 +315,32 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
             `a normal full schedule unless something else in this brief suggests otherwise.`
         );
       }
+      // The departure half. This was missing entirely, so the final day was
+      // written with no idea when the traveler leaves - and departure
+      // constrains a day far harder than arrival does. A 07:00 flight means
+      // the last day is a transfer and nothing else; a 22:00 flight means a
+      // full day with the bags checked at the hotel. Without it the model
+      // was free to put a long lunch and a museum in front of someone who
+      // has to be at the airport by nine.
+      const departureParts = [
+        brief.departure_date?.trim(),
+        brief.departure_time?.trim() && `around ${brief.departure_time.trim()}`,
+      ].filter(Boolean);
+      if (departureParts.length > 0) {
+        lines.push(
+          `Traveler's actual departure: ${departureParts.join(", ")} - plan the FINAL day around ` +
+            `this real departure timing. Leave enough time to reach the airport or station and ` +
+            `do not schedule anything that would not be finished well before then. An early ` +
+            `departure means the last day is mostly travel and should be planned as such; a late ` +
+            `one leaves room for a real day out, noting that luggage may need storing.`
+        );
+      } else {
+        lines.push(
+          `No specific departure time was given - plan the final day as a normal day, but keep the ` +
+            `late afternoon and evening lighter and closer to the accommodation than a mid-trip ` +
+            `day, since the traveler has to leave at some point and that time is unknown.`
+        );
+      }
     }
   }
   if (brief.transport_preference) {

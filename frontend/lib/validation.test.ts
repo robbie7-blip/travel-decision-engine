@@ -169,6 +169,20 @@ async function main() {
   check("arrival_time stays free text", parseTripBrief(validBody({ arrival_time: "evening" })).arrival_time === "evening");
   check("but is length-capped", (parseTripBrief(validBody({ arrival_time: huge })).arrival_time ?? "").length < 500);
 
+  // Departure was missing entirely for a long while, so the final day was
+  // planned with no idea when the traveler leaves - the more constraining of
+  // the two, since a 07:00 flight home means the last day is a transfer and
+  // nothing else.
+  check("a malformed departure_date is rejected", rejection(validBody({ needs_flight: false, departure_date: "the 14th" })) !== null);
+  check("a real departure_date is accepted", parseTripBrief(validBody({ needs_flight: false, departure_date: "2026-04-14" })).departure_date === "2026-04-14");
+  check("departure_time stays free text", parseTripBrief(validBody({ departure_time: "late evening" })).departure_time === "late evening");
+  check("departure_time is length-capped", (parseTripBrief(validBody({ departure_time: huge })).departure_time ?? "").length < 500);
+  check("both halves survive together", (() => {
+    const b = parseTripBrief(validBody({ needs_flight: false, arrival_date: "2026-04-10", arrival_time: "20:00", departure_date: "2026-04-14", departure_time: "07:00" }));
+    return b.arrival_date === "2026-04-10" && b.departure_date === "2026-04-14" && b.departure_time === "07:00";
+  })());
+  check("absent departure stays absent", parseTripBrief(validBody()).departure_date === undefined);
+
   section("shapes that aren't briefs at all");
 
   check("null body", rejection(null) !== null);

@@ -54,6 +54,20 @@ export interface TripBriefInput {
   // trip's start_date.
   arrival_date?: string;
   arrival_time?: string;
+  // The other half of a pre-booked trip, and for a while the missing half.
+  // Only arrival was collected, so the engine knew when the traveler landed
+  // and nothing about when they leave - which is the more constraining of
+  // the two on a finished itinerary. A 07:00 flight home means the last day
+  // is a taxi to the airport and nothing else; a 22:00 flight means a full
+  // day with the bags left at the hotel. Without this the last day was
+  // planned blind and could put a long lunch and a museum in front of
+  // someone who has to be at the airport by nine.
+  //
+  // Same shape as arrival: a YYYY-MM-DD date plus an optional free-text
+  // time ("06:30", "late evening"). departure_time alone (no
+  // departure_date) refers to the trip's end_date.
+  departure_date?: string;
+  departure_time?: string;
   // Country NAMES (not ISO codes - resolved from lib/countries.ts before
   // this ever reaches the worker, which has no country lookup of its own),
   // from the signed-in traveler's visited-countries tracker (see

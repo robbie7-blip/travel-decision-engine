@@ -50,6 +50,7 @@ import {
 } from "./engine/quality";
 import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
 import { assertUsableItinerary } from "./engine/shape";
+import { modelSupportsEffort } from "./engine/modelCaps";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -654,6 +655,19 @@ const DAY_EFFORT = readEffort("DAY_MODEL_EFFORT", EFFORT);
 // a faster one to trade some prose polish for a materially shorter phase 2.
 const DAY_MODEL = process.env.DAY_MODEL ?? MODEL;
 
+/** The day call's effort setting, as request fields to spread in - empty
+ * when the configured day model would reject it. */
+const DAY_OUTPUT_CONFIG = modelSupportsEffort(DAY_MODEL)
+  ? { output_config: { effort: DAY_EFFORT } }
+  : {};
+
+if (!modelSupportsEffort(DAY_MODEL)) {
+  console.warn(
+    `[worker] DAY_MODEL="${DAY_MODEL}" does not accept output_config.effort - ` +
+      `sending day calls without it (DAY_MODEL_EFFORT=${DAY_EFFORT} is ignored for this model)`
+  );
+}
+
 // Caps how many day calls are in flight at once. Days are pure I/O wait, so
 // this isn't about CPU - it's about not opening an unbounded number of
 // concurrent Anthropic requests when a long trip and comparison mode (two
@@ -754,7 +768,9 @@ async function generateDay(
       { type: "text", text: SYSTEM_PROMPT },
       { type: "text", text: getDayInstructions(), cache_control: { type: "ephemeral" } },
     ],
-    output_config: { effort: DAY_EFFORT },
+    // Spread rather than set, because a day model that rejects this field
+    // 400s the request - see modelSupportsEffort.
+    ...DAY_OUTPUT_CONFIG,
     messages: [{ role: "user", content: buildDayPrompt(brief, skeleton, day) }],
   });
   onUsage?.(response.usage);

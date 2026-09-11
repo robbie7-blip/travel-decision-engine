@@ -173,12 +173,20 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     throw new ValidationError("arrival_date must be a calendar date in YYYY-MM-DD form.");
   }
 
+  const departure_date = cleanText(b.departure_date, "departure_date");
+  if (departure_date && !parseCalendarDate(departure_date)) {
+    throw new ValidationError("departure_date must be a calendar date in YYYY-MM-DD form.");
+  }
+
   // Deliberately NOT shape-checked the way arrival_date is. The form's own
   // placeholder invites free text here ("e.g. 8pm, or 'evening'"), and the
   // prompt passes it through as "around <whatever they said>" - the model
   // reads it, no code parses it. The length cap from cleanText is the whole
   // guard this field needs.
   const arrival_time = cleanText(b.arrival_time, "arrival_time");
+  // Free text for the same reason as arrival_time - the form invites
+  // "6am" or "late evening", and the prompt hands it to the model to read.
+  const departure_time = cleanText(b.departure_time, "departure_time");
 
   // Pass-through only - this endpoint never trusts a client-supplied value
   // for anything cost/security-sensitive, and this field is neither: it's a
@@ -215,6 +223,8 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     transport_preference,
     arrival_date,
     arrival_time,
+    departure_date,
+    departure_time,
     ...(visitedCountries.length > 0 ? { visited_countries: visitedCountries } : {}),
   };
 }

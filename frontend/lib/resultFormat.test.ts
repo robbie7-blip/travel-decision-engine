@@ -43,7 +43,7 @@ async function main() {
   section("sentence splitting - both alphabets");
 
   const en = splitIntoSentences(
-    "The budget is tight but workable. Lodging is the biggest line at 90 EUR a night. €400 covers food and transit."
+    "The budget is tight but workable. Accommodation is the biggest line at 90 EUR a night. €400 covers food and transit."
   );
   check("English splits into its three sentences", en.length === 3, JSON.stringify(en));
   check("a sentence starting with a currency symbol still splits", en[2].startsWith("€400"), JSON.stringify(en[2]));
