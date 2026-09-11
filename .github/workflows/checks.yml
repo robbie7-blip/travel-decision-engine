@@ -161,6 +161,21 @@ jobs:
       # three paid calls and the two-minute path. Reverting the repair makes
       # 20 cases here red; reverting the escalation makes 4.
       - run: npm run test:plan-repair
+      # Reasoning effort, which is now set per stage rather than globally -
+      # because the measured calls are not alike: the plan took 68.8s to
+      # produce ~400 tokens of JSON while the frame took 31.6s to produce
+      # ~700, and only one of them has every day call waiting on it. The
+      # plan and the day calls therefore cap at "medium". Two cases here
+      # pull in opposite directions and both are load-bearing: raising
+      # MODEL_EFFORT must NOT quietly un-cap the stages on the critical path
+      # (one dashboard edit would otherwise break the 30-second promise with
+      # no warning), and lowering it must still mean low EVERYWHERE, which
+      # is what hard-coding the level instead of deriving it would get
+      # wrong. Reverting the cap makes 5 cases red; hard-coding it makes a
+      # different one red. Also covers readEffort, where a typo in a hosting
+      # dashboard field is a 400 on every call that carries it - enough to
+      # fail all of phase 2 and fall back to the two-minute serial path.
+      - run: npm run test:effort
 
   frontend:
     name: frontend - typecheck + build

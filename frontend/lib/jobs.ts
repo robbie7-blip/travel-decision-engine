@@ -235,6 +235,21 @@ export interface JobTimings {
   fellBackToSingleCall?: boolean;
   /** Why it fell back, when it did. */
   fallbackReason?: string;
+  /** The reasoning effort each stage actually ran at.
+   *
+   * Recorded because effort stopped being one global setting. The frame,
+   * the plan and the day calls now default to different levels, and each is
+   * separately overridable from the hosting dashboard with no deploy -
+   * which means a stage timing on this job can no longer be read without
+   * knowing which configuration produced it.
+   *
+   * That distinction has already cost real money once. A generation went
+   * from 58.5s to 102.4s with several changes in flight and no record of
+   * which settings were live, so the regression could be argued about but
+   * not attributed, and settling it needed another paid run. A run that
+   * carries its own configuration is a run that can be compared to the
+   * next one. */
+  efforts?: { frame: string; plan: string; day: string };
 }
 
 export const JOBS_QUEUE_KEY = "jobs:queue";

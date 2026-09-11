@@ -116,6 +116,19 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
               </span>
             )}
           </div>
+          {/* Which configuration produced the numbers above.
+              The three stages no longer share one effort setting and each is
+              overridable from the hosting dashboard with no deploy, so a
+              stage timing without its effort cannot be compared to the next
+              run's. Going from 58.5s to 102.4s with several changes in
+              flight and no record of the settings is what made that
+              regression arguable but not attributable. */}
+          {timings.efforts && (
+            <div style={{ color: "var(--ink-dim)", marginTop: 4 }}>
+              effort: frame {timings.efforts.frame} · plan {timings.efforts.plan} · days{" "}
+              {timings.efforts.day}
+            </div>
+          )}
           {/* Which half of the accommodation lookup came back empty, and what it
               cost. A missing rate is the expensive one: it is what puts the
               frame on the critical path above, and the two used to be

@@ -55,6 +55,7 @@ import { modelSupportsEffort } from "./engine/modelCaps";
 import { waitForLiveOrFallback } from "./engine/raceFallback";
 import { runWithLimit } from "./engine/concurrency";
 import { describeModelError, startBudget } from "./engine/callBudget";
+import { capEffort, readEffort, type Effort } from "./engine/effort";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -105,33 +106,6 @@ const MAX_TOKENS = 12000;
 // "high" costs real time and real money per generation. That is the
 // intended trade. MODEL_EFFORT overrides it without a code change if the
 // balance ever needs revisiting - "low" restores the old behaviour exactly.
-type Effort = "low" | "medium" | "high" | "xhigh" | "max";
-const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
-
-/** Reads an effort setting from the environment, refusing anything the API
- * would reject.
- *
- * These were blind casts, which made a typo in a dashboard field one of the
- * most expensive mistakes available: an invalid effort is a 400 on every
- * call that uses it, so mistyping the day-call setting would fail all of
- * phase 2, exhaust its retries, abandon the parallel path and regenerate the
- * whole itinerary in one serial call. Two minutes and a worse trip, with
- * nothing on the page explaining why.
- *
- * Case and whitespace are forgiven because a value typed into a web form
- * picks both up easily. Anything genuinely unrecognised falls back and says
- * so loudly, rather than being passed through to fail later. */
-function readEffort(name: string, fallback: Effort): Effort {
-  const raw = process.env[name];
-  if (raw == null || raw.trim() === "") return fallback;
-  const normalized = raw.trim().toLowerCase() as Effort;
-  if (EFFORTS.includes(normalized)) return normalized;
-  console.error(
-    `[worker] ${name}="${raw}" is not a valid effort (${EFFORTS.join(", ")}) - falling back to "${fallback}"`
-  );
-  return fallback;
-}
-
 const EFFORT = readEffort("MODEL_EFFORT", "high");
 
 // Effort for the pipeline's small EXTRACTION calls: read a search result
@@ -715,12 +689,19 @@ const TWO_PHASE_ENABLED = process.env.TWO_PHASE_GENERATION !== "0";
 // accommodation is fixed, the transport is committed. It is the most
 // constrained call in the pipeline and it sits on the critical path.
 //
-// So DAY_MODEL_EFFORT=medium is the narrowest available speed trade: it
-// leaves every real decision at full effort and only asks the writing-up
-// stage to think less hard about prose it has already been told the shape
-// of. Whether that is an acceptable trade is a judgement about the product,
-// which is why it is a dial and not a default.
-const DAY_EFFORT = readEffort("DAY_MODEL_EFFORT", EFFORT);
+// So the day calls cap at "medium": every real decision stays at full
+// effort and only the writing-up stage thinks less hard about prose it has
+// already been told the shape of.
+//
+// This used to default to MODEL_EFFORT and be described here as a dial
+// nobody had turned. It is now the default, because the measurements
+// arrived: a day call took 29.7s to produce ~1700 tokens of JSON, and the
+// stated promise for this product is a generation in 30 seconds or less.
+// A dial that would have met the promise and was left at the setting that
+// misses it is not a trade being deferred, it is the wrong setting shipped
+// with a note attached. DAY_MODEL_EFFORT=high restores the old behaviour
+// exactly, from the dashboard, with no deploy.
+const DAY_EFFORT = readEffort("DAY_MODEL_EFFORT", capEffort(EFFORT, "medium"));
 
 // Effort for the two halves of phase 1, separately. Both default to
 // MODEL_EFFORT, so neither changes anything until it is deliberately set.
@@ -749,13 +730,24 @@ const DAY_EFFORT = readEffort("DAY_MODEL_EFFORT", EFFORT);
 // covered downstream. The genuinely global constraint (no anchor repeated
 // across days) is small on a normal trip.
 //
-// It is a dial and not a lowered default because it is a product judgement,
-// not an engineering one, and because the honest answer to "how much does
-// medium cost the plan" is that it has not been measured yet. The
-// per-call token line in generatePhase1Half is what makes measuring it a
-// single free comparison rather than an argument.
+// So the plan caps at "medium" and the frame does not cap at all.
+//
+// Being straight about what that costs: this IS a reduction in how hard the
+// model thinks about which city gets which days and which venues anchor
+// them, and it has not been measured against a high-effort plan side by
+// side. What makes it the right default anyway is the shape of the two
+// risks. Too little reasoning here shows up as a duller choice of venue,
+// which Places verification, the duplicate-venue repair and the quality
+// gate all still inspect afterwards. Too much shows up as a 68.8-second
+// wait on a product that promises 30 seconds, which no downstream stage can
+// repair and every traveler sees.
+//
+// PLAN_MODEL_EFFORT=high restores the old behaviour exactly, from the
+// dashboard, with no deploy - and the per-call token line in
+// generatePhase1Half is what makes comparing the two a measurement rather
+// than an argument.
 const FRAME_EFFORT = readEffort("FRAME_MODEL_EFFORT", EFFORT);
-const PLAN_EFFORT = readEffort("PLAN_MODEL_EFFORT", EFFORT);
+const PLAN_EFFORT = readEffort("PLAN_MODEL_EFFORT", capEffort(EFFORT, "medium"));
 
 // Model used for the phase-2 day calls only. Phase 1 (every real decision:
 // budget, city order, which venues anchor which day) always stays on MODEL.
@@ -2278,6 +2270,11 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     }
   }
 
+  // Which configuration produced the numbers above. See JobTimings.efforts:
+  // the three stages no longer share one setting, each is overridable from
+  // the dashboard without a deploy, and a stage timing that does not say
+  // which effort it ran at cannot be compared to the next run's.
+  jobTimings.efforts = { frame: FRAME_EFFORT, plan: PLAN_EFFORT, day: DAY_EFFORT };
   jobTimings.lodgingPrefetchMs = timings.lodgingPrefetch;
   jobTimings.generateMs = timings.generate;
   jobTimings.repairsMs = timings.repairs;
