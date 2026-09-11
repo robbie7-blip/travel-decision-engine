@@ -1992,6 +1992,27 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         // third attempt coming.
         checkVenues(itinerary, { only: new Set(repaired), keepUnverified: true, geoCache })
       );
+      // How many replacements Places then could NOT confirm.
+      //
+      // This is the difference between two things the gate reports with the
+      // same words. "day 2 'Breakfast at Antico Caffe Sant'Eustachio' names
+      // no specific venue" can mean the model never set venue_name, or it
+      // can mean a repair DID name a real place and this second pass could
+      // not match it, so stripToUnverified nulled the name and left the
+      // title. On the 102.4s Rome run both Sant'Eustachio and Pizzarium
+      // Bonci read that way, with no Places outage in the log, and there
+      // was no way to tell which had happened from outside.
+      //
+      // The two have opposite fixes - one is a prompt problem, the other is
+      // a venue-matching problem - so they should not look identical.
+      const strippedAfterRepair = repaired.filter((item) => !item.venue_name).length;
+      if (strippedAfterRepair > 0) {
+        jobTimings.repairsStripped = strippedAfterRepair;
+        console.warn(
+          `[worker] ${strippedAfterRepair}/${repaired.length} repaired venue(s) could not be confirmed by ` +
+            `Places and were stripped to generic - the gate will report them as "names no specific venue"`
+        );
+      }
     }
 
     itinerary = checkFeasibility(itinerary);

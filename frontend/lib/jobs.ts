@@ -160,6 +160,17 @@ export interface JobTimings {
    * time being a guess. */
   planMs?: number;
   frameMs?: number;
+  /** Replacements the repair stage named that Places then could not
+   * confirm, so they were stripped to generic.
+   *
+   * The acceptance gate reports these with the same words it uses for an
+   * item the model never named at all - "names no specific venue" - and the
+   * two have opposite fixes: one is a prompt problem, the other is a
+   * venue-matching problem. On the 102.4s Rome run, "Breakfast at Antico
+   * Caffe Sant'Eustachio" and "Lunch at Pizzarium Bonci" both read that
+   * way, with no Places outage anywhere in the log, and nothing said which
+   * had happened. */
+  repairsStripped?: number;
   /** Silent retries, per stage, that each cost a whole extra model call.
    *
    * A malformed or unusable response is retried once (see withOneRetryOf),

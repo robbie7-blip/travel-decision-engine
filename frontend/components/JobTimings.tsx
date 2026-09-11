@@ -120,6 +120,16 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
               cost. A missing rate is the expensive one: it is what puts the
               frame on the critical path above, and the two used to be
               indistinguishable from here. */}
+          {/* Repairs that named a real place Places then could not confirm.
+              The gate reports these as "names no specific venue" - the same
+              words it uses for an item the model never named at all - and
+              the two have opposite fixes. */}
+          {timings.repairsStripped != null && timings.repairsStripped > 0 && (
+            <div style={{ color: "var(--unverified)", marginTop: 4 }}>
+              ⚠ {timings.repairsStripped} repaired venue(s) could not be confirmed and were stripped to
+              generic - those are the &ldquo;names no specific venue&rdquo; warnings, not a prompt miss
+            </div>
+          )}
           {/* Every silent retry, named. Each is a whole extra model call,
               and until now a retried stage just read as a slow one - the
               102.4s run showed "plan 68.8s, frame 31.6s" with no way to see
