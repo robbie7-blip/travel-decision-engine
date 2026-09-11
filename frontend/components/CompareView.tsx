@@ -95,7 +95,7 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
 
 function totalCost(itinerary: Itinerary): number {
   return (itinerary.days ?? []).reduce(
-    (sum, day) => sum + day.items.reduce((daySum, item) => daySum + (item.cost_estimate_eur || 0), 0),
+    (sum, day) => sum + (day.items ?? []).reduce((daySum, item) => daySum + (item.cost_estimate_eur || 0), 0),
     0
   );
 }

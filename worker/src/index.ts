@@ -49,6 +49,7 @@ import {
   summarizeQuality,
 } from "./engine/quality";
 import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
+import { assertUsableItinerary } from "./engine/shape";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -539,11 +540,21 @@ async function callModel(
   const text = textBlocks[textBlocks.length - 1]?.text ?? "";
 
   const jsonText = extractJson(text);
+  let parsed: unknown;
   try {
-    return JSON.parse(jsonText) as Itinerary;
+    parsed = JSON.parse(jsonText);
   } catch (e) {
     throw new ModelOutputError(`Model did not return valid JSON: ${(e as Error).message}`);
   }
+  // Re-thrown as ModelOutputError because that is the error
+  // withOneRetryOf retries - a malformed response now costs one extra call
+  // instead of the whole generation.
+  try {
+    assertUsableItinerary(parsed);
+  } catch (e) {
+    throw new ModelOutputError((e as Error).message);
+  }
+  return parsed;
 }
 
 /** Generic over the call's result type so the two-phase generator's skeleton

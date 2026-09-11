@@ -446,9 +446,18 @@ export function ItineraryResult({
             {/* One real photo of somewhere the day actually goes, before
                 the list. See DayPhoto: capped at one per day because this
                 is the only element on the page billed per view. */}
-            <DayPhoto items={day.items} />
+            {/* `?? []` on a field the schema marks required, deliberately.
+                `days`, `key_decisions` and `things_to_skip` are all guarded
+                here and `items` was not, so one day arriving without it
+                threw during render and blanked a finished, paid-for trip -
+                the same shape as the budget `reasoning` defect. The worker
+                now rejects that response and retries (see
+                assertUsableItinerary), which is the real fix; this is the
+                backstop for a trip already sitting in Redis from before
+                that check existed, where there is nothing left to retry. */}
+            <DayPhoto items={day.items ?? []} />
 
-            {day.items.map((item, i) => {
+            {(day.items ?? []).map((item, i) => {
               const key = itemKey(day.day, i, item);
               const expanded = expandedItems.has(key);
               return (
@@ -633,7 +642,7 @@ export function ItineraryResult({
                 question you have once you have read what the day contains.
                 Renders nothing when fewer than two stops carry
                 coordinates. */}
-            <DayMap items={day.items} t={t} />
+            <DayMap items={day.items ?? []} t={t} />
           </div>
         ))}
 

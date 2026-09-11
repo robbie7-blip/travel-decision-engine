@@ -63,6 +63,16 @@ jobs:
       # to let a half-formed plan through. Every one of them passed the six
       # suites that existed before it.
       - run: npm run test:generation
+      # The shape gate on the single-call fallback and every refinement.
+      # Those two paths did `JSON.parse(text) as Itinerary` and returned it -
+      # a type assertion, not a check - so a response that parsed but was
+      # missing `days`, or carried a day without an `items` array, reached
+      # normalizeLodgingPrices, threw inside processJob, and discarded a
+      # FULLY GENERATED, fully paid itinerary as "Unexpected error". Nothing
+      # detected it, so the retry wrapping both call sites never fired
+      # either. Verified end to end: without this gate the same response
+      # loses the generation, with it the retry succeeds.
+      - run: npm run test:shape
 
   frontend:
     name: frontend - typecheck + build

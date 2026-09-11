@@ -126,14 +126,17 @@ function buildEvent(item: ItineraryItem, dayDate: string, uid: string): string |
 export function buildItineraryIcs(itinerary: Itinerary, jobId: string): string {
   const events: string[] = [];
   for (const day of itinerary.days ?? []) {
-    day.items.forEach((item, i) => {
+    // `?? []` for the same reason as the trip page: `days` is guarded
+    // here and `items` was not, so a day missing it threw and the calendar
+    // download failed on an itinerary that renders fine.
+    (day.items ?? []).forEach((item, i) => {
       const event = buildEvent(item, day.date, `${jobId}-${day.day}-${i}`);
       if (event) events.push(event);
     });
   }
 
   const locations = Array.from(
-    new Set((itinerary.days ?? []).flatMap((day) => day.items.map((item) => item.location).filter(Boolean)))
+    new Set((itinerary.days ?? []).flatMap((day) => (day.items ?? []).map((item) => item.location).filter(Boolean)))
   ).slice(0, 5);
   const calName = locations.length ? locations.join(", ") : "decide itinerary";
 

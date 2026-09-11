@@ -25,7 +25,10 @@ export function computeTrustScore(itinerary: Itinerary): TrustScore {
   let groundedCount = 0;
   let totalCount = 0;
   for (const day of itinerary.days ?? []) {
-    for (const item of day.items) {
+    // `?? []` like every other reader of this field - see the note on the
+    // trip page. This one runs BEFORE any rendering, so a day without an
+    // items array took the page down before a single row was drawn.
+    for (const item of day.items ?? []) {
       totalCount++;
       const searchGrounded = (item.confidence_tier ?? "inferred") !== "inferred";
       // A confirmed Places match - NOT merely the presence of a rating.
