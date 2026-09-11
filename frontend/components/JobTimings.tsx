@@ -76,7 +76,16 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
             generation {secs(timings.totalMs)}
           </div>
           <div>
-            accommodation lookup {secs(timings.lodgingPrefetchMs)} · generate {secs(timings.generateMs)} · verify{" "}
+            accommodation lookup{" "}
+            {/* A dash here read as "broken" rather than "we stopped waiting":
+                when the wait is abandoned the lookup is still running when
+                the job record is written, so its duration genuinely is not
+                known - and that is the one line a reader checks first after
+                a slow generation. */}
+            {timings.lodgingPrefetchMs == null && timings.accommodationWaitAbandoned
+              ? "(abandoned)"
+              : secs(timings.lodgingPrefetchMs)}{" "}
+            · generate {secs(timings.generateMs)} · verify{" "}
             {secs(timings.venuesAndFlightsMs)} · repairs {secs(timings.repairsMs)} · re-verify{" "}
             {secs(timings.verifyRepairsMs)}
           </div>
