@@ -129,6 +129,23 @@ jobs:
       # itinerary as "Unexpected error". Reverting the guard makes this
       # suite report [999,999] across a two-city trip plus two throws.
       - run: npm run test:accommodation-pricing
+      # How a paid call is bounded and how it reports failing. The
+      # accommodation lookup ran under the client-wide 120-second ceiling -
+      # a ceiling sized for the calls the itinerary cannot be produced
+      # without - and its retry carried no allowance at all, so a slow
+      # attempt plus a slow retry simply added up: 30.9 seconds spent on one
+      # real generation for no nightly price. The failure was logged as a
+      # STACK, which names the line the call was made from (never the
+      # question) and cannot tell a 429 from a refused request from a
+      # timeout - three different fixes, and choosing between them cost
+      # another paid generation. Two cases here are the expensive ones: a
+      # retry must get only the time that is LEFT, and a request the API
+      # refuses outright (the worker can be pointed at a model that rejects
+      # output_config.effort) must not be retried into a second guaranteed
+      # 400. Errors are built by the SDK's own factory, because the SDK
+      # leaves `name` at "Error" on every subclass and a hand-faked error
+      # made this suite pass against code reading the wrong field.
+      - run: npm run test:call-budget
 
   frontend:
     name: frontend - typecheck + build

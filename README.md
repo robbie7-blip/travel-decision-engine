@@ -383,8 +383,12 @@ first before tuning anything here.
 | `MODEL_EFFORT` | `high` | Reasoning effort on every model call. The single largest quality knob; was pinned to `low` purely to make generation fast. `low` restores that. |
 | `TWO_PHASE_GENERATION` | on | Set `0` to force the original single-call path |
 | `DAY_MODEL` | same as `MODEL` | Model for phase-2 day calls only; a faster one materially shortens phase 2 at some cost to prose polish. Phase 1 (all real decisions) always stays on `MODEL` |
-| `MAX_PARALLEL_DAYS` | `6` | Cap on concurrent day calls, so a long trip plus comparison mode can't trip provider rate limits |
+| `MAX_PARALLEL_DAYS` | `16` | Cap on concurrent day calls, so a long trip plus comparison mode can't trip provider rate limits |
 | `WORKER_CONCURRENCY` | `4` | Jobs handled at once by one worker process |
+| `LODGING_GRACE_MS` | `3000` | How long phase 2 waits for the live accommodation lookup *after* the trip frame's own estimate is already in hand. Bounds the WAIT, not the lookup |
+| `LODGING_ATTEMPT_MS` | `18000` | Cap on one accommodation lookup attempt. Deliberately far below the client-wide 120s: that ceiling is for calls the itinerary can't be produced without, and this isn't one - it degrades to a generic estimate |
+| `LODGING_BUDGET_MS` | `40000` | Cap on one city's whole lookup, both halves' first attempt *and* any retry together. Before this the retry had no allowance and a slow attempt plus a slow retry simply added up |
+| `LODGING_MIN_ATTEMPT_MS` | `6000` | Below this much budget left, an attempt isn't started at all. A paid web-search call with four seconds to live bills and answers nothing |
 
 The introductory Sonnet 5 rates ($2/$10 per MTok) above are in effect
 through 2026-08-31; after that, either bump the two override env vars or

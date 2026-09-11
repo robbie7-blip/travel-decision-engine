@@ -19,7 +19,8 @@
     "test:concurrency": "tsx src/engine/concurrency.test.ts",
     "test:venues": "tsx src/engine/venues.test.ts",
     "test:accommodation-cache": "tsx src/accommodationCache.test.ts",
-    "test:accommodation-pricing": "tsx src/accommodationPricing.test.ts"
+    "test:accommodation-pricing": "tsx src/accommodationPricing.test.ts",
+    "test:call-budget": "tsx src/engine/callBudget.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

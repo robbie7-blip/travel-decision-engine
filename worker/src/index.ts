@@ -53,6 +53,7 @@ import { assertUsableItinerary } from "./engine/shape";
 import { modelSupportsEffort } from "./engine/modelCaps";
 import { waitForLiveOrFallback } from "./engine/raceFallback";
 import { runWithLimit } from "./engine/concurrency";
+import { describeModelError, startBudget } from "./engine/callBudget";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -382,16 +383,44 @@ async function prefetchLodging(
   city: string,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<LodgingLookupResult | null> {
-  async function ask<T>(system: string, maxUses: number): Promise<T | null> {
+  // One allowance for this city, covering both halves' attempts and any
+  // retry. Each attempt gets the smaller of LODGING_ATTEMPT_MS and whatever
+  // is left, and an attempt with too little left is not made at all.
+  const budget = startBudget(LODGING_BUDGET_MS);
+
+  /** The outcome of one attempt. `retryWorthwhile` is false when the API
+   * refused the request itself (a bad model, an unsupported field, a missing
+   * key) - repeating it would fail identically, at the same price, after the
+   * same wait. */
+  interface AskOutcome<T> {
+    value: T | null;
+    retryWorthwhile: boolean;
+  }
+
+  async function ask<T>(system: string, maxUses: number, label: string): Promise<AskOutcome<T>> {
+    const timeoutMs = budget.attemptTimeoutMs(LODGING_ATTEMPT_MS, LODGING_MIN_ATTEMPT_MS);
+    if (timeoutMs === null) {
+      console.warn(
+        `[worker] lodging ${label} for ${city} skipped - ${budget.elapsedMs()}ms of the ` +
+          `${LODGING_BUDGET_MS}ms budget already spent, not enough left to finish a search`
+      );
+      return { value: null, retryWorthwhile: false };
+    }
     try {
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: LODGING_MAX_TOKENS,
-        system,
-        output_config: { effort: EXTRACT_EFFORT },
-        tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: maxUses }],
-        messages: [{ role: "user", content: `City: ${city}` }],
-      });
+      const response = await client.messages.create(
+        {
+          model: MODEL,
+          max_tokens: LODGING_MAX_TOKENS,
+          system,
+          output_config: { effort: EXTRACT_EFFORT },
+          tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: maxUses }],
+          messages: [{ role: "user", content: `City: ${city}` }],
+        },
+        // Per-request, deliberately: the client-wide 120s is for the calls
+        // the itinerary cannot be produced without, and this is not one of
+        // them.
+        { timeout: timeoutMs }
+      );
       onUsage?.(response.usage);
       // Named explicitly rather than left to surface as a JSON parse error
       // below: the two have identical symptoms (null result, generic
@@ -399,19 +428,30 @@ async function prefetchLodging(
       // for the other is what hid a silently-degraded lodging lookup.
       if (response.stop_reason === "max_tokens") {
         console.error(
-          `[worker] lodging lookup for ${city} hit the ${LODGING_MAX_TOKENS}-token cap before emitting JSON`
+          `[worker] lodging ${label} for ${city} hit the ${LODGING_MAX_TOKENS}-token cap before emitting JSON`
         );
-        return null;
+        return { value: null, retryWorthwhile: true };
       }
       const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
       const text = textBlocks[textBlocks.length - 1]?.text ?? "";
-      return JSON.parse(extractJson(text)) as T;
+      return { value: JSON.parse(extractJson(text)) as T, retryWorthwhile: true };
     } catch (e) {
       // Either half failing degrades the result rather than the run: no rate
       // means no cached lodging fact for this city, no property means a
       // generic accommodation line. Never fails the generation.
-      console.error(`[worker] lodging lookup failed for ${city}:`, e);
-      return null;
+      //
+      // Described rather than dumped. This line used to be
+      // `console.error(msg, e)`, which printed a stack - and a stack answers
+      // "where was the call made from", which was never the question. A 429,
+      // a 400, our own deadline firing and a malformed response have four
+      // different fixes and were indistinguishable here, which is why one
+      // real failed lookup cost a second paid generation to diagnose.
+      const described = describeModelError(e);
+      console.error(
+        `[worker] lodging ${label} for ${city} failed after ${budget.elapsedMs()}ms ` +
+          `(attempt cap ${timeoutMs}ms): ${described.line}`
+      );
+      return { value: null, retryWorthwhile: described.retryable };
     }
   }
 
@@ -435,10 +475,15 @@ async function prefetchLodging(
     empty: (v: T | null) => boolean,
     label: string
   ): Promise<T | null> {
-    const first = await ask<T>(system, maxUses);
-    if (!empty(first)) return first;
+    const first = await ask<T>(system, maxUses, label);
+    if (!empty(first.value)) return first.value;
+    // The retry is worth a few seconds of a lookup that is already hidden -
+    // but only when a second attempt is a real second attempt. A refused
+    // request retried is a guaranteed second failure, and the shared budget
+    // above is what stops "retry once" from meaning "wait twice as long".
+    if (!first.retryWorthwhile) return first.value;
     console.warn(`[worker] lodging ${label} for ${city} came back empty - retrying once`);
-    return await ask<T>(system, maxUses);
+    return (await ask<T>(system, maxUses, label)).value;
   }
 
   const [rate, property] = await Promise.all([
@@ -759,6 +804,42 @@ const MAX_PARALLEL_DAYS = readPositiveInt("MAX_PARALLEL_DAYS", 16);
  * come back empty anyway - which on the run this was written for, after a
  * retry, is exactly what it did. */
 const LODGING_GRACE_MS = readPositiveInt("LODGING_GRACE_MS", 3000);
+
+/** How long ONE accommodation lookup attempt may run.
+ *
+ * LODGING_GRACE_MS above bounds how long the trip WAITS; it does nothing
+ * about how long the lookup itself runs, and until now nothing did. The
+ * lookup inherited the client-wide CALL_TIMEOUT_MS of 120 seconds, which is
+ * the right ceiling for a call the generation cannot proceed without and
+ * plainly wrong for one whose documented failure mode is "shrug, use the
+ * frame's estimate". A lodging call still running at 18 seconds is not
+ * slow-but-working; it is a search that has lost its way, and the useful
+ * thing to do with it is stop.
+ *
+ * Also: every one of these is billed. An abandoned lookup that would have
+ * run for two minutes is two minutes of tokens bought for a figure nobody
+ * will wait for, on a run the traveler already has their itinerary from. */
+const LODGING_ATTEMPT_MS = readPositiveInt("LODGING_ATTEMPT_MS", 18_000);
+
+/** How long the whole lookup for one city may run - both halves' first
+ * attempt AND any retry, together.
+ *
+ * The retry had no budget of its own, so a slow attempt followed by a slow
+ * retry simply added: 30.9 seconds on the run this was written for, for no
+ * nightly price at all. The pair is now bounded end to end, and an attempt
+ * is refused outright rather than started with too little time left to
+ * finish - a paid call that cannot complete is worse than no call.
+ *
+ * 40 seconds sits above one healthy attempt plus a retry and below anything
+ * that could still be running when the itinerary is finished. */
+const LODGING_BUDGET_MS = readPositiveInt("LODGING_BUDGET_MS", 40_000);
+
+/** Below this much remaining budget, don't start another lookup attempt.
+ *
+ * A web-search lookup needs several seconds simply to make its searches, so
+ * anything under this is time enough to be billed and not time enough to
+ * answer. */
+const LODGING_MIN_ATTEMPT_MS = readPositiveInt("LODGING_MIN_ATTEMPT_MS", 6000);
 
 // Headroom, not a target - you are billed for tokens generated, never for
 // the cap. These are sized for the WORST case rather than the typical one
