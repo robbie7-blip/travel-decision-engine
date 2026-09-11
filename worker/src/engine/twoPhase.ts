@@ -609,6 +609,103 @@ export function isUsableFrame(frame: unknown): frame is TripFrame {
   );
 }
 
+/** Fills in the day-plan fields the BRIEF already determines, before the
+ * validator gets to reject the whole plan over one of them.
+ *
+ * isUsablePlan is a wall: one day missing one field and the entire plan is
+ * thrown away and regenerated from scratch. That is the right call for a
+ * field only the model can supply - a multi-city trip's `city` cannot be
+ * guessed - and completely the wrong call for a field that is arithmetic on
+ * the brief. On the last measured generation the plan call took 68.8
+ * seconds, which is 67% of the whole generation and about twice what one
+ * plan call costs; a silent rejection-and-regeneration is one of the two
+ * shapes that produces.
+ *
+ * And one of these was a genuine contradiction rather than bad luck. The
+ * plan prompt says, in as many words, that "genuinely generic activities
+ * with no business to name (a walk through a neighborhood, a rest at the
+ * accommodation) need no anchor" - so a day with no `anchors` key is the
+ * model doing what it was told, and the validator rejected the whole trip
+ * plan for it. A day with no anchors is `anchors: []`, which is exactly
+ * what the day call would have been handed anyway.
+ *
+ * Deliberately narrow. It fills only what the brief fixes and repairs only
+ * shapes that have one obvious reading; anything else is left exactly as it
+ * came back, for isUsablePlan to reject and the retry to have another go
+ * at. It never invents a city on a multi-city trip, never moves a day to a
+ * different date, and never touches `anchors`, `theme` or `meals` content -
+ * those are the model's judgement and a wrong guess here would be a silent
+ * quality loss, which is worse than the retry it saves. */
+export function normalizePlan(
+  plan: unknown,
+  brief: Pick<TripBriefInput, "destinations" | "start_date" | "needs_lodging">
+): unknown {
+  if (!plan || typeof plan !== "object") return plan;
+  const p = plan as { days?: unknown };
+  if (!Array.isArray(p.days) || p.days.length === 0) return plan;
+
+  const days = p.days;
+  const onlyCity = brief.destinations.length === 1 ? brief.destinations[0] : null;
+  const lastIndex = days.length - 1;
+
+  days.forEach((raw, index) => {
+    if (!raw || typeof raw !== "object") return;
+    const d = raw as Record<string, unknown>;
+
+    // A day number the model wrote as a string, or left out. Position in the
+    // array is the authority either way - index.ts overwrites day and date
+    // from the skeleton before the day is merged, so this only has to be
+    // good enough to get past the validator and into that overwrite.
+    if (typeof d.day !== "number" || !Number.isFinite(d.day)) {
+      const parsed = typeof d.day === "string" ? Number(d.day.trim()) : Number.NaN;
+      d.day = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : index + 1;
+    }
+
+    // The date is pure arithmetic: day 1 is the start date and every day
+    // after it is one calendar day later. Only filled when it is missing or
+    // unparseable - a date the model wrote is never moved, because a plan
+    // that genuinely disagrees about dates is a plan worth regenerating.
+    if (typeof d.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
+      const derived = addCalendarDays(brief.start_date, index);
+      if (derived) d.date = derived;
+    }
+
+    // The prompt explicitly allows a day with nothing worth naming. An
+    // absent list means that day has no anchors, not that the plan is
+    // broken.
+    if (!Array.isArray(d.anchors)) d.anchors = [];
+
+    // Single-destination trips only. On a multi-city trip the city is the
+    // single most consequential field in the plan - it decides which city's
+    // accommodation, prices and venues a day is written against - and
+    // there is no honest way to guess it.
+    if (typeof d.city !== "string" && onlyCity !== null) d.city = onlyCity;
+
+    // The prompt's own rule, applied: every day is a night at the
+    // accommodation except the departure day, and no day is when lodging
+    // isn't wanted at all. A missing include_lodging on every day used to
+    // mean no city needed a bed, so a multi-night trip shipped with no
+    // accommodation and no accommodation cost.
+    if (typeof d.include_lodging !== "boolean") {
+      d.include_lodging = brief.needs_lodging === false ? false : index !== lastIndex;
+    }
+  });
+
+  return plan;
+}
+
+/** `start` plus `offset` days, as YYYY-MM-DD, or null if `start` isn't a
+ * date. UTC throughout, so it cannot shift across a DST boundary. */
+function addCalendarDays(start: string, offset: number): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start ?? "");
+  if (!m) return null;
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (!Number.isFinite(t)) return null;
+  const d = new Date(t + offset * 86_400_000);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
 export function isUsablePlan(plan: unknown): plan is TripPlan {
   if (!plan || typeof plan !== "object") return false;
   const p = plan as Partial<TripPlan>;

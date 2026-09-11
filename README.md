@@ -381,6 +381,8 @@ first before tuning anything here.
 | Env var | Default | Meaning |
 |---|---|---|
 | `MODEL_EFFORT` | `high` | Reasoning effort on every model call. The single largest quality knob; was pinned to `low` purely to make generation fast. `low` restores that. |
+| `PLAN_MODEL_EFFORT` | same as `MODEL_EFFORT` | Effort for phase 1B (the day plan) only. **The narrowest latency lever left on the critical path**: the plan was measured at 68.8s of a 102.4s generation, and every day call waits on it. What it decides is structural (which city gets which days, a theme, 2-4 anchors, which meals, whether a night is spent) and the anchors are recall rather than multi-step reasoning - and each one is checked against Google Places afterwards and repaired if it doesn't exist. `medium` is the trade worth measuring first. |
+| `FRAME_MODEL_EFFORT` | same as `MODEL_EFFORT` | Effort for phase 1A (the trip frame) only. Should stay high: it decides whether the stated budget is honest - the one judgement where being wrong misleads a traveller about money - and it costs no wall clock, because the day calls run alongside it. |
 | `TWO_PHASE_GENERATION` | on | Set `0` to force the original single-call path |
 | `DAY_MODEL` | same as `MODEL` | Model for phase-2 day calls only; a faster one materially shortens phase 2 at some cost to prose polish. Phase 1 (all real decisions) always stays on `MODEL` |
 | `MAX_PARALLEL_DAYS` | `16` | Cap on concurrent day calls, so a long trip plus comparison mode can't trip provider rate limits |

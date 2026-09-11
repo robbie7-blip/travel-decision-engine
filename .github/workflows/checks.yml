@@ -146,6 +146,21 @@ jobs:
       # leaves `name` at "Error" on every subclass and a hand-faked error
       # made this suite pass against code reading the wrong field.
       - run: npm run test:call-budget
+      # The day plan - the one call every other call waits for. Measured at
+      # 68.8s of a 102.4s generation, 67% of it, while its concurrent
+      # sibling (the trip frame) cost the traveler nothing because the day
+      # calls run alongside it. So anything that makes the PLAN happen twice
+      # doubles the visible length of the product, and two things could.
+      # isUsablePlan is a wall: one day missing one field discarded the
+      # whole plan and regenerated it, including for fields that are
+      # arithmetic on the brief - and including a flat contradiction, since
+      # the prompt tells the model a generic activity "needs no anchor" and
+      # the validator then required the key. And a truncated half was
+      # re-sent with the IDENTICAL cap: a guaranteed second truncation,
+      # after which the two-phase path was abandoned for one serial call -
+      # three paid calls and the two-minute path. Reverting the repair makes
+      # 20 cases here red; reverting the escalation makes 4.
+      - run: npm run test:plan-repair
 
   frontend:
     name: frontend - typecheck + build

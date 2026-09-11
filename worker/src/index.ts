@@ -32,6 +32,7 @@ import {
   applyVerifiedAccommodation,
   isUsableFrame,
   isUsablePlan,
+  normalizePlan,
   type MealSlot,
   type SkeletonDay,
   type TripFrame,
@@ -721,6 +722,41 @@ const TWO_PHASE_ENABLED = process.env.TWO_PHASE_GENERATION !== "0";
 // which is why it is a dial and not a default.
 const DAY_EFFORT = readEffort("DAY_MODEL_EFFORT", EFFORT);
 
+// Effort for the two halves of phase 1, separately. Both default to
+// MODEL_EFFORT, so neither changes anything until it is deliberately set.
+//
+// These exist because the two halves are NOT equally expensive, and the
+// measured numbers say so: on the last generation the plan took 68.8s of a
+// 102s total - 67% of it - while the frame ran alongside the day calls and
+// cost the traveler nothing at all. The frame finishing late is free by
+// construction (see the bounded wait at LODGING_GRACE_MS and the "frame ran
+// alongside days" path); the plan finishing late is the generation finishing
+// late, because every day call is waiting on it.
+//
+// So one dial per half, because the right setting is different for each:
+//
+// FRAME_MODEL_EFFORT should stay high. That call decides whether the stated
+// budget is honest, which is the one judgement in the whole pipeline where
+// being wrong misleads a traveler about money, and it costs no wall clock.
+//
+// PLAN_MODEL_EFFORT is the narrowest real latency lever left on the critical
+// path. What the plan decides is structural rather than deliberative: which
+// city gets which days, a theme, 2-4 named anchors, which meals the day
+// owes, whether a night is spent. The anchors are RECALL ("name a good
+// restaurant in Rome"), not multi-step reasoning, and every one of them is
+// checked against Google Places afterwards and repaired if it doesn't exist
+// - so the failure mode extra deliberation would protect against is already
+// covered downstream. The genuinely global constraint (no anchor repeated
+// across days) is small on a normal trip.
+//
+// It is a dial and not a lowered default because it is a product judgement,
+// not an engineering one, and because the honest answer to "how much does
+// medium cost the plan" is that it has not been measured yet. The
+// per-call token line in generatePhase1Half is what makes measuring it a
+// single free comparison rather than an argument.
+const FRAME_EFFORT = readEffort("FRAME_MODEL_EFFORT", EFFORT);
+const PLAN_EFFORT = readEffort("PLAN_MODEL_EFFORT", EFFORT);
+
 // Model used for the phase-2 day calls only. Phase 1 (every real decision:
 // budget, city order, which venues anchor which day) always stays on MODEL.
 // Phase 2 is comparatively mechanical - expand an already-decided day into
@@ -1068,46 +1104,104 @@ async function repairDuplicateVenues(
 /** One half of phase 1. Both halves are the same call shape - a cached
  * system prompt, no tools, JSON out - so the only things that vary are
  * which prompt, which validator, and what to call it in an error. */
-async function generatePhase1Half<T>(
+export async function generatePhase1Half<T>(
   client: Anthropic,
   label: string,
   system: string,
   userPrompt: string,
   isUsable: (v: unknown) => v is T,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage) => void,
+  opts: {
+    /** Reasoning effort for this half specifically. The frame and the plan
+     * make different kinds of decision and only one of them is on the
+     * critical path, so they are dialled separately - see PLAN_EFFORT. */
+     effort?: Effort;
+    /** Deterministic repair applied between parsing and validating. */
+    normalize?: (v: unknown) => unknown;
+  } = {}
 ): Promise<T> {
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: SKELETON_MAX_TOKENS,
-    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-    output_config: { effort: EFFORT },
-    messages: [{ role: "user", content: userPrompt }],
-  });
-  onUsage?.(response.usage);
+  const effort = opts.effort ?? EFFORT;
 
-  if (response.stop_reason === "refusal") {
-    throw new ModelOutputError("The model declined to plan this trip.");
-  }
-  // See the day-call equivalent above. This one matters more: a truncated
-  // phase 1 costs a retry AND then a full single-call regeneration.
-  if (response.stop_reason === "max_tokens") {
-    throw new ModelOutputError(
-      `The ${label} hit the ${SKELETON_MAX_TOKENS}-token cap and was cut off mid-JSON - raise SKELETON_MAX_TOKENS.`
+  // Two attempts at most, and the SECOND one is different from the first:
+  // it raises the cap.
+  //
+  // Truncation used to throw straight into withOneRetryOf, which re-sent the
+  // identical request with the identical cap - a guaranteed second
+  // truncation, after which the whole two-phase path was abandoned and the
+  // itinerary regenerated in one serial call. Three paid calls and the
+  // two-minute path, for a failure whose fix ("use a bigger cap") was
+  // already written in the error message nobody read. Escalating here turns
+  // that into one wasted call and a likely success.
+  const caps = [SKELETON_MAX_TOKENS, SKELETON_MAX_TOKENS * 2];
+  for (let attempt = 0; attempt < caps.length; attempt++) {
+    const maxTokens = caps[attempt];
+    const startedAt = Date.now();
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: maxTokens,
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      output_config: { effort },
+      messages: [{ role: "user", content: userPrompt }],
+    });
+    onUsage?.(response.usage);
+    const elapsedMs = Date.now() - startedAt;
+
+    // What the call actually spent, per call, on the record.
+    //
+    // This exists because the plan call took 68.8 seconds on a 102-second
+    // generation and there was no way to tell from the outside whether that
+    // was one slow call or two, or thinking or waiting. Both readings were
+    // argued from the same log and neither could be settled without paying
+    // for another generation. output_tokens INCLUDES reasoning tokens, so
+    // tokens-per-second here is the number that separates "this call
+    // generated a lot" from "this call sat in a queue", and comparing it
+    // across the halves and the day calls says which stage is actually
+    // expensive rather than merely last to finish.
+    const out = response.usage.output_tokens;
+    const perSecond = elapsedMs > 0 ? Math.round((out / elapsedMs) * 1000) : 0;
+    console.log(
+      `[worker] ${label}: ${elapsedMs}ms, ${out} output tokens (${perSecond}/s), ` +
+        `effort=${effort}, cap=${maxTokens}, stop=${response.stop_reason}`
     );
-  }
 
-  const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-  const text = textBlocks[textBlocks.length - 1]?.text ?? "";
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(extractJson(text));
-  } catch (e) {
-    throw new ModelOutputError(`The ${label} was not valid JSON: ${(e as Error).message}`);
+    if (response.stop_reason === "refusal") {
+      throw new ModelOutputError("The model declined to plan this trip.");
+    }
+    if (response.stop_reason === "max_tokens") {
+      const next = caps[attempt + 1];
+      if (next !== undefined) {
+        console.warn(
+          `[worker] the ${label} hit its ${maxTokens}-token cap and was cut off mid-JSON - ` +
+            `retrying once at ${next} rather than re-sending the same doomed request`
+        );
+        continue;
+      }
+      throw new ModelOutputError(
+        `The ${label} hit the ${maxTokens}-token cap and was cut off mid-JSON - raise SKELETON_MAX_TOKENS.`
+      );
+    }
+
+    const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
+    const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(extractJson(text));
+    } catch (e) {
+      throw new ModelOutputError(`The ${label} was not valid JSON: ${(e as Error).message}`);
+    }
+    // Fill in what the brief already determines BEFORE the validator gets to
+    // reject the whole plan over one defaultable field. A rejection here
+    // costs a full regeneration of this half, which on the plan is the
+    // single most expensive thing in the pipeline.
+    parsed = opts.normalize ? opts.normalize(parsed) : parsed;
+    if (!isUsable(parsed)) {
+      throw new ModelOutputError(`The ${label} was missing required fields.`);
+    }
+    return parsed;
   }
-  if (!isUsable(parsed)) {
-    throw new ModelOutputError(`The ${label} was missing required fields.`);
-  }
-  return parsed;
+  // Unreachable: the loop either returns, throws, or escalates into its last
+  // iteration, which cannot `continue`.
+  throw new ModelOutputError(`The ${label} could not be produced.`);
 }
 
 const MEAL_REPAIR_SYSTEM = `You are filling ONE missing meal in a travel itinerary. The day was planned to \
@@ -1339,7 +1433,8 @@ function startPhase1(
           getFrameSystemPrompt(),
           buildFramePrompt(brief, cachedLodgingFacts),
           isUsableFrame,
-          onUsage
+          onUsage,
+          { effort: FRAME_EFFORT }
         ),
       "trip frame"
       )
@@ -1355,7 +1450,8 @@ function startPhase1(
           getPlanSystemPrompt(),
           buildPlanPrompt(brief),
           isUsablePlan,
-          onUsage
+          onUsage,
+          { effort: PLAN_EFFORT, normalize: (v) => normalizePlan(v, brief) }
         ),
       "day plan"
       )
