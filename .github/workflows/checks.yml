@@ -109,6 +109,16 @@ jobs:
       # suite report every item deleted - a Places outage emptying whole
       # trips.
       - run: npm run test:venues
+      # The accommodation cache - the highest-leverage write in the
+      # pipeline. What it stores is handed to the next ~20 hours of
+      # generations for that city as fact, with "do not perform a new
+      # accommodation search". It had no test, and two fixes lived here
+      # unguarded: no price check at all (a bed shipping at 0 was cached, so
+      # the trip's largest line was priced at zero and the search that would
+      # have corrected it was suppressed), and a write that REPLACED rather
+      # than merged, turning a named property into an unnamed one. Reverting
+      # either makes this suite red.
+      - run: npm run test:accommodation-cache
 
   frontend:
     name: frontend - typecheck + build
@@ -191,6 +201,15 @@ jobs:
       # NaN, which compares false against everything and stops a limit
       # limiting. Neither had an error path.
       - run: npm run test:env-number
+      # The link boundary on the ITINERARY page, as distinct from Ask a
+      # Local. source_urls is a field the MODEL fills with URLs directly,
+      # and the page rendered it as href={url} with no scheme check, while
+      # lib/linkify.ts enforced http/https a few files away. A browser
+      # executes href="javascript:..." on click and the brief's free-text
+      # fields are traveller-supplied. Ask a Local is protected by its
+      # tokenizer (which only matches https?:// or www.), so this is the
+      # suite that goes red when the scheme check is removed.
+      - run: npm run test:itinerary-links
       # Catches what typecheck alone misses - a server component importing
       # something client-only, a bad route export, a failed page render.
       - run: npm run build

@@ -61,7 +61,21 @@ function trimUrlTail(raw: string): string {
 /** A real, absolute http(s) URL, or null. Parsing rather than
  * pattern-matching: URL() is the thing that actually decides what a
  * browser will do with this string. */
-function safeHref(raw: string): string | null {
+/** The one place a URL becomes an href.
+ *
+ * Exported because the itinerary page needs exactly this and had nothing:
+ * `source_urls` is written DIRECTLY BY THE MODEL (see the field comment in
+ * types.ts - "the model writes the real URL(s) it used directly into this
+ * field") and was rendered as `<a href={url}>` with no scheme check at all,
+ * while this module enforced http/https for Ask a Local answers a few files
+ * away. React escapes attribute values, so that is not classic XSS - but a
+ * browser still EXECUTES `href="javascript:..."` on click, and the brief's
+ * free-text fields are traveller-supplied, so a prompt injection aiming at
+ * that field had a clickable path.
+ *
+ * Returns null for anything that is not an http/https URL with a
+ * dot-bearing hostname; callers render no link rather than an unsafe one. */
+export function safeHref(raw: string): string | null {
   const candidate = raw.startsWith("www.") ? `https://${raw}` : raw;
   try {
     const url = new URL(candidate);

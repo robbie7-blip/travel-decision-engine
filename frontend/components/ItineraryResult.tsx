@@ -13,6 +13,7 @@ import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
 import { formatMoney, type Currency, type FxRates } from "@/lib/currency";
 import { hoursLineFor, splitIntoSentences } from "@/lib/resultFormat";
+import { safeHref } from "@/lib/linkify";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
 import type { GooglePriceLevel, Itinerary, ItineraryItem, Language } from "@/lib/types";
@@ -165,6 +166,14 @@ function itemKey(day: number, index: number, item: ItineraryItem): string {
  * always-visible source-links row under every grounded item. */
 function ItemEvidence({ item, t }: { item: ItineraryItem; t: Dictionary }) {
   const tier = item.confidence_tier ?? "inferred";
+  // source_urls is written directly by the model (see types.ts), and this
+  // was `href={url}` with no scheme check while lib/linkify.ts enforced
+  // http/https for Ask a Local answers a few files away. A browser executes
+  // href="javascript:..." on click, and the brief's free-text fields are
+  // traveller-supplied. Anything safeHref rejects renders as no link at all.
+  const sourceLinks = (item.source_urls ?? [])
+    .map((url) => (typeof url === "string" ? safeHref(url) : null))
+    .filter((href): href is string => href !== null);
   return (
     <div
       style={{
@@ -179,18 +188,18 @@ function ItemEvidence({ item, t }: { item: ItineraryItem; t: Dictionary }) {
       }}
     >
       <div>{t.result.tierExplainer[tier]}</div>
-      {item.source_urls && item.source_urls.length > 0 && (
+      {sourceLinks.length > 0 && (
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
-          {item.source_urls.map((url, si) => (
+          {sourceLinks.map((href, si) => (
             <a
-              key={si}
-              href={url}
+              key={href}
+              href={href}
               target="_blank"
               rel="noopener noreferrer"
               className="font-ui"
               style={{ fontSize: 11, color: "var(--grounded)", textDecoration: "underline" }}
             >
-              {item.source_urls!.length > 1 ? `${t.result.source} ${si + 1}` : t.result.source} ↗
+              {sourceLinks.length > 1 ? `${t.result.source} ${si + 1}` : t.result.source} ↗
             </a>
           ))}
           {item.source_agreement === "disagree" && (
@@ -498,7 +507,7 @@ export function ItineraryResult({
                           // live-checked fare and marks it "grounded" when it succeeds, in which
                           // case the real number is shown below like any other grounded price.
                           <a
-                            href={item.flight_search_url}
+                            href={safeHref(item.flight_search_url ?? "") ?? undefined}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ color: "var(--grounded)", textDecoration: "underline" }}
@@ -584,9 +593,9 @@ export function ItineraryResult({
                         })()}
                       </div>
                     )}
-                    {item.google_maps_url && item.google_business_status !== "closed_permanently" && (
+                    {safeHref(item.google_maps_url ?? "") && item.google_business_status !== "closed_permanently" && (
                       <a
-                        href={item.google_maps_url}
+                        href={safeHref(item.google_maps_url ?? "") ?? undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-ui"
@@ -601,9 +610,9 @@ export function ItineraryResult({
                         return leg (still deserves a real link even with no price to
                         second-guess), and a grounded, live-checked fare (the real number is
                         shown above, but the link is still worth keeping for a second look). */}
-                    {item.flight_search_url && (item.cost_estimate_eur === 0 || item.source_confidence === "grounded") && (
+                    {safeHref(item.flight_search_url ?? "") && (item.cost_estimate_eur === 0 || item.source_confidence === "grounded") && (
                       <a
-                        href={item.flight_search_url}
+                        href={safeHref(item.flight_search_url ?? "") ?? undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-ui"

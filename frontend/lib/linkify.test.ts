@@ -40,6 +40,22 @@ for (const hostile of [
   "file:///etc/passwd",
   "//evil.example.com/path",
   "mailto:someone@example.com",
+  // Hostile schemes carrying a DOTTED AUTHORITY, which is the shape that
+  // gets past a hostname-only check.
+  //
+  // On THIS path they never even reach safeHref: TOKEN only matches
+  // "https?://" or "www.", so an answer mentioning "javascript://..." is
+  // just text. That is worth pinning down rather than assuming - deleting
+  // safeHref's scheme check leaves this whole suite green, because the
+  // tokenizer is what protects Ask a Local and the scheme check is
+  // belt-and-braces here.
+  //
+  // The itinerary page has no tokenizer: source_urls arrives as a JSON
+  // field the model filled, so there the scheme check is the ONLY guard -
+  // see lib/itineraryLinks.test.ts, which is the suite that goes red.
+  "javascript://example.com/%0Aalert(1)",
+  "javascript://good.example.com/%0D%0Aalert(document.domain)",
+  "data://example.com/x",
 ]) {
   check(`no href from "${hostile.slice(0, 28)}"`, hrefs(hostile).length === 0, JSON.stringify(hrefs(hostile)));
 }

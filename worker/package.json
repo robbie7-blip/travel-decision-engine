@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "test:pipeline": "WORKER_NO_AUTOSTART=1 tsx src/pipeline.test.ts",
     "test:quality": "WORKER_NO_AUTOSTART=1 tsx src/quality.test.ts",
-    "test": "npm run test:pipeline && npm run test:quality && npm run test:hours && npm run test:itinerary && npm run test:edges && npm run test:timing && npm run test:generation && npm run test:shape && npm run test:model-caps && npm run test:race-fallback && npm run test:concurrency && npm run test:venues",
+    "test": "npm run test:pipeline && npm run test:quality && npm run test:hours && npm run test:itinerary && npm run test:edges && npm run test:timing && npm run test:generation && npm run test:shape && npm run test:model-caps && npm run test:race-fallback && npm run test:concurrency && npm run test:venues && npm run test:accommodation-cache",
     "test:hours": "WORKER_NO_AUTOSTART=1 tsx src/openingHours.test.ts",
     "test:itinerary": "WORKER_NO_AUTOSTART=1 tsx src/itinerary.test.ts",
     "test:edges": "WORKER_NO_AUTOSTART=1 tsx src/edgecases.test.ts",
@@ -17,7 +17,8 @@
     "test:model-caps": "tsx src/engine/modelCaps.test.ts",
     "test:race-fallback": "tsx src/engine/raceFallback.test.ts",
     "test:concurrency": "tsx src/engine/concurrency.test.ts",
-    "test:venues": "tsx src/engine/venues.test.ts"
+    "test:venues": "tsx src/engine/venues.test.ts",
+    "test:accommodation-cache": "tsx src/accommodationCache.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
