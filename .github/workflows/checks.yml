@@ -119,6 +119,16 @@ jobs:
       # than merged, turning a named property into an unnamed one. Reverting
       # either makes this suite red.
       - run: npm run test:accommodation-cache
+      # Per-night accommodation pricing - the largest line in the
+      # itinerary. normalizeLodgingPrices reaches perNightRateFor, where
+      # `"x".includes("")` being TRUE meant an accommodation entry with city
+      # "" was the first match for EVERY lodging item: every night in every
+      # city rewritten to that entry's rate, with the
+      # lodging_price_per_night check afterwards agreeing with the corrupted
+      # figure. A MISSING city threw instead, discarding a fully generated
+      # itinerary as "Unexpected error". Reverting the guard makes this
+      # suite report [999,999] across a two-city trip plus two throws.
+      - run: npm run test:accommodation-pricing
 
   frontend:
     name: frontend - typecheck + build
