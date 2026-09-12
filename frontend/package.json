@@ -15,6 +15,7 @@
     "check:ci": "node scripts/checkCiScripts.mjs",
     "test:linkify": "tsx lib/linkify.test.ts",
     "test:stats": "tsx lib/timingStats.test.ts",
+    "test:ratelimit": "tsx lib/ratelimit.test.ts",
     "test:currency": "tsx lib/currency.test.ts",
     "test:validation": "tsx lib/validation.test.ts",
     "test:result-format": "tsx lib/resultFormat.test.ts",

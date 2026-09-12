@@ -325,6 +325,23 @@ jobs:
       # symbol. Reverting the guards makes 8 cases red; reverting the
       # sanitizer makes 9.
       - run: npm run test:currency
+      # Which bucket a request counts against - the single guard in front of
+      # every public endpoint that costs money or sends mail. getClientIp
+      # read x-forwarded-for and took the FIRST entry, which is the one part
+      # of that header a client fully controls: `curl -H "X-Forwarded-For:
+      # 1.2.3.4"` chose its own rate-limit bucket, and a different value per
+      # request meant a fresh allowance per request. Six endpoints depend on
+      # it - /api/generate and /api/refine (a paid generation each),
+      # /api/trip-questions and /api/flight-import (a paid model call each),
+      # /api/feedback (durable no-TTL writes), and /api/auth/request-link,
+      # which sends a magic link to any address the caller types. The daily
+      # spend cap still bounded the total bill; the per-IP limits are what
+      # stop ONE actor consuming everyone's budget, and they were not doing
+      # it. Also covers the two quieter ways one caller becomes many buckets
+      # (a varying port, a varying case) and the values that must never be
+      # concatenated into a Redis key. Reverting makes 15 cases red, the
+      # first reporting the attacker's own 1.2.3.4.
+      - run: npm run test:ratelimit
       # How numeric environment variables are read. A variable saved blank
       # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
       # Number("") is 0 - which set the free monthly quota to zero (every
