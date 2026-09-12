@@ -31,7 +31,18 @@ export async function checkDailyBudget(redis: Redis): Promise<BudgetCheckResult>
  * are far cheaper than a full generation, so the worker's alert, fired from
  * the dominant spend source, is early-enough warning on its own. */
 export async function recordSpend(redis: Redis, costUsd: number): Promise<void> {
-  if (costUsd <= 0) return;
+  // `NaN <= 0` is FALSE, so the old guard passed a NaN straight through to
+  // INCRBYFLOAT on a counter that lives for three days - and
+  // checkDailyBudget above returns `spentUsd < DAILY_BUDGET_USD`, where
+  // every comparison against NaN is false. One poisoned write would block
+  // every generation, for everyone, for the rest of the day. Same guard as
+  // the worker's copy of this function; see the note there.
+  if (!Number.isFinite(costUsd) || costUsd <= 0) {
+    if (!Number.isFinite(costUsd)) {
+      console.error(`[spend] refusing to record a non-finite spend value (${costUsd})`);
+    }
+    return;
+  }
   const key = spendKey();
   await redis.incrbyfloat(key, costUsd);
   await redis.expire(key, SPEND_KEY_TTL_SECONDS);

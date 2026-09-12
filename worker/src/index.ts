@@ -2002,7 +2002,27 @@ async function maybeAlertBudgetThreshold(redis: Redis, totalSpentUsd: number): P
  * success/failure/retries, since a retry after malformed JSON still bills
  * a second model call. */
 async function recordSpend(redis: Redis, costUsd: number): Promise<void> {
-  if (costUsd <= 0) return;
+  // `NaN <= 0` is FALSE, so the old guard passed a NaN straight through to
+  // INCRBYFLOAT on a counter that lives for three days.
+  //
+  // The blast radius is the reason this is worth a line: checkDailyBudget
+  // reads that key back and returns `allowed: spentUsd < DAILY_BUDGET_USD`,
+  // and every comparison against NaN is false - so a single poisoned write
+  // blocks EVERY generation, for everyone, for the rest of the day, and the
+  // admin page reports the day's spend as NaN rather than as a problem.
+  // This product has shipped that exact shape before, from `Number("")`
+  // being 0: a blank dashboard field set the free monthly quota to zero and
+  // locked every account out (see envNumber.test.ts).
+  //
+  // Defence in depth rather than a known live bug - estimateCostUsd only
+  // produces NaN from a malformed usage object, which the API does not
+  // currently send. It costs one comparison to make that unreachable.
+  if (!Number.isFinite(costUsd) || costUsd <= 0) {
+    if (!Number.isFinite(costUsd)) {
+      console.error(`[worker] refusing to record a non-finite spend value (${costUsd}) - the day's counter would be poisoned`);
+    }
+    return;
+  }
   const key = spendKey();
   const newTotal = await redis.incrbyfloat(key, costUsd);
   await redis.expire(key, SPEND_KEY_TTL_SECONDS);

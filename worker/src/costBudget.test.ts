@@ -185,15 +185,22 @@ function main() {
         String(c)
       );
     }
-    // NaN in, NaN out is worth knowing about rather than asserting away:
-    // recordSpend adds this to a Redis counter, and a NaN would poison the
-    // day's total. The API does not report NaN token counts, so this is a
-    // note, not a guard - if one ever appears, it appears here.
+    // NaN in, NaN out - deliberately not swallowed here, because a zero
+    // would be a silently WRONG cost while a NaN is a visible one. What
+    // must not happen is the NaN reaching Redis: recordSpend adds this to a
+    // counter that lives for three days, and checkDailyBudget then returns
+    // `spentUsd < DAILY_BUDGET_USD`, where every comparison against NaN is
+    // false - one poisoned write blocks every generation for everyone for
+    // the rest of the day. Both copies of recordSpend now refuse a
+    // non-finite value; the old guard was `costUsd <= 0`, and `NaN <= 0` is
+    // false.
     check(
       "a NaN token count propagates rather than silently reading as zero",
       Number.isNaN(estimateCostUsd(usage({ output_tokens: Number.NaN }))),
       String(estimateCostUsd(usage({ output_tokens: Number.NaN })))
     );
+    check("and NaN would have passed the old `<= 0` guard", (Number.NaN <= 0) === false);
+    check("while Number.isFinite catches it", Number.isFinite(Number.NaN) === false);
   }
 
   finish();

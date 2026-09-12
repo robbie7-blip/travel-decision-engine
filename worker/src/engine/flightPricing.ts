@@ -297,9 +297,9 @@ function isFlightItem(item: ItineraryItem): boolean {
   return item.type === "transport" && item.is_flight === true && item.cost_estimate_eur > 0;
 }
 
-/** Replaces the model's own guessed fare on the arrival flight item with a
- * real, live-checked round-trip price from Amadeus - the departure leg
- * keeps its existing "free, already covered" treatment either way. Marks
+/** Replaces the model's own guessed fares on the flight legs with a real,
+ * live-checked ROUND-TRIP price from Amadeus, split across the two legs so
+ * the trip is charged for it once. Marks
  * the item "grounded" with the real Google Flights link as its source, so
  * it flows into the normal single_source confidence tier alongside every
  * other grounded item (see deriveConfidenceTiers in checks.ts) - no
@@ -374,28 +374,84 @@ export function applyFlightPricing(
   onFareObserved?: (obs: FareObservation) => void
 ): Itinerary {
   if (!prefetched) return itinerary;
-  const arrivalItem = (itinerary.days ?? [])[0]?.items.find(isFlightItem);
+  const days = itinerary.days ?? [];
+  const arrivalItem = days[0]?.items.find(isFlightItem);
   if (!arrivalItem) return itinerary;
 
   const { fareEur: fare, metrics, adults } = prefetched;
-  arrivalItem.cost_estimate_eur = Math.round(fare);
+
+  // The RETURN LEG, which was being charged twice.
+  //
+  // The fare Amadeus quotes is round-trip - the comment above this function
+  // used to say the departure leg "keeps its existing free, already covered
+  // treatment", and no such treatment exists anywhere. prompt.ts asks for
+  // "a real first-day arrival transport item AND a last-day departure
+  // transport item (e.g. train/flight, with a hedged cost estimate)", so
+  // the model prices BOTH legs. Writing the whole round trip onto the
+  // arrival item left the departure item's own estimate untouched
+  // underneath it, and the traveler was billed for a round trip plus one
+  // extra leg - on the second-largest line in most itineraries, and only
+  // when the live fare SUCCEEDED. The grounded, "checked live" path was
+  // producing a less accurate total than the guess it replaced, and
+  // budget_matches_items adds the same inflated sum up before deciding
+  // whether the trip fits the stated budget.
+  //
+  // Split rather than zeroed, for two reasons. A flight priced 0 is a
+  // `prices_present` defect by design ("not a valid price for a meal, a
+  // bed, or a flight"), so zeroing the return would trade a money bug for a
+  // quality defect on every trip with a live fare. And a split is the
+  // honest way to say it: half of a real round-trip total is a real number
+  // with a real provenance, where an invented one-way quote would not be.
+  // The halves are computed so they add back to exactly Math.round(fare)
+  // rather than each being rounded independently, which can drift by a
+  // euro.
+  const returnItem =
+    days.length > 1 ? days[days.length - 1]?.items.find(isFlightItem) : undefined;
+
+  const total = Math.round(fare);
+  const arrivalShare = returnItem ? Math.round(total / 2) : total;
+  const returnShare = total - arrivalShare;
+
+  arrivalItem.cost_estimate_eur = arrivalShare;
   arrivalItem.source_confidence = "grounded";
   arrivalItem.source_urls = arrivalItem.flight_search_url ? [arrivalItem.flight_search_url] : [];
   arrivalItem.source_agreement = null;
-  arrivalItem.reasoning =
-    brief.party_size > 1
-      ? `Checked live: this is today's real round-trip fare for the group, not a guess.`
-      : `Checked live: this is today's real round-trip fare, not a guess.`;
+  const forGroup = brief.party_size > 1 ? " for the group" : "";
+  arrivalItem.reasoning = returnItem
+    ? `Checked live: half of today's real EUR ${total} round-trip fare${forGroup}, with the return leg carrying the other half.`
+    : `Checked live: this is today's real round-trip fare${forGroup}, not a guess.`;
+
+  if (returnItem) {
+    returnItem.cost_estimate_eur = returnShare;
+    returnItem.source_confidence = "grounded";
+    returnItem.source_urls = returnItem.flight_search_url ? [returnItem.flight_search_url] : [];
+    returnItem.source_agreement = null;
+    returnItem.reasoning = `Checked live: the other half of the same EUR ${total} round-trip fare${forGroup} - not charged twice.`;
+  }
 
   if (prefetched.observation) onFareObserved?.(prefetched.observation);
 
   if (metrics) {
+    // The "typically EUR X-Y" range renders directly beneath the item's own
+    // price, so the two have to be on the same basis. These metrics describe
+    // a whole round trip, which is the right basis when one item carries the
+    // whole fare and the wrong one once the fare is split - a leg showing
+    // EUR 100 under "typically EUR 180-260" reads as a spectacular deal
+    // rather than as half of an ordinary fare.
+    //
+    // The LEVEL is computed on the full fare either way, because it is a
+    // comparison and halving both sides cannot change it; only the printed
+    // range is divided.
     const perPassenger = fare / adults;
-    arrivalItem.fare_price_context = {
-      level: perPassenger <= metrics.firstEur ? "low" : perPassenger <= metrics.thirdEur ? "typical" : "high",
-      typicalLowEur: Math.round(metrics.firstEur * adults),
-      typicalHighEur: Math.round(metrics.thirdEur * adults),
-    };
+    const legs = returnItem ? 2 : 1;
+    const context = {
+      level:
+        perPassenger <= metrics.firstEur ? "low" : perPassenger <= metrics.thirdEur ? "typical" : "high",
+      typicalLowEur: Math.round((metrics.firstEur * adults) / legs),
+      typicalHighEur: Math.round((metrics.thirdEur * adults) / legs),
+    } as const;
+    arrivalItem.fare_price_context = { ...context };
+    if (returnItem) returnItem.fare_price_context = { ...context };
   }
   return itinerary;
 }

@@ -159,6 +159,21 @@ jobs:
       # real spend is nearer $32, and the cap whose entire job is to stop
       # that never trips. Reverting the pricing makes 11 cases here red.
       - run: npm run test:cost
+      # The live flight fare - the second-largest line in most itineraries,
+      # the one place this pipeline replaces the model's number with a real
+      # quoted one, and it had no test at all. Amadeus quotes a ROUND-TRIP
+      # fare; applyFlightPricing wrote that whole figure onto the arrival
+      # item and stopped, while prompt.ts asks the model for an arrival leg
+      # AND a last-day departure leg each with its own estimate - so the
+      # return was charged twice. A EUR 240 round trip shipped as 240 + the
+      # model's own 150. It fired only when the live fare SUCCEEDED, so the
+      # "checked live, grounded" path produced a worse total than the guess
+      # it replaced, and budget_matches_items adds the same inflated sum up
+      # before deciding whether the trip fits the stated budget. Split
+      # rather than zeroed because a flight priced 0 is a prices_present
+      # defect by design. Reverting makes 12 cases here red, the first
+      # reporting [240,150].
+      - run: npm run test:flight-pricing
       - run: npm run test:call-budget
       # Which calls are allowed NOT to stream, and it is not a preference.
       # messages.create refuses a non-streaming request outright when
