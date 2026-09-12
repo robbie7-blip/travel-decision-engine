@@ -309,6 +309,22 @@ jobs:
       # page could print the wrong day's hours under a green "open on this
       # day" badge.
       - run: npm run test:result-format
+      # Money on the page, in the currency the traveller picked - and the
+      # second defect here blanked the trip page. formatMoney read
+      # `rates?.rates[currency]`: the optional chain guarded the object being
+      # null and NOT the map inside it being absent, so `undefined[currency]`
+      # threw a TypeError. Reachable through /api/rates, which read the
+      # upstream response with a bare `as { rates: ... }` - a type assertion
+      # over a network payload, the same non-check test:shape exists to stop
+      # on the worker side - and cached whatever came back for TWELVE HOURS.
+      # A 200 with no `rates` key cached `rates: undefined`, JSON.stringify
+      # dropped the field, and every trip page render threw: every visitor,
+      # twelve hours, on itineraries people paid for. The quieter case is a
+      # rate that is present but unusable - a string, a zero, a negative, a
+      # NaN - which printed $0, $-108 and $NaN against a real currency
+      # symbol. Reverting the guards makes 8 cases red; reverting the
+      # sanitizer makes 9.
+      - run: npm run test:currency
       # How numeric environment variables are read. A variable saved blank
       # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
       # Number("") is 0 - which set the free monthly quota to zero (every

@@ -44,8 +44,52 @@ export function isSupportedCurrency(value: string): value is Currency {
 export function formatMoney(amountEur: number, currency: Currency, rates: FxRates | null): string {
   if (currency === "EUR") return `€${Math.round(amountEur)}`;
 
-  const rate = rates?.rates[currency];
-  if (rate == null) return `€${Math.round(amountEur)}`;
+  // `rates?.rates[currency]` - note where the optional chain stops. It
+  // guarded the whole object being null and NOT the `rates` map inside it
+  // being absent, so `undefined[currency]` threw a TypeError. The type says
+  // that cannot happen; the type is an assertion on a JSON payload that
+  // crosses a network boundary, which is not the same thing.
+  //
+  // It was reachable, and the blast radius was a blank page. /api/rates
+  // cached whatever the upstream returned for twelve hours after a bare
+  // `as { rates: ... }` cast: a body with no `rates` key cached
+  // `rates: undefined`, JSON.stringify dropped the key, and every trip page
+  // render threw here - for every visitor, for twelve hours, on itineraries
+  // people had paid for. Exactly the shape test:result-format exists for
+  // ("threw during render on a field nothing guarantees, blanking a
+  // paid-for itinerary").
+  const rate = rates?.rates?.[currency];
+
+  // A rate has to be a usable number, not merely present. A string, a zero,
+  // a negative or a NaN reaches Math.round(amountEur * rate) and prints
+  // either nonsense or "NaN" against a real currency symbol, which is worse
+  // than showing the honest EUR figure.
+  if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) {
+    return `€${Math.round(amountEur)}`;
+  }
 
   return `${CURRENCY_SYMBOLS[currency]}${Math.round(amountEur * rate)}`;
+}
+
+/** Keeps only the entries that are genuinely usable rates.
+ *
+ * The upstream response was read with `as { rates: FxRates["rates"] }` - a
+ * type assertion over a network payload, which is the same non-check that
+ * test:shape exists to stop on the worker side. Whatever came back was
+ * cached for twelve hours and served to every visitor.
+ *
+ * Returns a fresh object containing only supported currencies mapped to
+ * finite positive numbers. An unrecognised currency, a string, a zero and a
+ * null are all dropped rather than corrected, because "no live rate" is a
+ * state this product already handles correctly everywhere (formatMoney
+ * falls back to EUR) and a fabricated one is not. */
+export function sanitizeRates(value: unknown): FxRates["rates"] {
+  const out: FxRates["rates"] = {};
+  if (!value || typeof value !== "object") return out;
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!isSupportedCurrency(key) || key === "EUR") continue;
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) continue;
+    out[key] = raw;
+  }
+  return out;
 }
