@@ -258,6 +258,12 @@ export const JOBS_QUEUE_KEY = "jobs:queue";
 // session by a lot, not just cover the few minutes generation takes.
 export const JOB_TTL_SECONDS = 60 * 60 * 24 * 30;
 
+// --- FRONTEND-ONLY (not mirrored to the worker) ---
+// Only the app's admin routes curate a trip, so this constant has no reason
+// to exist in the worker's copy. Declared rather than merely tolerated: see
+// scripts/checkMirrors.mjs, which strips sentinel blocks before comparing
+// and fails on every other difference.
+//
 // ~1 year - applied to a job's TTL the moment it's curated into the
 // showcase gallery or set as the homepage demo (see the admin routes for
 // both), on top of the normal JOB_TTL_SECONDS every job starts with. A
@@ -269,6 +275,7 @@ export const JOB_TTL_SECONDS = 60 * 60 * 24 * 30;
 // staying forever.
 export const CURATED_JOB_TTL_SECONDS = 60 * 60 * 24 * 365;
 
+// --- END FRONTEND-ONLY ---
 /** After this long with no update, a "running" job is treated as dead.
  *
  * BRPOP removes a job from the queue the moment a worker takes it, and

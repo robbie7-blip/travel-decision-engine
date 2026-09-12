@@ -22,7 +22,8 @@
     "test:accommodation-pricing": "tsx src/accommodationPricing.test.ts",
     "test:call-budget": "tsx src/engine/callBudget.test.ts",
     "test:plan-repair": "WORKER_NO_AUTOSTART=1 tsx src/planRepair.test.ts",
-    "test:effort": "tsx src/engine/effort.test.ts"
+    "test:effort": "tsx src/engine/effort.test.ts",
+    "test:cost": "tsx src/costBudget.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

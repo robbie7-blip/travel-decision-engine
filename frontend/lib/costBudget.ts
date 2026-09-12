@@ -69,21 +69,58 @@ export function alertKey(day: string = dayKey()): string {
 const CACHE_WRITE_MULTIPLIER = 1.25;
 const CACHE_READ_MULTIPLIER = 0.1;
 
+// Server-side tools are billed PER REQUEST, in dollars, not in tokens at
+// all - and none of it was being counted.
+//
+// Three places in this product declare the web_search tool: the
+// accommodation lookup (worker/src/index.ts, max_uses 2, and it runs up to
+// four calls per city once both halves and their retries are counted), the
+// single-call generation path, and Ask a Local, which fires on every
+// question any visitor asks. Every search each of them makes is a separate
+// charge, and `usage.server_tool_use.web_search_requests` is where the API
+// reports it. Nothing read that field.
+//
+// The size of the gap, from the one generation with a known total: $0.3562
+// counted, against up to eight searches for a single-city trip at a cent
+// each. Roughly a fifth of that run's real cost was invisible to the cap -
+// which means the counter reaches DAILY_BUDGET_USD when real spend is
+// closer to $31, and the cap whose entire job is to stop that never trips.
+const DEFAULT_SERVER_TOOL_COST_PER_1K_USD = 10.0;
+export const SERVER_TOOL_COST_PER_1K_USD = envFloat(
+  "SERVER_TOOL_COST_PER_1K_USD",
+  DEFAULT_SERVER_TOOL_COST_PER_1K_USD
+);
+
 export interface ModelUsage {
   input_tokens: number;
   output_tokens: number;
   cache_creation_input_tokens?: number | null;
   cache_read_input_tokens?: number | null;
+  /** Per-request server-tool charges. Priced by the TOTAL of the counters
+   * here rather than by web_search alone: web_search is the only server
+   * tool this product declares today, so every other counter is zero and
+   * summing them costs nothing - but if a future change adds web_fetch or
+   * code execution, the charge lands in the counter instead of vanishing.
+   * Erring toward counting is the right direction for a spend cap; a rate
+   * that turns out to differ per tool is a number to correct, while a whole
+   * tool nobody priced is the bug this replaces. */
+  server_tool_use?: {
+    web_search_requests?: number | null;
+    web_fetch_requests?: number | null;
+  } | null;
 }
 
-/** Estimated USD cost of one model call from its reported token usage,
- * including cache write/read tokens (see multipliers above) alongside
- * plain input/output pricing. */
+/** Estimated USD cost of one model call from its reported usage: plain
+ * input/output tokens, cache write/read tokens (see the multipliers above),
+ * and per-request server-tool charges. */
 export function estimateCostUsd(usage: ModelUsage): number {
+  const serverToolRequests =
+    (usage.server_tool_use?.web_search_requests ?? 0) + (usage.server_tool_use?.web_fetch_requests ?? 0);
   return (
     (usage.input_tokens / 1_000_000) * INPUT_COST_PER_MTOK_USD +
     (usage.output_tokens / 1_000_000) * OUTPUT_COST_PER_MTOK_USD +
     ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) * INPUT_COST_PER_MTOK_USD * CACHE_WRITE_MULTIPLIER +
-    ((usage.cache_read_input_tokens ?? 0) / 1_000_000) * INPUT_COST_PER_MTOK_USD * CACHE_READ_MULTIPLIER
+    ((usage.cache_read_input_tokens ?? 0) / 1_000_000) * INPUT_COST_PER_MTOK_USD * CACHE_READ_MULTIPLIER +
+    (serverToolRequests / 1000) * SERVER_TOOL_COST_PER_1K_USD
   );
 }

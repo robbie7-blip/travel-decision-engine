@@ -145,6 +145,20 @@ jobs:
       # 400. Errors are built by the SDK's own factory, because the SDK
       # leaves `name` at "Error" on every subclass and a hand-faked error
       # made this suite pass against code reading the wrong field.
+      # What a call is RECORDED as costing, which is what the daily spend cap
+      # is enforced against. estimateCostUsd priced input, output and cache
+      # read/write tokens and stopped there - but server-side tools are not
+      # billed in tokens at all: every web_search request is a separate
+      # per-request charge on usage.server_tool_use, and nothing in the
+      # product read that field. Three places declare the search tool (the
+      # accommodation lookup, which makes up to eight searches for a
+      # single-city trip; the single-call generation path; and Ask a Local,
+      # which fires on every question any visitor asks). From the one run
+      # with a known total, roughly a quarter of its real cost was invisible
+      # to the counter - so the counter reaches a $25 DAILY_BUDGET_USD when
+      # real spend is nearer $32, and the cap whose entire job is to stop
+      # that never trips. Reverting the pricing makes 11 cases here red.
+      - run: npm run test:cost
       - run: npm run test:call-budget
       # Which calls are allowed NOT to stream, and it is not a preference.
       # messages.create refuses a non-streaming request outright when
@@ -232,6 +246,21 @@ jobs:
       # heartbeat contract, where a one-sided rename would make
       # /api/health return 503 forever.
       - run: npm run check:stats-keys
+      # The four files that exist TWICE - jobs.ts, types.ts, costBudget.ts
+      # and engine/prompt.ts, once under worker/src/ and once under
+      # frontend/lib/. Each says in its own header that the copies are "kept
+      # byte-identical" and nothing enforced it. The worker writes over
+      # ioredis and the app reads over the Upstash REST client, so neither
+      # can import the other's module - copying is the design - but a copy
+      # kept in step by a comment is a copy that drifts, and every drift
+      # here is silent: a job field added on one side reads as undefined on
+      # the other (which renders as "no data", indistinguishable from a
+      # stage that did not run), and two different pricing functions mean the
+      # gate that blocks generation and the counter that records spend
+      # disagree about money. The one legitimate divergence is marked in the
+      # file with FRONTEND-ONLY sentinels and stripped before comparing, so
+      # a deliberate frontend-only export is allowed and nothing else is.
+      - run: npm run check:mirrors
       # That every guard above actually runs here. Written after three of
       # them - test:hours, test:timing and check:stats-keys - sat in
       # package.json catching nothing because nobody added the step. A
