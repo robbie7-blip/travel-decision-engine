@@ -11,6 +11,7 @@
     "check:dashes": "node scripts/checkDashes.mjs",
     "check:covers": "node scripts/checkCoverPhotos.mjs",
     "check:stats-keys": "node scripts/checkStatsKeys.mjs",
+    "check:i18n": "tsx scripts/checkI18n.ts",
     "check:facts": "node scripts/checkFacts.mjs",
     "check:mirrors": "node scripts/checkMirrors.mjs",
     "check:ci": "node scripts/checkCiScripts.mjs",

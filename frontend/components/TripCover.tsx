@@ -19,6 +19,7 @@ import { coverPhotoFor } from "@/lib/tripCover";
 import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { safeHref } from "@/lib/linkify";
 
 function formatRange(
   start: string | undefined,
@@ -89,7 +90,7 @@ export function TripCover({
       {credit && (
         <a
           className="trip-cover-credit font-ui"
-          href={credit.sourceUrl}
+          href={safeHref(credit.sourceUrl) ?? undefined}
           target="_blank"
           rel="noopener noreferrer license"
         >

@@ -19,6 +19,7 @@ import { drawWheel, spinCityName, INITIAL_WHEEL, WHEEL_SLICES, type SpinSlug } f
 import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { safeHref } from "@/lib/linkify";
 
 const SIZE = 400;
 const CENTRE = SIZE / 2;
@@ -173,7 +174,7 @@ export function SpinWheel({ t, language }: { t: Dictionary; language: Language }
               {credit && (
                 <a
                   className="spin-result-credit font-ui"
-                  href={credit.sourceUrl}
+                  href={safeHref(credit.sourceUrl) ?? undefined}
                   target="_blank"
                   rel="noopener noreferrer license"
                 >

@@ -22,6 +22,7 @@ import { DESTINATION_CITY_NAMES_BG } from "@/lib/destinationCityNamesBg";
 import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { safeHref } from "@/lib/linkify";
 
 /** Hand-ordered, not the whole set of 24: these are the frames worth
  * leading with, and the first one is the page's largest image so it is
@@ -99,7 +100,7 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
       {credit && (
         <a
           className="hero-gallery-credit font-ui"
-          href={credit.sourceUrl}
+          href={safeHref(credit.sourceUrl) ?? undefined}
           target="_blank"
           rel="noopener noreferrer license"
         >

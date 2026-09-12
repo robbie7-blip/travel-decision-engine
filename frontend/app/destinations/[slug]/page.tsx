@@ -17,6 +17,7 @@ import { DESTINATION_INTROS } from "@/lib/destinationIntros";
 import { TRANSLATIONS } from "@/lib/i18n";
 import { getSiteUrl } from "@/lib/siteUrl";
 import type { Language } from "@/lib/types";
+import { safeHref } from "@/lib/linkify";
 
 export function generateStaticParams() {
   return listDestinationSlugs().map((slug) => ({ slug }));
@@ -211,7 +212,7 @@ export default async function DestinationPage({
           {photo?.credit && (
             <p className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
               {dt.photoCredit}{" "}
-              <a href={photo.credit.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
+              <a href={safeHref(photo.credit.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
                 {photo.credit.artist}
               </a>{" "}
               · {photo.credit.license}

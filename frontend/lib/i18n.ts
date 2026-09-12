@@ -428,8 +428,6 @@ export interface Dictionary {
     signInButton: string;
     signInSent: string;
     accountHeading: string;
-    signedInAs: string; // "{email}" placeholder
-    currentPlan: string; // "{plan}" placeholder
     quotaUsed: string; // "{used}" / "{limit}" placeholders
     renewsOn: string; // "{date}" placeholder
     upgradeCta: string;
@@ -949,8 +947,6 @@ const en: Dictionary = {
     signInButton: "Email me a sign-in link",
     signInSent: "Check your email for a sign-in link.",
     accountHeading: "Your account",
-    signedInAs: "Signed in as {email}",
-    currentPlan: "Plan: {plan}",
     quotaUsed: "{used} of {limit} generations used this month",
     renewsOn: "Renews {date}",
     upgradeCta: "Upgrade to Pro →",
@@ -1453,8 +1449,6 @@ const bg: Dictionary = {
     signInButton: "Изпрати ми линк за вход",
     signInSent: "Проверете имейла си за линк за вход.",
     accountHeading: "Вашият акаунт",
-    signedInAs: "Влезли сте като {email}",
-    currentPlan: "План: {plan}",
     quotaUsed: "{used} от {limit} генерации използвани този месец",
     renewsOn: "Подновява се на {date}",
     upgradeCta: "Надградете до Pro →",

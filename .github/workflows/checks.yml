@@ -305,6 +305,20 @@ jobs:
       # trace is that no item on those trips can reach the fact_grounded
       # confidence tier. Contents are compared too, since a copy with the
       # right name and stale text is the same failure better disguised.
+      # The two translation dictionaries, for what the type system cannot
+      # see. Key parity IS already covered - Dictionary is a strict
+      # interface and both dictionaries are typed to it, so a missing
+      # Bulgarian key is a compile error - and this does not duplicate that.
+      # Three things slip past it, and every one renders as visible nonsense
+      # rather than as an error: a Bulgarian string that drops or misspells
+      # a {placeholder} silently loses the substitution, so the number or
+      # city name simply never appears; an array one entry short drops a
+      # feature from the pricing page for Bulgarian visitors only; and a
+      # {token} nothing replaces renders literally, so the visitor reads
+      # "Plan: {plan}". That last rule found two such strings, both of
+      # which turned out to be entirely unreferenced and were deleted. All
+      # three shapes are verified caught by breaking them.
+      - run: npm run check:i18n
       - run: npm run check:facts
       - run: npm run check:mirrors
       # That every guard above actually runs here. Written after three of
