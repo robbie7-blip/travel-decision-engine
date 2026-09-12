@@ -55,7 +55,12 @@ import { assertUsableItinerary } from "./engine/shape";
 import { modelSupportsEffort } from "./engine/modelCaps";
 import { waitForLiveOrFallback } from "./engine/raceFallback";
 import { runWithLimit } from "./engine/concurrency";
-import { describeModelError, startBudget } from "./engine/callBudget";
+import {
+  describeModelError,
+  startBudget,
+  requiresStreaming,
+  NONSTREAMING_MAX_TOKENS,
+} from "./engine/callBudget";
 import { capEffort, readEffort, type Effort } from "./engine/effort";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
@@ -70,6 +75,7 @@ import {
   WORKER_HEARTBEAT_KEY,
   WORKER_HEARTBEAT_TTL_SECONDS,
   briefSpanDays,
+  STALE_RUNNING_MS,
   jobKey,
   type Job,
   type JobTimings,
@@ -137,12 +143,50 @@ const EXTRACT_EFFORT = readEffort("EXTRACT_MODEL_EFFORT", "low");
 const LODGING_MAX_TOKENS = 2000;
 const REPAIR_MAX_TOKENS = 1500;
 
-// Bounds a hung request. Deliberately far above any healthy call - its job
-// is to stop a generation hanging forever, not to abandon a call that is
-// merely slow, since abandoning one costs a full retry and makes things
-// worse. A single call still running at two minutes is not slow, it is
-// stuck.
+// Bounds a hung request. What it actually bounds now depends on whether the
+// call streams, and the difference is the whole point - so, precisely:
+//
+// For a STREAMED call (the plan, the frame, a day, the single-call
+// fallback) this is time-to-first-byte. The SDK arms its timeout timer
+// around the fetch only and clears it the moment response headers arrive
+// (client.js: `const timeout = setTimeout(abort, ms)` ... `finally
+// { clearTimeout(timeout) }`), and a streamed response's headers arrive
+// almost immediately. So generation itself is no longer racing this number
+// - only the provider answering at all is. STREAM_STALL_MS below is what
+// covers a stream that goes quiet mid-answer.
+//
+// For a NON-STREAMED call (the accommodation lookup, the small repairs)
+// fetch does not resolve until the entire response is ready, so the timer
+// stays armed for the whole generation and this IS a total duration cap.
+// That is exactly what those calls want - see LODGING_ATTEMPT_MS, whose
+// entire design is a hard wall-clock ceiling on a best-effort lookup.
+//
+// It used to be a total cap on EVERYTHING, and the comment here claimed two
+// minutes was "deliberately far above any healthy call". It was not: the
+// plan call alone was measured at 68.8 seconds, which is 57% of it. A cap
+// sitting that close to the healthy case is not a backstop, it is a second
+// failure mode waiting for a slow day - and the one it produced is the
+// worst-handled failure in the pipeline, since a timeout is retried by
+// neither withOneRetryOf (only ModelOutputError) nor withRateLimitRetry
+// (which excludes timeouts deliberately), so it drops straight to the
+// single-call fallback.
 const CALL_TIMEOUT_MS = 120_000;
+
+/** How long a STREAMED call may go without finishing before it is aborted.
+ *
+ * Streaming removes the total-duration cap above, which is the fix; this is
+ * what stops that becoming "no limit at all". A stream that opens and then
+ * goes quiet forever would otherwise hang the job, and with it a worker slot
+ * - and this worker runs four jobs at once.
+ *
+ * 150 seconds, chosen against two numbers rather than picked. Above: it must
+ * stay clear of STALE_RUNNING_MS (4 minutes), after which the app tells the
+ * traveler the job died, so a call allowed to run past that would "succeed"
+ * into a page that has already given up. Below: the slowest call anyone has
+ * measured here is the 68.8-second plan, so this is more than twice that -
+ * far enough above the healthy case to be a backstop rather than a
+ * guillotine, which is the mistake it replaces. */
+const STREAM_STALL_MS = readPositiveInt("STREAM_STALL_MS", 150_000);
 
 // Full search is the entire point of moving generation into a worker with
 // no execution-time limit - but per-item restaurant/activity searches were
@@ -261,6 +305,63 @@ function extractJson(text: string): string {
 }
 
 class ModelOutputError extends Error {}
+
+/** One model call, STREAMED, returning the finished message.
+ *
+ * Every call whose output is large enough to matter goes through here, and
+ * the reason is a hard limit in the SDK rather than a preference.
+ *
+ * `messages.create` on a non-streaming request refuses outright when
+ * `max_tokens` implies a response that could take over ten minutes -
+ * "Streaming is required for operations that may take longer than 10
+ * minutes" - which for this model works out at anything above ~21,300
+ * tokens. SKELETON_MAX_TOKENS is 24,000. The only reason phase 1 was not
+ * failing on every single request is that the guard is skipped when the
+ * client carries an explicit `timeout` (messages.js: `if (!body.stream &&
+ * timeout == null)`), and this worker sets one. So the configuration was
+ * sending requests the SDK considers unservable without streaming, with the
+ * warning suppressed by an unrelated setting.
+ *
+ * What it was suppressing was real. On a non-streaming request `fetch` does
+ * not resolve until the whole response is ready, and the SDK's timeout timer
+ * is armed across exactly that - so CALL_TIMEOUT_MS was a 120-second cap on
+ * total generation time, against a plan call measured at 68.8 seconds. At
+ * the rates this pipeline actually runs at, none of the token caps (24,000
+ * / 16,000 / 12,000) can be reached inside 120 seconds, which means every
+ * "hit the token cap" branch in this file was unreachable and the reachable
+ * failure was always the timeout. And the timeout is the one failure neither
+ * retry wrapper handles, so a slow plan did not retry - it abandoned the
+ * parallel path for the single-call fallback, which is non-streaming too,
+ * has to write an entire itinerary in one call, and was therefore the most
+ * timeout-prone call in the system. The safety net was the thing most
+ * likely to tear.
+ *
+ * Streaming resolves the fetch at the response headers, so the timer is
+ * cleared before generation really begins and CALL_TIMEOUT_MS becomes a
+ * time-to-first-byte guard, which is what it should always have been.
+ *
+ * Deliberately NOT used for the accommodation lookup or the small repair
+ * calls. Those want a hard wall-clock ceiling - LODGING_ATTEMPT_MS exists to
+ * give one - and with this SDK, non-streaming is how you get it. Their caps
+ * (2,000 and 1,500) are nowhere near the streaming threshold. */
+async function streamMessage(
+  client: Anthropic,
+  body: Anthropic.MessageStreamParams,
+  options?: { timeout?: number }
+): Promise<Anthropic.Message> {
+  const stream = client.messages.stream(body, options);
+  // A stream that opens and then goes quiet forever would hang the job and
+  // hold one of this worker's four slots indefinitely, because the SDK's own
+  // timer is gone by then. Aborting through the stream cancels the HTTP
+  // request rather than leaving it dangling, and surfaces as an
+  // APIUserAbortError that describeModelError already reads.
+  const stall = setTimeout(() => stream.abort(), STREAM_STALL_MS);
+  try {
+    return await stream.finalMessage();
+  } finally {
+    clearTimeout(stall);
+  }
+}
 
 // Each real search costs more than 1 "use" here - the tool's dynamic
 // filtering makes an internal code_execution call that eats into the same
@@ -511,7 +612,12 @@ async function callModel(
   onUsage?: (usage: ModelUsage) => void,
   skipSearch = false
 ): Promise<Itinerary> {
-  const response = await client.messages.create({
+  // Streamed, and this is the call that needed it most. It is the fallback
+  // for everything else, it has to write an entire itinerary in one go, and
+  // under the old total-duration timeout it was the likeliest call in the
+  // whole system to be cut off - which meant the safety net failed exactly
+  // when it was being used.
+  const response = await streamMessage(client, {
     model: MODEL,
     max_tokens: MAX_TOKENS,
     // cache_control on this last system block caches SYSTEM_PROMPT (~3K
@@ -893,6 +999,36 @@ const LODGING_MIN_ATTEMPT_MS = readPositiveInt("LODGING_MIN_ATTEMPT_MS", 10_000)
 const SKELETON_MAX_TOKENS = 24000;
 const DAY_MAX_TOKENS = 16000;
 
+// The split between streamed and non-streamed calls, asserted rather than
+// assumed - because getting it wrong is silent in both directions and cost
+// a paid generation to find.
+//
+// Raising a NON-STREAMED cap past the ceiling makes the SDK refuse the
+// request outright (or, with an explicit client timeout set, quietly race
+// the whole generation against that timeout, which is the bug this replaced).
+// Lowering a STREAMED cap below it is harmless but worth knowing, since the
+// reason that call streams is no longer the cap.
+{
+  const nonStreamed: [string, number][] = [
+    ["LODGING_MAX_TOKENS", LODGING_MAX_TOKENS],
+    ["REPAIR_MAX_TOKENS", REPAIR_MAX_TOKENS],
+  ];
+  for (const [name, cap] of nonStreamed) {
+    if (requiresStreaming(cap)) {
+      console.error(
+        `[worker] ${name}=${cap} is above the ${NONSTREAMING_MAX_TOKENS}-token non-streaming ceiling, ` +
+          `but that call does not stream - it will be refused by the SDK or race CALL_TIMEOUT_MS`
+      );
+    }
+  }
+  if (STREAM_STALL_MS >= STALE_RUNNING_MS) {
+    console.error(
+      `[worker] STREAM_STALL_MS=${STREAM_STALL_MS} is not below STALE_RUNNING_MS=${STALE_RUNNING_MS} - ` +
+        `a call allowed to run that long finishes into a page that has already told the traveler the job died`
+    );
+  }
+}
+
 
 /** One phase-2 call: expands a single already-planned day into real items.
  * No tools declared at all - every price that needed a live lookup was
@@ -905,7 +1041,7 @@ async function generateDay(
   day: SkeletonDay,
   onUsage?: (usage: ModelUsage) => void
 ): Promise<ItineraryDay> {
-  const response = await client.messages.create({
+  const response = await streamMessage(client, {
     model: DAY_MODEL,
     // Also raised: a day now carries all three meals plus activities plus
     // accommodation plus any transport leg, not the sparser day the original
@@ -1153,7 +1289,7 @@ export async function generatePhase1Half<T>(
   for (let attempt = 0; attempt < caps.length; attempt++) {
     const maxTokens = caps[attempt];
     const startedAt = Date.now();
-    const response = await client.messages.create({
+    const response = await streamMessage(client, {
       model: MODEL,
       max_tokens: maxTokens,
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],

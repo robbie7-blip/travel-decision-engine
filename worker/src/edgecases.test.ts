@@ -15,7 +15,7 @@ import type Redis from "ioredis";
 import type Anthropic from "@anthropic-ai/sdk";
 import { processJob } from "./index";
 import { jobKey, type Job } from "./jobs";
-import { check, finish, heading, section } from "./testutil";
+import { check, fakeMessages, finish, heading, section } from "./testutil";
 import type { Itinerary, TripBriefInput } from "./types";
 
 function briefOf(over: Partial<TripBriefInput>): TripBriefInput {
@@ -158,8 +158,7 @@ function makeClient(shape: Shape): Anthropic {
   const s = stubFor(shape);
   let repairs = 0;
   return {
-    messages: {
-      create: async (params: { system?: unknown; messages?: { content?: unknown }[] }) => {
+    messages: fakeMessages(async (params: { system?: unknown; messages?: { content?: unknown }[] }) => {
         const system = JSON.stringify(params.system ?? "");
         const user = String(params.messages?.[0]?.content ?? "");
         let text = "{}";
@@ -186,8 +185,7 @@ function makeClient(shape: Shape): Anthropic {
           });
         }
         return { content: [{ type: "text", text }], stop_reason: "end_turn", usage: { input_tokens: 10, output_tokens: 10 } };
-      },
-    },
+      }),
   } as unknown as Anthropic;
 }
 

@@ -27,6 +27,7 @@ import type Redis from "ioredis";
 import type Anthropic from "@anthropic-ai/sdk";
 import { processJob } from "./index";
 import { jobKey, type Job } from "./jobs";
+import { fakeMessages } from "./testutil";
 import type { TripBriefInput } from "./types";
 
 const CALL_MS = 400; // stands in for one model round-trip
@@ -143,8 +144,7 @@ interface CallRecord {
 function makeClient(scenario: Scenario, records: CallRecord[]): Anthropic {
   let replacements = 0;
   return {
-    messages: {
-      create: async (params: { system?: unknown; max_tokens?: number }) => {
+    messages: fakeMessages(async (params: { system?: unknown; max_tokens?: number }) => {
         const sys = JSON.stringify(params.system ?? "");
         const kind = sys.includes("STAGE 1A")
           ? "frame"
@@ -209,8 +209,7 @@ function makeClient(scenario: Scenario, records: CallRecord[]): Anthropic {
           stop_reason: "end_turn",
           usage: { input_tokens: 10, output_tokens: 10 },
         };
-      },
-    },
+      }),
   } as unknown as Anthropic;
 }
 

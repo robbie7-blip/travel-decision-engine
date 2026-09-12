@@ -146,6 +146,21 @@ jobs:
       # leaves `name` at "Error" on every subclass and a hand-faked error
       # made this suite pass against code reading the wrong field.
       - run: npm run test:call-budget
+      # Which calls are allowed NOT to stream, and it is not a preference.
+      # messages.create refuses a non-streaming request outright when
+      # max_tokens implies a response that could take over ten minutes -
+      # ~21,300 tokens for this model, against SKELETON_MAX_TOKENS of
+      # 24,000. The only reason phase 1 was not failing on every single
+      # request is that the SDK skips that guard when the client carries an
+      # explicit timeout, and this worker sets one. What the suppressed
+      # warning was hiding: on a non-streaming request the SDK's timer
+      # covers the WHOLE generation, so CALL_TIMEOUT_MS was a 120-second cap
+      # on total generation time against a plan call measured at 68.8
+      # seconds - and a timeout is the one failure neither retry wrapper
+      # handles, so it dropped straight to the single-call fallback, which
+      # was non-streaming too and had to write an entire itinerary. All four
+      # claims were verified against the real SDK over a local SSE server,
+      # not reasoned about.
       # The day plan - the one call every other call waits for. Measured at
       # 68.8s of a 102.4s generation, 67% of it, while its concurrent
       # sibling (the trip frame) cost the traveler nothing because the day

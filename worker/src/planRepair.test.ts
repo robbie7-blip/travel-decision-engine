@@ -94,22 +94,40 @@ function accepted(raw: unknown, b: TripBriefInput = brief()): boolean {
 }
 
 /** A stub Anthropic client: returns the queued responses in order and
- * records what each request asked for. */
+ * records what each request asked for.
+ *
+ * Only `stream` is implemented. `create` throws, and that is the point: a
+ * phase-1 half MUST stream. `messages.create` on a non-streaming request
+ * refuses outright when max_tokens implies a response that could take over
+ * ten minutes - ~21,300 tokens for this model, against SKELETON_MAX_TOKENS
+ * of 24,000 - and the only reason that was not failing every request is
+ * that the SDK skips the guard when the client carries an explicit timeout,
+ * which this worker sets. Verified against the real SDK over a local
+ * server: without the explicit timeout, a 24,000-token non-streaming
+ * request throws "Streaming is required for operations that may take longer
+ * than 10 minutes". A stub that answered both ways would let a silent
+ * revert to `create` pass. */
 function stubClient(responses: { text?: string; stop_reason?: string }[]) {
   const caps: number[] = [];
   const efforts: (string | undefined)[] = [];
   let i = 0;
+  const message = (r: { text?: string; stop_reason?: string }) => ({
+    content: [{ type: "text", text: r.text ?? "" }],
+    stop_reason: r.stop_reason ?? "end_turn",
+    usage: { input_tokens: 10, output_tokens: 20 },
+  });
   const client = {
     messages: {
-      create: async (body: { max_tokens: number; output_config?: { effort?: string } }) => {
+      create: async () => {
+        throw new Error(
+          "a phase-1 half must stream - messages.create refuses a non-streaming request at this token cap"
+        );
+      },
+      stream: (body: { max_tokens: number; output_config?: { effort?: string } }) => {
         caps.push(body.max_tokens);
         efforts.push(body.output_config?.effort);
         const r = responses[Math.min(i++, responses.length - 1)];
-        return {
-          content: [{ type: "text", text: r.text ?? "" }],
-          stop_reason: r.stop_reason ?? "end_turn",
-          usage: { input_tokens: 10, output_tokens: 20 },
-        };
+        return { finalMessage: async () => message(r), abort: () => {} };
       },
     },
   } as unknown as Anthropic;
@@ -419,6 +437,40 @@ async function main() {
       failed = (e as Error).message;
     }
     check("with no repair hook the same response is rejected", failed.includes("missing required fields"), failed);
+  }
+
+  section("phase 1 streams, and cannot quietly stop streaming");
+
+  {
+    // The stub's `create` throws. If generatePhase1Half ever goes back to
+    // messages.create, every case in the two sections above turns red - and
+    // that is the right blast radius, because non-streaming at this cap is
+    // what made CALL_TIMEOUT_MS a 120-second cap on total generation time
+    // against a plan call measured at 68.8 seconds.
+    const stub = stubClient([{ text: goodPlan }]);
+    let failed = "";
+    try {
+      await generatePhase1Half<TripPlan>(stub.client, "day plan", "sys", "user", isUsablePlan, undefined, {});
+    } catch (e) {
+      failed = (e as Error).message;
+    }
+    check("the call went through stream, not create", failed === "", failed);
+    check("and asked for the phase-1 cap", stub.caps[0] === 24000, String(stub.caps[0]));
+  }
+
+  {
+    // usage and stop_reason have to survive the stream, since every branch
+    // downstream reads them off the assembled message. Confirmed against
+    // the real SDK over a local SSE server too: stop_reason, usage and text
+    // all arrive intact through finalMessage().
+    const stub = stubClient([{ stop_reason: "refusal" }]);
+    let message = "";
+    try {
+      await generatePhase1Half<TripPlan>(stub.client, "day plan", "sys", "user", isUsablePlan, undefined, {});
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    check("stop_reason survives the stream", message.includes("declined"), message);
   }
 
   section("the effort dial reaches the request");

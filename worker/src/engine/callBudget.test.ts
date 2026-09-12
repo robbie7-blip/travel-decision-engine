@@ -29,7 +29,12 @@
 // Run: npm run test:call-budget
 
 import { APIConnectionTimeoutError, APIError } from "@anthropic-ai/sdk";
-import { describeModelError, startBudget } from "./callBudget";
+import {
+  NONSTREAMING_MAX_TOKENS,
+  describeModelError,
+  requiresStreaming,
+  startBudget,
+} from "./callBudget";
 import { check, finish, heading, section } from "../testutil";
 
 heading("call budget and model-error description");
@@ -140,6 +145,38 @@ function main() {
     check("a negative allowance is treated as spent, not as infinite", negative.attemptTimeoutMs(18_000, 1) === null);
     const tiny = startBudget(10, clock.now);
     check("a granted timeout is always at least 1ms", (tiny.attemptTimeoutMs(0, 0) ?? 0) >= 1, String(tiny.attemptTimeoutMs(0, 0)));
+  }
+
+  section("which calls are allowed not to stream");
+
+  {
+    // The ceiling the SDK enforces, and the reason phase 1 had to change.
+    // Verified against the real SDK over a local server: a 24,000-token
+    // NON-streaming request with no explicit client timeout throws
+    // "Streaming is required for operations that may take longer than 10
+    // minutes" before anything is sent. With an explicit timeout the guard
+    // is skipped - which is the only reason this worker's phase 1 was not
+    // failing on every request, and what it was hiding was that the timeout
+    // then covered the whole generation rather than the wait for headers.
+    check("the ceiling is the ten-minute estimate", NONSTREAMING_MAX_TOKENS === 21_333, String(NONSTREAMING_MAX_TOKENS));
+    check("the phase-1 cap is above it, so phase 1 must stream", requiresStreaming(24_000) === true);
+    check("a day call's cap is below it", requiresStreaming(16_000) === false);
+    check("the single-call fallback's cap is below it", requiresStreaming(12_000) === false);
+  }
+
+  {
+    // The two calls deliberately kept non-streaming, because they want a
+    // hard wall-clock ceiling and with this SDK non-streaming is how you
+    // get one: on a non-streaming request the timeout covers the whole
+    // generation. LODGING_ATTEMPT_MS exists precisely for that.
+    check("the accommodation lookup's cap stays non-streaming", requiresStreaming(2000) === false);
+    check("the repair calls' cap stays non-streaming", requiresStreaming(1500) === false);
+  }
+
+  {
+    check("exactly at the ceiling does not require streaming", requiresStreaming(NONSTREAMING_MAX_TOKENS) === false);
+    check("one token over does", requiresStreaming(NONSTREAMING_MAX_TOKENS + 1) === true);
+    check("the escalated phase-1 cap does", requiresStreaming(48_000) === true);
   }
 
   section("a refused REQUEST is not retried; a blip is");

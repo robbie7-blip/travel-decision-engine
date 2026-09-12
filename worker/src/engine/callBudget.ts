@@ -58,6 +58,35 @@ export function startBudget(totalMs: number, now: () => number = Date.now): Call
   };
 }
 
+/** The cap above which a NON-STREAMING request is refused by the SDK
+ * before it is even sent.
+ *
+ * The SDK's rule, verified in its source and against a live local server:
+ * a non-streaming request whose `max_tokens` implies a response that could
+ * take over ten minutes throws "Streaming is required for operations that
+ * may take longer than 10 minutes". It derives the estimate as sixty
+ * minutes scaled by `max_tokens / 128000`, so the ceiling is the cap at
+ * which that estimate reaches ten minutes.
+ *
+ * This matters because the guard is SKIPPED when the client carries an
+ * explicit `timeout` (`if (!body.stream && timeout == null)`), and this
+ * worker sets one. Phase 1 was therefore sending 24,000-token
+ * non-streaming requests that the SDK itself considers unservable, with the
+ * refusal suppressed by an unrelated setting - and what it was suppressing
+ * was real, because on a non-streaming request the SDK's timeout covers the
+ * whole generation rather than just the wait for headers. */
+export const NONSTREAMING_MAX_TOKENS = Math.floor((128_000 * 10) / 60);
+
+/** Whether a call at this cap has to stream.
+ *
+ * Use it to keep the split honest: anything above the ceiling MUST go
+ * through the streaming path, and anything deliberately kept non-streaming
+ * (because it wants a hard wall-clock ceiling, like the accommodation
+ * lookup) must stay below it. */
+export function requiresStreaming(maxTokens: number): boolean {
+  return maxTokens > NONSTREAMING_MAX_TOKENS;
+}
+
 export interface DescribedError {
   /** The thrown value's class or `name`, e.g. "RateLimitError". */
   name: string;
