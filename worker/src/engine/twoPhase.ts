@@ -68,6 +68,7 @@ import type {
   TripBriefInput,
 } from "../types";
 import { buildContext } from "./prompt";
+import { briefSpanDays } from "../jobs";
 
 /** Phase 1's combined output. Deliberately mirrors the final Itinerary's
  * trip-level fields exactly (budget_feasibility/trip_summary/key_decisions/
@@ -704,6 +705,44 @@ function addCalendarDays(start: string, offset: number): string | null {
   const d = new Date(t + offset * 86_400_000);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString().slice(0, 10);
+}
+
+/** Whether the plan covers exactly the days the brief asked for.
+ *
+ * Checked because NOTHING checked it. isUsablePlan validates the shape of
+ * each day and says nothing about how many there are, and from that point
+ * on the plan is the authority on the trip's length: phase 2 makes one call
+ * per planned day, the accommodation night count comes from
+ * `include_lodging` across the planned days (see quality.ts's
+ * lodging_per_night and checks.ts's budget integrity), and the finished
+ * itinerary is whatever the plan laid out.
+ *
+ * So a plan that came back with four days for a three-day trip produced a
+ * paid four-day itinerary, and a plan that came back with two produced a
+ * trip with a day missing - priced, checked and shipped as complete, with
+ * every downstream count agreeing with it. The prompt does say "Cover every
+ * day from <start> to <end> inclusive, numbered from 1"; this is the part
+ * that notices when it didn't.
+ *
+ * Deliberately a rejection rather than a repair, unlike everything in
+ * normalizePlan. A missing day is not derivable - it needs a city, a theme
+ * and its own anchors, which is a judgement, not arithmetic - and inventing
+ * one would be worse than paying for another plan call. A dates-unreadable
+ * brief returns true: "can't tell" must not fail a plan that may well be
+ * right, and validation.ts already refuses a brief whose dates don't
+ * parse. */
+export function planCoversTrip(
+  plan: TripPlan,
+  brief: Pick<TripBriefInput, "start_date" | "end_date">
+): boolean {
+  const expected = briefSpanDays(brief);
+  if (expected == null) return true;
+  if (plan.days.length === expected) return true;
+  console.error(
+    `[worker] the day plan covers ${plan.days.length} day(s) but ${brief.start_date} to ` +
+      `${brief.end_date} is ${expected} - rejecting it rather than shipping a trip of the wrong length`
+  );
+  return false;
 }
 
 export function isUsablePlan(plan: unknown): plan is TripPlan {

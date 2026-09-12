@@ -33,7 +33,7 @@
 process.env.WORKER_NO_AUTOSTART = "1";
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { isUsablePlan, normalizePlan } from "./engine/twoPhase";
+import { isUsablePlan, normalizePlan, planCoversTrip } from "./engine/twoPhase";
 import { generatePhase1Half } from "./index";
 import { check, finish, heading, section } from "./testutil";
 import type { SkeletonDay, TripPlan } from "./engine/twoPhase";
@@ -302,6 +302,49 @@ async function main() {
     check("an empty days array is still rejected", accepted({ days: [] }) === false);
     check("a null day is still rejected", accepted({ days: [null] }) === false);
     check("a non-object plan is still rejected", accepted("nope") === false);
+  }
+
+  section("the plan must cover the days the traveler asked for");
+
+  {
+    // Nothing checked this. isUsablePlan validates the SHAPE of each day and
+    // says nothing about how many there are - and from there the plan is the
+    // authority on the trip's length: one paid call per planned day, the
+    // night count from include_lodging across the planned days, the budget
+    // derived from that. So a short plan shipped a paid trip with a day
+    // missing, priced and checked and reported as complete, with every
+    // downstream count agreeing with it.
+    const b = brief({ start_date: "2027-05-01", end_date: "2027-05-03" }); // three days
+    const three = { days: [day(), day({ day: 2 }), day({ day: 3 })] } as unknown as TripPlan;
+    const two = { days: [day(), day({ day: 2 })] } as unknown as TripPlan;
+    const four = { days: [day(), day({ day: 2 }), day({ day: 3 }), day({ day: 4 })] } as unknown as TripPlan;
+    check("the right number of days is accepted", planCoversTrip(three, b) === true);
+    check("a day missing is rejected", planCoversTrip(two, b) === false);
+    check("a day too many is rejected", planCoversTrip(four, b) === false);
+  }
+
+  {
+    // Both bounds are inclusive, so a same-day trip is one day, not zero.
+    const oneDay = brief({ start_date: "2027-05-01", end_date: "2027-05-01" });
+    check("a single-day trip wants exactly one day", planCoversTrip({ days: [day()] } as unknown as TripPlan, oneDay) === true);
+    check("and not two", planCoversTrip({ days: [day(), day({ day: 2 })] } as unknown as TripPlan, oneDay) === false);
+  }
+
+  {
+    // "Can't tell" must not fail a plan that may well be right. A brief
+    // whose dates don't parse is already refused by validation.ts, long
+    // before a model call.
+    const bad = brief({ start_date: "not a date", end_date: "also not" });
+    check("an unreadable brief does not reject the plan", planCoversTrip({ days: [day()] } as unknown as TripPlan, bad) === true);
+    const reversed = brief({ start_date: "2027-05-10", end_date: "2027-05-01" });
+    check("dates in the wrong order do not reject it either", planCoversTrip({ days: [day()] } as unknown as TripPlan, reversed) === true);
+  }
+
+  {
+    // A month boundary, since the span is real date arithmetic.
+    const acrossMonths = brief({ start_date: "2027-04-29", end_date: "2027-05-02" }); // four days
+    const four = { days: [day(), day({ day: 2 }), day({ day: 3 }), day({ day: 4 })] } as unknown as TripPlan;
+    check("a span across a month boundary counts correctly", planCoversTrip(four, acrossMonths) === true);
   }
 
   section("a truncated half retries at a BIGGER cap, not the same one");

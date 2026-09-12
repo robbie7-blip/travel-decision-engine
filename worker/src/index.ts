@@ -33,6 +33,7 @@ import {
   isUsableFrame,
   isUsablePlan,
   normalizePlan,
+  planCoversTrip,
   type MealSlot,
   type SkeletonDay,
   type TripFrame,
@@ -840,14 +841,20 @@ const LODGING_GRACE_MS = readPositiveInt("LODGING_GRACE_MS", 3000);
  * lookup inherited the client-wide CALL_TIMEOUT_MS of 120 seconds, which is
  * the right ceiling for a call the generation cannot proceed without and
  * plainly wrong for one whose documented failure mode is "shrug, use the
- * frame's estimate". A lodging call still running at 18 seconds is not
- * slow-but-working; it is a search that has lost its way, and the useful
- * thing to do with it is stop.
+ * frame's estimate": at two minutes it is a search that has lost its way,
+ * and every second of it is billed for a figure nobody is still waiting on.
  *
- * Also: every one of these is billed. An abandoned lookup that would have
- * run for two minutes is two minutes of tokens bought for a figure nobody
- * will wait for, on a run the traveler already has their itinerary from. */
-const LODGING_ATTEMPT_MS = readPositiveInt("LODGING_ATTEMPT_MS", 18_000);
+ * 30 seconds, NOT the 18 this shipped as for one commit. That 18 was set
+ * against nothing, and the only measurement available says it was too
+ * tight: on the 58.5s run a single lookup attempt took 16.5 seconds. A cap
+ * 9% above the one attempt anyone has actually timed is not a cap on a
+ * runaway, it is a coin flip on a healthy search - and the two outcomes are
+ * not symmetric. Cutting a lookup short costs a real verified nightly price
+ * and a named hotel, which is the largest and least verifiable line in the
+ * itinerary. Letting it run costs nothing the traveler waits for, because
+ * LODGING_GRACE_MS already took this off the critical path. When a limit
+ * only bites in one direction, it belongs well clear of the healthy case. */
+const LODGING_ATTEMPT_MS = readPositiveInt("LODGING_ATTEMPT_MS", 30_000);
 
 /** How long the whole lookup for one city may run - both halves' first
  * attempt AND any retry, together.
@@ -858,16 +865,18 @@ const LODGING_ATTEMPT_MS = readPositiveInt("LODGING_ATTEMPT_MS", 18_000);
  * is refused outright rather than started with too little time left to
  * finish - a paid call that cannot complete is worse than no call.
  *
- * 40 seconds sits above one healthy attempt plus a retry and below anything
- * that could still be running when the itinerary is finished. */
-const LODGING_BUDGET_MS = readPositiveInt("LODGING_BUDGET_MS", 40_000);
+ * 70 seconds, which is two full 30-second attempts plus slack - the point
+ * is to bound the pair, not to cut the second one off mid-search. Still
+ * well under the 120-second client timeout, so a lookup can no longer
+ * outlive the generation it was meant to help. */
+const LODGING_BUDGET_MS = readPositiveInt("LODGING_BUDGET_MS", 70_000);
 
 /** Below this much remaining budget, don't start another lookup attempt.
  *
- * A web-search lookup needs several seconds simply to make its searches, so
- * anything under this is time enough to be billed and not time enough to
- * answer. */
-const LODGING_MIN_ATTEMPT_MS = readPositiveInt("LODGING_MIN_ATTEMPT_MS", 6000);
+ * A web-search lookup needs several seconds simply to make its searches -
+ * the one timed attempt took 16.5 - so anything under this is time enough
+ * to be billed and not time enough to answer. */
+const LODGING_MIN_ATTEMPT_MS = readPositiveInt("LODGING_MIN_ATTEMPT_MS", 10_000);
 
 // Headroom, not a target - you are billed for tokens generated, never for
 // the cap. These are sized for the WORST case rather than the typical one
@@ -1124,6 +1133,22 @@ export async function generatePhase1Half<T>(
   // two-minute path, for a failure whose fix ("use a bigger cap") was
   // already written in the error message nobody read. Escalating here turns
   // that into one wasted call and a likely success.
+  //
+  // How reachable this is at all is a separate question worth writing down,
+  // because the answer is "less than these numbers suggest". Every call in
+  // this worker is NON-STREAMING under an explicit 120-second client
+  // timeout, and a response is only truncated if the model gets all the way
+  // to the cap first. At the generation rates this pipeline actually sees,
+  // 24,000 tokens takes several minutes - so the 120-second timeout fires
+  // long before the cap is reached, and it is the timeout, not the cap, that
+  // a genuinely long phase-1 call runs into. Worse, a timeout is the one
+  // failure neither wrapper retries: withOneRetryOf only handles
+  // ModelOutputError and withRateLimitRetry deliberately excludes timeouts,
+  // so it drops straight to the single-call fallback. Streaming is the real
+  // fix for that (the SDK scales its own timeout for large max_tokens on
+  // non-streaming requests, which an explicit `timeout` opts out of) and it
+  // is not a change to slip in unannounced. This escalation stays because it
+  // costs nothing and covers the case where the cap IS hit quickly.
   const caps = [SKELETON_MAX_TOKENS, SKELETON_MAX_TOKENS * 2];
   for (let attempt = 0; attempt < caps.length; attempt++) {
     const maxTokens = caps[attempt];
@@ -1169,7 +1194,10 @@ export async function generatePhase1Half<T>(
         continue;
       }
       throw new ModelOutputError(
-        `The ${label} hit the ${maxTokens}-token cap and was cut off mid-JSON - raise SKELETON_MAX_TOKENS.`
+        `The ${label} was cut off mid-JSON at ${maxTokens} tokens, twice, having already ` +
+          `escalated from ${caps[0]} - so the cap is not the dial to turn. A phase-1 half ` +
+          `generating this much is generating too much: look at the effort setting and the ` +
+          `prompt before raising SKELETON_MAX_TOKENS.`
       );
     }
 
@@ -1441,7 +1469,11 @@ function startPhase1(
           "day plan",
           getPlanSystemPrompt(),
           buildPlanPrompt(brief),
-          isUsablePlan,
+          // Shape AND length. The plan is the authority on how long the trip
+          // is from here on - one paid call per planned day, the night count
+          // and the budget both derived from it - and nothing checked that
+          // it matched the dates the traveler actually asked for.
+          (v): v is TripPlan => isUsablePlan(v) && planCoversTrip(v, brief),
           onUsage,
           { effort: PLAN_EFFORT, normalize: (v) => normalizePlan(v, brief) }
         ),
@@ -1938,7 +1970,14 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // matter of reading a log line instead of re-deriving it from the code.
   const jobStartedAt = Date.now();
   const timings: Record<string, number> = {};
-  const jobTimings: JobTimings = { totalMs: 0 };
+  // efforts is set HERE, at the top, not with the stage timings at the end.
+  // It is static configuration, and the run that most needs to say which
+  // configuration produced it is the one that FAILED - which returns from
+  // the catch below and never reaches the assignments down there.
+  const jobTimings: JobTimings = {
+    totalMs: 0,
+    efforts: { frame: FRAME_EFFORT, plan: PLAN_EFFORT, day: DAY_EFFORT },
+  };
   async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
     const t0 = Date.now();
     try {
@@ -2270,11 +2309,6 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     }
   }
 
-  // Which configuration produced the numbers above. See JobTimings.efforts:
-  // the three stages no longer share one setting, each is overridable from
-  // the dashboard without a deploy, and a stage timing that does not say
-  // which effort it ran at cannot be compared to the next run's.
-  jobTimings.efforts = { frame: FRAME_EFFORT, plan: PLAN_EFFORT, day: DAY_EFFORT };
   jobTimings.lodgingPrefetchMs = timings.lodgingPrefetch;
   jobTimings.generateMs = timings.generate;
   jobTimings.repairsMs = timings.repairs;

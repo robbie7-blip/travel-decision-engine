@@ -395,9 +395,9 @@ runs can be compared without guessing at the configuration behind them.
 | `MAX_PARALLEL_DAYS` | `16` | Cap on concurrent day calls, so a long trip plus comparison mode can't trip provider rate limits |
 | `WORKER_CONCURRENCY` | `4` | Jobs handled at once by one worker process |
 | `LODGING_GRACE_MS` | `3000` | How long phase 2 waits for the live accommodation lookup *after* the trip frame's own estimate is already in hand. Bounds the WAIT, not the lookup |
-| `LODGING_ATTEMPT_MS` | `18000` | Cap on one accommodation lookup attempt. Deliberately far below the client-wide 120s: that ceiling is for calls the itinerary can't be produced without, and this isn't one - it degrades to a generic estimate |
-| `LODGING_BUDGET_MS` | `40000` | Cap on one city's whole lookup, both halves' first attempt *and* any retry together. Before this the retry had no allowance and a slow attempt plus a slow retry simply added up |
-| `LODGING_MIN_ATTEMPT_MS` | `6000` | Below this much budget left, an attempt isn't started at all. A paid web-search call with four seconds to live bills and answers nothing |
+| `LODGING_ATTEMPT_MS` | `30000` | Cap on one accommodation lookup attempt. Deliberately far below the client-wide 120s: that ceiling is for calls the itinerary can't be produced without, and this isn't one - it degrades to a generic estimate. Sized well clear of the one attempt anyone has timed (16.5s), because the limit only bites in one direction: cutting a lookup short costs a real nightly price, letting it run costs nothing the traveller waits for |
+| `LODGING_BUDGET_MS` | `70000` | Cap on one city's whole lookup, both halves' first attempt *and* any retry together. Before this the retry had no allowance and a slow attempt plus a slow retry simply added up |
+| `LODGING_MIN_ATTEMPT_MS` | `10000` | Below this much budget left, an attempt isn't started at all. A paid web-search call with a few seconds to live bills and answers nothing |
 
 The introductory Sonnet 5 rates ($2/$10 per MTok) above are in effect
 through 2026-08-31; after that, either bump the two override env vars or
