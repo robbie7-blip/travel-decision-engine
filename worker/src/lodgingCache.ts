@@ -30,6 +30,76 @@ function cacheKey(city: string): string {
   return `lodging-cache:${city.toLowerCase().replace(/ /g, "_")}`;
 }
 
+/** Caps on the parts of an entry that get interpolated into the prompt, so
+ * one oversized stored value cannot inflate every generation for that city
+ * for the next ~20 hours. */
+const MAX_SOURCE_URLS = 6;
+const MAX_TEXT_CHARS = 120;
+
+function cleanText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim().slice(0, MAX_TEXT_CHARS);
+  return trimmed || undefined;
+}
+
+/** Whether what came back out of Redis is actually an entry.
+ *
+ * `JSON.parse(raw) as CachedLodgingFact` asserted a shape over a stored
+ * value and both consumers then trusted it. Measured against the real
+ * functions, five of eight malformed values THREW:
+ *
+ *   "null"                                  -> reading 'cachedAt' of null
+ *   "{}" / "42" / "[]" / a bare string      -> reading 'length' of undefined
+ *   {"costEstimateEur":140,"sourceUrls":"x"} -> sourceUrls.join is not a function
+ *
+ * and that throw happens in loadCachedLodgingFacts, which is awaited at the
+ * TOP of every non-refinement generation (index.ts). So the job fails - and
+ * fails again on every retry and every other traveller's trip to that city,
+ * because the bad entry sits there for its full ~20h TTL.
+ *
+ * The sixth shape is worse for being silent: an entry at
+ * costEstimateEur: 0 formats cleanly as "the typical mid-range rate was
+ * verified via live search at approx EUR0/night ... do not perform a new
+ * accommodation search". That is the exact defect the WRITE path was
+ * guarded against, still fully reachable, because entries written before
+ * that guard existed are still live - the type's own comment says as much
+ * about `name`, and the same is true of every other field.
+ *
+ * Load-bearing claims are dropped rather than repaired: an entry whose
+ * price or age cannot be trusted has no trip behind it worth keeping, and
+ * dropping it puts the city back in `missing`, which buys a real live
+ * search - the correct recovery, and the reason this cannot be a silent
+ * repair. The decorative parts are sanitized instead, because an unnamed
+ * entry is a documented, supported state. */
+export function readCachedLodgingFact(value: unknown): CachedLodgingFact | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+
+  // A price this injects as established fact, so it has to be one - and
+  // `> 0` rather than `!= null`, which lets both 0 and NaN through.
+  const price = raw.costEstimateEur;
+  if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) return null;
+
+  // The age is part of the claim made to the model ("verified via live
+  // search 3h ago"), and an entry that cannot be aged reads "NaNh ago".
+  const cachedAt = raw.cachedAt;
+  if (typeof cachedAt !== "number" || !Number.isFinite(cachedAt)) return null;
+
+  const sourceUrls = Array.isArray(raw.sourceUrls)
+    ? raw.sourceUrls.filter((u): u is string => typeof u === "string" && u.trim().length > 0).slice(0, MAX_SOURCE_URLS)
+    : [];
+  const agreement = raw.sourceAgreement;
+
+  return {
+    costEstimateEur: price,
+    sourceUrls,
+    sourceAgreement: agreement === "agree" || agreement === "disagree" ? agreement : null,
+    cachedAt,
+    name: cleanText(raw.name),
+    area: cleanText(raw.area),
+  };
+}
+
 function matchDestination(location: string, destinations: string[]): string | undefined {
   const loc = location.toLowerCase();
   return destinations.find((d) => loc.includes(d.toLowerCase()));
@@ -83,7 +153,8 @@ export async function loadCachedLodgingEntries(
       const raw = await redis.get(cacheKey(city));
       if (!raw) return null;
       try {
-        return [city, JSON.parse(raw) as CachedLodgingFact] as const;
+        const fact = readCachedLodgingFact(JSON.parse(raw));
+        return fact ? ([city, fact] as const) : null;
       } catch {
         return null;
       }

@@ -31,7 +31,23 @@ function currentPeriodEndOf(subscription: Stripe.Subscription): number | null {
 
 async function handleCheckoutCompleted(stripe: Stripe, session: Stripe.Checkout.Session) {
   const redis = getRedis();
-  const email = session.customer_details?.email ?? (session.metadata?.email as string | undefined);
+  // metadata.email FIRST, and customer_details only as the fallback.
+  //
+  // These are two different things that happen to agree today. metadata is
+  // the address the checkout route validated and put there (see
+  // app/api/checkout/route.ts), and it is the address the pricing page's own
+  // copy tells the traveller they must later request a magic link with - so
+  // it is the key this account has to be filed under, because it is the key
+  // sign-in will look it up by. customer_details.email is Stripe's own
+  // record of the session.
+  //
+  // `customer_email` is passed at session creation, which Stripe presents
+  // read-only, so the two match. Preferring the one the rest of the system
+  // keys on means that staying true is not load-bearing: the alternative
+  // failure is silent and expensive - the charge succeeds, paid access is
+  // granted to an address nobody signs in with, and the traveller sees a
+  // free account with the money gone.
+  const email = (session.metadata?.email as string | undefined) ?? session.customer_details?.email;
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
   const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
   if (!email || !customerId) return;

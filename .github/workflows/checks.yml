@@ -118,6 +118,23 @@ jobs:
       # have corrected it was suppressed), and a write that REPLACED rather
       # than merged, turning a named property into an unnamed one. Reverting
       # either makes this suite red.
+      #
+      # It now also covers what comes back OUT of Redis, which was
+      # `JSON.parse(raw) as CachedLodgingFact` - a shape asserted over a
+      # stored value that both consumers then trusted. Measured against the
+      # real functions, five of eight malformed values THREW ("null", "{}",
+      # "42", "[]", a bare string, a non-array sourceUrls), and that throw
+      # happens in loadCachedLodgingFacts, awaited at the TOP of every
+      # non-refinement generation - so the job fails, and fails again for
+      # every traveller going to that city until the ~20h TTL runs out. The
+      # sixth is worse for being silent: a stored zero formats cleanly as
+      # "verified via live search at approx EUR0/night ... do not perform a
+      # new accommodation search", which is the defect the write guard
+      # above exists for, still reachable because entries written before
+      # that guard are still live. Price and age are dropped rather than
+      # repaired, which puts the city back in `missing` and buys a real
+      # search; URLs and names are sanitized, since an unnamed entry is a
+      # supported state. Reverting the read guard makes 15 of 64 red.
       - run: npm run test:accommodation-cache
       # Per-night accommodation pricing - the largest line in the
       # itinerary. normalizeLodgingPrices reaches perNightRateFor, where
@@ -401,6 +418,25 @@ jobs:
       # being concatenated with a path, and the localhost fallback says so
       # once per process in production. Reverting makes 9 of 18 red.
       - run: npm run test:site-url
+      # The session cookie, which is the whole of authentication - there is
+      # no server-side session store, so the cookie IS the credential:
+      # base64url({email, exp}) signed with HMAC-SHA256 over SESSION_SECRET.
+      # getSecret() checked `if (!secret)` and nothing else, so ANY
+      # non-empty value signed sessions, "x" included. The payload half is
+      # public - it is the visitor's own cookie - so one cookie lets someone
+      # test candidate secrets offline as fast as their hardware computes
+      # HMAC, with no rate limit and nothing logged; and what a guessed
+      # secret yields is not one account but the power to mint a cookie for
+      # ANY email, including a PRO_OVERRIDE_EMAILS address that resolvePlan
+      # grants paid access to with no Stripe record. /admin/health could
+      # not have said so, because it reports presence and a one-character
+      # secret is present - on the one page built to name quiet
+      # misconfiguration. Now there is a 32-character floor (what the README
+      # already prescribes), sign-in REFUSES rather than issuing a cookie it
+      # cannot stand behind, and the health page says TOO WEAK with the fix
+      # - still without reading a character of the secret, or even
+      # reporting its length. Reverting both halves makes 24 of 90 red.
+      - run: npm run test:session
       - run: npm run test:currency
       # Which bucket a request counts against - the single guard in front of
       # every public endpoint that costs money or sends mail. getClientIp

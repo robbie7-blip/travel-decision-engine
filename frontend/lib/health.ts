@@ -15,6 +15,7 @@
 // and nothing downstream is capable of printing one.
 
 import type { WorkerHeartbeat } from "./jobs";
+import { MIN_SESSION_SECRET_CHARS, isUsableSessionSecret } from "./session";
 
 /** How much it matters when this one is missing.
  *
@@ -134,12 +135,29 @@ export const WORKER_ENV: readonly EnvCheck[] = [
 
 export interface CheckedEnv extends EnvCheck {
   present: boolean;
+  /** Set, but not fit to use. Presence is not always the question: a
+   * SESSION_SECRET of one character is "set" and signs every session cookie
+   * in the product, and this page reported it as fine - which is the exact
+   * failure the header above describes, on the page built to catch it.
+   *
+   * Still presence-shaped, not a value: a boolean saying the check failed,
+   * never the secret and never even its length, since a length narrows the
+   * keyspace for whoever is guessing. */
+  weak?: boolean;
+  /** Why it is weak, in the words of someone who has to fix it. Shown
+   * instead of `what`, because "what stops working" is the wrong sentence
+   * for a variable that is present. */
+  weakBecause?: string;
 }
 
 export type Verdict = "ok" | "warn" | "down";
 
 /** A missing variable is only as bad as what it takes down with it. */
 export function verdictFor(check: CheckedEnv): Verdict {
+  // Before `present`, deliberately. A variable that is set but unusable is
+  // worse than one that is absent, because absence announces itself on
+  // first use and this does not.
+  if (check.weak) return check.criticality === "optional" ? "warn" : "down";
   if (check.present) return "ok";
   if (check.criticality === "required") return "down";
   if (check.criticality === "degrades") return "warn";
@@ -160,7 +178,21 @@ export function worstOf(verdicts: Verdict[]): Verdict {
  * empty string counts as absent - which it is, since every consumer here
  * treats "" as unset. */
 export function checkFrontendEnv(): CheckedEnv[] {
-  return FRONTEND_ENV.map((check) => ({ ...check, present: Boolean(process.env[check.name]) }));
+  return FRONTEND_ENV.map((check) => {
+    const present = Boolean(process.env[check.name]);
+    // The one variable whose presence is not the whole question. Everything
+    // else here either works or is absent; SESSION_SECRET can be there and
+    // still leave every account forgeable - see lib/session.ts.
+    if (check.name === "SESSION_SECRET" && present && !isUsableSessionSecret(process.env.SESSION_SECRET)) {
+      return {
+        ...check,
+        present,
+        weak: true,
+        weakBecause: `set, but under ${MIN_SESSION_SECRET_CHARS} characters - short enough to guess offline from one cookie, which would mint a session for any email. Sign-in refuses until it is replaced: \`openssl rand -base64 32\`.`,
+      };
+    }
+    return { ...check, present };
+  });
 }
 
 export function checkWorkerEnv(heartbeat: WorkerHeartbeat): CheckedEnv[] {

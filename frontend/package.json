@@ -22,6 +22,7 @@
     "test:stats-share": "tsx lib/statsShare.test.ts",
     "test:ratelimit": "tsx lib/ratelimit.test.ts",
     "test:site-url": "tsx lib/siteUrl.test.ts",
+    "test:session": "tsx lib/session.test.ts",
     "test:recent-trips": "tsx lib/recentTrips.test.ts",
     "test:currency": "tsx lib/currency.test.ts",
     "test:validation": "tsx lib/validation.test.ts",

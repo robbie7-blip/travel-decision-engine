@@ -25,7 +25,12 @@
 //
 // Run: npm run test:accommodation-cache
 
-import { cacheLodgingFacts, loadCachedLodgingEntries, loadCachedLodgingFacts } from "./lodgingCache";
+import {
+  cacheLodgingFacts,
+  loadCachedLodgingEntries,
+  loadCachedLodgingFacts,
+  readCachedLodgingFact,
+} from "./lodgingCache";
 import { check, finish, heading, section } from "./testutil";
 import type { Redis } from "ioredis";
 import type { Itinerary, ItineraryItem, TripBriefInput } from "./types";
@@ -228,6 +233,135 @@ async function main() {
       threw = true;
     }
     check("an itinerary with no days does not throw", threw === false);
+  }
+
+  section("what comes back OUT of Redis is checked too");
+
+  // Everything above guards the write. The read did
+  // `JSON.parse(raw) as CachedLodgingFact` and both consumers trusted it -
+  // and loadCachedLodgingFacts is awaited at the TOP of every
+  // non-refinement generation, so a throw there is a failed job, repeated
+  // on every retry and on every other traveller's trip to that city for
+  // the full ~20h TTL.
+  //
+  // Not hypothetical for the reason the type's own comment gives about
+  // `name`: entries written by an earlier build are still live under the
+  // same key, so the day any field changes shape, every cached city is the
+  // old shape. Which also means the pre-guard zero-price entries this
+  // suite's write tests prevent are still reachable from the read side.
+
+  {
+    /** Loads one city with `raw` sitting at its key. */
+    async function readBack(raw: string): Promise<{ threw: boolean; cached: boolean; fact: string }> {
+      const store = new Map<string, string>([["lodging-cache:rome", raw]]);
+      const redis = { get: async (k: string) => store.get(k) ?? null } as unknown as Redis;
+      try {
+        const facts = await loadCachedLodgingFacts(redis, ["Rome"]);
+        const entries = await loadCachedLodgingEntries(redis, ["Rome"]);
+        return { threw: false, cached: entries.has("Rome"), fact: facts["Rome"] ?? "" };
+      } catch {
+        return { threw: true, cached: false, fact: "" };
+      }
+    }
+
+    // The five measured crashes.
+    for (const raw of ["null", "{}", '"a string"', "[]", "42", "[1,2]", '{"costEstimateEur":140,"cachedAt":"yes"}']) {
+      const { threw, cached } = await readBack(raw);
+      check(`${raw} does not throw on read`, threw === false);
+      check("  and is not served as a cached rate", cached === false);
+    }
+
+    for (const raw of ["", "not json", "{", '{"costEstimateEur":'] ) {
+      const { threw, cached } = await readBack(raw);
+      check(`${JSON.stringify(raw)} does not throw on read`, threw === false);
+      check("  and is not served as a cached rate", cached === false);
+    }
+
+    // The silent one. A zero-price entry formatted perfectly cleanly and
+    // told the model the rate was verified at EUR0/night, with a new
+    // search forbidden.
+    for (const [label, price] of [
+      ["zero", 0],
+      ["negative", -20],
+      ["a string", "140"],
+      ["missing", undefined],
+    ] as const) {
+      const { cached, fact } = await readBack(
+        JSON.stringify({ costEstimateEur: price, sourceUrls: [], cachedAt: Date.now() })
+      );
+      check(`a stored ${label} price is not served as fact`, cached === false, fact.slice(0, 80));
+    }
+
+    {
+      // Dropping it is what puts the city back in `missing`, and `missing`
+      // is what buys a live search. That is the whole recovery, so the
+      // absence has to be observable rather than papered over.
+      const { fact } = await readBack(JSON.stringify({ costEstimateEur: 0, sourceUrls: [], cachedAt: Date.now() }));
+      check("and no EUR0 wording reaches the prompt", fact === "", fact.slice(0, 80));
+    }
+
+    {
+      // A good entry must still come through untouched - the point is to
+      // drop the broken ones, not to stop using the cache.
+      const { cached, fact } = await readBack(
+        JSON.stringify({
+          costEstimateEur: 140,
+          sourceUrls: ["https://example.com/h"],
+          sourceAgreement: "agree",
+          cachedAt: Date.now(),
+          name: "Hotel Monti Palace",
+          area: "Monti",
+        })
+      );
+      check("a good entry is still served", cached === true);
+      check("with its price", fact.includes("140"), fact.slice(0, 80));
+      check("its property name", fact.includes("Hotel Monti Palace"));
+      check("its area", fact.includes("Monti"));
+      check("and its agreement", fact.includes("source_agreement: agree"));
+    }
+
+    {
+      // The decorative fields are sanitized rather than dropped, because
+      // an unnamed entry is a supported state and the PRICE is the part
+      // worth keeping.
+      const { cached, fact } = await readBack(
+        JSON.stringify({ costEstimateEur: 140, sourceUrls: "nope", cachedAt: Date.now(), name: 42, area: [] })
+      );
+      check("a junk sourceUrls keeps the price", cached === true, fact.slice(0, 80));
+      check("and records no URL rather than crashing", fact.includes("(no URL recorded)"), fact.slice(0, 120));
+      check("a non-string name falls back to the generic wording", fact.includes("no specific property"), fact.slice(0, 80));
+    }
+  }
+
+  section("the entry validator on its own");
+
+  {
+    const now = Date.now();
+    const ok = readCachedLodgingFact({ costEstimateEur: 140, sourceUrls: ["https://a", "  ", ""], cachedAt: now });
+    check("blank URLs are dropped", ok?.sourceUrls.length === 1, JSON.stringify(ok?.sourceUrls));
+
+    const many = readCachedLodgingFact({
+      costEstimateEur: 140,
+      cachedAt: now,
+      sourceUrls: Array.from({ length: 40 }, (_, i) => `https://example.com/${i}`),
+    });
+    check("the URL list is capped", many?.sourceUrls.length === 6, String(many?.sourceUrls.length));
+
+    const long = readCachedLodgingFact({ costEstimateEur: 140, cachedAt: now, sourceUrls: [], name: "x".repeat(5000) });
+    check("a huge property name is truncated", (long?.name?.length ?? 0) === 120, String(long?.name?.length));
+
+    const agreement = readCachedLodgingFact({
+      costEstimateEur: 140,
+      cachedAt: now,
+      sourceUrls: [],
+      sourceAgreement: "maybe",
+    });
+    check("an unrecognised agreement becomes null", agreement?.sourceAgreement === null, String(agreement?.sourceAgreement));
+
+    check("NaN is not a price", readCachedLodgingFact({ costEstimateEur: Number.NaN, cachedAt: now }) === null);
+    check("Infinity is not a price", readCachedLodgingFact({ costEstimateEur: Infinity, cachedAt: now }) === null);
+    check("NaN is not a timestamp", readCachedLodgingFact({ costEstimateEur: 140, cachedAt: Number.NaN }) === null);
+    check("undefined is not an entry", readCachedLodgingFact(undefined) === null);
   }
 
   finish();

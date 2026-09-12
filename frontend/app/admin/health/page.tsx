@@ -167,7 +167,13 @@ function EnvTable({ checks }: { checks: CheckedEnv[] }) {
     <div style={{ marginTop: 4 }}>
       {checks.map((check) => {
         const verdict = verdictFor(check);
-        const status = check.present ? "set" : check.criticality === "optional" ? "not set" : "MISSING";
+        const status = check.weak
+          ? "TOO WEAK"
+          : check.present
+            ? "set"
+            : check.criticality === "optional"
+              ? "not set"
+              : "MISSING";
         return (
           <div
             key={check.name}
@@ -183,7 +189,9 @@ function EnvTable({ checks }: { checks: CheckedEnv[] }) {
           >
             <span style={{ minWidth: 220 }}>{check.name}</span>
             <span style={{ color: VERDICT_TEXT[verdict], minWidth: 64 }}>{status}</span>
-            <span style={{ color: "var(--ink-dim)", flex: 1, minWidth: 200 }}>{check.what}</span>
+            <span style={{ color: check.weak ? VERDICT_TEXT[verdict] : "var(--ink-dim)", flex: 1, minWidth: 200 }}>
+              {check.weakBecause ?? check.what}
+            </span>
           </div>
         );
       })}
