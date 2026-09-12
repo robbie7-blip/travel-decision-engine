@@ -384,6 +384,23 @@ jobs:
       # because losing every real bookmark over one corrupt entry would be
       # its own bug. Reverting makes 18 cases red.
       - run: npm run test:recent-trips
+      # The site's absolute base URL. siteUrl.ts's own header described it
+      # as being for metadataBase, sitemap.ts and robots.ts; grep says it
+      # also builds the MAGIC-LINK SIGN-IN URL that gets emailed, both
+      # auth-verify redirects, all three api/visited/share links, and
+      # Stripe's checkout and billing-portal return URLs. So a wrong value
+      # is a sign-in email nobody can use, with a token that expires in
+      # fifteen minutes, and a customer who finishes paying and lands
+      # nowhere. And it failed silently: with neither Vercel variable set
+      # it returned http://localhost:3000 with nothing overriding it and
+      # nothing logged. On Vercel the variables are injected so it worked,
+      # but nothing in the code made that a requirement, and there was no
+      # way to pin the real custom domain - the one that has to match the
+      # host whose cookie the session is set on. Now an explicit SITE_URL
+      # wins, non-absolute and non-http values are refused instead of
+      # being concatenated with a path, and the localhost fallback says so
+      # once per process in production. Reverting makes 9 of 18 red.
+      - run: npm run test:site-url
       - run: npm run test:currency
       # Which bucket a request counts against - the single guard in front of
       # every public endpoint that costs money or sends mail. getClientIp
