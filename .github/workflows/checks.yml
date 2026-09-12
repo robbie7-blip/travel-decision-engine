@@ -360,6 +360,21 @@ jobs:
       # Reverting the dedupe makes 6 cases red; loosening the token check
       # makes 7.
       - run: npm run test:stats-share
+      # The calendar download - a file the traveller imports into a real
+      # calendar app, where a malformed line means the import silently fails
+      # or renders as garbage. It had no test, and the folder counted the
+      # wrong unit: RFC 5545 caps a content line at 75 OCTETS, and
+      # foldIcsLine counted line.length (UTF-16 code units) while its own
+      # comment said octets. Measured, not reasoned about - a Bulgarian day
+      # description came out at 135 octets in a segment capped at 75 (CJK
+      # 209, emoji 143), and this product ships a whole Bulgarian language
+      # mode, so that is the normal case there rather than an edge one. And
+      # slicing at a code-unit index split surrogate pairs: an emoji 74
+      # characters into a title left a lone "\ud83c" at the fold, which is
+      # not encodable UTF-8 and becomes a replacement character in the
+      # downloaded file. Reverting the folder makes 5 cases red, reporting
+      # those exact numbers.
+      - run: npm run test:ics
       # How numeric environment variables are read. A variable saved blank
       # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
       # Number("") is 0 - which set the free monthly quota to zero (every

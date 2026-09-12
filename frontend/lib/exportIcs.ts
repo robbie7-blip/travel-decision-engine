@@ -48,20 +48,65 @@ function escapeIcsText(text: string): string {
     .replace(/\r\n|\n|\r/g, "\\n");
 }
 
-/** Folds a content line to <=75 octets per RFC 5545 §3.1 - some calendar
+/** How many octets this code point takes in UTF-8 - which is what RFC 5545
+ * counts, and what `String.length` does not. */
+function utf8Size(codePoint: number): number {
+  if (codePoint < 0x80) return 1;
+  if (codePoint < 0x800) return 2;
+  if (codePoint < 0x10000) return 3;
+  return 4;
+}
+
+/** Folds a content line to <=75 OCTETS per RFC 5545 §3.1 - some calendar
  * clients reject or mis-render unfolded long lines, which a DESCRIPTION
- * built from the model's reasoning text easily exceeds. */
-function foldIcsLine(line: string): string {
-  const MAX = 75;
-  if (line.length <= MAX) return line;
-  let result = line.slice(0, MAX);
-  let rest = line.slice(MAX);
-  while (rest.length > 0) {
-    const chunk = rest.slice(0, MAX - 1);
-    result += "\r\n " + chunk;
-    rest = rest.slice(MAX - 1);
+ * built from the model's reasoning text easily exceeds.
+ *
+ * This used to count `line.length`, which is UTF-16 code units, while its
+ * own comment said octets. Two things followed, and both are measured
+ * rather than theorised.
+ *
+ * A BULGARIAN LINE WAS NOT FOLDED SHORT ENOUGH. Cyrillic is two octets per
+ * character in UTF-8, so 75 characters is up to 150 - a real day
+ * description measured 135 octets in a segment that is supposed to cap at
+ * 75. This product ships a whole Bulgarian language mode, so that is the
+ * normal case there, not an edge one, and folding exists precisely because
+ * some clients reject over-long lines.
+ *
+ * AND SLICING AT A CODE-UNIT INDEX SPLIT EMOJI IN HALF. `line.slice(0, 75)`
+ * cuts between a surrogate pair whenever the boundary lands inside one,
+ * leaving a lone surrogate that is not encodable: measured, a title with an
+ * emoji 74 characters in produced "\ud83c" at the fold and a replacement
+ * character once encoded. Mojibake in a file the traveler imports into
+ * their calendar.
+ *
+ * Iterating with for...of walks CODE POINTS, so a surrogate pair is never
+ * divided. A multi-code-point grapheme (a flag, a ZWJ sequence) can still
+ * fall across a fold, which is fine: that is valid UTF-8 and valid
+ * iCalendar, and clients unfold before rendering, so the text reassembles.
+ *
+ * The continuation limit is one octet lower because the leading space that
+ * marks a folded line counts toward its 75. */
+export function foldIcsLine(line: string): string {
+  const MAX_OCTETS = 75;
+  const segments: string[] = [];
+  let current = "";
+  let octets = 0;
+  let limit = MAX_OCTETS;
+
+  for (const char of line) {
+    const size = utf8Size(char.codePointAt(0) ?? 0);
+    if (octets + size > limit) {
+      segments.push(current);
+      current = "";
+      octets = 0;
+      limit = MAX_OCTETS - 1;
+    }
+    current += char;
+    octets += size;
   }
-  return result;
+  segments.push(current);
+
+  return segments.join("\r\n ");
 }
 
 function parseTimeOfDay(time: string): { hour: number; minute: number } {
