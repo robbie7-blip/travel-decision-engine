@@ -23,6 +23,7 @@
     "test:call-budget": "tsx src/engine/callBudget.test.ts",
     "test:plan-repair": "WORKER_NO_AUTOSTART=1 tsx src/planRepair.test.ts",
     "test:effort": "tsx src/engine/effort.test.ts",
+    "test:facts": "tsx src/engine/facts.test.ts",
     "test:cost": "tsx src/costBudget.test.ts",
     "test:flight-pricing": "tsx src/flightPricing.test.ts"
   },

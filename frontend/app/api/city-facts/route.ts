@@ -20,6 +20,19 @@ import { loadFacts } from "@/lib/engine/prompt";
 
 export const runtime = "nodejs";
 
+// Caps on what one request can ask for. /api/place-country next door has
+// had MAX_CITIES = 6 since it was written; this route had no cap at all, and
+// the asymmetry is the whole evidence it was an oversight. Without them a
+// single unauthenticated GET with ten thousand comma-separated names fans
+// out to ten thousand concurrent Redis reads and ten thousand concurrent
+// Wikipedia fetches from this deployment's IP - metered Redis commands on
+// one side and a good way to get rate-limited by Wikipedia on the other.
+const MAX_DESTINATIONS = 6;
+// Long enough for any real city name (the longest in the curated set is
+// "mexico_city"); short enough that a name cannot become a huge Redis key
+// or a huge outbound URL.
+const MAX_CITY_NAME_CHARS = 80;
+
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days - facts are effectively static
 const MAX_FACTS_PER_CITY = 6;
 const MIN_SENTENCE_LENGTH = 25; // drops fragments ("She was born in 1990.") that read oddly alone
@@ -63,7 +76,8 @@ export async function GET(req: NextRequest) {
   const destinations = (searchParams.get("destinations") ?? "")
     .split(",")
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter((s) => s.length > 0 && s.length <= MAX_CITY_NAME_CHARS)
+    .slice(0, MAX_DESTINATIONS);
 
   if (destinations.length === 0) {
     return NextResponse.json({ facts: [] });

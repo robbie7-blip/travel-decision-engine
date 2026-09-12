@@ -245,12 +245,50 @@ interface Fact {
  * baked into the deploy, so nothing can change underneath this. */
 const factsCache = new Map<string, Fact[]>();
 
+/** The only shape a facts filename has. All 24 files in facts/ match it -
+ * `rome.json`, `new_york.json`, `mexico_city.json` - so this rejects
+ * nothing that could ever have resolved to real curated data.
+ *
+ * It exists because the filename was built straight from a caller-supplied
+ * city name, and `path.join` NORMALISES "..". A destination of
+ * "../../package" resolved to the repository's own package.json, outside
+ * facts/ entirely, and /api/city-facts passes its `destinations` query
+ * parameter to this function with no validation at all - an unauthenticated
+ * GET.
+ *
+ * The payoff was narrow, and every reason for that was an accident rather
+ * than a decision: ".json" is appended so arbitrary files cannot be named,
+ * the content must parse as JSON, and only a top-level `facts` array is
+ * returned. None of those were put there to stop a traversal, and none of
+ * them stops the path escaping the directory. Rejecting the name is the
+ * part that does.
+ *
+ * Rejected rather than sanitised. Stripping the offending characters would
+ * silently turn "../rome" into "rome" and serve one city's facts for
+ * another city's name; a name that is not a slug simply has no curated
+ * file, which is the ordinary case this function already handles for every
+ * uncurated destination. */
+const FACTS_SLUG = /^[a-z0-9_]+$/;
+
+/** Bounds the cache below. The real corpus is 24 files fixed at deploy
+ * time, so anything near this is caller-driven rather than real - and this
+ * runs in a worker process that stays up for days. */
+const FACTS_CACHE_MAX = 200;
+
 export function loadFacts(city: string): Fact[] {
-  const filename = `${city.toLowerCase().replace(/ /g, "_")}.json`;
+  const slug = city.toLowerCase().trim().replace(/ /g, "_");
+  if (!FACTS_SLUG.test(slug)) return [];
+
+  const filename = `${slug}.json`;
   const cached = factsCache.get(filename);
   if (cached) return cached;
 
   const filePath = path.join(FACTS_DIR, filename);
+  // Belt and braces behind the slug check: whatever the pattern allows, the
+  // file actually read has to sit inside FACTS_DIR.
+  const root = path.resolve(FACTS_DIR);
+  if (!path.resolve(filePath).startsWith(root + path.sep)) return [];
+
   let facts: Fact[] = [];
   try {
     if (fs.existsSync(filePath)) {
@@ -261,7 +299,12 @@ export function loadFacts(city: string): Fact[] {
     // which the prompt already handles explicitly, not throw mid-generation.
     console.error(`[worker] could not read facts for ${city}:`, e);
   }
-  factsCache.set(filename, facts);
+  // Not grown without limit. The key is derived from a caller-supplied
+  // name, and an attacker can still produce unlimited DISTINCT valid slugs
+  // ("aaa", "aab", ...) even after the check above - each one a permanent
+  // entry in a Map inside a long-running process. Past the bound a miss
+  // simply re-stats, which costs one syscall on a file that is not there.
+  if (factsCache.size < FACTS_CACHE_MAX) factsCache.set(filename, facts);
   return facts;
 }
 

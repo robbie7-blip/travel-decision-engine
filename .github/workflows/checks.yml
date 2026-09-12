@@ -158,6 +158,22 @@ jobs:
       # to the counter - so the counter reaches a $25 DAILY_BUDGET_USD when
       # real spend is nearer $32, and the cap whose entire job is to stop
       # that never trips. Reverting the pricing makes 11 cases here red.
+      # loadFacts, which turns a destination name into a filesystem read.
+      # The filename was built straight from a caller-supplied city name and
+      # `path.join` NORMALISES "..", so a destination of "../../package"
+      # resolved to the repository's own package.json, outside facts/ -
+      # measured, and reachable because /api/city-facts passes its
+      # `destinations` query parameter straight in on an unauthenticated
+      # GET. The payoff was narrow for three accidental reasons (".json" is
+      # appended, it must parse, only a `facts` array is returned); none of
+      # them was put there to stop a traversal. All 24 real files match
+      # ^[a-z0-9_]+$, so the slug check cannot refuse a name that could ever
+      # have resolved to curated data - every case here runs against the
+      # REAL facts directory, so the cities that must still work are proven
+      # to. Rejected rather than sanitised, because stripping the characters
+      # would turn "../rome" into Rome and serve one city's facts under
+      # another city's name.
+      - run: npm run test:facts
       - run: npm run test:cost
       # The live flight fare - the second-largest line in most itineraries,
       # the one place this pipeline replaces the model's number with a real
@@ -275,6 +291,21 @@ jobs:
       # disagree about money. The one legitimate divergence is marked in the
       # file with FRONTEND-ONLY sentinels and stripped before comparing, so
       # a deliberate frontend-only export is allowed and nothing else is.
+      # The curated facts base exists in THREE places - facts/ at the root
+      # (source of truth), frontend/facts/ and worker/facts/, both copied in
+      # because each deploy needs to be self-contained. Nothing compared
+      # them, and they HAD drifted: the worker held 18 files against 24,
+      # missing bangkok, dubai, mexico_city, new_york, singapore and tokyo -
+      # every non-European destination. The worker is the process that
+      # GENERATES the itinerary, so on those six cities loadFacts returned
+      # nothing and the model worked from memory alone, while the frontend's
+      # own copy still fed the loading screen trivia for them: the product
+      # looked grounded on exactly the trips that were not. Invisible from
+      # either side - generation succeeds, the page renders, and the only
+      # trace is that no item on those trips can reach the fact_grounded
+      # confidence tier. Contents are compared too, since a copy with the
+      # right name and stale text is the same failure better disguised.
+      - run: npm run check:facts
       - run: npm run check:mirrors
       # That every guard above actually runs here. Written after three of
       # them - test:hours, test:timing and check:stats-keys - sat in
