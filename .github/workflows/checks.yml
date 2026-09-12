@@ -375,6 +375,25 @@ jobs:
       # downloaded file. Reverting the folder makes 5 cases red, reporting
       # those exact numbers.
       - run: npm run test:ics
+      # The historical weather average - a figure shown to the traveller as
+      # a real thing that happened. It was inline in the weather route,
+      # where it could not be tested without stubbing the network (and where
+      # Next.js forbids a route module exporting anything but its handlers),
+      # so it had no test. The years were aligned by ARRAY INDEX on the
+      # stated assumption that every archive year has the same number of days
+      # for the same month-day span. February 29 breaks that: for a trip
+      # 2027-02-27 to 2027-03-02 the archive returns 4 days for 2026/2025/
+      # 2023/2022 and 5 for 2024, so index 2 is 03-01 in 2026 and 02-29 in
+      # 2024 - the leap day's weather was averaged into the traveller's March
+      # 1, measured as 28C against a real 10C. The day COUNT also came from
+      # an archive year rather than the trip, so a longer year added a row
+      # nobody has a day for and a shorter one dropped a real day. And
+      # conditionFromWmoCode(undefined) is "cloudy", so a year with no data
+      # for a day cast a phantom vote in the plurality that picks the icon -
+      # the temperatures were filtered, the conditions were not. Reverting
+      # the alignment makes 4 cases red; reverting the shiftYear clamp (Feb
+      # 29 rolled FORWARD to Mar 1) makes 1.
+      - run: npm run test:weather
       # How numeric environment variables are read. A variable saved blank
       # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
       # Number("") is 0 - which set the free monthly quota to zero (every

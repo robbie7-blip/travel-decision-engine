@@ -15,6 +15,7 @@
     "check:ci": "node scripts/checkCiScripts.mjs",
     "test:linkify": "tsx lib/linkify.test.ts",
     "test:stats": "tsx lib/timingStats.test.ts",
+    "test:weather": "tsx lib/weather.test.ts",
     "test:ics": "tsx lib/exportIcs.test.ts",
     "test:stats-share": "tsx lib/statsShare.test.ts",
     "test:ratelimit": "tsx lib/ratelimit.test.ts",

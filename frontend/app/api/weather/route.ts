@@ -9,12 +9,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import {
   ARCHIVE_YEARS,
+  averageHistoricalYears,
   conditionFromWmoCode,
   daysFromToday,
   FORECAST_HORIZON_DAYS,
+  shiftYear,
+  type DailyBlock,
   type DayWeather,
   type DestinationWeather,
-  type WeatherCondition,
 } from "@/lib/weather";
 
 export const runtime = "nodejs";
@@ -41,14 +43,6 @@ async function geocode(city: string): Promise<GeoResult | null> {
   return data.results?.[0] ?? null;
 }
 
-interface DailyBlock {
-  time: string[];
-  weathercode: number[];
-  temperature_2m_max: number[];
-  temperature_2m_min: number[];
-  precipitation_probability_max?: number[];
-  precipitation_sum?: number[];
-}
 
 async function fetchForecast(geo: GeoResult, start: string, end: string): Promise<DayWeather[]> {
   const res = await fetch(
@@ -72,46 +66,6 @@ async function fetchForecast(geo: GeoResult, start: string, end: string): Promis
   }));
 }
 
-function shiftYear(dateStr: string, years: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const shifted = new Date(Date.UTC(y - years, m - 1, d));
-  return shifted.toISOString().slice(0, 10);
-}
-
-function mostCommon(values: WeatherCondition[]): WeatherCondition {
-  const counts = new Map<WeatherCondition, number>();
-  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
-  let best: WeatherCondition = values[0];
-  let bestCount = 0;
-  for (const [condition, count] of counts) {
-    if (count > bestCount) {
-      best = condition;
-      bestCount = count;
-    }
-  }
-  return best;
-}
-
-// A plain plurality vote over weathercodes can pick a precipitation
-// condition (rain/snow/thunderstorm) as the "most common" even when it's a
-// minority of the sampled years - e.g. 2 of 5 years had a light-drizzle code
-// and the other 3 split evenly across clear/partly-cloudy/cloudy, so drizzle
-// "wins" with only 2 votes. That produced a real, confirmed contradiction: a
-// rain icon shown next to "Avg rain: 0mm", since the averaged precipitation
-// across all 5 years (including the 3 dry ones) rounds down to nothing. A
-// precipitation condition is only trusted here when the averaged mm actually
-// backs it up - otherwise the icon falls back to the plurality among the
-// non-precipitation years, which is what the traveler should actually expect.
-const PRECIP_CONDITIONS = new Set<WeatherCondition>(["rain", "snow", "thunderstorm"]);
-const MIN_AVG_PRECIP_FOR_ICON_MM = 1;
-
-function pickHistoricalCondition(conditions: WeatherCondition[], avgPrecipMm: number | null): WeatherCondition {
-  const mode = mostCommon(conditions);
-  if (!PRECIP_CONDITIONS.has(mode) || (avgPrecipMm ?? 0) >= MIN_AVG_PRECIP_FOR_ICON_MM) return mode;
-  const nonPrecip = conditions.filter((c) => !PRECIP_CONDITIONS.has(c));
-  return nonPrecip.length > 0 ? mostCommon(nonPrecip) : "cloudy";
-}
-
 async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string): Promise<DayWeather[]> {
   const yearOffsets = Array.from({ length: ARCHIVE_YEARS }, (_, i) => i + 1);
   const perYear = await Promise.all(
@@ -129,42 +83,10 @@ async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string
     })
   );
 
+  // The averaging itself is pure and lives in lib/weather.ts, where it can
+  // be tested against the real calendar without a network stub.
   const validYears = perYear.filter((d): d is DailyBlock => d !== null && d.time.length > 0);
-  if (validYears.length === 0) return [];
-
-  // Align by day-offset within the range (not by literal date, since each
-  // year's dates differ) - every valid year should have the same number of
-  // days for the same start/end month-day span.
-  const dayCount = validYears[0].time.length;
-  const [startY, startM, startD] = start.split("-").map(Number);
-  const tripDates = Array.from({ length: dayCount }, (_, i) => {
-    // Date.UTC's month is 0-indexed - startM (e.g. 11 for November) must be
-    // passed as startM - 1, or it silently rolls forward a month (November
-    // becoming December was confirmed happening in practice).
-    const d = new Date(Date.UTC(startY, startM - 1, startD));
-    d.setUTCDate(d.getUTCDate() + i);
-    return d.toISOString().slice(0, 10);
-  });
-
-  return tripDates.map((date, i) => {
-    const maxes = validYears.map((y) => y.temperature_2m_max[i]).filter((v) => typeof v === "number");
-    const mins = validYears.map((y) => y.temperature_2m_min[i]).filter((v) => typeof v === "number");
-    const precips = validYears.map((y) => y.precipitation_sum?.[i]).filter((v): v is number => typeof v === "number");
-    const conditions = validYears.map((y) => conditionFromWmoCode(y.weathercode[i]));
-
-    const avg = (nums: number[]) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0);
-    const avgPrecipMm = precips.length ? Math.round(avg(precips)) : null;
-
-    return {
-      date,
-      isForecast: false,
-      tempMaxC: Math.round(avg(maxes)),
-      tempMinC: Math.round(avg(mins)),
-      precipitationChance: null,
-      precipitationMm: avgPrecipMm,
-      condition: pickHistoricalCondition(conditions, avgPrecipMm),
-    };
-  });
+  return averageHistoricalYears(validYears, start, end);
 }
 
 async function weatherForDestination(city: string, start: string, end: string): Promise<DayWeather[]> {
