@@ -73,6 +73,19 @@ export const AUTH_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:auth",
 };
 
+// The anonymous visited-stats share write (app/api/visited/share, POST) -
+// the one write in the app where an UNAUTHENTICATED caller chooses its own
+// Redis key, and the key lives for 400 days. Validating the codes bounds how
+// large each snapshot can be; this bounds how many of them one caller can
+// create. Deliberately generous, because the visited page POSTs here on
+// every country toggle once a share link exists, so ticking off a long list
+// is a long run of legitimate calls.
+export const VISITED_SHARE_RATE_LIMIT: RateLimitConfig = {
+  perHour: envInt("VISITED_SHARE_RATE_LIMIT_PER_HOUR", 120),
+  perDay: envInt("VISITED_SHARE_RATE_LIMIT_PER_DAY", 600),
+  prefix: "ratelimit:visited-share",
+};
+
 export interface RateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;

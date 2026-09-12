@@ -120,13 +120,62 @@ export interface VisitedStats {
   earnedBadgeIds: string[];
 }
 
-export function computeVisitedStats(codes: string[]): VisitedStats {
-  const validCodes = codes.filter((c) => getCountry(c) !== undefined);
-  const continents = new Set<Continent>();
-  for (const code of validCodes) {
-    const country = getCountry(code);
-    if (country) continents.add(country.continent);
+/** Reduces a caller-supplied list to real, deduplicated country codes.
+ *
+ * Written for the anonymous share POST, which took `codes` straight from
+ * an unauthenticated request body with only `typeof c === "string"` between
+ * it and `JSON.stringify` into a Redis key that lives for 400 days. There
+ * was no cap on how many entries, and none on how long each one was, so a
+ * single request could store a value as large as the request body allowed -
+ * and a caller choosing a new token each time could do it repeatedly.
+ *
+ * Validating rather than capping, because the honest bound is already in
+ * the data: computeVisitedStats below discards every code getCountry does
+ * not recognise, so anything else was never going to count for anything.
+ * Filtering on the way IN costs nothing in behaviour and makes the stored
+ * value at most TOTAL_COUNTRIES two-letter strings, whatever arrives.
+ *
+ * Deduplicated for the same reason - ["FR","FR",...] a thousand times over
+ * counted once in the stats and stored a thousand times. */
+export function sanitizeVisitedCodes(codes: unknown): string[] {
+  if (!Array.isArray(codes)) return [];
+  const seen = new Set<string>();
+  for (const raw of codes) {
+    if (typeof raw !== "string") continue;
+    const code = raw.trim().toUpperCase();
+    if (getCountry(code) === undefined) continue;
+    seen.add(code);
   }
+  return [...seen];
+}
+
+export function computeVisitedStats(codes: string[]): VisitedStats {
+  // DEDUPLICATED, by canonical code. This was `codes.filter(...)` and then
+  // `validCodes.length`, which counts ENTRIES rather than countries - so
+  // ["FR","fr"] read as two countries visited, and one country repeated 195
+  // times read as 195 countries and 99% of the world, badges included.
+  //
+  // Reachable through exactly one path, and it is a public one: the
+  // anonymous share snapshot is whatever an unauthenticated caller POSTed
+  // to app/api/visited/share, and app/api/stats-share/[token] hands it
+  // straight to this function for anyone with the link to read as fact. The
+  // signed-in path was never affected - it reads a Redis hash, whose keys
+  // are unique by construction - and neither was the local page, which
+  // passes Object.keys().
+  //
+  // Fixed HERE rather than only at the write, because snapshots stored
+  // before the write-side check exists are still being read, and because
+  // the function was internally inconsistent: `continents` was already a
+  // Set and therefore right, while the count beside it was not.
+  const visited = new Set<string>();
+  const continents = new Set<Continent>();
+  for (const code of codes) {
+    const country = getCountry(code);
+    if (!country) continue;
+    visited.add(country.code);
+    continents.add(country.continent);
+  }
+  const validCodes = [...visited];
 
   const countriesVisited = validCodes.length;
   const percentOfWorld = Math.round((countriesVisited / TOTAL_COUNTRIES) * 1000) / 10;

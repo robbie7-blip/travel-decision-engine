@@ -62,6 +62,34 @@ export async function saveAnonymousShareSnapshot(redis: Redis, token: string, co
   await redis.set(snapshotKey(token), JSON.stringify(codes), { ex: SNAPSHOT_TTL_SECONDS });
 }
 
+/** Whether a caller-supplied share token is shaped like one this product
+ * issues.
+ *
+ * The POST that stores an anonymous snapshot took any string of 1-128
+ * characters, with a comment saying a format check was unnecessary because
+ * the token is "an opaque client-generated ID". Two things follow from not
+ * checking it, and neither is about parsing.
+ *
+ * It becomes a Redis key suffix - `statsShareSnapshot:${token}` - so
+ * whatever arrives, colons and newlines included, lands in the keyspace.
+ * That is the same key-injection shape getClientIp had.
+ *
+ * And a one-character token is accepted, which matters because the token is
+ * the ONLY access control on the snapshot behind it. A minimum length is
+ * what makes guessing another device's token impractical, and it is also
+ * what stops a browser with no CSPRNG (see mintShareToken in
+ * localVisited.ts) from storing everyone's list under the same short
+ * string.
+ *
+ * Both real issuers land inside this: the signed-in path is
+ * randomBytes(12).toString("base64url"), 16 base64url characters, and a
+ * device mints 32 hex characters. */
+const SHARE_TOKEN = /^[A-Za-z0-9_-]{16,128}$/;
+
+export function isValidShareToken(token: unknown): token is string {
+  return typeof token === "string" && SHARE_TOKEN.test(token);
+}
+
 export async function getAnonymousShareSnapshot(redis: Redis, token: string): Promise<string[] | null> {
   const raw = await redis.get<string | string[]>(snapshotKey(token));
   if (!raw) return null;

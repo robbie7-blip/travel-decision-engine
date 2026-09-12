@@ -16,7 +16,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
-import { getOrCreateShareToken, saveAnonymousShareSnapshot } from "@/lib/statsShare";
+import { getOrCreateShareToken, isValidShareToken, saveAnonymousShareSnapshot } from "@/lib/statsShare";
+import { sanitizeVisitedCodes } from "@/lib/visited";
+import { checkRateLimit, getClientIp, VISITED_SHARE_RATE_LIMIT } from "@/lib/ratelimit";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
@@ -60,14 +62,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "Request body must be valid JSON." }, { status: 400 });
   }
 
-  const token = typeof (body as Record<string, unknown>)?.token === "string" ? (body as { token: string }).token : "";
-  const codes = Array.isArray((body as Record<string, unknown>)?.codes)
-    ? ((body as { codes: unknown[] }).codes.filter((c): c is string => typeof c === "string"))
-    : null;
-  // A sane length cap on the token, not a format check - it's an opaque
-  // client-generated ID, not something this route needs to parse.
-  if (!token.trim() || token.length > 128 || !codes) {
-    return NextResponse.json({ detail: "token and codes are required." }, { status: 400 });
+  const raw = body as Record<string, unknown> | null;
+
+  // The token is CHECKED for shape now, not just length-capped. It becomes
+  // a Redis key suffix, and it is the only access control on the snapshot
+  // behind it - so a one-character token was both a key-injection surface
+  // and a guessable capability. Both real issuers fit inside
+  // isValidShareToken; see the note on it.
+  if (!isValidShareToken(raw?.token)) {
+    return NextResponse.json({ detail: "A valid share token is required." }, { status: 400 });
+  }
+  const token = raw.token;
+
+  // The codes are reduced to real, deduplicated country codes before being
+  // stored. `typeof c === "string"` was the only filter, with no cap on how
+  // many entries or how long each one was, feeding JSON.stringify into a key
+  // that lives for 400 days. computeVisitedStats discards anything
+  // getCountry does not recognise anyway, so this costs nothing in
+  // behaviour and bounds the stored value by the country list itself.
+  if (!Array.isArray(raw?.codes)) {
+    return NextResponse.json({ detail: "codes must be an array." }, { status: 400 });
+  }
+  const codes = sanitizeVisitedCodes(raw.codes);
+
+  // Rate limited because this is the one write in the app that lets an
+  // UNAUTHENTICATED caller choose its own Redis key. Validating the codes
+  // bounds how big each snapshot can be; this bounds how many of them one
+  // caller can create, each holding its key for 400 days. The allowance is
+  // deliberately generous - the visited page POSTs here on every country
+  // toggle once a link exists, so someone ticking off a long list makes a
+  // long run of legitimate calls.
+  const rateLimit = await checkRateLimit(redis, getClientIp(request), VISITED_SHARE_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { detail: rateLimit.reason ?? "Too many share updates. Try again later." },
+      { status: 429, headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : {} }
+    );
   }
 
   await saveAnonymousShareSnapshot(redis, token, codes);

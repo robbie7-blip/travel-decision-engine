@@ -85,8 +85,49 @@ export function getOrCreateLocalShareToken(): string {
   if (typeof window === "undefined") return "";
   let token = window.localStorage.getItem(SHARE_TOKEN_KEY);
   if (!token) {
-    token = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).replace(/-/g, "");
+    token = mintShareToken();
+    if (!token) return "";
     window.localStorage.setItem(SHARE_TOKEN_KEY, token);
   }
   return token;
+}
+
+/** 32 hex characters of real randomness, or "" if this browser cannot
+ * produce any.
+ *
+ * This used to be `crypto.randomUUID?.() ?? \`${Date.now()}-${Math.random()}\``,
+ * which has two problems.
+ *
+ * The fallback was GUESSABLE, and this token is the entire identity behind
+ * an anonymous share link - "the token IS the access control", as
+ * app/api/stats-share/[token] puts it. Date.now() is knowable to the
+ * millisecond and Math.random() is not a cryptographic generator, so a
+ * token minted that way is a few million guesses from being found, not
+ * 2^128.
+ *
+ * And the fallback was reachable: crypto.randomUUID is available only in a
+ * SECURE CONTEXT, so any plain-http origin (a phone on the local network
+ * pointed at a dev server, a misconfigured deploy) took it, as did Safari
+ * before 15.4 and Firefox before 95. Nobody noticed, partly because the
+ * fallback's output still contains the "." from Math.random() after the
+ * hyphen strip - a shape no legitimate token has.
+ *
+ * getRandomValues is the right primitive here: it is a real CSPRNG, it is
+ * NOT gated on a secure context, and it predates randomUUID in every engine
+ * that has either. The optional chain is on `crypto` itself as well as the
+ * method - `crypto.randomUUID?.()` still throws a ReferenceError where
+ * `crypto` is undefined, which is the same misplaced-optional-chain mistake
+ * that `rates?.rates[currency]` made in currency.ts.
+ *
+ * Returning "" rather than a weak token is deliberate. The caller already
+ * handles "" (it is what the server-side branch above returns), and
+ * app/api/visited/share now rejects a token this short - so the worst case
+ * is a share button that does not produce a link, instead of one that
+ * produces a link someone else can find. */
+function mintShareToken(): string {
+  const c = typeof crypto !== "undefined" ? crypto : undefined;
+  if (!c?.getRandomValues) return "";
+  const bytes = new Uint8Array(16);
+  c.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }

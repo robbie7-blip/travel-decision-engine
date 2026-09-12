@@ -342,6 +342,24 @@ jobs:
       # concatenated into a Redis key. Reverting makes 15 cases red, the
       # first reporting the attacker's own 1.2.3.4.
       - run: npm run test:ratelimit
+      # The anonymous visited-stats share link - the only write in the app
+      # where an UNAUTHENTICATED caller chooses its own Redis key, and the
+      # key lives for 400 days. Three things compounded. The device token was
+      # minted as `crypto.randomUUID?.() ?? Date.now()-Math.random()`, and
+      # that fallback is both guessable and reachable (randomUUID is
+      # secure-context only, so any plain-http origin took it) - while the
+      # token IS the access control on the snapshot behind it. The route
+      # checked only that the token was 1-128 characters, so a one-character
+      # token was accepted and anything at all became a Redis key suffix. And
+      # `codes` was filtered by `typeof c === "string"` alone, with no cap on
+      # count or length, straight into JSON.stringify on that 400-day key.
+      # The worst of it was found BY this suite rather than by reading:
+      # computeVisitedStats counted entries, not countries, so one country
+      # POSTed 195 times reported 195 countries, 99% of the world, and four
+      # badges - published through a public read for anyone with the link.
+      # Reverting the dedupe makes 6 cases red; loosening the token check
+      # makes 7.
+      - run: npm run test:stats-share
       # How numeric environment variables are read. A variable saved blank
       # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
       # Number("") is 0 - which set the free monthly quota to zero (every
