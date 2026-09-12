@@ -369,6 +369,21 @@ jobs:
       # NaN - which printed $0, $-108 and $NaN against a real currency
       # symbol. Reverting the guards makes 8 cases red; reverting the
       # sanitizer makes 9.
+      # The recent-trips bookmark list, which renders inside the homepage
+      # hero. getRecentTrips did `Array.isArray(parsed) ? parsed : []` - it
+      # checked the container and nothing in it - while RecentTrips.tsx
+      # renders `trip.destinations.join(" · ")`. One stored entry missing
+      # that field throws a TypeError DURING RENDER, so the visitor gets a
+      # blank hero with no way to know why, and it returns on every load
+      # because the bad entry is read again each time. Same shape as the
+      # exchange-rate bug: data from a store that outlives deploys,
+      # rendered without being checked - and reachable without anyone
+      # editing anything, since RecentTrip is versioned by nothing, so the
+      # day a field is renamed every returning visitor's entries are the
+      # old shape. A bad row is dropped and the good ones beside it kept,
+      # because losing every real bookmark over one corrupt entry would be
+      # its own bug. Reverting makes 18 cases red.
+      - run: npm run test:recent-trips
       - run: npm run test:currency
       # Which bucket a request counts against - the single guard in front of
       # every public endpoint that costs money or sends mail. getClientIp

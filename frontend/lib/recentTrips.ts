@@ -20,13 +20,49 @@ export interface RecentTrip {
   savedAt: number;
 }
 
+/** Whether a stored entry is actually shaped like one.
+ *
+ * `Array.isArray(parsed) ? parsed : []` checked the container and nothing
+ * inside it, and RecentTrips.tsx then renders
+ * `trip.destinations.join(" · ")` - so a single entry without that field
+ * throws a TypeError DURING RENDER, and the component sits in the homepage
+ * hero. The visitor gets a blank hero with no way to know why, and it
+ * persists until they clear site data, because the bad entry is read again
+ * on every load.
+ *
+ * That is the same shape as the exchange-rate bug: data from a store that
+ * outlives deploys, rendered without being checked. And it is reachable
+ * without anyone editing anything by hand - this interface is versioned by
+ * nothing, so the day a field is added or renamed, every returning
+ * visitor's existing entries are the old shape.
+ *
+ * Checked rather than repaired: a half-entry has no trip behind it worth
+ * showing, and dropping it silently is exactly what the list already does
+ * for a parse failure. */
+function isRecentTrip(value: unknown): value is RecentTrip {
+  if (!value || typeof value !== "object") return false;
+  const t = value as Partial<RecentTrip>;
+  return (
+    typeof t.jobId === "string" &&
+    t.jobId.length > 0 &&
+    Array.isArray(t.destinations) &&
+    t.destinations.every((d) => typeof d === "string") &&
+    typeof t.startDate === "string" &&
+    typeof t.endDate === "string"
+  );
+}
+
 export function getRecentTrips(): RecentTrip[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Capped on read as well as on write. The write path enforces
+    // MAX_ENTRIES, but a value that got there another way (an older build, a
+    // hand edit) is not bound by it, and this list renders in the hero.
+    return parsed.filter(isRecentTrip).slice(0, MAX_ENTRIES);
   } catch {
     return [];
   }

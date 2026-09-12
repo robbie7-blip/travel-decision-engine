@@ -41,7 +41,10 @@ export function VisitedPhotoWall({
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
         {known
           .slice()
-          .sort((a, b) => getCountryName(a, language).localeCompare(getCountryName(b, language)))
+          // Sorted in the trip's own language, like the Flags view next to it -
+          // this passed no locale, so two views of the same list ordered
+          // Bulgarian country names differently.
+          .sort((a, b) => getCountryName(a, language).localeCompare(getCountryName(b, language), language))
           .map((code) => (
             <div key={code} style={{ borderTop: "1px solid var(--line)", paddingTop: 14 }}>
               <div

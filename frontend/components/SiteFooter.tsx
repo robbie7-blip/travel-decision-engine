@@ -14,9 +14,16 @@
 import Link from "next/link";
 import { CONTACT_EMAIL } from "@/lib/legal";
 
-const YEAR = new Date().getFullYear();
-
 export function SiteFooter() {
+  // Read per render, not once at module load. As a module-level const this
+  // was evaluated the first time the module was loaded and then frozen for
+  // the lifetime of the process, so a long-running server kept printing the
+  // year it booted in - a stale copyright line at the bottom of every page,
+  // and nobody's job to notice. (On a statically rendered page it is fixed
+  // at build either way; this makes the dynamic case right and costs one
+  // call.)
+  const year = new Date().getFullYear();
+
   return (
     <div
       className="font-ui"
@@ -32,7 +39,7 @@ export function SiteFooter() {
         color: "var(--ink-dim)",
       }}
     >
-      <span>© {YEAR} decide. All rights reserved.</span>
+      <span>© {year} decide. All rights reserved.</span>
       <div className="footer-links" style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
         <Link href="/terms" style={{ color: "var(--ink-dim)" }}>
           Terms
