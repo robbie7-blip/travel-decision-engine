@@ -375,7 +375,10 @@ export function applyFlightPricing(
 ): Itinerary {
   if (!prefetched) return itinerary;
   const days = itinerary.days ?? [];
-  const arrivalItem = days[0]?.items.find(isFlightItem);
+  // `days[0]?.items.find(...)` guarded the DAY and not `items` - the same
+  // misplaced-chain shape as `rates?.rates[currency]` in currency.ts, and
+  // the one I repeated myself on the return leg below.
+  const arrivalItem = days[0]?.items?.find(isFlightItem);
   if (!arrivalItem) return itinerary;
 
   const { fareEur: fare, metrics, adults } = prefetched;
@@ -406,7 +409,7 @@ export function applyFlightPricing(
   // rather than each being rounded independently, which can drift by a
   // euro.
   const returnItem =
-    days.length > 1 ? days[days.length - 1]?.items.find(isFlightItem) : undefined;
+    days.length > 1 ? days[days.length - 1]?.items?.find(isFlightItem) : undefined;
 
   const total = Math.round(fare);
   const arrivalShare = returnItem ? Math.round(total / 2) : total;

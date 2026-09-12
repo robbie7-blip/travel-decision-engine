@@ -74,3 +74,44 @@ export function assertUsableItinerary(value: unknown): asserts value is Itinerar
     throw new ItineraryShapeError("Model returned an itinerary with no budget_feasibility.");
   }
 }
+
+/** Guarantees `days` and every `day.items` is an array, in place.
+ *
+ * assertUsableItinerary above THROWS on a missing items array, which is
+ * right for a fresh model response - but it runs in exactly one place, the
+ * single-call path. Everything downstream of generation then walks
+ * `day.items` unguarded in 28 places across quality.ts, checks.ts,
+ * venueVerification.ts, flightPricing.ts and index.ts itself, and the
+ * reason that is safe today is three separate mechanisms in three separate
+ * files: the single-call path asserts, generateDay validates
+ * `Array.isArray(parsed?.items)` per day, and assembleItinerary builds days
+ * only from those validated results.
+ *
+ * Three independent guarantees, no single place saying so, and 28
+ * dereferences relying on all three holding forever. This exact class has
+ * already cost this codebase twice: the calendar download threw on a day
+ * with no items while the page rendered it fine ("`days` is guarded here
+ * and `items` was not"), and normalizeLodgingPrices threw inside
+ * processJob's try and discarded a fully generated, fully paid itinerary as
+ * "Unexpected error" - which is what assertUsableItinerary was written for.
+ *
+ * So the shape is established ONCE, where the itinerary enters the
+ * consuming stage, instead of being asserted in one path and assumed in the
+ * rest. Repair rather than rejection, deliberately: by this point the trip
+ * has been generated and paid for, and an empty day is a visible gap the
+ * quality gate already reports (day_not_empty), where a throw here loses
+ * the whole itinerary. That is the same trade normalizePlan makes.
+ *
+ * Idempotent, and it never touches a day that already has an array. */
+export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
+  if (!Array.isArray(itinerary.days)) {
+    itinerary.days = [];
+    return itinerary;
+  }
+  for (const day of itinerary.days) {
+    if (day && typeof day === "object" && !Array.isArray(day.items)) {
+      day.items = [];
+    }
+  }
+  return itinerary;
+}

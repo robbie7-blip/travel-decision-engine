@@ -16,7 +16,7 @@
 //
 // Run: npm run test:shape
 
-import { assertUsableItinerary, ItineraryShapeError } from "./shape";
+import { assertUsableItinerary, ItineraryShapeError, normalizeItineraryShape } from "./shape";
 import { check, finish, heading, section } from "../testutil";
 import type { Itinerary, ItineraryItem } from "../types";
 
@@ -127,6 +127,84 @@ async function main() {
   // A bare array is an object to typeof, so it needs its own check - a model
   // returning just the days array is a plausible malformation.
   check("a bare array", rejection([{ day: 1, items: [] }]) !== null);
+
+  section("the shape every downstream stage assumes, established once");
+
+  {
+    // assertUsableItinerary THROWS on a missing items array, which is right
+    // for a fresh model response - but it runs in exactly one place, the
+    // single-call path. 28 places downstream walk `day.items` unguarded,
+    // and what makes that safe is three separate mechanisms in three
+    // separate files. normalizeItineraryShape makes it one, by repair
+    // rather than rejection: by that point the trip is generated and paid
+    // for, an empty day is a visible gap the quality gate already reports,
+    // and a throw there loses the whole itinerary - which is the exact
+    // failure assertUsableItinerary was written for.
+    const it = { days: [{ day: 1, date: "2027-05-01" }, { day: 2, date: "2027-05-02", items: [{ title: "x" }] }] } as unknown as Itinerary;
+    normalizeItineraryShape(it);
+    check("a day with no items gets an empty array", Array.isArray(it.days[0].items), JSON.stringify(it.days[0]));
+    check("and it is actually empty", (it.days[0].items?.length ?? -1) === 0, String(it.days[0].items?.length));
+    check("a day that had items keeps them", (it.days[1].items?.length ?? -1) === 1, JSON.stringify(it.days[1].items));
+  }
+
+  {
+    const it = { budget_feasibility: {}, days: undefined } as unknown as Itinerary;
+    normalizeItineraryShape(it);
+    check("a missing days array becomes an empty one", Array.isArray(it.days) && it.days.length === 0, JSON.stringify(it.days));
+  }
+
+  {
+    for (const bad of [null, "nope", 42, {}]) {
+      const it = { days: bad } as unknown as Itinerary;
+      let threw = false;
+      try {
+        normalizeItineraryShape(it);
+      } catch {
+        threw = true;
+      }
+      check(`days as ${JSON.stringify(bad) ?? "null"} does not throw`, threw === false);
+      check("  and is replaced with an array", Array.isArray(it.days));
+    }
+  }
+
+  {
+    // A day that is not an object at all must not throw here either - the
+    // quality gate and assertUsableItinerary are the ones that judge it.
+    const it = { days: [null, 42, { day: 1 }] } as unknown as Itinerary;
+    let threw = false;
+    try {
+      normalizeItineraryShape(it);
+    } catch {
+      threw = true;
+    }
+    check("a non-object day does not throw", threw === false);
+    check("while a real day beside it is still repaired", Array.isArray((it.days[2] as { items?: unknown }).items));
+  }
+
+  {
+    // Idempotent, because it runs on a path that may already be clean.
+    const it = { days: [{ day: 1, date: "d", items: [{ title: "a" }] }] } as unknown as Itinerary;
+    const before = JSON.stringify(it);
+    normalizeItineraryShape(it);
+    normalizeItineraryShape(it);
+    check("running it twice changes nothing", JSON.stringify(it) === before, JSON.stringify(it));
+  }
+
+  {
+    // The property that makes the 28 unguarded dereferences safe: after
+    // this, iterating every day's items cannot throw.
+    const it = { days: [{ day: 1 }, { day: 2, items: [{ title: "x" }] }, { day: 3 }] } as unknown as Itinerary;
+    normalizeItineraryShape(it);
+    let walked = 0;
+    let threw = false;
+    try {
+      for (const day of it.days) for (const _item of day.items) walked++;
+    } catch {
+      threw = true;
+    }
+    check("every day's items can be walked without a guard", threw === false);
+    check("and the real item is still there", walked === 1, String(walked));
+  }
 
   finish();
 }

@@ -51,7 +51,7 @@ import {
   summarizeQuality,
 } from "./engine/quality";
 import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
-import { assertUsableItinerary } from "./engine/shape";
+import { assertUsableItinerary, normalizeItineraryShape } from "./engine/shape";
 import { modelSupportsEffort } from "./engine/modelCaps";
 import { waitForLiveOrFallback } from "./engine/raceFallback";
 import { runWithLimit } from "./engine/concurrency";
@@ -2261,6 +2261,13 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // attachFlightSearchLinks must run before applyFlightPricing - the
     // price lookup reuses the same link as its source_urls value once a
     // real fare is found.
+    // The shape every stage below assumes, established once instead of
+    // asserted on one path and assumed on the rest. 28 places downstream
+    // walk `day.items` unguarded, and what makes that safe is three
+    // separate mechanisms in three separate files - see
+    // normalizeItineraryShape. This is the line that makes it one.
+    itinerary = normalizeItineraryShape(itinerary);
+
     // Before anything sums item costs. A day call that wrote the whole
     // stay's price onto every night would otherwise double the largest
     // number in the trip, and checkBudgetIntegrity below builds the total
