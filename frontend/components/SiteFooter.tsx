@@ -26,7 +26,7 @@ export function SiteFooter() {
 
   return (
     <div
-      className="font-ui"
+      className="font-ui site-footer"
       style={{
         padding: "20px clamp(32px, 8%, 180px)",
         borderTop: "1px solid var(--line)",

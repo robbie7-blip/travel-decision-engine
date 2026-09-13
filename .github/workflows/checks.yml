@@ -363,6 +363,30 @@ jobs:
       - run: npm run check:i18n
       - run: npm run check:facts
       - run: npm run check:mirrors
+      # The print stylesheet, and the markup it acts on. There was no
+      # print stylesheet at all - not a reduced one, none - so the
+      # product's main artifact printed as the screen: a two-row nav bar,
+      # a currency switcher, a language toggle, an empty pushback input
+      # with its submit button, the Ask a Local thread, per-item
+      # "helpful / wrong" links, a footer of legal links, in colour, with
+      # days cut in half wherever the page ended.
+      #
+      # These rules are CSS matching class names in TSX, which is the most
+      # breakable coupling there is: rename a class and nothing fails, the
+      # page just quietly prints wrong again, and nobody prints often
+      # enough to notice. So this checks both directions and each rule
+      # that carries weight. Reverting any one of six - the .print-only
+      # base rule, hiding <button>, break-inside: avoid, the :root palette
+      # override, hiding <img>, or renaming a hook - makes it red.
+      #
+      # The real verification is a browser, and was done in one: render
+      # ItineraryResult to markup, load it with the built CSS, emulate
+      # print media in Chromium and read the computed styles. That is what
+      # found the .print-only defect (the colophon rendered on screen too)
+      # and it is how to re-check a change here. It is not in CI because
+      # every other check in this file runs in seconds with no browser and
+      # no key.
+      - run: npm run check:print
       # That every guard above actually runs here. Written after three of
       # them - test:hours, test:timing and check:stats-keys - sat in
       # package.json catching nothing because nobody added the step. A

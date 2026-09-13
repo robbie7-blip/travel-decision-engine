@@ -74,6 +74,10 @@ export function SiteHeader({
 
   return (
     <div
+      // site-header, so the print stylesheet can take the whole navigation
+      // off the page in one selector. Printed, a nav bar is a row of words
+      // nobody can click.
+      className="site-header"
       style={{
         padding: large ? "28px clamp(32px, 8%, 180px) 0" : "18px clamp(32px, 8%, 180px) 0",
         background: "var(--bg-panel-raised)",

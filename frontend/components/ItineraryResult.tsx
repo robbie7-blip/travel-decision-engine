@@ -10,6 +10,7 @@ import { TripCover } from "./TripCover";
 import { DayPhoto } from "./DayPhoto";
 import { TravelLegRow } from "./TravelLeg";
 import { OfflineReady } from "./OfflineReady";
+import { PrintColophon } from "./PrintColophon";
 import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -113,7 +114,7 @@ function ItemFeedback({
   }
 
   return (
-    <div style={{ marginTop: 4, display: "flex", gap: 12, alignItems: "center" }}>
+    <div className="no-print" style={{ marginTop: 4, display: "flex", gap: 12, alignItems: "center" }}>
       <button
         type="button"
         onClick={() => send("helpful")}
@@ -361,6 +362,37 @@ export function ItineraryResult({
         </button>
       )}
 
+      {/* Print, beside the calendar export, because they are the same
+          question asked two ways: how do I keep this once I am off this
+          page. window.print() rather than a server-rendered PDF - the
+          print stylesheet already produces the document, the browser
+          already has a "save as PDF" in its print dialogue, and a
+          rendering service would be a second copy of the layout to keep
+          in step with this one. */}
+      {result.days && result.days.length > 0 && (
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="font-ui no-print"
+          style={{
+            marginBottom: 20,
+            marginLeft: 8,
+            background: "none",
+            border: "1px solid var(--line)",
+            borderRadius: 6,
+            padding: "8px 14px",
+            fontSize: 12,
+            color: "var(--ink-soft)",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          ⎙ {t.result.printItinerary}
+        </button>
+      )}
+
       {/* Whether this trip opens without a signal, read from the actual
           cache rather than inferred from the service worker existing -
           see OfflineReady. Beside the calendar export on purpose: both
@@ -460,7 +492,7 @@ export function ItineraryResult({
 
       {result.days &&
         result.days.map((day) => (
-          <div key={day.day} style={{ marginBottom: 28 }}>
+          <div key={day.day} className="trip-day" style={{ marginBottom: 28 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
               <span className="font-display" style={{ fontSize: 18, fontWeight: 600 }}>
                 {t.result.day} {String(day.day).padStart(2, "0")}
@@ -653,7 +685,7 @@ export function ItineraryResult({
                     <button
                       type="button"
                       onClick={() => toggleEvidence(key)}
-                      className="font-ui"
+                      className="font-ui no-print"
                       style={{
                         marginTop: 6,
                         background: "none",
@@ -698,7 +730,7 @@ export function ItineraryResult({
       )}
 
       {onRefine && (
-      <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
+      <div className="no-print" style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
         <SectionLabel>{t.result.pushbackLabel}</SectionLabel>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input
@@ -769,7 +801,7 @@ export function ItineraryResult({
       </div>
       )}
 
-      <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
+      <div className="no-print" style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
         <SectionLabel>{t.tripQA.sectionHeading}</SectionLabel>
         <TripQA
           context={{ destinations, start_date: startDate, end_date: endDate, party_composition: partyComposition, interests }}
@@ -782,7 +814,13 @@ export function ItineraryResult({
           see TripVisitedPrompt. This is the one moment someone is certain
           to be thinking about this specific trip, which is exactly when
           "add it to your map" is worth asking. */}
-      <TripVisitedPrompt destinations={destinations} endDate={endDate} t={t} language={language} />
+      <div className="no-print">
+        <TripVisitedPrompt destinations={destinations} endDate={endDate} t={t} language={language} />
+      </div>
+
+      {/* Only on paper - see PrintColophon, including why the host is read
+          from the browser rather than written down here. */}
+      <PrintColophon jobId={jobId} t={t} />
     </div>
   );
 }

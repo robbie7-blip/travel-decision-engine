@@ -2065,3 +2065,235 @@ p {
   white-space: nowrap;
   border: 0;
 }
+
+/* ============================================================
+   PRINT
+   ============================================================
+
+   There was no print stylesheet at all - not a reduced one, none. The
+   itinerary is the product's main artifact, the thing someone waited for
+   and will carry around, and printing it produced the screen: a two-row
+   navigation bar, a currency switcher, a language toggle, an empty
+   pushback input with its submit button, the Ask a Local thread, per-item
+   "helpful / wrong" links, and a footer of legal links - across pages,
+   in colour, with days split wherever the page happened to end.
+
+   So this is not a stripped-down version of the page. It is the document
+   the page has always been about, with everything that only makes sense
+   under a cursor removed.
+
+   Three principles:
+
+     1. NOTHING INTERACTIVE. A button on paper is a lie, and an empty text
+        input is worse - it reads as a form somebody forgot to fill in.
+     2. INK IS NOT FREE. The palette collapses to black on white. Full-bleed
+        photographs and a deep-green cover would use a third of a
+        cartridge to say what the type already says.
+     3. A DAY IS A UNIT. break-inside: avoid, so a day is never cut in
+        half by a page boundary. Reading the last two stops of Tuesday on
+        the back of the sheet is exactly the failure paper is supposed to
+        avoid.
+
+   Deliberately plain CSS and not a second layout: the printed document IS
+   this markup, restyled. A server-rendered PDF would be a second copy of
+   the itinerary layout to keep in step with this one, and the browser's
+   own print dialogue already offers "save as PDF" for anyone who wants a
+   file rather than a sheet. */
+
+/* Present only on paper. The base rule lives OUTSIDE the print block on
+   purpose: `.print-only { display: block }` inside @media print is not
+   enough on its own, because an element with no other display rule is
+   visible by default everywhere else. Without this line the printed
+   colophon ("the live version of this trip is at ...") rendered at the
+   bottom of every trip page on screen, which is how it was found -
+   Chromium under emulated screen media reported display: block. */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    /* Room for a thumb, and for a hole punch on the left. */
+    margin: 16mm 14mm;
+  }
+
+  /* The whole palette, redefined once.
+     Every colour in this app is a custom property, and almost every
+     element sets its colour with an INLINE style - which no stylesheet
+     can override without !important on each one. Redefining the
+     variables at the root reaches all of it in one place: the inline
+     `color: var(--ink-dim)` still wins the cascade, it just now resolves
+     to a printable ink. */
+  :root {
+    --ink: #000000;
+    --ink-soft: #1a1a1a;
+    --ink-dim: #3a3a3a;
+    --bg: #ffffff;
+    --bg-panel: #ffffff;
+    --bg-panel-raised: #ffffff;
+    --line: #c8c8c8;
+    --line-strong: #8a8a8a;
+    --deep: #ffffff;
+    --deep-ink: #000000;
+    --deep-soft: #3a3a3a;
+    --deep-line: #c8c8c8;
+    --shadow-panel: none;
+    /* The confidence tiers keep their MEANING without their hue - the
+       tier word is printed beside every item anyway (see the evidence
+       panel and the inline tier label), so the dot does not have to
+       carry it alone. Greys rather than black so the chips still read as
+       a scale rather than as five identical marks. */
+    --brand-teal: #000000;
+    --brand-coral: #000000;
+    --brand-gold: #555555;
+    --brand-gold-ink: #555555;
+    --brand-purple: #444444;
+    --brand-green: #000000;
+    --brand-red: #000000;
+    --grounded: #000000;
+    --feasible: #000000;
+    --unverified: #555555;
+    --infeasible: #000000;
+    --tier-single-source: #444444;
+    --tier-inferred: #777777;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    /* Paper does not scroll, and a fixed height would clip. */
+    height: auto !important;
+    /* 11pt, not 14px: print sizing is physical. */
+    font-size: 11pt;
+  }
+
+  /* Chrome. Everything here is either an action, a control, or navigation
+     - none of which survives being printed. */
+  .no-print,
+  .site-header,
+  .site-footer,
+  .nav-links-row,
+  .nav-menu-toggle,
+  .lang-toggle,
+  .currency-select,
+  .account-control,
+  .header-account-group,
+  button,
+  input,
+  select,
+  textarea {
+    display: none !important;
+  }
+
+  /* The one thing that exists only here. */
+  .print-only {
+    display: block !important;
+  }
+
+  .print-colophon {
+    margin-top: 14mm;
+    padding-top: 3mm;
+    border-top: 1px solid #c8c8c8;
+    font-size: 8.5pt;
+    color: #3a3a3a;
+  }
+
+  .print-url {
+    font-weight: 600;
+    color: #000000;
+    white-space: nowrap;
+  }
+
+  /* The cover becomes a title block.
+     The photo and the scrim over it are the single most ink-expensive
+     thing in the product, and what they add is atmosphere - which is a
+     screen job. The place, the dates and the day count are the part that
+     has to be on the sheet. */
+  .trip-cover-photo,
+  .trip-cover-scrim,
+  .trip-cover-credit {
+    display: none !important;
+  }
+
+  .trip-cover {
+    min-height: 0 !important;
+    padding: 0 0 6mm !important;
+    margin: 0 0 6mm !important;
+    border-bottom: 2px solid #000000;
+    background: none !important;
+    color: #000000 !important;
+    border-radius: 0 !important;
+  }
+
+  .trip-cover-body {
+    position: static !important;
+    padding: 0 !important;
+  }
+
+  .trip-cover-title {
+    font-size: 24pt !important;
+    color: #000000 !important;
+  }
+
+  .trip-cover-eyebrow,
+  .trip-cover-stamps {
+    color: #000000 !important;
+  }
+
+  /* A day is a unit, and so is a single stop within it. */
+  .trip-day {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .hover-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    /* The hover affordance itself is meaningless here. */
+    box-shadow: none !important;
+    background: none !important;
+  }
+
+  /* Photographs, everywhere they appear. Same reasoning as the cover: a
+     day photo is a lovely thing on a screen and a grey rectangle on most
+     printers, at real cost in toner. The day MAP stays - it is line art,
+     it prints sharply, and "is this day clustered or strung across the
+     city" is more useful on paper than on screen, because on paper you
+     cannot zoom. */
+  .trip-cover-photo,
+  .day-photo,
+  .hero-gallery,
+  .spin-result-photo,
+  img {
+    display: none !important;
+  }
+
+  svg {
+    /* No display override here, deliberately. `img { display: none }`
+       above does not match svg, so nothing was hiding it - and forcing
+       `display: inline` was measurably worse than leaving it alone: it
+       put DayMap's plot on a text baseline and added a descender's worth
+       of space under every one. Verified in Chromium under print media;
+       the only rule this needs is not overflowing the sheet. */
+    max-width: 100%;
+  }
+
+  /* Panels stop being panels. On screen a white card on a warm ground
+     says "this is a surface"; on white paper it is an empty border. */
+  .form-panel {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: none !important;
+  }
+
+  /* Links print as text. The source URLs behind a grounded item are long,
+     numerous, and already summarised by the tier word beside the item, so
+     spelling every one of them out in brackets would double the page
+     count to repeat what the colophon says once. */
+  a {
+    color: #000000 !important;
+    text-decoration: none !important;
+  }
+}

@@ -178,8 +178,12 @@ export function TripView({ jobId }: { jobId: string }) {
                 interests={lastBrief?.interests}
                 language={language}
               />
-              <JobTimings timings={timings} quality={quality} />
-              <AddToShowcaseButton jobId={currentJobId} />
+              {/* Neither belongs on paper: one is an owner-only
+                  diagnostics panel, the other an admin action. */}
+              <div className="no-print">
+                <JobTimings timings={timings} quality={quality} />
+                <AddToShowcaseButton jobId={currentJobId} />
+              </div>
             </>
           )}
         </div>

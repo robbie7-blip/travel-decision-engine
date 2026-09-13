@@ -213,6 +213,11 @@ export interface Dictionary {
     offlineSaved: string;
     offlineNotSaved: string;
     offlineShowingSaved: string;
+    // The print action, and the line that appears ONLY on paper. A printed
+    // itinerary that does not say where it came from is a page of text
+    // with no way back to the live version.
+    printItinerary: string;
+    printedFrom: string;
     /** The day map (components/DayMap.tsx). alt doubles as the screen
      * reader description, since the plot itself carries no text. */
     map: {
@@ -728,6 +733,8 @@ const en: Dictionary = {
     offlineSaved: "Saved on this device - opens without a signal",
     offlineNotSaved: "Not saved for offline yet",
     offlineShowingSaved: "You're offline - this is the saved copy",
+    printItinerary: "Print",
+    printedFrom: "The live version of this trip, with sources and follow-up questions:",
     map: {
       alt: "A plot of the day's verified stops, in order.",
       heading: "The shape of the day",
@@ -1254,6 +1261,8 @@ const bg: Dictionary = {
     offlineSaved: "Запазено на това устройство - отваря се без интернет",
     offlineNotSaved: "Още не е запазено за офлайн",
     offlineShowingSaved: "Нямаш интернет - това е запазеното копие",
+    printItinerary: "Принтирай",
+    printedFrom: "Живата версия на това пътуване, с източници и въпроси:",
     map: {
       alt: "Схема на потвърдените спирки за деня, по ред.",
       heading: "Формата на деня",
