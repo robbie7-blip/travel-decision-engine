@@ -678,6 +678,32 @@ jobs:
       # test on it was false. Reverting the guards makes 12 of 59 red;
       # reverting the reader makes 10 of 59 red.
       - run: npm run test:subscription-event
+      # A reflected XSS on the authentication endpoint.
+      #
+      # GET /api/auth/verify renders a page with the ?token= value embedded
+      # in an inline <script>, built with JSON.stringify and nothing else,
+      # under a comment saying "JSON.stringify handles quote/backslash
+      # escaping correctly for that context". True, and the wrong
+      # conclusion: the hazard inside an inline script is not quotes, it is
+      # `</script`, which JSON.stringify leaves exactly as it finds it. So a
+      # token of "</script><script>...</script>" closed the real element
+      # early and ran as its own script on this origin.
+      #
+      # Confirmed in the Chromium this environment ships rather than argued
+      # about: the old template rendered with that payload produced
+      # <html data-pwned="YES"> and no marker from the real sign-in script;
+      # the fixed one produces the real script's marker and no data-pwned.
+      #
+      # Two layers now - the token is refused unless it has the shape
+      # randomBytes(32).toString("base64url") produces, and the script
+      # literal escapes every < and > anyway. The suite asserts the
+      # invariant the browser cares about (exactly one `</script` in the
+      # output) against a battery of payloads rather than one, because the
+      # first payload tried by hand did NOT fire - it used double quotes,
+      # which JSON.stringify escapes - and a single-case test would have
+      # "proved" the hole closed while it was wide open. Reverting both
+      # layers makes 56 of 103 red.
+      - run: npm run test:auth-verify-page
       # How long a trip lives. Thirty days is the wrong number for the
       # thing someone paid for: a trip planned in January for a June
       # holiday expired in February - not while nobody was looking at it,

@@ -33,17 +33,9 @@ import { getRedis } from "@/lib/redis";
 import { consumeMagicLinkToken } from "@/lib/magicLink";
 import { createSessionCookieValue, SESSION_COOKIE_NAME, SESSION_COOKIE_MAX_AGE_SECONDS } from "@/lib/session";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { isMagicLinkTokenShape, renderVerifyPage } from "@/lib/authVerifyPage";
 
 export const runtime = "nodejs";
-
-function escapeHtmlAttr(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
@@ -60,81 +52,32 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${site}/account?error=missing_token`);
   }
 
-  // Token isn't touched here at all - validity is only checked (and
+  // Refused before anything is rendered.
+  //
+  // This page embeds the token in an inline <script>, and that embedding was
+  // built with JSON.stringify alone - which escapes quotes and backslashes
+  // and leaves `</script` untouched. A token of
+  // "</script><script>...</script>" therefore closed the real script element
+  // early and ran as its own script on this origin: reflected XSS on the
+  // authentication endpoint, confirmed in Chromium rather than argued about.
+  // See lib/authVerifyPage.ts.
+  //
+  // The escaping there is correct now, so this check is the second lock on
+  // the same door. It costs nothing and it is the one that kills the class:
+  // a token that cannot have come from generateMagicLinkToken is not a
+  // token, so there is nothing to lose by refusing it here rather than
+  // discovering it is unknown one Redis round-trip later.
+  if (!isMagicLinkTokenShape(token)) {
+    console.error(
+      "[verify][GET] token does not have the shape generateMagicLinkToken produces - refusing to render. Length:",
+      token.length
+    );
+    return NextResponse.redirect(`${site}/account?error=invalid_link`);
+  }
+
+  // Token is not otherwise touched here - validity is only checked (and
   // consumed) by the POST below, once the browser actually issues it.
-  const safeToken = escapeHtmlAttr(token);
-  // Also embedded as a JSON-encoded JS string literal for the fetch() call
-  // below - JSON.stringify handles quote/backslash escaping correctly for
-  // that context, which is different from (and not covered by) the HTML-
-  // attribute escaping used for the <form> fallback's hidden input above.
-  const jsToken = JSON.stringify(token);
-  const html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Signing in…</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f7f1e2; color: #2b241c;
-           display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .box { text-align: center; }
-    .brand { font-size: 20px; font-weight: 700; color: #2c6a4c; margin-bottom: 12px; }
-    button { font-family: inherit; background: #2c6a4c; color: white; border: none; border-radius: 8px;
-             padding: 12px 24px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 12px; }
-    #fallback { display: none; }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <div class="brand">decide</div>
-    <p>Finishing sign-in…</p>
-    <form id="f" method="POST" action="/api/auth/verify">
-      <input type="hidden" name="token" value="${safeToken}" />
-      <noscript><button type="submit">Click to finish signing in</button></noscript>
-      <button id="fallback" type="submit">Click to finish signing in</button>
-    </form>
-  </div>
-  <script>
-    (function () {
-      var fallbackTimer = setTimeout(function () {
-        document.getElementById('fallback').style.display = 'inline-block';
-      }, 4000);
-
-      var body = new URLSearchParams();
-      body.set('token', ${jsToken});
-
-      fetch('/api/auth/verify', { method: 'POST', body: body })
-        .then(function (res) {
-          clearTimeout(fallbackTimer);
-          // fetch() only rejects on network-level failure - an HTTP error
-          // status (e.g. a 500 from an unhandled exception on the server)
-          // still resolves here with res.ok === false. Blindly navigating
-          // to res.url in that case is exactly how a real server error
-          // turned into a confusing "?error=missing_token": with no
-          // redirect to follow, res.url is just this same POST endpoint
-          // with no query string, and *that* URL's own GET handler is what
-          // was actually producing the missing_token redirect - hiding the
-          // real failure completely. Checking res.ok first means a genuine
-          // server error now falls through to the visible fallback button
-          // instead of masquerading as a token problem.
-          if (res.ok) {
-            // redirect: 'follow' is fetch's default - res.url is already the
-            // final /account?... URL after following the server's 303, and
-            // any Set-Cookie along that chain has already been applied by
-            // the browser by the time this callback runs.
-            window.location.href = res.url;
-          } else {
-            document.getElementById('fallback').style.display = 'inline-block';
-          }
-        })
-        .catch(function () {
-          clearTimeout(fallbackTimer);
-          document.getElementById('fallback').style.display = 'inline-block';
-        });
-    })();
-  </script>
-</body>
-</html>`;
+  const html = renderVerifyPage(token);
 
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
