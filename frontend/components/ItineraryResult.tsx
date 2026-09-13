@@ -9,6 +9,7 @@ import { DayMap } from "./DayMap";
 import { TripCover } from "./TripCover";
 import { DayPhoto } from "./DayPhoto";
 import { TravelLegRow } from "./TravelLeg";
+import { OfflineReady } from "./OfflineReady";
 import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -359,6 +360,12 @@ export function ItineraryResult({
           ⬇ {t.result.downloadCalendar}
         </button>
       )}
+
+      {/* Whether this trip opens without a signal, read from the actual
+          cache rather than inferred from the service worker existing -
+          see OfflineReady. Beside the calendar export on purpose: both
+          answer "will I still have this when I need it". */}
+      <OfflineReady jobId={jobId} t={t} />
 
       {result.budget_feasibility && (
         <div style={{ marginBottom: 24 }}>

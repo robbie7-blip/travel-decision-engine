@@ -76,6 +76,17 @@ export interface Job {
    * trip page only renders while status is "running", and the finished
    * itinerary replaces it wholesale. */
   progress?: JobProgress;
+  /** How long this job's Redis record should live, in seconds.
+   *
+   * On the RECORD rather than at each write site, because the worker
+   * rewrites the job several times per generation with
+   * `SET ... EX JOB_TTL_SECONDS` - so any longer lifetime chosen at
+   * enqueue was silently reset to thirty days the moment a worker picked
+   * the job up. Carrying it here is what makes the choice survive every
+   * write, including the ones made by the other deployment.
+   *
+   * Absent means JOB_TTL_SECONDS. See ttlForJob. */
+  ttlSeconds?: number;
 }
 
 export interface ProgressDay {
@@ -258,6 +269,37 @@ export const JOBS_QUEUE_KEY = "jobs:queue";
 // link (see app/trip/[jobId]), so this needs to outlive a single polling
 // session by a lot, not just cover the few minutes generation takes.
 export const JOB_TTL_SECONDS = 60 * 60 * 24 * 30;
+
+/** ~13 months, for a trip belonging to a signed-in account.
+ *
+ * Thirty days is the wrong number for the thing someone paid for. A trip
+ * planned in January for a June holiday expires in February - not while
+ * nobody is looking at it, but in the middle of the window it exists FOR,
+ * and the /trip link someone bookmarked or shared just stops working with
+ * no warning and nothing to recover.
+ *
+ * Longer than a year on purpose: an annual trip planned slightly earlier
+ * this year than last must not fall off between the two. The account is
+ * the boundary because it is the only durable identity the product has -
+ * an anonymous generation is as likely to be an abandoned experiment as a
+ * real plan, and those are what the thirty-day clock is actually for. */
+export const SAVED_JOB_TTL_SECONDS = 60 * 60 * 24 * 400;
+
+/** The lifetime a job's record should have, in seconds.
+ *
+ * Clamped, because this value comes off a stored record: a job written by
+ * an older build has no ttlSeconds at all (hence the default), and a
+ * malformed one must not be able to ask Redis for a nonsensical or
+ * effectively infinite lifetime. Redis rejects a non-integer outright,
+ * which would throw inside the worker's write path and lose a finished
+ * generation. */
+export function ttlForJob(job: { ttlSeconds?: number }): number {
+  const requested = job.ttlSeconds;
+  if (typeof requested !== "number" || !Number.isFinite(requested) || requested <= 0) {
+    return JOB_TTL_SECONDS;
+  }
+  return Math.min(Math.floor(requested), SAVED_JOB_TTL_SECONDS);
+}
 
 // --- FRONTEND-ONLY (not mirrored to the worker) ---
 // Only the app's admin routes curate a trip, so this constant has no reason

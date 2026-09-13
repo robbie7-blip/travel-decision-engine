@@ -23,7 +23,7 @@
 import type Redis from "ioredis";
 import type Anthropic from "@anthropic-ai/sdk";
 import { processJob } from "./index";
-import { jobKey, type Job } from "./jobs";
+import { JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, type Job } from "./jobs";
 import { check, fakeMessages, finish, heading, section } from "./testutil";
 import type { Itinerary, ItineraryItem, TripBriefInput } from "./types";
 
@@ -216,11 +216,22 @@ function makeClient(sent: Sent[]): Anthropic {
   } as unknown as Anthropic;
 }
 
+/** Every TTL the worker asked for, keyed by the key it asked about.
+ *
+ * The fake used to accept `set` and drop its EX argument entirely, which
+ * is why nothing noticed that writeJob reset a job's lifetime on every
+ * write - reverting that line left all of these green. A fake that
+ * silently discards an argument cannot hold the behaviour that argument
+ * controls. */
+const ttlsWritten = new Map<string, number>();
+
 function makeRedis(store: Map<string, string>): Redis {
   return {
     get: async (k: string) => store.get(k) ?? null,
-    set: async (k: string, v: string) => {
+    set: async (k: string, v: string, ...rest: unknown[]) => {
       store.set(k, v);
+      const ex = rest.findIndex((a) => a === "EX");
+      if (ex >= 0 && typeof rest[ex + 1] === "number") ttlsWritten.set(k, rest[ex + 1] as number);
       return "OK";
     },
     expire: async () => 1,
@@ -339,6 +350,44 @@ async function main() {
     defects.map((f) => f.detail).join("; ")
   );
   check("the must-see the traveler asked for is present", !defects.some((f) => f.check === "must_see_covered"));
+
+  section("the trip's lifetime survives the worker's own writes");
+  {
+    // writeJob is `SET ... EX` and runs several times per generation - at
+    // pickup, on every progress update, at completion - and SET with an EX
+    // replaces the key's lifetime outright. So the longer lifetime chosen
+    // at enqueue for a signed-in traveller's trip was reset to thirty days
+    // before the first model call returned, and the /trip link they
+    // bookmarked for a holiday eight months out quietly stopped working.
+    //
+    // Tested here rather than in a unit, because the point is that it
+    // survives the WHOLE pipeline, not one call.
+    check(
+      "the finished job was written with the lifetime it asked for",
+      ttlsWritten.get(jobKey("r1")) === JOB_TTL_SECONDS,
+      String(ttlsWritten.get(jobKey("r1")))
+    );
+
+    const savedStore = new Map<string, string>();
+    const savedJob: Job = {
+      id: "saved-1",
+      status: "pending",
+      brief: BRIEF,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      ttlSeconds: SAVED_JOB_TTL_SECONDS,
+    };
+    savedStore.set(jobKey("saved-1"), JSON.stringify(savedJob));
+    await processJob(makeRedis(savedStore), makeClient([]), "saved-1");
+    check(
+      "a saved trip is still saved after generation",
+      ttlsWritten.get(jobKey("saved-1")) === SAVED_JOB_TTL_SECONDS,
+      String(ttlsWritten.get(jobKey("saved-1")))
+    );
+    const savedFinished: Job = JSON.parse(savedStore.get(jobKey("saved-1"))!);
+    check("and the record still carries the field", savedFinished.ttlSeconds === SAVED_JOB_TTL_SECONDS, String(savedFinished.ttlSeconds));
+    check("and it actually finished", savedFinished.status === "done", savedFinished.status);
+  }
 
   finish();
 }

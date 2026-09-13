@@ -96,6 +96,21 @@ export default function AccountPage() {
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    // The offline trip cache goes too.
+    //
+    // A /trip link is shareable and its contents are not a secret, but the
+    // cached job carries the brief, and the brief carries dietary and
+    // mobility notes - a disability disclosure, on a device the person may
+    // be handing back. Signing out has to mean that, not just dropping a
+    // cookie. Best-effort and never blocking: the cookie is already gone
+    // by this point, so a browser without CacheStorage or a controller
+    // must not leave someone stuck on a page that says they are still
+    // signed in.
+    try {
+      navigator.serviceWorker?.controller?.postMessage({ type: "decide-clear-trips" });
+    } catch {
+      // nothing to clear, or nothing that can clear it
+    }
     setAccount({ signedIn: false });
   }
 

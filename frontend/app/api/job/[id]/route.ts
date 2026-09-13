@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { jobKey, readJobRecord, stallReason, WORKER_HEARTBEAT_KEY, type Job, type WorkerHeartbeat } from "@/lib/jobs";
 import { isWorkerHeartbeat } from "@/lib/health";
+import { touchJobTtl } from "@/lib/jobTtl";
 
 export const runtime = "nodejs";
 
@@ -69,6 +70,16 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       { status: 500 }
     );
   }
+
+  // Opening a finished trip keeps it.
+  //
+  // The lifetime on the record answers "how long is this kept without
+  // being looked at". This answers the other question - a trip somebody is
+  // still using must not expire underneath them - and that is the one that
+  // bites on a trip opened during the holiday it describes, a year after
+  // it was planned. Not awaited: it is bookkeeping about next year, and
+  // the traveller is waiting for this response now.
+  void touchJobTtl(redis, job);
 
   // A job that nothing is going to finish - either its worker died
   // mid-generation and left it at "running", or no worker ever took it off

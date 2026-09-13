@@ -25,6 +25,8 @@
     "test:session": "tsx lib/session.test.ts",
     "test:airports": "tsx lib/airports.test.ts",
     "test:job-record": "tsx lib/jobRecord.test.ts",
+    "test:job-ttl": "tsx lib/jobTtl.test.ts",
+    "test:service-worker": "tsx lib/serviceWorker.test.ts",
     "test:recent-trips": "tsx lib/recentTrips.test.ts",
     "test:currency": "tsx lib/currency.test.ts",
     "test:validation": "tsx lib/validation.test.ts",

@@ -206,6 +206,13 @@ export interface Dictionary {
     // minutes the itinerary itself allows.
     travelTight: string;
     travelImpossible: string;
+    // Whether this trip opens without a signal. Read from CacheStorage,
+    // never inferred from the service worker existing - the worker stores
+    // a job only once it comes back done, and a browser can evict the
+    // whole origin's storage. See components/OfflineReady.tsx.
+    offlineSaved: string;
+    offlineNotSaved: string;
+    offlineShowingSaved: string;
     /** The day map (components/DayMap.tsx). alt doubles as the screen
      * reader description, since the plot itself carries no text. */
     map: {
@@ -718,6 +725,9 @@ const en: Dictionary = {
     travelTransit: "~{minutes} min by transit · {distance}",
     travelTight: "tight - only {allowed} min allowed",
     travelImpossible: "not possible - only {allowed} min allowed",
+    offlineSaved: "Saved on this device - opens without a signal",
+    offlineNotSaved: "Not saved for offline yet",
+    offlineShowingSaved: "You're offline - this is the saved copy",
     map: {
       alt: "A plot of the day's verified stops, in order.",
       heading: "The shape of the day",
@@ -1241,6 +1251,9 @@ const bg: Dictionary = {
     travelTransit: "~{minutes} мин с транспорт · {distance}",
     travelTight: "малко време - само {allowed} мин",
     travelImpossible: "не е възможно - само {allowed} мин",
+    offlineSaved: "Запазено на това устройство - отваря се без интернет",
+    offlineNotSaved: "Още не е запазено за офлайн",
+    offlineShowingSaved: "Нямаш интернет - това е запазеното копие",
     map: {
       alt: "Схема на потвърдените спирки за деня, по ред.",
       heading: "Формата на деня",

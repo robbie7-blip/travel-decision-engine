@@ -9,7 +9,7 @@
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
+import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
 import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
@@ -176,9 +176,24 @@ export async function POST(request: NextRequest) {
 
   const id = crypto.randomUUID();
   const now = Date.now();
-  const job: Job = { id, status: "pending", brief, createdAt: now, updatedAt: now, ...(testMode ? { testMode } : {}) };
+  // A signed-in traveller's trip is kept for SAVED_JOB_TTL_SECONDS rather
+  // than the anonymous thirty days. Thirty days is the wrong number for
+  // the thing they paid for: a trip planned in January for a June holiday
+  // expired in February, in the middle of the window it exists for, and
+  // the bookmarked /trip link just stopped working. Carried on the record
+  // so the worker's own writes cannot reset it - see Job.ttlSeconds.
+  const ttlSeconds = email ? SAVED_JOB_TTL_SECONDS : JOB_TTL_SECONDS;
+  const job: Job = {
+    id,
+    status: "pending",
+    brief,
+    createdAt: now,
+    updatedAt: now,
+    ttlSeconds,
+    ...(testMode ? { testMode } : {}),
+  };
 
-  await redis.set(jobKey(id), JSON.stringify(job), { ex: JOB_TTL_SECONDS });
+  await redis.set(jobKey(id), JSON.stringify(job), { ex: ttlSeconds });
   await redis.lpush(JOBS_QUEUE_KEY, id);
 
   // Both awaited, not fire-and-forget: a serverless function isn't

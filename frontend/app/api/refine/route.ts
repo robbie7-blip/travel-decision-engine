@@ -7,7 +7,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
+import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
+import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
@@ -93,6 +94,14 @@ export async function POST(request: NextRequest) {
 
   const id = crypto.randomUUID();
   const now = Date.now();
+  // A refinement is a new job with a new id, so it needs the lifetime
+  // decision made again - it does not inherit the original's. Without
+  // this, answering a question about a saved trip produced a REPLACEMENT
+  // that expired in thirty days while the trip it came from lived for
+  // over a year, and the refined version is the one the traveller keeps.
+  const ttlSeconds = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value)
+    ? SAVED_JOB_TTL_SECONDS
+    : JOB_TTL_SECONDS;
   const job: Job = {
     id,
     status: "pending",
@@ -100,9 +109,10 @@ export async function POST(request: NextRequest) {
     refinement: { question, baseItinerary },
     createdAt: now,
     updatedAt: now,
+    ttlSeconds,
   };
 
-  await redis.set(jobKey(id), JSON.stringify(job), { ex: JOB_TTL_SECONDS });
+  await redis.set(jobKey(id), JSON.stringify(job), { ex: ttlSeconds });
   await redis.lpush(JOBS_QUEUE_KEY, id);
 
   try {

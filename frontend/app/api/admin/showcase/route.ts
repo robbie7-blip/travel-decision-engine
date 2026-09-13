@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
 import { jobKey, CURATED_JOB_TTL_SECONDS } from "@/lib/jobs";
+import { extendTtl } from "@/lib/jobTtl";
 import { MAX_SHOWCASE_ENTRIES, SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
 
 export const runtime = "nodejs";
@@ -80,7 +81,11 @@ export async function POST(request: NextRequest) {
   await saveList(redis, updated);
   // The whole point of curating this trip is that it keeps showing up -
   // don't let it quietly drop off the gallery on the normal 30-day job TTL.
-  await redis.expire(jobKey(job.id), CURATED_JOB_TTL_SECONDS);
+  // extendTtl, not expire. EXPIRE sets a TTL in either direction, and a
+  // signed-in traveller's trip already starts life LONGER than the curated
+  // year - so promoting it to the showcase, the most deliberate thing an
+  // editor can do to a trip, would have quietly taken five weeks off it.
+  await extendTtl(redis, jobKey(job.id), CURATED_JOB_TTL_SECONDS);
 
   return NextResponse.json({ trips: [...updated].reverse() });
 }

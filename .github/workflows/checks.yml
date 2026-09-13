@@ -493,6 +493,46 @@ jobs:
       # which is the tell the guard was accidental.) Reverting it makes 10 of
       # 55 red.
       - run: npm run test:job-record
+      # How long a trip lives. Thirty days is the wrong number for the
+      # thing someone paid for: a trip planned in January for a June
+      # holiday expired in February - not while nobody was looking at it,
+      # but in the middle of the window it exists FOR - and the bookmarked
+      # /trip link stopped working with nothing to recover. A signed-in
+      # traveller's trip now starts at ~13 months, and opening a finished
+      # one tops it back up.
+      #
+      # Two ways that got decided wrong, both held here. The worker's
+      # writeJob is `SET ... EX JOB_TTL_SECONDS` and runs several times per
+      # generation, and SET with an EX replaces the lifetime outright - so
+      # any longer lifetime chosen at enqueue was gone before the first
+      # model call returned; the choice rides on the record now
+      # (Job.ttlSeconds) exactly so it survives the other deployment's
+      # writes. And `expire(key, N)` is not "keep at least N": it sets in
+      # either direction, so curating a saved trip into the showcase - the
+      # most deliberate thing an editor can do to a trip - took five weeks
+      # off it. Reverting the extend-only check makes 4 of 39 red.
+      - run: npm run test:job-ttl
+      # The service worker, run from the file that actually ships. It is
+      # the one piece of this product that keeps running after a deploy, on
+      # a device nobody can inspect, and the previous version was eleven
+      # lines that described itself as existing "mainly to satisfy PWA
+      # installability" while intercepting every GET and caching the
+      # response unconditionally. CacheStorage therefore accumulated
+      # /api/account (email, plan, subscription), /api/job/<id> (the whole
+      # brief, which carries mobility_constraints - a disability
+      # disclosure) and /admin/health (which credentials are set), none of
+      # it ever cleared, not even on sign-out. No header prevents that: the
+      # Cache API does not honour no-store. It also answered every failed
+      # request with the homepage HTML, so a failed /api/rates resolved
+      # instead of rejecting and res.json() threw inside code written for a
+      # network error.
+      #
+      # The default is inverted now: nothing is cached unless named, and
+      # private paths are not intercepted AT ALL, so no code path can reach
+      # a cache with one. What it does store is a FINISHED trip plus the
+      # content-hashed chunks the page needs to run offline. Reverting the
+      # private-path rule and the done-only rule makes 10 of 48 red.
+      - run: npm run test:service-worker
       - run: npm run test:currency
       # Which bucket a request counts against - the single guard in front of
       # every public endpoint that costs money or sends mail. getClientIp

@@ -78,6 +78,7 @@ import {
   STALE_RUNNING_MS,
   jobKey,
   readJobRecord,
+  ttlForJob,
   type Job,
   type JobTimings,
   type ProgressDay,
@@ -1961,7 +1962,16 @@ const MAX_PROGRESS_TITLES = 4;
 
 async function writeJob(redis: Redis, job: Job): Promise<void> {
   job.updatedAt = Date.now();
-  await redis.set(jobKey(job.id), JSON.stringify(job), "EX", JOB_TTL_SECONDS);
+  // ttlForJob, not JOB_TTL_SECONDS.
+  //
+  // This function runs several times per generation - at pickup, on every
+  // progress update, at completion - and each call is a SET with an EX, so
+  // it REPLACES whatever lifetime the key had. The enqueue side chooses a
+  // long lifetime for a signed-in traveller's trip, and this line reset it
+  // to thirty days before the first model call had returned. The choice
+  // rides on the record now (see Job.ttlSeconds) precisely so that it
+  // survives the other deployment's writes.
+  await redis.set(jobKey(job.id), JSON.stringify(job), "EX", ttlForJob(job));
 }
 
 /** Fires once per day, the first time a spend update pushes the running
