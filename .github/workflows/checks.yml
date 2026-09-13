@@ -649,6 +649,35 @@ jobs:
       # longer whatever the caller supplied. Reverting the two guards makes
       # 21 of 50 red.
       - run: npm run test:refine-source
+      # Who gets paid access, and which Stripe events may change it.
+      #
+      # The webhook is the only place that grants or revokes paid access and
+      # it had no test. handleSubscriptionChange applied every event
+      # verbatim, with no check that the event concerned the subscription
+      # the traveller actually has or that it was newer than what had
+      # already been applied. Two reachable money bugs came out of that:
+      #
+      #   /api/checkout passes customer_email and no customer, so EVERY
+      #   checkout mints a new Stripe customer. Cancel and resubscribe and
+      #   you have two - and the reverse index stripeCustomer:<id> -> email
+      #   is written once at checkout with no TTL, so a later event about
+      #   the DEAD subscription still resolved to that email and wrote
+      #   "canceled" over the live, paid one. They paid and lost access, and
+      #   nothing would have restored it, because no other path re-reads the
+      #   subscription.
+      #
+      #   This route returns 500 on a Redis hiccup specifically so Stripe
+      #   RETRIES the event later - by which time later events have been
+      #   applied. A retried "updated (active)" landing after a "deleted"
+      #   re-granted paid access permanently.
+      #
+      # Also covers the record reader those guards depend on: Redis hashes
+      # have no null, upsertUserRecord stores one as "", and getUserRecord
+      # read it back with `?? null` - which replaces only null and
+      # undefined, so a cleared field came back as "" and every `=== null`
+      # test on it was false. Reverting the guards makes 12 of 59 red;
+      # reverting the reader makes 10 of 59 red.
+      - run: npm run test:subscription-event
       # How long a trip lives. Thirty days is the wrong number for the
       # thing someone paid for: a trip planned in January for a June
       # holiday expired in February - not while nobody was looking at it,

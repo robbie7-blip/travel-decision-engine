@@ -27,6 +27,43 @@ export interface UserRecord {
   // "still has access."
   subscriptionStatus: string | null;
   currentPeriodEnd: number | null; // epoch seconds
+  /** The `created` of the newest Stripe event applied to this record, in
+   * epoch seconds.
+   *
+   * Stripe does not promise to deliver events in the order it generated
+   * them, and this webhook makes that concrete all by itself: it returns
+   * 500 on a Redis hiccup precisely so Stripe will RETRY the event later -
+   * by which time later events have already been delivered and applied. A
+   * retried "subscription.updated (active)" landing after a
+   * "subscription.deleted" re-grants paid access, permanently, because
+   * nothing ever re-reads the subscription afterwards.
+   *
+   * So an event older than the newest one already applied is dropped. See
+   * decideSubscriptionUpdate in lib/subscriptionEvent.ts. */
+  lastEventAt: number | null;
+}
+
+/** A hash field as a string, or null.
+ *
+ * `data.x ?? null` was wrong here: upsertUserRecord writes a null field as
+ * the EMPTY STRING (Redis hashes have no null), and `??` replaces only
+ * null and undefined - so a field that had been explicitly cleared came
+ * back as "" and every `=== null` test on it was false. */
+function text(value: string | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/** A hash field as a finite number, or null. `Number("")` is 0 and
+ * `Number("later")` is NaN, and both used to be stored straight onto the
+ * record - 0 reads as "the subscription ended in 1970" and NaN reaches
+ * `new Date(NaN * 1000)`. */
+function epochSeconds(value: string | undefined): number | null {
+  const raw = text(value);
+  if (raw === null) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function userKey(email: string): string {
@@ -99,10 +136,11 @@ export async function getUserRecord(redis: Redis, email: string): Promise<UserRe
   if (!data || Object.keys(data).length === 0) return null;
   return {
     email: email.toLowerCase().trim(),
-    stripeCustomerId: data.stripeCustomerId ?? null,
-    stripeSubscriptionId: data.stripeSubscriptionId ?? null,
-    subscriptionStatus: data.subscriptionStatus ?? null,
-    currentPeriodEnd: data.currentPeriodEnd ? Number(data.currentPeriodEnd) : null,
+    stripeCustomerId: text(data.stripeCustomerId),
+    stripeSubscriptionId: text(data.stripeSubscriptionId),
+    subscriptionStatus: text(data.subscriptionStatus),
+    currentPeriodEnd: epochSeconds(data.currentPeriodEnd),
+    lastEventAt: epochSeconds(data.lastEventAt),
   };
 }
 
