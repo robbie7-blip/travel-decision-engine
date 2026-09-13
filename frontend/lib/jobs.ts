@@ -183,6 +183,20 @@ export interface JobTimings {
    * way, with no Places outage anywhere in the log, and nothing said which
    * had happened. */
   repairsStripped?: number;
+  /** What phase 1's two halves spent their time on, decomposed.
+   *
+   * planMs and frameMs say how long each half took. They cannot say WHY,
+   * and the two candidate whys have opposite fixes: a queue or a long
+   * think is the effort setting and the prompt, a long tail is the shape
+   * of what is being asked for. The plan call took 68.8s on a 102s
+   * generation and both readings were argued from the same log without
+   * either being settled - which cost another paid generation to ask
+   * again.
+   *
+   * queueMs is time to the first stream event (the request left and the
+   * model began), thinkMs is from there to the first character of output,
+   * writeMs is the rest. They sum to the half's own elapsed time. */
+  phase1Calls?: Record<string, { queueMs: number | null; thinkMs: number | null; writeMs: number | null; totalMs: number }>;
   /** Silent retries, per stage, that each cost a whole extra model call.
    *
    * A malformed or unusable response is retried once (see withOneRetryOf),

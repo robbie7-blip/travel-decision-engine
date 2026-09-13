@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { isAdminUi } from "@/lib/adminUi";
+import { TARGET_MS, auditTimings } from "@/lib/engine/timingAudit";
 import type { JobTimings as Timings, QualityReport } from "@/lib/jobs";
 
 function secs(ms?: number): string {
@@ -184,6 +185,66 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
               </div>
             </div>
           )}
+
+          {/* What phase 1's halves spent their time on.
+              planMs and frameMs say how long each took and cannot say why,
+              and the two candidate whys have OPPOSITE fixes: a queue or a
+              long think is the effort setting and the prompt, a long write
+              is the shape of what is being asked for. The plan call took
+              68.8s on a 102s generation and both readings were argued from
+              the same log without either being settled - which cost
+              another paid generation to ask again. */}
+          {timings.phase1Calls && Object.keys(timings.phase1Calls).length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              {Object.entries(timings.phase1Calls).map(([half, call]) => (
+                <div key={half} style={{ color: "var(--ink-dim)" }}>
+                  {half}: queue {secs(call.queueMs ?? undefined)} · think {secs(call.thinkMs ?? undefined)} · write{" "}
+                  {secs(call.writeMs ?? undefined)} = {secs(call.totalMs)}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Does the total add up?
+              The question that comes before "which stage is slow", and the
+              one none of the instrumentation above could answer. If the
+              serial stages sum to well under the total then the remainder
+              is real time in a place nobody has looked, and tuning any of
+              the numbers above is tuning the wrong half of the job. See
+              lib/engine/timingAudit.ts for which stages are serial and
+              which run alongside each other - adding a concurrent one in
+              would produce a confident negative and send a reader after
+              time that was never lost. */}
+          {(() => {
+            const audit = auditTimings(timings);
+            const worrying = audit.unaccountedMs > audit.totalMs * 0.1 || audit.unaccountedMs < 0;
+            return (
+              <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--line)" }}>
+                <div style={{ color: worrying ? "var(--infeasible)" : "var(--ink-dim)" }}>
+                  accounted {secs(audit.accountedMs)} of {secs(audit.totalMs)} · unaccounted{" "}
+                  {secs(audit.unaccountedMs)}
+                  {worrying ? " ⚠" : ""}
+                  {audit.generateUnaccountedMs !== null && (
+                    <span> · inside generation {secs(audit.generateUnaccountedMs)}</span>
+                  )}
+                </div>
+                {/* The floor: what this run would have been with an
+                    instant phase 1. Every round of latency work has gone
+                    at phase 1 because it is the biggest single stage, and
+                    the stages after it do not care how fast it was - so
+                    this is the number that says whether the target is
+                    reachable by tuning that at all. */}
+                <div style={{ color: audit.floorMs > TARGET_MS ? "var(--infeasible)" : "var(--grounded)" }}>
+                  floor with a free phase 1: {secs(audit.floorMs)} (target {secs(TARGET_MS)})
+                </div>
+                {audit.notes.map((note) => (
+                  <div key={note} style={{ color: "var(--ink-soft)" }}>
+                    {note}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

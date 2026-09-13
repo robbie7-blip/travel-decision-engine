@@ -38,7 +38,29 @@ export function heading(title: string): void {
 export function fakeMessages<P, R>(create: (params: P) => Promise<R>) {
   return {
     create,
-    stream: (params: P) => ({ finalMessage: () => create(params), abort: () => {} }),
+    stream: (params: P) => {
+      // `on` is part of the surface, not an extra.
+      //
+      // The real MessageStream is an emitter, and streamMessage subscribes
+      // to `streamEvent` and `text` to measure where a call's time went -
+      // queue, thinking, or writing, which have opposite fixes. A fake
+      // without `on` is not a simpler client, it is a client that does not
+      // exist: five suites died with "stream.on is not a function" the
+      // moment the real code started listening, which is the same lesson
+      // this helper was written for when only `create` was stubbed.
+      //
+      // Returns itself, because the real one is chainable. No events are
+      // emitted, so a fake call reports null for queue and think - which
+      // is the honest answer for a call that never touched a network.
+      const stream = {
+        finalMessage: () => create(params),
+        abort: () => {},
+        on: () => stream,
+        off: () => stream,
+        once: () => stream,
+      };
+      return stream;
+    },
   };
 }
 

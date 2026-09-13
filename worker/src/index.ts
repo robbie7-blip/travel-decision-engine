@@ -52,6 +52,7 @@ import {
 } from "./engine/quality";
 import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
 import { assertUsableItinerary, normalizeItineraryShape } from "./engine/shape";
+import { auditTimings } from "./engine/timingAudit";
 import { modelSupportsEffort } from "./engine/modelCaps";
 import { waitForLiveOrFallback } from "./engine/raceFallback";
 import { runWithLimit } from "./engine/concurrency";
@@ -346,12 +347,53 @@ class ModelOutputError extends Error {}
  * calls. Those want a hard wall-clock ceiling - LODGING_ATTEMPT_MS exists to
  * give one - and with this SDK, non-streaming is how you get it. Their caps
  * (2,000 and 1,500) are nowhere near the streaming threshold. */
+/** What a single streamed call spent its time on.
+ *
+ * The plan call took 68.8 seconds on a 102-second generation and there was
+ * no way to tell from outside whether that was a queue, thinking, or a lot
+ * of output - and those have OPPOSITE fixes. Queue or thinking means the
+ * effort setting and the prompt; output volume means the shape of what is
+ * being asked for. The code comment beside the per-call log says as much:
+ * both readings "were argued from the same log and neither could be
+ * settled without paying for another generation".
+ *
+ * Streaming makes it measurable for free, because the events arrive at
+ * different times:
+ *
+ *   firstEventMs  message_start - the request left, was accepted, and the
+ *                 model began. Connection plus queue.
+ *   firstTextMs   the first text delta - everything above, plus whatever
+ *                 the model did before writing a character (with
+ *                 output_config.effort, that is the thinking).
+ *   totalMs       the whole stream. totalMs - firstTextMs is the time
+ *                 actually spent generating the answer.
+ */
+export interface CallTiming {
+  firstEventMs: number | null;
+  firstTextMs: number | null;
+  totalMs: number;
+}
+
 async function streamMessage(
   client: Anthropic,
   body: Anthropic.MessageStreamParams,
-  options?: { timeout?: number }
+  options?: { timeout?: number; onTiming?: (timing: CallTiming) => void }
 ): Promise<Anthropic.Message> {
-  const stream = client.messages.stream(body, options);
+  const startedAt = Date.now();
+  let firstEventMs: number | null = null;
+  let firstTextMs: number | null = null;
+  const stream = client.messages.stream(body, { timeout: options?.timeout });
+  if (options?.onTiming) {
+    // `once` would be wrong for streamEvent: the SDK emits it for every
+    // event, and the first one is the only one worth a timestamp, so the
+    // guard is the null check rather than the subscription.
+    stream.on("streamEvent", () => {
+      if (firstEventMs === null) firstEventMs = Date.now() - startedAt;
+    });
+    stream.on("text", () => {
+      if (firstTextMs === null) firstTextMs = Date.now() - startedAt;
+    });
+  }
   // A stream that opens and then goes quiet forever would hang the job and
   // hold one of this worker's four slots indefinitely, because the SDK's own
   // timer is gone by then. Aborting through the stream cancels the HTTP
@@ -362,6 +404,11 @@ async function streamMessage(
     return await stream.finalMessage();
   } finally {
     clearTimeout(stall);
+    // Reported even on a failed call, deliberately. A call that timed out
+    // after sixty seconds without a single event is the most informative
+    // reading this produces, and it is exactly the one a success-only
+    // callback would throw away.
+    options?.onTiming?.({ firstEventMs, firstTextMs, totalMs: Date.now() - startedAt });
   }
 }
 
@@ -1257,6 +1304,11 @@ export async function generatePhase1Half<T>(
      effort?: Effort;
     /** Deterministic repair applied between parsing and validating. */
     normalize?: (v: unknown) => unknown;
+    /** Where this half's time actually went, per attempt. Reported rather
+     * than returned because a truncated first attempt is a real call with
+     * a real duration, and the caller only ever sees the one that
+     * succeeded. */
+    onCallTiming?: (timing: CallTiming) => void;
   } = {}
 ): Promise<T> {
   const effort = opts.effort ?? EFFORT;
@@ -1291,13 +1343,26 @@ export async function generatePhase1Half<T>(
   for (let attempt = 0; attempt < caps.length; attempt++) {
     const maxTokens = caps[attempt];
     const startedAt = Date.now();
-    const response = await streamMessage(client, {
-      model: MODEL,
-      max_tokens: maxTokens,
-      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-      output_config: { effort },
-      messages: [{ role: "user", content: userPrompt }],
-    });
+    // A holder rather than a plain `let`: TypeScript's control-flow
+    // analysis cannot see that a callback ran, so a `let` assigned only
+    // inside one narrows to `never` at every later read.
+    const call: { timing: CallTiming | null } = { timing: null };
+    const response = await streamMessage(
+      client,
+      {
+        model: MODEL,
+        max_tokens: maxTokens,
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+        output_config: { effort },
+        messages: [{ role: "user", content: userPrompt }],
+      },
+      {
+        onTiming: (timing) => {
+          call.timing = timing;
+          opts.onCallTiming?.(timing);
+        },
+      }
+    );
     onUsage?.(response.usage);
     const elapsedMs = Date.now() - startedAt;
 
@@ -1314,9 +1379,24 @@ export async function generatePhase1Half<T>(
     // expensive rather than merely last to finish.
     const out = response.usage.output_tokens;
     const perSecond = elapsedMs > 0 ? Math.round((out / elapsedMs) * 1000) : 0;
+    // The decomposition, in the log line too. queue is time to the first
+    // stream event, think is from there to the first character of output,
+    // write is the rest - and they have opposite fixes, which is the whole
+    // reason to separate them. A 68s call that is 60s of think is an
+    // effort/prompt problem; the same 68s as write is an output-shape
+    // problem, and tokens-per-second only tells them apart once "per
+    // second of what" is answered.
+    const timing = call.timing;
+    const split = timing
+      ? ` [queue ${timing.firstEventMs ?? "?"}ms, think ${
+          timing.firstTextMs != null && timing.firstEventMs != null
+            ? timing.firstTextMs - timing.firstEventMs
+            : "?"
+        }ms, write ${timing.firstTextMs != null ? timing.totalMs - timing.firstTextMs : "?"}ms]`
+      : "";
     console.log(
       `[worker] ${label}: ${elapsedMs}ms, ${out} output tokens (${perSecond}/s), ` +
-        `effort=${effort}, cap=${maxTokens}, stop=${response.stop_reason}`
+        `effort=${effort}, cap=${maxTokens}, stop=${response.stop_reason}${split}`
     );
 
     if (response.stop_reason === "refusal") {
@@ -1571,7 +1651,8 @@ function startPhase1(
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
   onUsage?: (usage: ModelUsage) => void,
-  onHalfTiming?: (half: "frame" | "plan", ms: number) => void
+  onHalfTiming?: (half: "frame" | "plan", ms: number) => void,
+  onHalfCallTiming?: (half: "frame" | "plan", timing: CallTiming) => void
 ): { frame: Promise<TripFrame>; plan: Promise<TripPlan> } {
   // Each half is timed on its own. skeletonMs is the MAX of the plan, the
   // frame and the accommodation lookup, which is the right number for "when
@@ -1592,7 +1673,7 @@ function startPhase1(
           buildFramePrompt(brief, cachedLodgingFacts),
           isUsableFrame,
           onUsage,
-          { effort: FRAME_EFFORT }
+          { effort: FRAME_EFFORT, onCallTiming: (timing) => onHalfCallTiming?.("frame", timing) }
         ),
       "trip frame"
       )
@@ -1613,7 +1694,11 @@ function startPhase1(
           // it matched the dates the traveler actually asked for.
           (v): v is TripPlan => isUsablePlan(v) && planCoversTrip(v, brief),
           onUsage,
-          { effort: PLAN_EFFORT, normalize: (v) => normalizePlan(v, brief) }
+          {
+            effort: PLAN_EFFORT,
+            normalize: (v) => normalizePlan(v, brief),
+            onCallTiming: (timing) => onHalfCallTiming?.("plan", timing),
+          }
         ),
       "day plan"
       )
@@ -1687,6 +1772,7 @@ async function generateItineraryTwoPhase(
     waitedForFrame: boolean;
     planMs?: number;
     frameMs?: number;
+    phase1Calls?: Record<string, { queueMs: number | null; thinkMs: number | null; writeMs: number | null; totalMs: number }>;
     accommodationWaitAbandoned?: boolean;
   }) => void,
   onPlan?: (days: SkeletonDay[], accommodation: SkeletonAccommodation[]) => void,
@@ -1697,6 +1783,11 @@ async function generateItineraryTwoPhase(
   const startedAt = Date.now();
   let planMs: number | undefined;
   let frameMs: number | undefined;
+  /** queue / think / write per phase-1 half. The LAST attempt wins, which
+   * is the one whose output was used - an escalated retry's first attempt
+   * is a real call and a real cost, but it is not the call that produced
+   * the plan, and `retries` already says it happened. */
+  const phase1Calls: Record<string, { queueMs: number | null; thinkMs: number | null; writeMs: number | null; totalMs: number }> = {};
   const { frame: framePromise, plan: planPromise } = startPhase1(
     client,
     brief,
@@ -1705,6 +1796,17 @@ async function generateItineraryTwoPhase(
     (half, ms) => {
       if (half === "plan") planMs = ms;
       else frameMs = ms;
+    },
+    (half, timing) => {
+      phase1Calls[half] = {
+        queueMs: timing.firstEventMs,
+        thinkMs:
+          timing.firstTextMs != null && timing.firstEventMs != null
+            ? timing.firstTextMs - timing.firstEventMs
+            : null,
+        writeMs: timing.firstTextMs != null ? timing.totalMs - timing.firstTextMs : null,
+        totalMs: timing.totalMs,
+      };
     }
   );
 
@@ -1821,6 +1923,7 @@ async function generateItineraryTwoPhase(
     waitedForFrame,
     planMs,
     frameMs,
+    phase1Calls: Object.keys(phase1Calls).length > 0 ? phase1Calls : undefined,
     accommodationWaitAbandoned,
   });
   console.log(
@@ -1911,6 +2014,7 @@ async function generateItinerary(
             timings.skeletonMs = t.skeletonMs;
             timings.planMs = t.planMs;
             timings.frameMs = t.frameMs;
+            if (t.phase1Calls) timings.phase1Calls = t.phase1Calls;
             if (t.accommodationWaitAbandoned) timings.accommodationWaitAbandoned = true;
             timings.daysMs = t.daysMs;
             timings.dayCount = t.dayCount;
@@ -2512,6 +2616,27 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   jobTimings.repairsMs = timings.repairs;
   jobTimings.venuesAndFlightsMs = timings.verify;
   jobTimings.verifyRepairsMs = timings.verifyRepairs;
+
+  // Does the timing line add up?
+  //
+  // Latency here has been diagnosed by reasoning five times and been wrong
+  // three of them, and every round of instrumentation answered "how long
+  // did stage X take" without ever answering the question that comes
+  // first: is the measured time the whole time. If the stages sum to 85 of
+  // 102 seconds then seventeen seconds are somewhere nobody instrumented,
+  // and every hour spent shaving the plan call is spent on the wrong half
+  // of the job. Logged here as well as shown on the job, because this is
+  // the line that decides what to look at next.
+  {
+    const audit = auditTimings(jobTimings);
+    console.log(
+      `[worker] timing audit: total ${audit.totalMs}ms = ` +
+        `${audit.stages.map((st) => `${st.label} ${st.ms}ms (${st.percent}%)`).join(" + ")} ` +
+        `+ ${audit.unaccountedMs}ms unaccounted` +
+        (audit.generateUnaccountedMs !== null ? `; ${audit.generateUnaccountedMs}ms unaccounted inside generation` : "")
+    );
+    for (const note of audit.notes) console.log(`[worker] timing audit: ${note}`);
+  }
   job.timings = jobTimings;
 
   // Publish FIRST. The traveler is polling for this write and nothing after

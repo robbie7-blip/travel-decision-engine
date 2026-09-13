@@ -98,6 +98,28 @@ jobs:
       # that is IS the check. Reverting the detour factor, the cos(latitude)
       # correction and the transit overhead makes 9 of 74 red.
       - run: npm run test:travel
+      # Does the timing line add up. Latency here has been diagnosed by
+      # reasoning five times and been wrong three of them, and every round
+      # of instrumentation answered "how long did stage X take" while never
+      # answering the question that comes first: is the measured time the
+      # whole time. If the stages sum to 85 of 102 seconds then seventeen
+      # seconds are happening somewhere nobody instrumented, and the work
+      # being done on the plan call is work on the wrong half of the job.
+      #
+      # The subtraction is trivial; what this suite holds is which stages
+      # are SERIAL and which run CONCURRENTLY, because getting that wrong
+      # makes the audit worse than no audit. lodgingPrefetchMs runs
+      # alongside generation deliberately - add it and a job with a slow
+      # lookup reports a NEGATIVE remainder, which reads as "we found
+      # time". Doing exactly that makes 7 of 49 red.
+      #
+      # It also computes the floor: what a run would total with an INSTANT
+      # phase 1. On the 102.4s run that is 33.6s - already past the 30s
+      # target - so the day calls and the verify/repair passes set a floor
+      # no amount of work on the plan call gets under. That is the
+      # conclusion the numbers only implied, and it is arithmetic now
+      # rather than an argument. Fixtures are the real measured runs.
+      - run: npm run test:timing-audit
       # Which models are sent output_config.effort. DAY_MODEL exists to
       # invite a swap to a faster day model, and the obvious candidate
       # (Haiku 4.5) is one of the two models that REJECT that field - so the

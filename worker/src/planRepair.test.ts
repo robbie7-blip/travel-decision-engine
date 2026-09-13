@@ -127,7 +127,18 @@ function stubClient(responses: { text?: string; stop_reason?: string }[]) {
         caps.push(body.max_tokens);
         efforts.push(body.output_config?.effort);
         const r = responses[Math.min(i++, responses.length - 1)];
-        return { finalMessage: async () => message(r), abort: () => {} };
+        // `on` too: streamMessage subscribes to streamEvent and text to
+        // measure where a call's time went. A stub without it is a client
+        // that does not exist, and this suite said so the moment the real
+        // code started listening - "stream.on is not a function".
+        const stream = {
+          finalMessage: async () => message(r),
+          abort: () => {},
+          on: () => stream,
+          off: () => stream,
+          once: () => stream,
+        };
+        return stream;
       },
     },
   } as unknown as Anthropic;
