@@ -476,6 +476,18 @@ export function buildDayPrompt(
     .filter((d) => d.day !== day.day)
     .flatMap((d) => d.anchors);
 
+  // Both of these used to be unconditional, which is how a plan day with no
+  // theme produced `Theme: undefined` next to an instruction to build the
+  // whole day out of it. Saying nothing about the theme is a complete
+  // instruction - the day still has its city, date, anchors and meals -
+  // whereas naming a theme that does not exist is not.
+  const theme = day.theme?.trim() ?? "";
+  const anchorLine = day.anchors.length
+    ? day.anchors.join("; ")
+    : theme
+      ? `(none - build the day from the theme)`
+      : `(none - build a well-paced day in ${day.city} around the meals below)`;
+
   const lines: string[] = [
     `Trip brief:`,
     tripBlock,
@@ -486,10 +498,8 @@ export function buildDayPrompt(
     ``,
     `Day ${day.day} - ${day.date}`,
     `City: ${day.city}`,
-    `Theme: ${day.theme}`,
-    `Anchors for THIS day (each becomes an item, names exactly as written): ${
-      day.anchors.length ? day.anchors.join("; ") : "(none - build the day from the theme)"
-    }`,
+    ...(theme ? [`Theme: ${theme}`] : []),
+    `Anchors for THIS day (each becomes an item, names exactly as written): ${anchorLine}`,
     `Meals this day MUST include, each as its own item at a real named venue: ${requiredMeals(day).join(
       ", "
     )}. Any anchor already marked with one of those slots covers that meal; write the rest yourself.`,
@@ -674,13 +684,58 @@ export function normalizePlan(
     // The prompt explicitly allows a day with nothing worth naming. An
     // absent list means that day has no anchors, not that the plan is
     // broken.
-    if (!Array.isArray(d.anchors)) d.anchors = [];
+    //
+    // The ENTRIES are filtered too, not just the array checked. isUsablePlan
+    // tested `Array.isArray(d.anchors)` and nothing else, and every consumer
+    // treats the contents as strings: buildDayPrompt joins this day's
+    // anchors into "each becomes an item, names exactly as written" and
+    // joins every OTHER day's into "never name any of these here". So an
+    // anchor that came back as null or as {"name": "..."} - both shapes a
+    // model produces when it starts annotating a list it was asked to keep
+    // flat - was interpolated as an empty string or as "[object Object]",
+    // in the two instructions that decide what the day contains and what
+    // it must avoid. A junk entry is not a name, and dropping it is what
+    // the prompt already permits for a day with nothing to name.
+    d.anchors = Array.isArray(d.anchors)
+      ? d.anchors
+          .filter((a): a is string => typeof a === "string")
+          .map((a) => a.trim())
+          .filter((a) => a.length > 0)
+      : [];
+
+    // The theme is interpolated into the day prompt as `Theme: ${theme}`,
+    // and a day with no anchors is additionally told to "build the day from
+    // the theme" - so a missing one rendered "Theme: undefined" beside an
+    // instruction to build a whole day out of it. Coerced to empty rather
+    // than invented, because buildDayPrompt now omits the line entirely
+    // when there is nothing to say; a theme is judgement and guessing one
+    // would be a silent quality loss.
+    if (typeof d.theme !== "string") d.theme = "";
+    else d.theme = d.theme.trim();
+
+    // Only ever a string. `if (day.transport_note)` is truthy for an
+    // object and for a number, both of which then went into the prompt as
+    // "Transport for this day (include it, follow it exactly):
+    // [object Object]" - a worse outcome than the no-leg branch, which is
+    // a complete and correct instruction.
+    if (d.transport_note != null && typeof d.transport_note !== "string") {
+      d.transport_note = null;
+    }
 
     // Single-destination trips only. On a multi-city trip the city is the
     // single most consequential field in the plan - it decides which city's
     // accommodation, prices and venues a day is written against - and
     // there is no honest way to guess it.
-    if (typeof d.city !== "string" && onlyCity !== null) d.city = onlyCity;
+    //
+    // A BLANK string counts as missing, not as a city. It used to satisfy
+    // isUsablePlan's `typeof d.city === "string"` and travel all the way
+    // into the day prompt as "City: " with nothing after it; now that the
+    // validator refuses it, the one case with an obvious reading is
+    // repaired here rather than costing the regeneration the validator
+    // would otherwise buy.
+    if ((typeof d.city !== "string" || d.city.trim() === "") && onlyCity !== null) {
+      d.city = onlyCity;
+    }
 
     // The prompt's own rule, applied: every day is a night at the
     // accommodation except the departure day, and no day is when lodging
@@ -768,7 +823,15 @@ export function isUsablePlan(plan: unknown): plan is TripPlan {
       // so every day is told "no night is spent here" and a multi-night
       // trip ships with no accommodation at all and every night's cost
       // absent from the total.
+      //
+      // Non-EMPTY, not merely a string. `""` passed this gate and then
+      // behaved as a city everywhere: buildDayPrompt renders "City: " with
+      // nothing after it, buildContext looks up facts for no city, and
+      // `"".toLowerCase().trim() === ""` matches an accommodation entry
+      // whose city is also blank - so a day was written against no place
+      // at all and nothing downstream disagreed.
       typeof d?.city === "string" &&
+      d.city.trim().length > 0 &&
       typeof d?.include_lodging === "boolean"
   );
 }

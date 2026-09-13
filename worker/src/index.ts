@@ -88,6 +88,8 @@ import {
   cacheLodgingFacts,
   loadCachedLodgingEntries,
   loadCachedLodgingFacts,
+  readLodgingPropertyReply,
+  readLodgingRateReply,
   writeCachedLodgingFact,
   type CachedLodgingFact,
 } from "./lodgingCache";
@@ -521,7 +523,21 @@ async function prefetchLodging(
     retryWorthwhile: boolean;
   }
 
-  async function ask<T>(system: string, maxUses: number, label: string): Promise<AskOutcome<T>> {
+  /** `read` runs INSIDE the try, deliberately.
+   *
+   * It used to be `JSON.parse(...) as T` here and raw field access at the
+   * bottom of this function, which put the validation of a model's
+   * free-form JSON outside every catch in the file - see
+   * readLodgingPropertyReply for the shape that turned a two-hotel answer
+   * into a full serial regeneration. Reading the reply where a parse error
+   * is already handled makes a malformed reply what it should always have
+   * been: an empty result, retried once, then the frame's estimate. */
+  async function ask<T>(
+    system: string,
+    maxUses: number,
+    label: string,
+    read: (raw: unknown) => T
+  ): Promise<AskOutcome<T>> {
     const timeoutMs = budget.attemptTimeoutMs(LODGING_ATTEMPT_MS, LODGING_MIN_ATTEMPT_MS);
     if (timeoutMs === null) {
       console.warn(
@@ -558,7 +574,7 @@ async function prefetchLodging(
       }
       const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
       const text = textBlocks[textBlocks.length - 1]?.text ?? "";
-      return { value: JSON.parse(extractJson(text)) as T, retryWorthwhile: true };
+      return { value: read(JSON.parse(extractJson(text))), retryWorthwhile: true };
     } catch (e) {
       // Either half failing degrades the result rather than the run: no rate
       // means no cached lodging fact for this city, no property means a
@@ -597,9 +613,10 @@ async function prefetchLodging(
     system: string,
     maxUses: number,
     empty: (v: T | null) => boolean,
-    label: string
+    label: string,
+    read: (raw: unknown) => T
   ): Promise<T | null> {
-    const first = await ask<T>(system, maxUses, label);
+    const first = await ask<T>(system, maxUses, label, read);
     if (!empty(first.value)) return first.value;
     // The retry is worth a few seconds of a lookup that is already hidden -
     // but only when a second attempt is a real second attempt. A refused
@@ -607,28 +624,34 @@ async function prefetchLodging(
     // above is what stops "retry once" from meaning "wait twice as long".
     if (!first.retryWorthwhile) return first.value;
     console.warn(`[worker] lodging ${label} for ${city} came back empty - retrying once`);
-    return (await ask<T>(system, maxUses, label)).value;
+    return (await ask<T>(system, maxUses, label, read)).value;
   }
 
+  // Both halves come back through a reader rather than a type assertion, so
+  // `empty` and everything below it work on validated values. The
+  // emptiness tests are now plain null checks instead of `.trim()` on
+  // something that only claimed to be a string.
   const [rate, property] = await Promise.all([
-    askTwice<{ cost_estimate_eur: number | null; source_url: string | null }>(
+    askTwice(
       LODGING_RATE_SYSTEM,
       2,
-      (v) => v?.cost_estimate_eur == null,
-      "rate"
+      (v) => v?.costEstimateEur == null,
+      "rate",
+      readLodgingRateReply
     ),
-    askTwice<{ name: string | null; area: string | null }>(
+    askTwice(
       LODGING_PROPERTY_SYSTEM,
       2,
-      (v) => !v?.name?.trim(),
-      "property"
+      (v) => v?.name == null,
+      "property",
+      readLodgingPropertyReply
     ),
   ]);
 
-  const costEstimateEur = rate?.cost_estimate_eur ?? null;
-  const sourceUrl = rate?.source_url ?? null;
-  const name = property?.name?.trim() || null;
-  const area = property?.area?.trim() || null;
+  const costEstimateEur = rate?.costEstimateEur ?? null;
+  const sourceUrl = rate?.sourceUrl ?? null;
+  const name = property?.name ?? null;
+  const area = property?.area ?? null;
 
   // The two halves fail independently, so they're reported independently.
   // This used to return null unless the RATE came back, which threw away a

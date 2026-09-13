@@ -209,6 +209,124 @@ async function main() {
     check("anchors sent as a bare string is repaired too", accepted(raw), JSON.stringify(raw));
   }
 
+  section("anchors: the ENTRIES, not just the array");
+
+  {
+    // isUsablePlan tested Array.isArray and nothing else, and buildDayPrompt
+    // joins these into the two instructions that decide what a day contains
+    // ("each becomes an item, names exactly as written") and what it must
+    // avoid ("never name any of these here"). A null joined as nothing; an
+    // object joined as "[object Object]".
+    const raw = plan(day({ anchors: ["Roscioli (dinner)", null, { name: "Colosseum" }, 42] }));
+    normalizePlan(raw, brief());
+    check(
+      "junk entries are dropped, not interpolated",
+      JSON.stringify(got(raw, 0, "anchors")) === '["Roscioli (dinner)"]',
+      JSON.stringify(got(raw, 0, "anchors"))
+    );
+  }
+
+  {
+    const raw = plan(day({ anchors: ["  Roscioli (dinner)  "] }));
+    normalizePlan(raw, brief());
+    check(
+      "a real anchor is trimmed but otherwise untouched",
+      JSON.stringify(got(raw, 0, "anchors")) === '["Roscioli (dinner)"]',
+      JSON.stringify(got(raw, 0, "anchors"))
+    );
+  }
+
+  {
+    const raw = plan(day({ anchors: ["", "   "] }));
+    normalizePlan(raw, brief());
+    check(
+      "blank anchors become no anchors, which the prompt permits",
+      JSON.stringify(got(raw, 0, "anchors")) === "[]",
+      JSON.stringify(got(raw, 0, "anchors"))
+    );
+    check("and the plan is still accepted", accepted(raw));
+  }
+
+  section("theme and transport_note: strings or nothing");
+
+  {
+    // `Theme: ${day.theme}` was unconditional, so a day with no theme read
+    // "Theme: undefined" - and a day with no anchors is additionally told
+    // to "build the day from the theme".
+    const raw = plan(day({ theme: undefined }));
+    normalizePlan(raw, brief());
+    check("a missing theme becomes empty, never the word undefined", got(raw, 0, "theme") === "");
+    check("and does not sink the plan", accepted(raw));
+  }
+
+  {
+    const raw = plan(day({ theme: { headline: "arrival" } }));
+    normalizePlan(raw, brief());
+    check("an object theme becomes empty too", got(raw, 0, "theme") === "", String(got(raw, 0, "theme")));
+  }
+
+  {
+    const raw = plan(day({ theme: "  arrival and Trastevere  " }));
+    normalizePlan(raw, brief());
+    check("a real theme is trimmed, not replaced", got(raw, 0, "theme") === "arrival and Trastevere");
+  }
+
+  {
+    // `if (day.transport_note)` is truthy for an object, and the prompt then
+    // read "Transport for this day (include it, follow it exactly):
+    // [object Object]" - strictly worse than the no-leg branch, which is a
+    // complete instruction.
+    const raw = plan(day({ transport_note: { mode: "train" } }));
+    normalizePlan(raw, brief());
+    check("a non-string transport note is dropped", got(raw, 0, "transport_note") === null);
+  }
+
+  {
+    const raw = plan(day({ transport_note: "Arrive FCO 10:40, Leonardo Express to Termini" }));
+    normalizePlan(raw, brief());
+    check(
+      "a real transport note survives verbatim",
+      got(raw, 0, "transport_note") === "Arrive FCO 10:40, Leonardo Express to Termini"
+    );
+  }
+
+  {
+    const raw = plan(day({ transport_note: undefined }));
+    normalizePlan(raw, brief());
+    check("an absent one stays absent rather than becoming null", got(raw, 0, "transport_note") === undefined);
+  }
+
+  section("city: a string is not enough, it has to be a city");
+
+  {
+    // "" passed `typeof d.city === "string"` and then behaved as a city
+    // everywhere: "City: " with nothing after it, facts looked up for no
+    // city, and "".toLowerCase().trim() matching a blank accommodation
+    // entry - a day written against no place, with nothing downstream
+    // disagreeing.
+    check("the validator refuses a blank city", isUsablePlan(plan(day({ city: "" }))) === false);
+    check("and a whitespace one", isUsablePlan(plan(day({ city: "   " }))) === false);
+    check("while a real city is accepted", isUsablePlan(plan(day({ city: "Rome" }))));
+
+    // On a one-destination trip a blank city has the same obvious reading a
+    // missing one does, so it is repaired rather than costing the ~68s
+    // regeneration the rejection above would otherwise buy.
+    for (const city of ["", "   "]) {
+      const raw = plan(day({ city }));
+      check(`a ${JSON.stringify(city)} city is filled in on a single-city trip`, accepted(raw));
+      check("  from the only destination", got(raw, 0, "city") === "Rome", String(got(raw, 0, "city")));
+    }
+
+    {
+      // Multi-city: still not guessed, still rejected. A day in the wrong
+      // city is worse than a retry.
+      const raw = plan(day({ city: "" }), day({ day: 2, date: "2027-05-02", city: "Florence" }));
+      const b = brief({ destinations: ["Rome", "Florence"] });
+      check("a blank city on a multi-city trip is NOT guessed", accepted(raw, b) === false);
+      check("  and is left exactly as it came back", got(raw, 0, "city") === "", String(got(raw, 0, "city")));
+    }
+  }
+
   section("fields the brief already fixes");
 
   {

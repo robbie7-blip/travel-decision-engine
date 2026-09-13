@@ -30,6 +30,10 @@ import {
   loadCachedLodgingEntries,
   loadCachedLodgingFacts,
   readCachedLodgingFact,
+  readLodgingPropertyReply,
+  readLodgingRateReply,
+  usableNightlyRate,
+  usableSourceUrl,
 } from "./lodgingCache";
 import { check, finish, heading, section } from "./testutil";
 import type { Redis } from "ioredis";
@@ -362,6 +366,209 @@ async function main() {
     check("Infinity is not a price", readCachedLodgingFact({ costEstimateEur: Infinity, cachedAt: now }) === null);
     check("NaN is not a timestamp", readCachedLodgingFact({ costEstimateEur: 140, cachedAt: Number.NaN }) === null);
     check("undefined is not an entry", readCachedLodgingFact(undefined) === null);
+  }
+
+  {
+    section("a nightly rate, on the shared floor and cap");
+
+    check("a plain number is a rate", usableNightlyRate(140) === 140);
+    check("and is rounded to whole euros", usableNightlyRate(139.6) === 140, String(usableNightlyRate(139.6)));
+
+    // The exact values `!= null` used to let through.
+    check("zero is not a rate", usableNightlyRate(0) === null);
+    check("negative is not a rate", usableNightlyRate(-40) === null);
+    check("NaN is not a rate", usableNightlyRate(Number.NaN) === null);
+    check("Infinity is not a rate", usableNightlyRate(Infinity) === null);
+    check(
+      "and JSON.parse really does produce Infinity from an overflowing literal",
+      usableNightlyRate(JSON.parse("1e999") as unknown) === null
+    );
+
+    // The cap catches a units mistake, which is the shape a
+    // search-and-summarise call actually produces.
+    check("a plausible luxury night is kept", usableNightlyRate(1200) === 1200);
+    check("a whole stay quoted as one night is refused", usableNightlyRate(9_500) === null);
+    check("the cap itself is inclusive", usableNightlyRate(5_000) === 5_000);
+
+    // Numbers only. The string leniency belongs to the LIVE reply reader
+    // and to nothing else - the section on it below is where "140" is
+    // recovered, and the stored-value suite above is where a string price
+    // is refused. Sharing the coercion would have quietly overturned that
+    // decision, which is how this assertion came to exist.
+    check("a string is not a rate here", usableNightlyRate("140") === null);
+    check("nor is a numeric-looking one", usableNightlyRate("1,200") === null);
+    check("an array is refused", usableNightlyRate([140]) === null);
+    check("null is refused", usableNightlyRate(null) === null);
+    check("undefined is refused", usableNightlyRate(undefined) === null);
+    check("an object is refused", usableNightlyRate({ eur: 140 }) === null);
+  }
+
+  {
+    section("a source URL a traveler can actually click");
+
+    check("https survives", usableSourceUrl("https://example.com/rates") === "https://example.com/rates");
+    check("http survives", usableSourceUrl("http://example.com/") === "http://example.com/");
+    check("surrounding space is trimmed", usableSourceUrl("  https://example.com/  ") === "https://example.com/");
+
+    // What a model writes when it has nothing, all of which used to be
+    // displayed as the citation behind a verified price.
+    check("a bare host is not a URL", usableSourceUrl("booking.com") === null);
+    check('"(none found)" is not a URL', usableSourceUrl("(none found)") === null);
+    check("an empty string is not a URL", usableSourceUrl("") === null);
+    check("a number is not a URL", usableSourceUrl(123) === null);
+    check("null is not a URL", usableSourceUrl(null) === null);
+    // Not merely "parses as a URL" - these do, and neither belongs in an
+    // href rendered on the trip page.
+    check("javascript: is refused", usableSourceUrl("javascript:alert(1)") === null);
+    check("data: is refused", usableSourceUrl("data:text/html,hi") === null);
+    check("file: is refused", usableSourceUrl("file:///etc/passwd") === null);
+  }
+
+  {
+    section("the live rate reply, which was a type assertion");
+
+    const good = readLodgingRateReply({ cost_estimate_eur: 140, source_url: "https://example.com/r" });
+    check("a well-formed reply reads through", good.costEstimateEur === 140);
+    check("with its source", good.sourceUrl === "https://example.com/r");
+
+    // The documented empty reply.
+    const empty = readLodgingRateReply({ cost_estimate_eur: null, source_url: null });
+    check("the documented empty reply is empty", empty.costEstimateEur === null && empty.sourceUrl === null);
+
+    check(
+      'a "grounded" free hotel is refused',
+      readLodgingRateReply({ cost_estimate_eur: 0, source_url: "https://example.com/r" }).costEstimateEur === null
+    );
+    // The string leniency, which lives only on this path: refusing "140"
+    // here costs the generation twenty-odd seconds, and refusing it in the
+    // cache costs one search that was going to happen anyway.
+    check('"140" is recovered', readLodgingRateReply({ cost_estimate_eur: "140" }).costEstimateEur === 140);
+    check('"€140" is recovered', readLodgingRateReply({ cost_estimate_eur: "€140" }).costEstimateEur === 140);
+    check(
+      '"140 EUR" is recovered',
+      readLodgingRateReply({ cost_estimate_eur: "140 EUR" }).costEstimateEur === 140
+    );
+    check(
+      '"1,200" is recovered',
+      readLodgingRateReply({ cost_estimate_eur: "1,200" }).costEstimateEur === 1200
+    );
+    check(
+      '"139.50" rounds to 140',
+      readLodgingRateReply({ cost_estimate_eur: "139.50" }).costEstimateEur === 140
+    );
+
+    // ...and the strings with no single unambiguous number in them.
+    // Picking an end of a range would be inventing a price.
+    for (const bad of ["120-160", "about 140", "", " ", "1,2", "EUR", "140/night for 5 nights"]) {
+      check(
+        `${JSON.stringify(bad)} is refused rather than coerced`,
+        readLodgingRateReply({ cost_estimate_eur: bad }).costEstimateEur === null
+      );
+    }
+
+    // A citation with nothing to cite. The URL is offered in support of
+    // the price, and without a price it sat beside the frame's own guess.
+    check(
+      "no price means no source either",
+      readLodgingRateReply({ cost_estimate_eur: null, source_url: "https://example.com/r" }).sourceUrl === null
+    );
+    check(
+      "an unusable source does not take the price with it",
+      readLodgingRateReply({ cost_estimate_eur: 140, source_url: "booking.com" }).costEstimateEur === 140
+    );
+
+    // Whole-reply shapes. None of these may throw: the caller's emptiness
+    // check runs on the result.
+    for (const [label, raw] of [
+      ["null", null],
+      ["a bare string", "no data"],
+      ["a number", 42],
+      ["an array", [{ cost_estimate_eur: 140 }]],
+      ["an empty object", {}],
+      ["undefined", undefined],
+    ] as [string, unknown][]) {
+      const read = readLodgingRateReply(raw);
+      check(`${label} reads as empty, not a throw`, read.costEstimateEur === null && read.sourceUrl === null);
+    }
+  }
+
+  {
+    section("the live property reply, which used to THROW");
+
+    const good = readLodgingPropertyReply({ name: "  Hotel Artemide  ", area: " Monti " });
+    check("a well-formed reply reads through, trimmed", good.name === "Hotel Artemide", String(good.name));
+    check("with its area", good.area === "Monti", String(good.area));
+
+    // THE bug: `!v?.name?.trim()` on a shortlist raised "trim is not a
+    // function" outside every try/catch in prefetchLodging, rejecting
+    // pendingLodging and costing a full serial regeneration.
+    check(
+      "a shortlist reads as no property instead of throwing",
+      readLodgingPropertyReply({ name: ["Hotel A", "Hotel B"] }).name === null
+    );
+    {
+      // The old emptiness check, kept and run, because the difference
+      // between the two IS the fix. Without this the claim above is a
+      // comment, and a comment cannot go red.
+      const shortlist = { name: ["Hotel A", "Hotel B"] } as unknown as {
+        name: string | null;
+        area: string | null;
+      };
+      let oldResult: boolean | "threw";
+      try {
+        // The old emptiness check, verbatim.
+        oldResult = !shortlist?.name?.trim();
+      } catch {
+        oldResult = "threw";
+      }
+      check("and the old check really did throw on it", oldResult === "threw", String(oldResult));
+
+      let newThrew = false;
+      try {
+        readLodgingPropertyReply(shortlist);
+      } catch {
+        newThrew = true;
+      }
+      check("where the reader does not", newThrew === false);
+    }
+    check(
+      "a numeric name reads as no property",
+      readLodgingPropertyReply({ name: 7, area: "Monti" }).name === null
+    );
+    check(
+      "a whitespace-only name reads as no property",
+      readLodgingPropertyReply({ name: "   " }).name === null
+    );
+
+    // An area with no property is a neighborhood attached to nothing.
+    check(
+      "no name means no area",
+      readLodgingPropertyReply({ name: null, area: "Trastevere" }).area === null
+    );
+    check(
+      "an unusable area does not take the name with it",
+      readLodgingPropertyReply({ name: "Hotel Artemide", area: ["Monti"] }).name === "Hotel Artemide"
+    );
+    check(
+      "and that area is dropped",
+      readLodgingPropertyReply({ name: "Hotel Artemide", area: ["Monti"] }).area === null
+    );
+
+    // The cap that keeps one oversized reply from inflating the prompt.
+    const long = readLodgingPropertyReply({ name: "H".repeat(400), area: "A".repeat(400) });
+    check("an oversized name is capped", long.name?.length === 120, String(long.name?.length));
+    check("an oversized area is capped", long.area?.length === 120, String(long.area?.length));
+
+    for (const [label, raw] of [
+      ["null", null],
+      ["a bare string", "Hotel Artemide"],
+      ["an array", [{ name: "Hotel A" }]],
+      ["an empty object", {}],
+      ["undefined", undefined],
+    ] as [string, unknown][]) {
+      const read = readLodgingPropertyReply(raw);
+      check(`${label} reads as empty, not a throw`, read.name === null && read.area === null);
+    }
   }
 
   finish();

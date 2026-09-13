@@ -36,6 +36,86 @@ function cacheKey(city: string): string {
 const MAX_SOURCE_URLS = 6;
 const MAX_TEXT_CHARS = 120;
 
+/** Upper bound on a nightly rate, in EUR.
+ *
+ * The prompt asks for "a mid-range hotel", so anything above this is not an
+ * expensive city, it is a units mistake - a nightly rate read off a page
+ * quoting the whole stay, or a currency with a thousand to the euro left
+ * unconverted. Both are shapes a search-and-summarise call produces, and
+ * both are unrecoverable here: there is no way to tell a five-night total
+ * from one extravagant night, so the number is dropped and the frame's own
+ * estimate is used instead.
+ *
+ * Deliberately generous rather than tight. A real suite in Zurich at €1,200
+ * is a legitimate answer to a badly-phrased search, and refusing it would
+ * trade a rare wrong price for a common missing one - and a missing rate
+ * costs the generation twenty-odd seconds (see LodgingLookupResult.missing
+ * in index.ts), so the floor and cap are here for the values that are
+ * certainly wrong, not the ones that are merely surprising. */
+const MAX_NIGHTLY_RATE_EUR = 5_000;
+
+/** A nightly rate that can be shown to a traveler and priced against, or
+ * null. NUMBERS ONLY - see readLodgingRateReply for the one caller that
+ * coerces first, and why only that one does.
+ *
+ * The floor and the cap live here, shared, because they are the same
+ * question on both paths: what may a price be at all. `> 0` rather than
+ * `!= null`, which lets 0 and NaN through - 0 being the one that formatted
+ * perfectly cleanly and told the model a rate had been verified at
+ * EUR0/night. */
+export function usableNightlyRate(value: unknown): number | null {
+  if (typeof value !== "number") return null;
+  if (!Number.isFinite(value) || value <= 0 || value > MAX_NIGHTLY_RATE_EUR) return null;
+  // Half a cent is not a price difference, and whole euros is what every
+  // downstream figure is rounded to anyway.
+  return Math.round(value);
+}
+
+/** The number inside a string a model wrote for a numeric field, or NaN.
+ *
+ * Accepts one number with optional currency decoration and thousands
+ * separators around it, and refuses everything else - a range ("120-160")
+ * and a hedge ("about 140, maybe more") both have to be refused, because
+ * picking one end of a range is inventing a price. */
+function parseCurrencyNumber(value: string): number {
+  const stripped = value
+    .trim()
+    // Currency symbols and codes, on either side.
+    .replace(/^(eur|usd|gbp|€|\$|£)\s*/i, "")
+    .replace(/\s*(eur|usd|gbp|€|\$|£)$/i, "")
+    // Thousands separators, but only between digit groups, so "1,200"
+    // becomes 1200 while "1,2" is left to fail the test below.
+    .replace(/(?<=\d),(?=\d{3}(\D|$))/g, "")
+    .trim();
+  // A plain decimal number and nothing else. Number("") is 0 and
+  // Number(" ") is 0, which is why the pattern is required rather than
+  // relying on Number() to refuse.
+  return /^\d+(\.\d+)?$/.test(stripped) ? Number(stripped) : Number.NaN;
+}
+
+/** An http(s) URL a traveler can be shown as the source of a price, or null.
+ *
+ * `source_url` was carried straight from the model's JSON into
+ * `source_urls`, which the trip page renders as the citation behind a
+ * "verified" badge. So a reply of `"source_url": "booking.com"` or
+ * `"(none found)"` - both things a model writes when it has nothing - put
+ * an unclickable string behind a claim that the price had been checked.
+ * Dropping it leaves `source_confidence` to speak for itself, which is
+ * what the unnamed-source case already does. */
+export function usableSourceUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+  return parsed.toString().slice(0, 500);
+}
+
 function cleanText(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim().slice(0, MAX_TEXT_CHARS);
@@ -75,18 +155,27 @@ export function readCachedLodgingFact(value: unknown): CachedLodgingFact | null 
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
 
-  // A price this injects as established fact, so it has to be one - and
-  // `> 0` rather than `!= null`, which lets both 0 and NaN through.
-  const price = raw.costEstimateEur;
-  if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) return null;
+  // A price this injects as established fact, so it has to be one - and a
+  // shared floor/cap rather than `!= null`, which lets 0 and NaN through.
+  // Entries written before the cap existed are still live for their ~20h
+  // TTL, which is the whole reason this reader exists.
+  const price = usableNightlyRate(raw.costEstimateEur);
+  if (price === null) return null;
 
   // The age is part of the claim made to the model ("verified via live
   // search 3h ago"), and an entry that cannot be aged reads "NaNh ago".
   const cachedAt = raw.cachedAt;
   if (typeof cachedAt !== "number" || !Number.isFinite(cachedAt)) return null;
 
+  // Through the same URL gate as a live reply, because these end up in the
+  // same place: source_urls on the accommodation entry, rendered on the
+  // trip page as the citation behind a verified price. A stored
+  // "(no source)" was previously kept and displayed as one.
   const sourceUrls = Array.isArray(raw.sourceUrls)
-    ? raw.sourceUrls.filter((u): u is string => typeof u === "string" && u.trim().length > 0).slice(0, MAX_SOURCE_URLS)
+    ? raw.sourceUrls
+        .map((u) => usableSourceUrl(u))
+        .filter((u): u is string => u !== null)
+        .slice(0, MAX_SOURCE_URLS)
     : [];
   const agreement = raw.sourceAgreement;
 
@@ -97,6 +186,97 @@ export function readCachedLodgingFact(value: unknown): CachedLodgingFact | null 
     cachedAt,
     name: cleanText(raw.name),
     area: cleanText(raw.area),
+  };
+}
+
+/** What the RATE half of the live lodging lookup actually returned.
+ *
+ * Both halves' replies were `JSON.parse(extractJson(text)) as T` - a type
+ * assertion over a model's free-form output, trusted from there on. The
+ * reply is a search-and-summarise answer, so every field can come back as
+ * a shape the prompt did not ask for, and each one had somewhere to land:
+ *
+ *   {"cost_estimate_eur": "140"}      a string in a field typed `number`,
+ *                                     which then propagated into
+ *                                     cost_per_night_eur and into the
+ *                                     trip's budget arithmetic
+ *   {"cost_estimate_eur": "about 140"} the same, except the arithmetic
+ *                                     produces NaN - so
+ *                                     min_realistic_total_eur became NaN
+ *                                     and the trip page showed it
+ *   {"cost_estimate_eur": 0}          `!= null` is true, so this was a
+ *                                     "grounded" free hotel, and the
+ *                                     budget correction subtracted a whole
+ *                                     trip's worth of accommodation
+ *   {"cost_estimate_eur": 1e999}      JSON.parse yields Infinity
+ *   {"source_url": "booking.com"}     shown as the citation behind the
+ *                                     verified badge, unclickable
+ *
+ * Returning nulls rather than throwing is what makes this recoverable: the
+ * caller's own emptiness check then treats a malformed reply exactly like
+ * an empty one, which buys the retry that a malformed reply deserves, and
+ * failing that the frame's estimate. */
+export function readLodgingRateReply(value: unknown): {
+  costEstimateEur: number | null;
+  sourceUrl: string | null;
+} {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { costEstimateEur: null, sourceUrl: null };
+  }
+  const raw = value as Record<string, unknown>;
+  // A numeric string is recovered HERE and nowhere else. `"140"`, `"€140"`
+  // and `"140 EUR"` are all things a model emits for a field its prompt
+  // documented as `<number>`, all three mean 140 unambiguously, and the
+  // cost of refusing them on this path is real: no rate means phase 2 has
+  // to wait for the trip frame, which is twenty-odd seconds of wall clock.
+  //
+  // The cache reader deliberately does NOT do this, and that is not drift.
+  // A stored string is a value some older write path produced, its
+  // provenance is unknown, and that module's rule is that a load-bearing
+  // claim which cannot be trusted gets dropped rather than repaired -
+  // dropping it puts the city back in `missing`, which buys a real live
+  // search. Recovering here and refusing there also cannot strand
+  // anything, because what gets written to the cache is the recovered
+  // NUMBER, never the string.
+  const cost = raw.cost_estimate_eur;
+  const costEstimateEur = usableNightlyRate(
+    typeof cost === "string" ? parseCurrencyNumber(cost) : cost
+  );
+  return {
+    costEstimateEur,
+    // A URL without a price behind it cites nothing: the price is the claim
+    // the source is offered in support of, and carrying the URL alone put
+    // a citation next to the frame's own guess.
+    sourceUrl: costEstimateEur === null ? null : usableSourceUrl(raw.source_url),
+  };
+}
+
+/** What the PROPERTY half returned.
+ *
+ * This is the half that used to THROW rather than degrade. The emptiness
+ * check was `!v?.name?.trim()`, so a reply of `{"name": ["Hotel A", "Hotel
+ * B"]}` - a model answering "find a hotel" with a shortlist - raised
+ * "v.name.trim is not a function" inside prefetchLodging, outside every
+ * try/catch in it. That rejects the pendingLodging promise, which
+ * waitForLiveOrFallback deliberately propagates, which abandons the
+ * two-phase path and regenerates the entire trip in one serial call: the
+ * ~2-minute path this whole design exists to avoid, paid twice, because a
+ * search returned two hotels instead of one. */
+export function readLodgingPropertyReply(value: unknown): {
+  name: string | null;
+  area: string | null;
+} {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { name: null, area: null };
+  }
+  const raw = value as Record<string, unknown>;
+  const name = cleanText(raw.name) ?? null;
+  return {
+    name,
+    // An area with no property is a neighborhood attached to nothing: the
+    // name is what buildDayPrompt renders it beside, and without one the
+    // accommodation line is generic anyway.
+    area: name === null ? null : (cleanText(raw.area) ?? null),
   };
 }
 
