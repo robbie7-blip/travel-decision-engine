@@ -610,6 +610,45 @@ jobs:
       # which is the tell the guard was accidental.) Reverting it makes 10 of
       # 55 red.
       - run: npm run test:job-record
+      # What a shared trip link may disclose.
+      #
+      # /api/job/[id] is public and unauthenticated - deliberately, because
+      # the trip page is meant to be shared - and it returned the whole job
+      # record. So handing someone a link to your itinerary also handed them
+      # your mobility_constraints (a disability disclosure, in your own
+      # words), your dietary_constraints (which carry religion and medical
+      # conditions), your hard_no list, your total budget, your home city,
+      # and the hotel you are sleeping in on named dates. Three of those are
+      # special-category personal data.
+      #
+      # It had to be that way while /api/refine took the brief from the
+      # REQUEST BODY: a trip page opened cold has no form state, so the
+      # brief had to come back down in order to be posted back up.
+      # /api/refine reads it from the job record now, so the response
+      # carries an allowlist of the six fields the page renders.
+      #
+      # The central case is written to survive people forgetting it exists:
+      # it builds a job with a distinctive marker in every private field,
+      # serializes the public view the way the route does, and greps the
+      # JSON for each marker - so a field added to TripBriefInput or to Job
+      # later fails here without this file or that test being touched.
+      - run: npm run test:public-brief
+      # The other half of the same change: /api/refine now reads the brief
+      # and the itinerary out of the job record instead of taking them from
+      # the request body.
+      #
+      # No route handler in this app has a test - driving a Next route means
+      # standing up its request plumbing and a Redis client that reads
+      # process.env - so the decision was extracted to lib/refineSource.ts
+      # and the route reduced to plumbing. It is the piece that would have
+      # broken pushback silently, and it also carries two things the old
+      # route could not: the brief refining a trip is provably the brief
+      # that GENERATED it (before, it was whatever the client posted back,
+      # so a round-trip could quietly drop mobility or dietary
+      # constraints), and the "itinerary" quoted into the model call is no
+      # longer whatever the caller supplied. Reverting the two guards makes
+      # 21 of 50 red.
+      - run: npm run test:refine-source
       # How long a trip lives. Thirty days is the wrong number for the
       # thing someone paid for: a trip planned in January for a June
       # holiday expired in February - not while nobody was looking at it,

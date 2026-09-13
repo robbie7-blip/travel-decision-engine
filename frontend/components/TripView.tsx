@@ -14,7 +14,8 @@ import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
 import type { Job, JobTimings as Timings, QualityReport, JobProgress } from "@/lib/jobs";
-import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
+import type { Itinerary, Language } from "@/lib/types";
+import type { PublicTripBrief } from "@/lib/publicBrief";
 
 /** The page behind a shared/bookmarked /trip/[jobId] link. Loads a job cold
  * from its id - no client-side form state to fall back on - so everything
@@ -31,7 +32,11 @@ export function TripView({ jobId }: { jobId: string }) {
   const [loadError, setLoadError] = useState("");
   const [result, setResult] = useState<Itinerary | null>(null);
   const [currentJobId, setCurrentJobId] = useState(jobId);
-  const [lastBrief, setLastBrief] = useState<TripBriefInput | null>(null);
+  // The PUBLIC brief - the six fields the page renders. It used to be the
+  // whole TripBriefInput, held here only so handleRefine could post it
+  // back, which is what kept the private half on a public endpoint. See
+  // lib/publicBrief.ts.
+  const [lastBrief, setLastBrief] = useState<PublicTripBrief | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string | undefined>(undefined);
   const [timings, setTimings] = useState<Timings | undefined>(undefined);
   const [quality, setQuality] = useState<QualityReport | undefined>(undefined);
@@ -99,12 +104,19 @@ export function TripView({ jobId }: { jobId: string }) {
   }
 
   async function handleRefine(question: string) {
-    if (!result || !lastBrief) return;
+    if (!result) return;
     setRefining(true);
     setRefineJobStatus(null);
     setRefineError("");
     try {
-      const { jobId: newJobId, itinerary, brief } = await refineItinerary(lastBrief, result, question, setRefineJobStatus);
+      // The CURRENT job id, not the one this page was opened with: after a
+      // refinement they differ, and a second pushback has to build on the
+      // revision the traveler is looking at.
+      const { jobId: newJobId, itinerary, brief } = await refineItinerary(
+        currentJobId,
+        question,
+        setRefineJobStatus
+      );
       setResult(itinerary);
       setLastBrief(brief);
       setLastQuestion(question);

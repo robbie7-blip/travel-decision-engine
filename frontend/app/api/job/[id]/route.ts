@@ -7,6 +7,7 @@ import { getRedis } from "@/lib/redis";
 import { jobKey, readJobRecord, stallReason, WORKER_HEARTBEAT_KEY, type Job, type WorkerHeartbeat } from "@/lib/jobs";
 import { isWorkerHeartbeat } from "@/lib/health";
 import { touchJobTtl } from "@/lib/jobTtl";
+import { publicJob, type PublicJob } from "@/lib/publicBrief";
 
 export const runtime = "nodejs";
 
@@ -118,13 +119,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     // before - we can't prove the worker is there, and a job this old with
     // no evidence of a consumer is more likely stalled than queued.
     if (alive === true) {
-      return NextResponse.json(job);
+      return NextResponse.json(publicJob(job));
     }
   }
 
   if (stall) {
     return NextResponse.json({
-      ...job,
+      ...publicJob(job),
       status: "error",
       // Neither message claims "nothing was charged" any more, because that
       // wasn't true. Quota is consumed at enqueue (see consumeQuota in
@@ -138,8 +139,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         stall === "worker_restarted"
           ? "This generation stopped unexpectedly - the server restarted while it was running. Please try again."
           : "The trip planner isn't picking up new trips right now, so this one never started. We're on it - please try again shortly.",
-    } satisfies Job);
+    } satisfies PublicJob);
   }
 
-  return NextResponse.json(job);
+  return NextResponse.json(publicJob(job));
 }

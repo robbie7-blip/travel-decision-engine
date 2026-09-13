@@ -14,13 +14,16 @@ import { computeTrustScore } from "@/lib/trustScore";
 import { formatMoney } from "@/lib/currency";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS, type Dictionary } from "@/lib/i18n";
 import type { Job } from "@/lib/jobs";
-import type { Itinerary, Language, TripBriefInput } from "@/lib/types";
+import type { Itinerary, Language } from "@/lib/types";
+import type { PublicTripBrief } from "@/lib/publicBrief";
 
 interface ColumnState {
   jobStatus: Job["status"] | null;
   loadError: string;
   result: Itinerary | null;
-  brief: TripBriefInput | null;
+  // The PUBLIC brief - see lib/publicBrief.ts. A compare view renders two
+  // travellers' worth of header, and nothing in it needs the private half.
+  brief: PublicTripBrief | null;
 }
 
 const EMPTY_COLUMN: ColumnState = { jobStatus: null, loadError: "", result: null, brief: null };
@@ -77,14 +80,19 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
   }, [jobId]);
 
   async function handleRefine(question: string) {
-    if (!state.result || !state.brief) return;
+    // currentJobId is nullable because a column can be empty; a column with
+    // a result always has one, and the guard says so rather than asserting
+    // it - an empty column has nothing to refine either way.
+    if (!state.result || !currentJobId) return;
     setRefining(true);
     setRefineJobStatus(null);
     setRefineError("");
     try {
+      // This COLUMN's current job id - each column refines independently and
+      // the two must not cross, which is why it is read from the column's
+      // own state rather than from the page's params.
       const { jobId: newJobId, itinerary, brief } = await refineItinerary(
-        state.brief,
-        state.result,
+        currentJobId,
         question,
         setRefineJobStatus
       );

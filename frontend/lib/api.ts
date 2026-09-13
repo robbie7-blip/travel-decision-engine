@@ -1,5 +1,6 @@
 import type { Itinerary, TripBriefInput } from "./types";
 import type { Job, JobTimings, QualityReport, JobProgress } from "./jobs";
+import type { PublicJob, PublicTripBrief } from "./publicBrief";
 import type { FeedbackEntry } from "./feedback";
 import { getTestModeKey, TEST_MODE_HEADER } from "./testMode";
 
@@ -36,13 +37,25 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
  * (see LoadingScreen's city-facts rotation) before generation finishes, not
  * just after. Shared by refineItinerary below and by the /trip/[jobId] page,
  * which polls a job it didn't create itself (loaded straight from a shared
- * link). Also returns the brief alongside the final result since a page
- * loading a job cold - rather than holding the brief in form state already -
- * needs it to submit a pushback. */
+ * link).
+ *
+ * The brief this returns is a PublicTripBrief, not the whole thing. It used
+ * to be the whole thing, because refineItinerary needed to post it back -
+ * which meant a public, shareable endpoint published the traveler's
+ * disability disclosures, dietary constraints, budget and home city to
+ * anyone holding the link. /api/refine reads the brief from the job record
+ * itself now, so what crosses the wire is only what the page renders. See
+ * lib/publicBrief.ts. */
 export async function pollJob(
   jobId: string,
-  onStatus?: (status: Job["status"], brief: TripBriefInput, progress?: JobProgress) => void
-): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput; timings?: JobTimings; quality?: QualityReport }> {
+  onStatus?: (status: Job["status"], brief: PublicTripBrief, progress?: JobProgress) => void
+): Promise<{
+  jobId: string;
+  itinerary: Itinerary;
+  brief: PublicTripBrief;
+  timings?: JobTimings;
+  quality?: QualityReport;
+}> {
   const start = Date.now();
   for (;;) {
     const jobResponse = await fetch(`/api/job/${jobId}`);
@@ -52,7 +65,7 @@ export async function pollJob(
       );
     }
 
-    const job = (await jobResponse.json()) as Job;
+    const job = (await jobResponse.json()) as PublicJob;
     onStatus?.(job.status, job.brief, job.progress);
 
     if (job.status === "done") {
@@ -101,17 +114,29 @@ export async function createGenerateJob(brief: TripBriefInput): Promise<string> 
  * itinerary and polls until the model's revision (or justified refusal)
  * comes back. The returned itinerary replaces the caller's current one -
  * including its own pushback_response - so a second pushback builds on the
- * latest revision rather than the original. */
+ * latest revision rather than the original.
+ *
+ * Takes the job's ID, not its brief and itinerary. Those used to be posted
+ * from here, which is why the polling endpoint had to publish the full
+ * brief in the first place; /api/refine reads both out of the job record
+ * now. Pass the CURRENT job id, which after a refinement is the refined
+ * one - that is what makes a second pushback build on the latest revision
+ * rather than on the original. */
 export async function refineItinerary(
-  brief: TripBriefInput,
-  itinerary: Itinerary,
+  jobId: string,
   question: string,
   onStatus?: (status: Job["status"]) => void
-): Promise<{ jobId: string; itinerary: Itinerary; brief: TripBriefInput; timings?: JobTimings; quality?: QualityReport }> {
+): Promise<{
+  jobId: string;
+  itinerary: Itinerary;
+  brief: PublicTripBrief;
+  timings?: JobTimings;
+  quality?: QualityReport;
+}> {
   const createResponse = await fetch("/api/refine", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ brief, itinerary, question }),
+    body: JSON.stringify({ jobId, question }),
   });
 
   if (!createResponse.ok) {
@@ -120,8 +145,8 @@ export async function refineItinerary(
     );
   }
 
-  const { jobId } = (await createResponse.json()) as { jobId: string };
-  return pollJob(jobId, onStatus);
+  const { jobId: refinedJobId } = (await createResponse.json()) as { jobId: string };
+  return pollJob(refinedJobId, onStatus);
 }
 
 /** Submits feedback on one itinerary line item. Swallows nothing - throws

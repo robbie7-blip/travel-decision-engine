@@ -1,9 +1,30 @@
-// Next.js API route for the pushback/follow-up feature: takes the trip
-// brief, the itinerary already shown to the traveler, and their question
-// about it, and enqueues a refinement job - same job-queue mechanics as
-// /api/generate (see that route for the full rationale), just with a
-// `refinement` field set so the worker knows to build a follow-up prompt
-// instead of a fresh one (see buildRefinementPrompt).
+// Next.js API route for the pushback/follow-up feature: takes the id of a
+// finished trip and the traveler's question about it, and enqueues a
+// refinement job - same job-queue mechanics as /api/generate (see that
+// route for the full rationale), just with a `refinement` field set so the
+// worker knows to build a follow-up prompt instead of a fresh one (see
+// buildRefinementPrompt).
+//
+// It used to take the BRIEF AND THE ITINERARY IN THE REQUEST BODY, which
+// is what forced /api/job/[id] - a public, unauthenticated endpoint - to
+// publish the traveler's entire brief on a shareable link, disability
+// disclosures and budget included. lib/api.ts said so in as many words: the
+// brief rides along "since a page loading a job cold needs it to submit a
+// pushback".
+//
+// Reading both out of the job record instead fixes that and two smaller
+// things with it:
+//
+//   - The brief that refines a trip is now provably the brief that
+//     GENERATED it. Before, it was whatever the client posted back, so a
+//     round-trip through the page could quietly drop a field - and the
+//     fields most worth dropping accidentally (mobility, dietary, hard_no)
+//     are the ones a traveler would notice missing from the refined
+//     version.
+//   - The refinement prompt is no longer attacker-supplied. `itinerary`
+//     was parsed by checking it had a `days` array and then cast, so any
+//     caller could hand this route arbitrary content to be quoted into a
+//     model call as "the itinerary already shown to the traveler".
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
@@ -11,19 +32,29 @@ import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, type Jo
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget } from "@/lib/spendCheck";
-import { parseTripBrief, ValidationError } from "@/lib/validation";
+import { ValidationError } from "@/lib/validation";
+import { refineSource } from "@/lib/refineSource";
 import { recordEvent } from "@/lib/analytics";
-import type { Itinerary, TripBriefInput } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 const MAX_QUESTION_LENGTH = 500;
 
-function parseBaseItinerary(value: unknown): Itinerary {
-  if (typeof value !== "object" || value === null || !Array.isArray((value as { days?: unknown }).days)) {
-    throw new ValidationError("itinerary must be a previously generated itinerary object.");
+/** The id of the trip being refined. Only a shape check - whether the job
+ * exists is a Redis question, answered below and deliberately AFTER the
+ * rate limiter, so this route cannot be used to probe for job ids any
+ * faster than it can be used to generate. */
+function parseJobId(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new ValidationError("jobId is required.");
   }
-  return value as Itinerary;
+  const trimmed = value.trim();
+  // Job ids are crypto.randomUUID() here and in /api/generate. Bounded so
+  // a long string cannot be turned into a long Redis key.
+  if (trimmed.length > 100) {
+    throw new ValidationError("jobId is not a valid trip id.");
+  }
+  return trimmed;
 }
 
 function parseQuestion(value: unknown): string {
@@ -38,8 +69,7 @@ function parseQuestion(value: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
-  let brief: TripBriefInput;
-  let baseItinerary: Itinerary;
+  let sourceJobId: string;
   let question: string;
   try {
     const body = await request.json();
@@ -47,8 +77,7 @@ export async function POST(request: NextRequest) {
       throw new ValidationError("Request body must be a JSON object.");
     }
     const b = body as Record<string, unknown>;
-    brief = parseTripBrief(b.brief);
-    baseItinerary = parseBaseItinerary(b.itinerary);
+    sourceJobId = parseJobId(b.jobId);
     question = parseQuestion(b.question);
   } catch (e) {
     if (e instanceof ValidationError) {
@@ -91,6 +120,18 @@ export async function POST(request: NextRequest) {
       }
     );
   }
+
+  // The trip being refined, read from the record rather than taken from
+  // the caller. After the rate limiter on purpose: a lookup that answers
+  // "does this job exist" must not be cheaper than a generation.
+  //
+  // The decision itself lives in lib/refineSource.ts, where it can be
+  // tested - see the note at the top of that file.
+  const source = refineSource(await redis.get<string | Job>(jobKey(sourceJobId)));
+  if (!source.ok) {
+    return NextResponse.json({ detail: source.detail }, { status: source.status });
+  }
+  const { brief, baseItinerary } = source;
 
   const id = crypto.randomUUID();
   const now = Date.now();
