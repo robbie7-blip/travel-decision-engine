@@ -341,14 +341,29 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
           `arrival or departure transport line items and exclude that cost entirely from ` +
           `budget_feasibility, even though an origin is given above.`
       );
-      const arrivalParts = [brief.arrival_date?.trim(), brief.arrival_time?.trim() && `around ${brief.arrival_time.trim()}`].filter(
-        Boolean
-      );
+      // The airport joins the date and the time in the same sentence,
+      // because it is the same fact: when and where they touch down. For
+      // the cities that have more than one it is the difference between a
+      // 32-minute train and an hour in a taxi - Rome Fiumicino against
+      // Rome Ciampino, Paris Charles de Gaulle against Paris Beauvais 85 km
+      // out - and the transfer is the first and last thing on the
+      // itinerary. A validated label from lib/airports.ts or absent; never
+      // anything a caller typed.
+      const arrivalParts = [
+        brief.arrival_date?.trim(),
+        brief.arrival_time?.trim() && `around ${brief.arrival_time.trim()}`,
+        brief.arrival_airport?.trim() && `landing at ${brief.arrival_airport.trim()}`,
+      ].filter(Boolean);
       if (arrivalParts.length > 0) {
         lines.push(
           `Traveler's actual arrival: ${arrivalParts.join(", ")} - sequence day 1 around this ` +
             `real arrival timing rather than presuming it must be a light "just landed" day. Only ` +
-            `make day 1 lighter if this arrival info itself indicates a late or tiring arrival.`
+            `make day 1 lighter if this arrival info itself indicates a late or tiring arrival.` +
+            (brief.arrival_airport?.trim()
+              ? ` Use THAT named airport, not the city's main one, when judging how long the ` +
+                `transfer into town takes and what day 1 can hold after it - the city's airports ` +
+                `are at different distances and not all of them have a rail link.`
+              : "")
         );
       } else {
         lines.push(
@@ -368,6 +383,7 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
       const departureParts = [
         brief.departure_date?.trim(),
         brief.departure_time?.trim() && `around ${brief.departure_time.trim()}`,
+        brief.departure_airport?.trim() && `from ${brief.departure_airport.trim()}`,
       ].filter(Boolean);
       if (departureParts.length > 0) {
         lines.push(
@@ -386,7 +402,12 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
             // set off before it").
             `This applies to the day's MEALS list too: drop any meal the departure time actually ` +
             `removes, so a day that starts with a pre-dawn airport run does not still ask for ` +
-            `breakfast. Do not keep a meal the traveler cannot physically eat.`
+            `breakfast. Do not keep a meal the traveler cannot physically eat.` +
+            (brief.departure_airport?.trim()
+              ? ` Work back from THAT named airport specifically: the city's airports are at ` +
+                `different distances and some have no rail link, so the hour they have to leave ` +
+                `the accommodation depends on which one it is.`
+              : "")
         );
       } else {
         lines.push(

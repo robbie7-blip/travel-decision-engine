@@ -437,6 +437,37 @@ jobs:
       # - still without reading a character of the secret, or even
       # reporting its length. Reverting both halves makes 24 of 90 red.
       - run: npm run test:session
+      # Which airport, for the cities where that changes the itinerary.
+      # Rome Fiumicino is ~32 km west with a 32-minute train to Termini;
+      # Ciampino is ~15 km southeast with no rail link at all - so the
+      # transfer, the first afternoon and the last morning all depend on
+      # which one it is, and "be at the airport by nine" means a different
+      # departure from each. Same for Paris (Beauvais, 85 km out, sold as
+      # Paris), Milan (Bergamo likewise), London's five and Tokyo's Narita
+      # against Haneda. Two things this holds shut: the value reaches the
+      # MODEL PROMPT, so it is a closed allowlist of labels this file
+      # produces rather than free text like the times beside it - anything a
+      # caller invents under the key is dropped, not interpolated; and the
+      # dropdown must not appear for a city with one airport or none we
+      # know, while still resolving what people actually type into a
+      # free-text destinations field ("Roma", "NYC", "São Paulo", "KL").
+      # Reverting the allowlist makes 2 of 61 red.
+      - run: npm run test:airports
+      # The job envelope, and when it counts as dead. Every reader did
+      # `JSON.parse(raw) as Job` over a Redis value that outlives the deploy
+      # that wrote it, and one bad record gave three different failures: the
+      # polling route parsed OUTSIDE any try (an unhandled throw on an
+      # endpoint hit every 400ms), a value that parsed but was not a job came
+      # back 200 with nothing the client recognised (five minutes of
+      # polling), and the worker's processJob dropped it without ever marking
+      # it failed. And stallReason could not rescue any of it: `Date.now() -
+      # undefined` is NaN and every comparison against NaN is false, so a job
+      # stuck at "running" with a missing, NaN, Infinity or string updatedAt
+      # was never stalled at ANY age - by the one function written to end
+      # exactly that five-minute spinner. (`null` did stall, coercing to 0,
+      # which is the tell the guard was accidental.) Reverting it makes 10 of
+      # 55 red.
+      - run: npm run test:job-record
       - run: npm run test:currency
       # Which bucket a request counts against - the single guard in front of
       # every public endpoint that costs money or sends mail. getClientIp

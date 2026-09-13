@@ -8,6 +8,7 @@ import type { TripBriefInput } from "./types";
 // whatever is on the queue and is the side that actually spends. See the
 // "Trip length" section there; check:stats-keys holds the two copies equal.
 import { MAX_TRIP_DAYS, parseCalendarDate, tripDayCount } from "./jobs";
+import { isKnownAirportLabel } from "./airports";
 
 export { MAX_TRIP_DAYS, tripDayCount };
 
@@ -51,6 +52,13 @@ function cleanText(value: unknown, field: string): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== "string") throw new ValidationError(`${field} must be a string.`);
   return value.trim().slice(0, MAX_TEXT_CHARS) || undefined;
+}
+
+/** Keeps an airport only if it is exactly a label lib/airports.ts produces.
+ * See the call site for why an unrecognised one is dropped rather than
+ * rejected. */
+function knownAirportOrUndefined(value: string | undefined): string | undefined {
+  return value && isKnownAirportLabel(value) ? value : undefined;
 }
 
 function cleanList(value: unknown, field: string): string[] {
@@ -188,6 +196,21 @@ export function parseTripBrief(body: unknown): TripBriefInput {
   // "6am" or "late evening", and the prompt hands it to the model to read.
   const departure_time = cleanText(b.departure_time, "departure_time");
 
+  // The airports, which are NOT free text like the times beside them.
+  //
+  // These reach the prompt as a place the model is told to plan a transfer
+  // to and from, so the only values allowed through are the exact labels
+  // lib/airports.ts produces ("Rome Fiumicino (FCO)"). A closed set, so a
+  // caller POSTing straight at this endpoint cannot put a sentence of its
+  // own into the brief under a key that looks like data.
+  //
+  // Dropped rather than rejected when unrecognised: an unknown airport is
+  // the same situation as not answering, which the engine already handles,
+  // and a 400 would be the wrong answer for a brief echoed back by
+  // /api/refine after this file's airport table has changed.
+  const arrival_airport = knownAirportOrUndefined(cleanText(b.arrival_airport, "arrival_airport"));
+  const departure_airport = knownAirportOrUndefined(cleanText(b.departure_airport, "departure_airport"));
+
   // Pass-through only - this endpoint never trusts a client-supplied value
   // for anything cost/security-sensitive, and this field is neither: it's a
   // soft prompt-tone signal (see the comment on TripBriefInput in types.ts).
@@ -225,6 +248,8 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     arrival_time,
     departure_date,
     departure_time,
+    arrival_airport,
+    departure_airport,
     ...(visitedCountries.length > 0 ? { visited_countries: visitedCountries } : {}),
   };
 }

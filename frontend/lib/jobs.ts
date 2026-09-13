@@ -321,6 +321,30 @@ export type StallReason = "worker_restarted" | "worker_offline";
  * down, this is on us". Collapsing them into one boolean would mean telling
  * someone to retry into a queue that nothing is reading. */
 export function stallReason(job: Job): StallReason | null {
+  // A record with no usable timestamp is the case this whole function
+  // exists for, and it was the one case that slipped through.
+  //
+  // `Date.now() - undefined` is NaN, and every comparison against NaN is
+  // false - so a job stuck at "running" with a missing, NaN, Infinity or
+  // string updatedAt returned null here forever. Not "not stalled yet":
+  // never stalled, at any age. The traveller then polls for the full
+  // MAX_WAIT_MS (five minutes, see lib/api.ts) and is told "this is taking
+  // much longer than expected", which is the exact five-minute spinner
+  // STALE_RUNNING_MS was written to end, defeated by one absent field.
+  //
+  // Measured, not supposed: for updatedAt of undefined, NaN, "2026-09-13"
+  // and Infinity this returned null on a job that had been running for ten
+  // minutes. (`null` did stall - it coerces to 0 - which is the tell that
+  // the guard was accidental rather than designed.)
+  //
+  // Treated as stalled rather than ignored, because that is what it is:
+  // the worker writes updatedAt every time it touches a job, so a record
+  // without one is not a generation in progress. Saying "interrupted, try
+  // again" is right, and it is certainly better than a spinner that never
+  // resolves into anything.
+  if (!Number.isFinite(job.updatedAt)) {
+    return job.status === "pending" ? "worker_offline" : job.status === "running" ? "worker_restarted" : null;
+  }
   const age = Date.now() - job.updatedAt;
   if (job.status === "running" && age > STALE_RUNNING_MS) return "worker_restarted";
   if (job.status === "pending" && age > STALE_PENDING_MS) return "worker_offline";
@@ -337,6 +361,62 @@ export function isStalledJob(job: Job): boolean {
 
 export function jobKey(id: string): string {
   return `job:${id}`;
+}
+
+const JOB_STATUSES = new Set<string>(["pending", "running", "done", "error"]);
+
+/** True when what came out of Redis is actually a job envelope.
+ *
+ * Same reasoning as isWorkerHeartbeat in lib/health.ts, and the same
+ * evidence behind it: every reader here did `JSON.parse(raw) as Job` or
+ * `raw as Job`, asserting a shape over a stored value that outlives the
+ * deploy that wrote it. Three readers, three different bad outcomes from
+ * the same record:
+ *
+ *   - GET /api/job/[id] parses outside any try, so a non-JSON value is an
+ *     unhandled throw on an endpoint the trip page polls every 400ms;
+ *   - a value that parses but is not a job (a number, an array, a record
+ *     missing `status`) returns 200 with nothing the client recognises, so
+ *     pollJob loops for the full five minutes - and stallReason cannot
+ *     rescue it, because a record like that has no usable updatedAt either;
+ *   - the worker's processJob parses it too, inside a catch that logs and
+ *     moves on, so the job is dropped without ever being marked failed.
+ *
+ * `brief` is checked as an object but not validated field by field - the
+ * worker re-reads it and parseTripBrief already owns that - and the
+ * optional fields are left alone. This is the envelope, not the contents. */
+export function isJob(value: unknown): value is Job {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const job = value as Partial<Job>;
+  return (
+    typeof job.id === "string" &&
+    job.id.length > 0 &&
+    typeof job.status === "string" &&
+    JOB_STATUSES.has(job.status) &&
+    typeof job.brief === "object" &&
+    job.brief !== null &&
+    Number.isFinite(job.createdAt) &&
+    Number.isFinite(job.updatedAt)
+  );
+}
+
+/** Reads a job record as it comes back from either Redis client, or null.
+ *
+ * The Upstash REST client auto-deserializes JSON-looking strings while
+ * ioredis always hands back a string, so both shapes reach the readers and
+ * every one of them open-coded the same ternary. Doing it once means the
+ * parse is inside a try exactly once, too. */
+export function readJobRecord(raw: unknown): Job | null {
+  if (raw == null) return null;
+  let value: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  return isJob(value) ? value : null;
 }
 
 // ---------------------------------------------------------------------------

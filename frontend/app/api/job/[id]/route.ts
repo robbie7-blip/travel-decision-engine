@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { jobKey, stallReason, WORKER_HEARTBEAT_KEY, type Job, type WorkerHeartbeat } from "@/lib/jobs";
+import { jobKey, readJobRecord, stallReason, WORKER_HEARTBEAT_KEY, type Job, type WorkerHeartbeat } from "@/lib/jobs";
 import { isWorkerHeartbeat } from "@/lib/health";
 
 export const runtime = "nodejs";
@@ -51,9 +51,24 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     );
   }
 
-  // Upstash's client auto-deserializes JSON-looking strings, so this may
-  // already be an object rather than a string depending on how it was set.
-  const job: Job = typeof raw === "string" ? JSON.parse(raw) : raw;
+  // Validated rather than asserted. This was
+  // `typeof raw === "string" ? JSON.parse(raw) : raw` with `: Job` written
+  // on it and no try around the parse - see readJobRecord in lib/jobs.ts
+  // for what each malformed shape did. The 500 is deliberate and is the
+  // kind the client handles well: pollJob throws ApiError with this exact
+  // `detail`, so the traveller reads a sentence instead of watching a
+  // spinner run out the full five minutes.
+  const job = readJobRecord(raw);
+  if (!job) {
+    return NextResponse.json(
+      {
+        detail:
+          "This trip's record could not be read - it may have been written by an older version. " +
+          "Please generate it again.",
+      },
+      { status: 500 }
+    );
+  }
 
   // A job that nothing is going to finish - either its worker died
   // mid-generation and left it at "running", or no worker ever took it off

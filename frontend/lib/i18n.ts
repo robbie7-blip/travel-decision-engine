@@ -99,6 +99,16 @@ export interface Dictionary {
     departureDatePlaceholder: string;
     departureTime: string;
     departureTimePlaceholder: string;
+    // WHICH airport, shown only for the cities that have more than one
+    // worth distinguishing (see lib/airports.ts). Rome Fiumicino is ~32 km
+    // west with a 32-minute train to Termini; Ciampino is ~15 km southeast
+    // with no rail link at all - so the transfer, the first afternoon and
+    // the last morning all depend on which one it is.
+    arrivalAirport: string;
+    departureAirport: string;
+    // The first option in both dropdowns, and the default. Not answering
+    // is a legitimate answer: the engine plans exactly as it did before.
+    airportUnknown: string;
     // How the traveler wants to get around locally (see transport_preference
     // on TripBriefInput) - always shown, optional, defaults to no preference.
     transportPreference: string;
@@ -635,6 +645,9 @@ const en: Dictionary = {
     departureDatePlaceholder: "Select your departure date",
     departureTime: "Departure time (optional)",
     departureTimePlaceholder: "e.g. 7am, or 'late evening'",
+    arrivalAirport: "Arriving at which airport?",
+    departureAirport: "Flying home from which airport?",
+    airportUnknown: "Not sure / doesn't matter",
     transportPreference: "Preferred way to get around (optional)",
     transportNoPreference: "No preference",
     transportPublicTransit: "Public transit (metro/bus/train)",
@@ -1151,6 +1164,9 @@ const bg: Dictionary = {
     departureDatePlaceholder: "Избери дата на отпътуване",
     departureTime: "Час на отпътуване (по избор)",
     departureTimePlaceholder: "напр. 07:00, или 'късно вечерта'",
+    arrivalAirport: "На кое летище пристигаш?",
+    departureAirport: "От кое летище отпътуваш?",
+    airportUnknown: "Не съм сигурен / няма значение",
     transportPreference: "Предпочитан начин на придвижване (по избор)",
     transportNoPreference: "Без предпочитание",
     transportPublicTransit: "Градски транспорт (метро/автобус/влак)",

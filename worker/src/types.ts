@@ -54,6 +54,18 @@ export interface TripBriefInput {
   // trip's start_date.
   arrival_date?: string;
   arrival_time?: string;
+  // WHICH airport, for the cities where that changes the plan. A label from
+  // lib/airports.ts and nothing else - "Rome Fiumicino (FCO)" - validated
+  // against that file's closed set before it gets here, because it goes
+  // straight into the model prompt.
+  //
+  // Rome is the case that argued for it: Fiumicino is ~32 km west with a
+  // 32-minute train to Termini, Ciampino is ~15 km southeast with no rail
+  // link at all. Planned for the wrong one, a first afternoon is off by an
+  // hour and the last morning is off by more, because "be at the airport
+  // by nine" means a different departure from each. Absent means the
+  // traveller did not say, and the engine plans as it did before.
+  arrival_airport?: string;
   // The other half of a pre-booked trip, and for a while the missing half.
   // Only arrival was collected, so the engine knew when the traveler landed
   // and nothing about when they leave - which is the more constraining of
@@ -68,6 +80,10 @@ export interface TripBriefInput {
   // departure_date) refers to the trip's end_date.
   departure_date?: string;
   departure_time?: string;
+  /** The departure half of arrival_airport, and the one that binds harder -
+   * the final day is planned around getting to this specific airport. Same
+   * closed set of labels. */
+  departure_airport?: string;
   // Country NAMES (not ISO codes - resolved from lib/countries.ts before
   // this ever reaches the worker, which has no country lookup of its own),
   // from the signed-in traveler's visited-countries tracker (see

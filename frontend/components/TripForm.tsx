@@ -6,6 +6,7 @@ import { Field, inputStyle } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
 import { MAX_TRIP_DAYS, tripDayCount } from "@/lib/validation";
 import type { Language, TripBriefInput } from "@/lib/types";
+import { airportLabel, airportsFor } from "@/lib/airports";
 
 // Form-local shape: comma-separated fields stay strings while being typed;
 // they're split into arrays only at submit time (see toTripBriefInput).
@@ -34,6 +35,13 @@ export interface TripFormState {
   arrival_time: string;
   departure_date: string;
   departure_time: string;
+  // WHICH airport, for the cities that have more than one worth
+  // distinguishing (see lib/airports.ts). "" means not answered - the same
+  // as today's behaviour, and the dropdown's first option. Held as the full
+  // label rather than the IATA code so what is submitted is exactly what
+  // validation allowlists and exactly what the prompt says.
+  arrival_airport: string;
+  departure_airport: string;
   // Compare mode: same trip (dates/budget/party/pace/etc.), a second
   // destination - the toggle is separate from the text so unchecking it
   // doesn't need to also clear whatever was typed.
@@ -73,6 +81,8 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   arrival_time: "",
   departure_date: "",
   departure_time: "",
+  arrival_airport: "",
+  departure_airport: "",
   compareEnabled: false,
   compareDestinations: "",
   compareUseDifferentDates: false,
@@ -122,6 +132,11 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     arrival_time: form.needs_flight ? undefined : form.arrival_time.trim() || undefined,
     departure_date: form.needs_flight ? undefined : form.departure_date.trim() || undefined,
     departure_time: form.needs_flight ? undefined : form.departure_time.trim() || undefined,
+    // Dropped alongside the rest of the pre-booked block when needs_flight
+    // is back on: an airport the traveller picked before ticking "book my
+    // flights for me" is no longer a fact about their trip.
+    arrival_airport: form.needs_flight ? undefined : form.arrival_airport.trim() || undefined,
+    departure_airport: form.needs_flight ? undefined : form.departure_airport.trim() || undefined,
   };
 }
 
@@ -138,6 +153,22 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
   function update<K extends keyof TripFormState>(key: K, val: TripFormState[K]) {
     onChange({ ...value, [key]: val });
   }
+
+  // Which city's airports to offer, for each half of the journey.
+  //
+  // The first destination for arrival and the LAST for departure, which is
+  // the only reading that is right for a multi-city trip: fly into Milan,
+  // train to Venice, fly home from Venice. Taking the first city for both
+  // would offer Malpensa as the way home from Venice.
+  //
+  // An empty list means the city has one airport or is not in the table,
+  // and nothing is rendered - a dropdown holding one option asks a question
+  // with no answer in it.
+  const cities = splitList(value.destinations);
+  const arrivalCity = cities[0];
+  const departureCity = cities[cities.length - 1];
+  const arrivalAirports = airportsFor(arrivalCity);
+  const departureAirports = airportsFor(departureCity);
 
   // /api/generate rejects a range longer than MAX_TRIP_DAYS, because every
   // planned day is a paid model call. Checking it here too means the
@@ -280,6 +311,25 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                 placeholder={t.form.arrivalTimePlaceholder}
               />
             </Field>
+            {arrivalAirports.length > 0 && (
+              <Field label={t.form.arrivalAirport}>
+                <select
+                  style={inputStyle}
+                  value={value.arrival_airport}
+                  onChange={(e) => update("arrival_airport", e.target.value)}
+                >
+                  <option value="">{t.form.airportUnknown}</option>
+                  {arrivalAirports.map((airport) => {
+                    const label = airportLabel(arrivalCity, airport);
+                    return (
+                      <option key={airport.code} value={label}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </Field>
+            )}
             <div>
               {/* Plain <div> rather than <Field>, same label-click reason as
                   the arrival date above. */}
@@ -306,6 +356,25 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                 placeholder={t.form.departureTimePlaceholder}
               />
             </Field>
+            {departureAirports.length > 0 && (
+              <Field label={t.form.departureAirport}>
+                <select
+                  style={inputStyle}
+                  value={value.departure_airport}
+                  onChange={(e) => update("departure_airport", e.target.value)}
+                >
+                  <option value="">{t.form.airportUnknown}</option>
+                  {departureAirports.map((airport) => {
+                    const label = airportLabel(departureCity, airport);
+                    return (
+                      <option key={airport.code} value={label}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </Field>
+            )}
           </>
         )}
         <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>

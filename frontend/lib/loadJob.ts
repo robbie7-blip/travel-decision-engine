@@ -3,14 +3,19 @@
 // the job's content before the client ever polls GET /api/job/[id].
 
 import { getRedis } from "./redis";
-import { jobKey, type Job } from "./jobs";
+import { jobKey, readJobRecord, type Job } from "./jobs";
 
 export async function loadJob(jobId: string): Promise<Job | null> {
   try {
     const redis = getRedis();
-    const raw = await redis.get<string | Job>(jobKey(jobId));
-    if (raw == null) return null;
-    return typeof raw === "string" ? JSON.parse(raw) : raw;
+    // Validated, not asserted. This used to be
+    // `typeof raw === "string" ? JSON.parse(raw) : raw` with the Job type
+    // written on the return, and the callers are generateMetadata, the
+    // opengraph image and the showcase gallery - all of which then read
+    // `job.result.trip_summary` and `job.status`. A malformed record was a
+    // throw during render of a shared trip link, which the catch here turns
+    // into "not found" instead. See readJobRecord.
+    return readJobRecord(await redis.get<string | Job>(jobKey(jobId)));
   } catch {
     return null;
   }

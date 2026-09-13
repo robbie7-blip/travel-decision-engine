@@ -77,6 +77,7 @@ import {
   briefSpanDays,
   STALE_RUNNING_MS,
   jobKey,
+  readJobRecord,
   type Job,
   type JobTimings,
   type ProgressDay,
@@ -2035,7 +2036,31 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     console.error(`[worker] job ${id} not found (expired?), skipping`);
     return;
   }
-  const job: Job = JSON.parse(raw);
+  // Validated, not asserted.
+  //
+  // This was a bare `JSON.parse(raw)` with `: Job` written on it. A record
+  // that is not a job threw here, and runConsumer's `.catch()` logged it
+  // and went back to BRPOP - so the job was dropped WITHOUT ever being
+  // written back as failed, and the traveller's page polled a "running"
+  // record for the full five minutes before giving up. Marking it failed is
+  // the difference between a sentence they can act on and a spinner.
+  const job = readJobRecord(raw);
+  if (!job) {
+    console.error(`[worker] job ${id} is not a readable job record - marking it failed rather than dropping it`);
+    // A fresh envelope rather than a mutated one: there is no readable job
+    // to mutate, and that is the whole point. `brief` has to be present for
+    // the record to read back as a job at all (see isJob) - the page throws
+    // on `status: "error"` before it looks at the brief.
+    await writeJob(redis, {
+      id,
+      status: "error",
+      brief: {} as Job["brief"],
+      error: "This trip's record could not be read. Please generate it again.",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return;
+  }
 
   // The trip-length cap, enforced again on the side that pays for it.
   //
