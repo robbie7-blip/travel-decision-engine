@@ -8,11 +8,69 @@
 // like jobs.ts and types.ts - kept byte-identical between
 // frontend/lib/costBudget.ts and worker/src/costBudget.ts.
 
-// Claude Sonnet 5 introductory pricing, in effect through 2026-08-31 (then
-// reverts to $3.00 / $15.00 per MTok) - overridable via env so a pricing
-// change doesn't require a code edit.
+// The rate for MODEL, which is Claude Sonnet 5. Overridable via env so a
+// pricing change doesn't require a code edit.
+//
+// The comment here used to say this was "introductory pricing, in effect
+// through 2026-08-31 (then reverts to $3.00 / $15.00 per MTok)". That date
+// has passed, and checking the live pricing rather than trusting the note:
+// Claude Sonnet 5 is $2 / $10 per MTok, with no introductory caveat. So the
+// numbers were right and the warning was wrong - worth correcting, because
+// a stale "this expires" comment is how a spend cap gets adjusted on a
+// schedule nobody re-checked.
 const DEFAULT_INPUT_COST_PER_MTOK_USD = 2.0;
 const DEFAULT_OUTPUT_COST_PER_MTOK_USD = 10.0;
+
+/** Per-model rates, for when a stage deliberately runs on a different
+ * model from the rest of the pipeline.
+ *
+ * DAY_MODEL exists as a latency lever: phase 2 is mechanical enough that a
+ * faster model is a real trade, and the obvious candidate is Claude Haiku
+ * 4.5. But estimateCostUsd took only `usage` - one flat pair of rates for
+ * every call in the job - so turning that dial would have priced every day
+ * call's tokens at Sonnet's rate while they ran on Haiku's. Haiku 4.5 is
+ * $1 / $5 against Sonnet 5's $2 / $10: EXACTLY half, on both halves. The
+ * day calls are the bulk of a generation's output tokens (one per planned
+ * day), so the day's spend counter would have read about twice the real
+ * bill.
+ *
+ * Which is worse than merely inaccurate. checkDailyBudget blocks
+ * generation at DAILY_BUDGET_USD, so an overstated counter trips the cap
+ * early and stops real travellers; and it overstates in the direction that
+ * makes the CHEAPER configuration look expensive, so the number meant to
+ * justify the optimisation would have argued against it.
+ *
+ * Matched on substring rather than exact ID because every ID is a pinned
+ * snapshot with an optional date suffix - "claude-haiku-4-5" and
+ * "claude-haiku-4-5-20251001" are the same model and the same price. Rates
+ * are per million tokens, input then output, from the published model
+ * comparison. An unrecognised model falls back to the env-configured pair
+ * above, which is the behaviour every call had before this table existed. */
+const MODEL_RATES: { match: string; input: number; output: number }[] = [
+  { match: "haiku-4-5", input: 1.0, output: 5.0 },
+  { match: "sonnet-5", input: 2.0, output: 10.0 },
+  { match: "sonnet-4-6", input: 3.0, output: 15.0 },
+  { match: "opus-5", input: 5.0, output: 25.0 },
+  { match: "opus-4-8", input: 5.0, output: 25.0 },
+  { match: "opus-4-7", input: 5.0, output: 25.0 },
+  { match: "opus-4-6", input: 5.0, output: 25.0 },
+  { match: "fable-5", input: 10.0, output: 50.0 },
+  { match: "mythos-5", input: 10.0, output: 50.0 },
+];
+
+/** The input/output rate for a model, or the configured default.
+ *
+ * Exported so a test can assert the table rather than infer it from a
+ * cost, and so /admin can show what a stage is being billed at. */
+export function ratesFor(model?: string | null): { input: number; output: number } {
+  if (typeof model === "string") {
+    const m = model.toLowerCase();
+    for (const rate of MODEL_RATES) {
+      if (m.includes(rate.match)) return { input: rate.input, output: rate.output };
+    }
+  }
+  return { input: INPUT_COST_PER_MTOK_USD, output: OUTPUT_COST_PER_MTOK_USD };
+}
 
 function envFloat(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -113,14 +171,21 @@ export interface ModelUsage {
 /** Estimated USD cost of one model call from its reported usage: plain
  * input/output tokens, cache write/read tokens (see the multipliers above),
  * and per-request server-tool charges. */
-export function estimateCostUsd(usage: ModelUsage): number {
+/** What one call cost.
+ *
+ * `model` is OPTIONAL and should be the model the API says served the
+ * request (response.model), not the one that was asked for - that way a
+ * provider-side fallback is priced as what actually ran. Omitting it keeps
+ * the previous behaviour exactly: the env-configured default pair. */
+export function estimateCostUsd(usage: ModelUsage, model?: string | null): number {
+  const { input, output } = ratesFor(model);
   const serverToolRequests =
     (usage.server_tool_use?.web_search_requests ?? 0) + (usage.server_tool_use?.web_fetch_requests ?? 0);
   return (
-    (usage.input_tokens / 1_000_000) * INPUT_COST_PER_MTOK_USD +
-    (usage.output_tokens / 1_000_000) * OUTPUT_COST_PER_MTOK_USD +
-    ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) * INPUT_COST_PER_MTOK_USD * CACHE_WRITE_MULTIPLIER +
-    ((usage.cache_read_input_tokens ?? 0) / 1_000_000) * INPUT_COST_PER_MTOK_USD * CACHE_READ_MULTIPLIER +
+    (usage.input_tokens / 1_000_000) * input +
+    (usage.output_tokens / 1_000_000) * output +
+    ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) * input * CACHE_WRITE_MULTIPLIER +
+    ((usage.cache_read_input_tokens ?? 0) / 1_000_000) * input * CACHE_READ_MULTIPLIER +
     (serverToolRequests / 1000) * SERVER_TOOL_COST_PER_1K_USD
   );
 }

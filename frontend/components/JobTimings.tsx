@@ -128,6 +128,13 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
             <div style={{ color: "var(--ink-dim)", marginTop: 4 }}>
               effort: frame {timings.efforts.frame} · plan {timings.efforts.plan} · days{" "}
               {timings.efforts.day}
+              {/* Which model wrote the days. DAY_MODEL defaults to the
+                  main model, so today this says the same thing the rest
+                  of the run does - but the moment that dial is turned,
+                  every number above means something different, and a trip
+                  from last week cannot answer "which model was this"
+                  retrospectively. */}
+              {timings.dayModel && <span> · day model {timings.dayModel}</span>}
             </div>
           )}
           {/* Which half of the accommodation lookup came back empty, and what it

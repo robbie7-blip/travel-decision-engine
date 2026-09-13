@@ -295,6 +295,19 @@ export interface JobTimings {
    * carries its own configuration is a run that can be compared to the
    * next one. */
   efforts?: { frame: string; plan: string; day: string };
+  /** Which model actually wrote the days.
+   *
+   * DAY_MODEL is a latency lever - phase 2 is mechanical enough that a
+   * faster model is a real trade - and it defaults to MODEL, so today this
+   * says the same thing twice. It is recorded anyway, because the moment
+   * the dial is turned every number on this record means something
+   * different, and "which model was this run on" is not a question a trip
+   * from last week can answer retrospectively.
+   *
+   * Beside `efforts` for the same reason that field exists: a run that
+   * carries its own configuration is a run that can be compared to the
+   * next one. */
+  dayModel?: string;
 }
 
 export const JOBS_QUEUE_KEY = "jobs:queue";

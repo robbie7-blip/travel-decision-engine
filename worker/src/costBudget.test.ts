@@ -29,6 +29,7 @@ import {
   OUTPUT_COST_PER_MTOK_USD,
   SERVER_TOOL_COST_PER_1K_USD,
   estimateCostUsd,
+  ratesFor,
   type ModelUsage,
 } from "./costBudget";
 import { check, finish, heading, section } from "./testutil";
@@ -201,6 +202,61 @@ function main() {
     );
     check("and NaN would have passed the old `<= 0` guard", (Number.NaN <= 0) === false);
     check("while Number.isFinite catches it", Number.isFinite(Number.NaN) === false);
+  }
+
+  section("a stage on a different model is billed at that model's rate");
+
+  {
+    // DAY_MODEL exists as a latency lever: phase 2 is mechanical enough
+    // that a faster model is a real trade. estimateCostUsd took only
+    // `usage` though - one flat pair of rates for every call in the job -
+    // so turning that dial would have priced every day call at MODEL's
+    // rate while it ran on the faster model's.
+    //
+    // Rates per million tokens, from the published model comparison:
+    // Sonnet 5 $2/$10, Haiku 4.5 $1/$5, Opus 5 $5/$25, Fable 5.1 $10/$50.
+    check("Sonnet 5 is the default rate", ratesFor("claude-sonnet-5").output === 10);
+    check("Haiku 4.5 is half of it", ratesFor("claude-haiku-4-5").output === 5);
+    check("and half on input too", ratesFor("claude-haiku-4-5").input === 1);
+    check("Opus 5 is dearer", ratesFor("claude-opus-5").output === 25);
+    check("Fable 5.1 dearer again", ratesFor("claude-fable-5-1").output === 50);
+
+    // Every ID is a pinned snapshot with an optional date suffix, so the
+    // dated and dateless forms are the same model and the same price.
+    check(
+      "a dated ID prices the same as its alias",
+      ratesFor("claude-haiku-4-5-20251001").output === ratesFor("claude-haiku-4-5").output
+    );
+
+    // An unknown model keeps the behaviour every call had before the table
+    // existed: the env-configured default pair.
+    check("an unknown model falls back to the configured default", ratesFor("something-else").output === OUTPUT_COST_PER_MTOK_USD);
+    check("and so does no model at all", ratesFor(undefined).output === OUTPUT_COST_PER_MTOK_USD);
+    check("or a null one", ratesFor(null).output === OUTPUT_COST_PER_MTOK_USD);
+  }
+
+  {
+    // The error, in money. This is why it matters rather than merely being
+    // untidy: the day calls are the bulk of a generation's output tokens,
+    // checkDailyBudget blocks generation at DAILY_BUDGET_USD, and an
+    // overstated counter trips that cap early and stops real travellers.
+    const dayCall = usage({ input_tokens: 4_000, output_tokens: 6_000 });
+    const onHaiku = estimateCostUsd(dayCall, "claude-haiku-4-5");
+    const mispriced = estimateCostUsd(dayCall);
+    check("a day call on Haiku costs half what the flat rate said", Math.abs(mispriced / onHaiku - 2) < 1e-9, `${mispriced} vs ${onHaiku}`);
+    check(
+      "and the flat rate overstates it, which is the direction that blocks travellers",
+      mispriced > onHaiku,
+      `${mispriced} > ${onHaiku}`
+    );
+  }
+
+  {
+    // Cache rates follow the model too: a read is 10% of that model's own
+    // input price, not of the default's.
+    const cached = usage({ input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 1_000_000 });
+    check("a cache read on Haiku is 10% of Haiku's input rate", Math.abs(estimateCostUsd(cached, "claude-haiku-4-5") - 0.1) < 1e-9, String(estimateCostUsd(cached, "claude-haiku-4-5")));
+    check("and on Sonnet, 10% of Sonnet's", Math.abs(estimateCostUsd(cached, "claude-sonnet-5") - 0.2) < 1e-9, String(estimateCostUsd(cached, "claude-sonnet-5")));
   }
 
   finish();

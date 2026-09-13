@@ -507,7 +507,7 @@ interface LodgingLookupResult {
 async function prefetchLodging(
   client: Anthropic,
   city: string,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage, model?: string) => void
 ): Promise<LodgingLookupResult | null> {
   // One allowance for this city, covering both halves' attempts and any
   // retry. Each attempt gets the smaller of LODGING_ATTEMPT_MS and whatever
@@ -547,7 +547,7 @@ async function prefetchLodging(
         // them.
         { timeout: timeoutMs }
       );
-      onUsage?.(response.usage);
+      onUsage?.(response.usage, response.model);
       // Named explicitly rather than left to surface as a JSON parse error
       // below: the two have identical symptoms (null result, generic
       // accommodation) and completely different fixes, and mistaking one
@@ -658,7 +658,7 @@ async function callModel(
   client: Anthropic,
   brief: TripBriefInput,
   userPrompt: string,
-  onUsage?: (usage: ModelUsage) => void,
+  onUsage?: (usage: ModelUsage, model?: string) => void,
   skipSearch = false
 ): Promise<Itinerary> {
   // Streamed, and this is the call that needed it most. It is the fallback
@@ -705,7 +705,7 @@ async function callModel(
   // Anthropic bills for this call whether or not the response below turns
   // out to be a refusal or malformed JSON, so usage is recorded right away
   // rather than only on a successful parse.
-  onUsage?.(response.usage);
+  onUsage?.(response.usage, response.model);
 
   if (response.stop_reason === "refusal") {
     throw new ModelOutputError(
@@ -1088,7 +1088,7 @@ async function generateDay(
   brief: TripBriefInput,
   skeleton: DayContext,
   day: SkeletonDay,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage, model?: string) => void
 ): Promise<ItineraryDay> {
   const response = await streamMessage(client, {
     model: DAY_MODEL,
@@ -1109,7 +1109,7 @@ async function generateDay(
     ...DAY_OUTPUT_CONFIG,
     messages: [{ role: "user", content: buildDayPrompt(brief, skeleton, day) }],
   });
-  onUsage?.(response.usage);
+  onUsage?.(response.usage, response.model);
 
   if (response.stop_reason === "refusal") {
     throw new ModelOutputError(`The model declined to generate day ${day.day}.`);
@@ -1196,7 +1196,7 @@ async function repairDuplicateVenues(
   // independently pick the same "different" restaurant - reintroducing the
   // exact duplicate one of them exists to remove.
   claimed: Set<string>,
-  onUsage?: (usage: ModelUsage) => void,
+  onUsage?: (usage: ModelUsage, model?: string) => void,
   /** Collects every item whose venue changed, so the caller can send just
    * those back through Places rather than re-verifying the whole trip. */
   repaired?: ItineraryItem[]
@@ -1227,7 +1227,7 @@ async function repairDuplicateVenues(
             },
           ],
         });
-        onUsage?.(response.usage);
+        onUsage?.(response.usage, response.model);
         // Named, for the same reason prefetchLodging names it: a truncated
         // response and malformed JSON have identical symptoms here (the
         // catch below strips the venue) and completely different fixes.
@@ -1296,7 +1296,7 @@ export async function generatePhase1Half<T>(
   system: string,
   userPrompt: string,
   isUsable: (v: unknown) => v is T,
-  onUsage?: (usage: ModelUsage) => void,
+  onUsage?: (usage: ModelUsage, model?: string) => void,
   opts: {
     /** Reasoning effort for this half specifically. The frame and the plan
      * make different kinds of decision and only one of them is on the
@@ -1363,7 +1363,7 @@ export async function generatePhase1Half<T>(
         },
       }
     );
-    onUsage?.(response.usage);
+    onUsage?.(response.usage, response.model);
     const elapsedMs = Date.now() - startedAt;
 
     // What the call actually spent, per call, on the record.
@@ -1505,7 +1505,7 @@ async function repairMissingMeals(
   itinerary: Itinerary,
   /** Shared with repairDuplicateVenues - see the note on its parameter. */
   taken: Set<string>,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage, model?: string) => void
 ): Promise<PlannedMealFill[]> {
   const planByNumber = new Map(skeletonDays.map((d) => [d.day, d]));
   const jobs: { day: ItineraryDay; plan: SkeletonDay; meal: MealSlot }[] = [];
@@ -1546,7 +1546,7 @@ async function repairMissingMeals(
             },
           ],
         });
-        onUsage?.(response.usage);
+        onUsage?.(response.usage, response.model);
         // Named rather than left to surface as a parse error, same as the
         // lodging lookup and the venue repair. A meal starved by the token
         // cap leaves the day without its dinner, and "meal repair failed"
@@ -1650,7 +1650,7 @@ function startPhase1(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
-  onUsage?: (usage: ModelUsage) => void,
+  onUsage?: (usage: ModelUsage, model?: string) => void,
   onHalfTiming?: (half: "frame" | "plan", ms: number) => void,
   onHalfCallTiming?: (half: "frame" | "plan", timing: CallTiming) => void
 ): { frame: Promise<TripFrame>; plan: Promise<TripPlan> } {
@@ -1763,7 +1763,7 @@ async function generateItineraryTwoPhase(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
-  onUsage?: (usage: ModelUsage) => void,
+  onUsage?: (usage: ModelUsage, model?: string) => void,
   onPhaseTimings?: (t: {
     skeletonMs: number;
     daysMs: number;
@@ -1971,7 +1971,7 @@ function generateItinerarySingleCall(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
-  onUsage?: (usage: ModelUsage) => void,
+  onUsage?: (usage: ModelUsage, model?: string) => void,
   forceSkipSearch = false
 ): Promise<Itinerary> {
   // Skip the web_search tool entirely - not just instruct around it - when
@@ -1994,7 +1994,7 @@ async function generateItinerary(
   client: Anthropic,
   brief: TripBriefInput,
   cachedLodgingFacts: Record<string, string>,
-  onUsage?: (usage: ModelUsage) => void,
+  onUsage?: (usage: ModelUsage, model?: string) => void,
   forceSkipSearch = false,
   timings?: JobTimings,
   pendingLodging?: Promise<{ city: string; result: LodgingLookupResult | null }[]>,
@@ -2052,7 +2052,7 @@ function generateRefinement(
   client: Anthropic,
   brief: TripBriefInput,
   refinement: RefinementRequest,
-  onUsage?: (usage: ModelUsage) => void
+  onUsage?: (usage: ModelUsage, model?: string) => void
 ): Promise<Itinerary> {
   return withOneRetry(() =>
     callModel(client, brief, buildRefinementPrompt(brief, refinement.baseItinerary, refinement.question), onUsage)
@@ -2276,8 +2276,27 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   };
 
   let costUsd = 0;
-  const onUsage = (usage: ModelUsage) => {
-    costUsd += estimateCostUsd(usage);
+  /** Per-model spend, so a stage running on a different model is billed at
+   * that model's rate.
+   *
+   * DAY_MODEL exists as a latency lever and the obvious candidate (Claude
+   * Haiku 4.5) costs exactly half what MODEL does on both input and
+   * output. This used to be one flat rate for every call in the job, so
+   * turning that dial would have priced every day call at Sonnet's rate -
+   * and the day calls are the bulk of a generation's output tokens. The
+   * counter would have read about double the real bill, which trips
+   * DAILY_BUDGET_USD early and stops real travellers, while overstating in
+   * the direction that makes the cheaper configuration look expensive.
+   *
+   * `response.model` rather than the constant that was requested: it is
+   * what the API says served the call, so a provider-side fallback is
+   * priced as what actually ran. */
+  const spendByModel: Record<string, number> = {};
+  const onUsage = (usage: ModelUsage, model?: string) => {
+    const cost = estimateCostUsd(usage, model);
+    costUsd += cost;
+    const key = model ?? "unknown";
+    spendByModel[key] = (spendByModel[key] ?? 0) + cost;
   };
 
   // Stage timings, logged as one line at the end of every job. Generation
@@ -2294,6 +2313,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   const jobTimings: JobTimings = {
     totalMs: 0,
     efforts: { frame: FRAME_EFFORT, plan: PLAN_EFFORT, day: DAY_EFFORT },
+    dayModel: DAY_MODEL,
   };
   async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
     const t0 = Date.now();
@@ -2802,9 +2822,23 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   const breakdown = Object.entries(timings)
     .map(([label, ms]) => `${label} ${(ms / 1000).toFixed(1)}s`)
     .join(", ");
+  // Spend per model, when more than one ran.
+  //
+  // This is what makes the DAY_MODEL dial an experiment rather than a
+  // guess: set it to a faster model and this line says what the day calls
+  // cost against what the rest of the job cost, at each model's own rate.
+  // Silent on a single-model job, which is every job today.
+  const models = Object.keys(spendByModel);
+  const byModel =
+    models.length > 1
+      ? ` [${models
+          .sort((a, b) => spendByModel[b] - spendByModel[a])
+          .map((m) => `${m} $${spendByModel[m].toFixed(4)}`)
+          .join(", ")}]`
+      : "";
   console.log(
     `[worker] finished ${id}: ${job.status} in ${((Date.now() - jobStartedAt) / 1000).toFixed(1)}s` +
-      `${breakdown ? ` (${breakdown})` : ""}${costUsd > 0 ? ` ~$${costUsd.toFixed(4)}` : ""}`
+      `${breakdown ? ` (${breakdown})` : ""}${costUsd > 0 ? ` ~$${costUsd.toFixed(4)}` : ""}${byModel}`
   );
 
   // Off the traveler's clock. This is a long-running process, so there is
