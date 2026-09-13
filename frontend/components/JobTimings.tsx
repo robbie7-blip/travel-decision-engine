@@ -186,6 +186,36 @@ export function JobTimings({ timings, quality }: { timings?: Timings; quality?: 
             </div>
           )}
 
+          {/* The verify stage, split, and how much of it came off the
+              critical path. venuesAndFlightsMs is the MAX of Places and
+              the meal repairs and has never said which - which decides
+              whether moving the meal half too is worth solving, since
+              that half needs a set of every venue name already spoken
+              for (the one genuine cross-day dependency in the stage).
+              The residual is the part of verification that did NOT fit
+              inside the day-generation window: zero means the whole cost
+              came off the clock, and a short trip generated in one wave
+              has little window to overlap into. */}
+          {(timings.venuesMs != null || timings.mealRepairMs != null) && (
+            <div style={{ color: "var(--ink-dim)", marginTop: 4 }}>
+              verify: places {secs(timings.venuesMs)} · meal repairs {secs(timings.mealRepairMs)}
+              {timings.verifyResidualMs != null && (
+                <span
+                  style={{
+                    color:
+                      timings.verifyResidualMs === 0
+                        ? "var(--grounded)"
+                        : timings.verifyResidualMs >= (timings.venuesMs ?? 0)
+                          ? "var(--unverified)"
+                          : "var(--ink-dim)",
+                  }}
+                >
+                  {" "}· {secs(timings.verifyResidualMs)} of the places work did not fit in the day window
+                </span>
+              )}
+            </div>
+          )}
+
           {/* What phase 1's halves spent their time on.
               planMs and frameMs say how long each took and cannot say why,
               and the two candidate whys have OPPOSITE fixes: a queue or a

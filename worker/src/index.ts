@@ -2144,6 +2144,28 @@ async function recordSpend(redis: Redis, costUsd: number): Promise<void> {
   await maybeAlertBudgetThreshold(redis, Number(newTotal));
 }
 
+/** Items that still carry a venue name nothing has checked.
+ *
+ * The whole-itinerary verification pass now runs AFTER the per-day passes,
+ * so without a filter it would spend one Places lookup per item to confirm
+ * what is already on the item. checkVenues marks what it touched: a
+ * confirmed venue gets google_* fields via applyPlaceData, and one it could
+ * not confirm loses its venue_name (or the item goes entirely). So "named,
+ * with no Google data on it" is precisely "not yet looked at" - which also
+ * covers the paths that produce no per-day callbacks at all, a refinement
+ * and the single-call fallback, where it correctly matches everything. */
+function unverifiedVenueItems(itinerary: Itinerary): Set<ItineraryItem> {
+  const out = new Set<ItineraryItem>();
+  for (const day of itinerary.days ?? []) {
+    for (const item of day.items ?? []) {
+      if (!item?.venue_name) continue;
+      const checked = item.google_lat != null || item.google_maps_url != null || item.google_business_status != null;
+      if (!checked) out.add(item);
+    }
+  }
+  return out;
+}
+
 export async function processJob(redis: Redis, client: Anthropic, id: string): Promise<void> {
   const raw = await redis.get(jobKey(id));
   if (!raw) {
@@ -2290,6 +2312,52 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
    * day calls wrote can be checked against what was actually looked up. */
   let planAccommodation: SkeletonAccommodation[] = [];
 
+  // VENUE VERIFICATION, STARTED AS EACH DAY LANDS RATHER THAN AFTER THEY
+  // ALL DO.
+  //
+  // The timing audit's floor says why this is the change worth making: on
+  // the 102.4s run an INSTANT phase 1 still lands at 33.6s, because the
+  // stages after it do not care how fast it was. Verification and the two
+  // repair passes are 12 of those seconds, and a Places lookup for day 1's
+  // restaurant does not need day 3 to exist.
+  //
+  // Safe to move because checkVenues is per-ITEM with no cross-day logic
+  // at all: it builds its targets from each day's own items, uses that
+  // day's own date for the opening-hours check, and its `only` option
+  // already exists for exactly this kind of partial pass (the second
+  // verification uses it). Each day is handed a synthetic one-day
+  // itinerary wrapping the real day object, so the removal filter walks
+  // that day alone and cannot touch an itinerary still being assembled -
+  // the items are shared by reference, so the mutations land where they
+  // belong.
+  //
+  // WHAT IS DELIBERATELY NOT MOVED: repairMissingMeals. It is already
+  // per-day and per-meal internally, so it looks like the same change -
+  // but it takes the `taken` set of every venue name already spoken for,
+  // and that set is the only thing stopping two repairs handing out the
+  // same restaurant as each other's "different" one. Fire day 1's repair
+  // before day 3 has landed and day 3's names are not in it yet, so the
+  // repair can propose a venue day 3 independently used. The gate would
+  // catch the duplicate and the duplicate-repair pass would fix it - at
+  // the cost of an extra model call, which is trading money for latency in
+  // the wrong direction. Which half of the 6s that actually is now gets
+  // measured separately (see timings.venues / timings.mealRepair), so the
+  // next run says whether moving it would be worth solving properly.
+  const pendingDayVerify: Promise<void>[] = [];
+
+  /** Names already spoken for, accumulated PER DAY rather than snapshotted
+   * after the loop.
+   *
+   * It has to be per day now: the snapshot used to be taken before any
+   * verification ran, and verification removes items - so taking it after
+   * the overlapped passes would silently drop every name verification had
+   * rejected, and a repair could then propose the venue that was just
+   * thrown out. Accumulating as each day lands, before that day is
+   * verified, gives exactly the set the old snapshot did. */
+  const claimedVenues = new Set<string>();
+  let lastDayLandedAt = 0;
+  let verifyIdleUntil = 0;
+
   try {
     let itinerary: Itinerary;
     if (job.refinement) {
@@ -2372,12 +2440,42 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
           },
           cachedLodgingEntries,
           (generated) => {
+            lastDayLandedAt = Date.now();
+
             // Fills in the outline row for this day as its own call lands.
             const row = progressDays.find((d) => d.day === generated.day);
-            if (!row) return;
-            row.itemCount = generated.items.length;
-            row.titles = generated.items.slice(0, MAX_PROGRESS_TITLES).map((i) => i.title);
-            publishProgress(progressDays);
+            if (row) {
+              row.itemCount = generated.items.length;
+              row.titles = generated.items.slice(0, MAX_PROGRESS_TITLES).map((i) => i.title);
+              publishProgress(progressDays);
+            }
+
+            // `day.items` is guaranteed an array only after
+            // normalizeItineraryShape, which runs on the assembled
+            // itinerary well after this point - so it is checked here
+            // rather than assumed. A day with no items array has no venues
+            // to verify and nothing for this to do.
+            if (!Array.isArray(generated.items)) return;
+
+            for (const item of generated.items) {
+              if (item?.venue_name) claimedVenues.add(item.venue_name.toLowerCase());
+            }
+
+            const startedAt = Date.now();
+            const verifying = checkVenues({ days: [generated] } as Itinerary, { geoCache })
+              .then(() => {
+                // When the last of these finishes relative to when the last
+                // day landed is the whole measurement: if verification is
+                // already done by then, this change bought its full cost.
+                verifyIdleUntil = Math.max(verifyIdleUntil, Date.now());
+                timings.venues = (timings.venues ?? 0) + (Date.now() - startedAt);
+              });
+            // Observed the instant it is created. Nothing awaits this until
+            // after the day loop, and an unhandled rejection in that window
+            // is a process-level event in a worker running four jobs at
+            // once - see the same guard on the frame promise.
+            verifying.catch(() => {});
+            pendingDayVerify.push(verifying);
           }
         )
       );
@@ -2418,10 +2516,11 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
 
-    // Every venue name already spoken for, snapshotted BEFORE anything
-    // below runs, so the two repair paths can't hand out the same
-    // restaurant as each other's "different" one.
-    const claimedVenues = new Set<string>();
+    // claimedVenues is accumulated per day now, as each one lands and
+    // before it is verified - see its declaration. This loop is what is
+    // left for the paths that produce no per-day callbacks at all: a
+    // refinement and the single-call fallback. Adding rather than
+    // replacing, so it is a no-op when the day loop already filled it.
     for (const day of itinerary.days ?? []) {
       for (const item of day.items) {
         if (item.venue_name) claimedVenues.add(item.venue_name.toLowerCase());
@@ -2447,17 +2546,60 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     const [verifiedItinerary, mealFills] = await timed("verify", () =>
       Promise.all([
         (async () => {
-          const [verified, fare] = await Promise.all([checkVenues(itinerary, { geoCache }), pendingFare]);
+          // The per-day passes, already running since each day landed.
+          // Awaiting them rather than re-verifying: every named venue in a
+          // day the loop reported has had its lookup started already, and
+          // doing it again would spend a Places call per item to confirm
+          // what is already on the item.
+          //
+          // The whole-itinerary call still happens, because it is what
+          // covers the paths that produce no per-day callbacks - a
+          // refinement, the single-call fallback - and, on the two-phase
+          // path, any item a day call produced before its `items` array
+          // was an array. It is cheap when there is nothing left: targets
+          // is built from items that still have an unverified venue name,
+          // and after the overlapped passes there are none.
+          await Promise.all(pendingDayVerify);
+          const [verified, fare] = await Promise.all([
+            checkVenues(itinerary, { geoCache, only: unverifiedVenueItems(itinerary) }),
+            pendingFare,
+          ]);
           return applyFlightPricing(verified, job.brief, fare, (obs) => {
             void recordFareObservation(redis, obs);
           });
         })(),
-        planDays.length > 0
-          ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage)
-          : Promise.resolve([] as PlannedMealFill[]),
+        (async () => {
+          const startedAt = Date.now();
+          const fills =
+            planDays.length > 0
+              ? await repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage)
+              : ([] as PlannedMealFill[]);
+          // Timed on its own, because "verify" is the max of these two and
+          // has never said which. Whether the 6s on the 102.4s run was
+          // Places or a handful of meal model calls decides whether this
+          // half is worth moving too, and it decides it with a number
+          // instead of an argument.
+          timings.mealRepair = Date.now() - startedAt;
+          return fills;
+        })(),
       ])
     );
     itinerary = verifiedItinerary;
+
+    // The part of venue verification that did NOT fit inside the
+    // day-generation window, in ms.
+    //
+    // One number, and deliberately this one: it needs no assumption about
+    // what the work would have cost run serially. Zero means every
+    // lookup finished before the last day landed, so the whole cost came
+    // off the critical path. A positive number is exactly what is left on
+    // it. A short trip whose days all land in one wave has little window
+    // to overlap into and should read close to the full cost - which is
+    // the honest expected answer for a three-day Rome trip, and worth a
+    // number rather than a hope.
+    if (lastDayLandedAt > 0 && verifyIdleUntil > 0) {
+      jobTimings.verifyResidualMs = Math.max(0, verifyIdleUntil - lastDayLandedAt);
+    }
 
     const repaired: ItineraryItem[] = [];
     applyMealFills(mealFills, repaired);
@@ -2615,6 +2757,10 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   jobTimings.generateMs = timings.generate;
   jobTimings.repairsMs = timings.repairs;
   jobTimings.venuesAndFlightsMs = timings.verify;
+  // The two halves of that stage, apart. venuesAndFlightsMs is their max
+  // and has never said which one it was.
+  jobTimings.venuesMs = timings.venues;
+  jobTimings.mealRepairMs = timings.mealRepair;
   jobTimings.verifyRepairsMs = timings.verifyRepairs;
 
   // Does the timing line add up?

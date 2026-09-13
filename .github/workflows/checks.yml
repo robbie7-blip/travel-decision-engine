@@ -49,6 +49,32 @@ jobs:
       # serialization regression shows up here as a wall-clock number, with
       # no model call involved.
       - run: npm run test:pipeline
+      # Does venue verification actually run ALONGSIDE the day calls.
+      # The timing audit's floor is why: on the 102.4s run an instant
+      # phase 1 still lands at 33.6s, because the stages after it do not
+      # care how fast it was - and a Places lookup for day 1's restaurant
+      # does not need day 3 to exist. Safe to move because checkVenues is
+      # per-item with no cross-day logic and its `only` option already
+      # existed for partial passes.
+      #
+      # Two assertions carry it, and the SECOND matters more. The overlap
+      # itself: a lookup must start before the last day call finishes -
+      # reverting makes 6 of 15 red, with "day 3 ended at +1808ms, day 1
+      # lookups began at +1810ms" as the detail. And no venue may be
+      # looked up twice: the whole-itinerary pass still runs after the
+      # per-day ones (a refinement and the single-call fallback produce no
+      # per-day callbacks), filtered by unverifiedVenueItems - drop that
+      # filter and the same trip makes 24 Places lookups instead of 12,
+      # which is ADDING a call per item while claiming to save time.
+      # Spending money to look faster is worse than the original problem,
+      # so it is asserted directly rather than inferred from the clock.
+      #
+      # Day durations are staggered on purpose: with every stub taking the
+      # same time, "verification overlapped the days" and "verification
+      # started the millisecond the days ended" are indistinguishable.
+      # Both the model and globalThis.fetch are stubbed - no key, no
+      # network, no cost on either side.
+      - run: npm run test:verify-overlap
       # Opening-hours arithmetic - "open on the day we send them" is a
       # claim the itinerary makes in writing.
       - run: npm run test:hours

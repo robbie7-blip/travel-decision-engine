@@ -197,6 +197,25 @@ export interface JobTimings {
    * model began), thinkMs is from there to the first character of output,
    * writeMs is the rest. They sum to the half's own elapsed time. */
   phase1Calls?: Record<string, { queueMs: number | null; thinkMs: number | null; writeMs: number | null; totalMs: number }>;
+  /** Venue verification and the meal repairs, timed apart.
+   *
+   * venuesAndFlightsMs is the MAX of those two and has never said which
+   * one it was. That decides whether moving the meal half off the
+   * critical path too is worth solving - and it is a real question, since
+   * the meal repairs need a set of every venue name already spoken for,
+   * which is the one genuine cross-day dependency in the stage. */
+  venuesMs?: number;
+  mealRepairMs?: number;
+  /** The part of venue verification that did NOT fit inside the
+   * day-generation window.
+   *
+   * Verification now starts as each day lands rather than after they all
+   * do (a Places lookup for day 1's restaurant does not need day 3 to
+   * exist). Zero means the whole cost came off the critical path; a
+   * positive number is what is left on it. A short trip generated in a
+   * single wave has little window to overlap into, so a number close to
+   * the full cost there is the expected answer rather than a failure. */
+  verifyResidualMs?: number;
   /** Silent retries, per stage, that each cost a whole extra model call.
    *
    * A malformed or unusable response is retried once (see withOneRetryOf),
