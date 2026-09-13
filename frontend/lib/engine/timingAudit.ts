@@ -65,10 +65,16 @@ export interface TimingAudit {
    * work so far has gone at phase 1, because it is the biggest single
    * stage - but phase 1 is not the only serial stage, and the ones after
    * it do not care how fast it was. On the 102.4s run: the day calls are
-   * 18s, verification and the two repair passes are 12s between them, and
-   * 2.4s is unaccounted. So an INSTANT plan call still lands at 32.4
-   * seconds, and the target is unreachable without cutting something
-   * other than phase 1.
+   * 18s, verification and the two repair passes are 12s between them, 1.2s
+   * is serial work inside generation and 2.4s is outside every stage. So
+   * an INSTANT plan call still lands at 33.6 seconds, and the target is
+   * unreachable without cutting something other than phase 1.
+   *
+   * 33.6, not the 32.4 this comment said until now: I added those stages
+   * up by hand and dropped the 1.2s between the phases. The function got
+   * it right and the prose did not, which is the argument for computing
+   * it - and for not leaving a stale figure in the doc comment of the
+   * field that computes it.
    *
    * Recomputed per run rather than written down, because the moment any
    * of those stages changes the conclusion changes with it. */
