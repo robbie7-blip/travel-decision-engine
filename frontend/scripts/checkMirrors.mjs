@@ -44,6 +44,7 @@ const PAIRS = [
   ["worker/src/types.ts", "frontend/lib/types.ts"],
   ["worker/src/costBudget.ts", "frontend/lib/costBudget.ts"],
   ["worker/src/engine/prompt.ts", "frontend/lib/engine/prompt.ts"],
+  ["worker/src/engine/travel.ts", "frontend/lib/engine/travel.ts"],
 ];
 
 const BEGIN = "// --- FRONTEND-ONLY (not mirrored to the worker) ---";

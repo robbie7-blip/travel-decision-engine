@@ -507,6 +507,62 @@ section("a day with nothing in it, and hours nobody accounted for");
   );
 }
 
+section("time to actually get between the stops");
+{
+  // The check the gate did not have, wired where it actually runs - the
+  // module has its own suite, but removing this block from assessQuality
+  // left all 78 of these green, which is exactly how a check gets deleted
+  // and nobody notices.
+  //
+  // Real coordinates: the Colosseum, and the Villa d'Este in Tivoli 34 km
+  // out. That pairing is the failure this exists for - a day-trip
+  // destination dropped into the middle of a city day, where every other
+  // check passes because both places are real, both are open and the
+  // prices are sourced.
+  const placed = (title: string, time: string, lat: number, lng: number) =>
+    item({ title, venue_name: title, time, google_lat: lat, google_lng: lng });
+
+  const impossible = baseline();
+  impossible[1].items = [
+    meal("Breakfast", "Cafe X", "08:00"),
+    placed("Colosseum", "09:00", 41.8902, 12.4922),
+    placed("Villa d'Este", "09:30", 41.9634, 12.7959),
+    meal("Lunch", "Trattoria X", "13:00"),
+    meal("Dinner", "Osteria X", "20:00"),
+    lodging("Hotel Real"),
+  ];
+  const report = assessQuality(itinerary(impossible), BRIEF, plan());
+  const travel = report.findings.filter((f) => f.check === "day_travel_time");
+  check("34 km in half an hour is reported", travel.length === 1, JSON.stringify(travel));
+  check("as a defect", travel[0]?.severity === "defect", travel[0]?.severity);
+  check(
+    "naming both ends and the distance",
+    /Colosseum/.test(travel[0]?.detail ?? "") && /Villa d'Este/.test(travel[0]?.detail ?? "") && /km/.test(travel[0]?.detail ?? ""),
+    travel[0]?.detail
+  );
+  check("and the day", travel[0]?.day === 2, String(travel[0]?.day));
+
+  // The calibration that matters as much as the catch. The Vatican to the
+  // Colosseum in an hour SOUNDS impossible and is not - 4.8 km, about 24
+  // minutes across Rome. A gate that fires here fires on half the trips in
+  // Rome and gets switched off within a week.
+  const fine = baseline();
+  fine[1].items = [
+    meal("Breakfast", "Cafe X", "08:00"),
+    placed("Vatican Museums", "09:00", 41.9065, 12.4536),
+    placed("Colosseum", "10:00", 41.8902, 12.4922),
+    meal("Lunch", "Trattoria X", "13:00"),
+    meal("Dinner", "Osteria X", "20:00"),
+    lodging("Hotel Real"),
+  ];
+  check("a real hour across Rome is not flagged", !firedChecks(fine).includes("day_travel_time"));
+
+  // And silence where there is nothing to go on: no Places key means no
+  // coordinates on any item, which must read as "no evidence of a problem"
+  // rather than as a pass.
+  check("a trip with no coordinates reports nothing", !firedChecks(baseline()).includes("day_travel_time"));
+}
+
 section("a flight is not a complete arrival");
 {
   const days = baseline();

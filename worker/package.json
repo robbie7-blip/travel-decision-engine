@@ -14,6 +14,7 @@
     "test:timing": "WORKER_NO_AUTOSTART=1 tsx src/timingStats.test.ts",
     "test:generation": "WORKER_NO_AUTOSTART=1 tsx src/generation.test.ts",
     "test:shape": "tsx src/engine/shape.test.ts",
+    "test:travel": "tsx src/engine/travel.test.ts",
     "test:model-caps": "tsx src/engine/modelCaps.test.ts",
     "test:race-fallback": "tsx src/engine/raceFallback.test.ts",
     "test:concurrency": "tsx src/engine/concurrency.test.ts",

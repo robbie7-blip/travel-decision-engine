@@ -193,6 +193,19 @@ export interface Dictionary {
     // Google Places verification on named-venue items (see worker/src/engine/
     // venueVerification.ts) - "{count}" placeholder for googleRatingCount.
     googleRatingCount: string;
+    // The gap between two consecutive stops, shown between their two rows.
+    // An ESTIMATE and it must read as one - straight-line distance times a
+    // detour factor at a walking pace, no routing (see
+    // lib/engine/travel.ts). "{minutes}" and "{distance}".
+    travelWalk: string;
+    travelTransit: string;
+    // Said only when the day does not leave time for the leg, which is the
+    // most common way an AI day plan fails: 09:00 at the Colosseum and
+    // 09:30 at the Villa d'Este in Tivoli is a real pair of places, a real
+    // pair of times, and 34 km of Lazio in between. "{allowed}" is the
+    // minutes the itinerary itself allows.
+    travelTight: string;
+    travelImpossible: string;
     /** The day map (components/DayMap.tsx). alt doubles as the screen
      * reader description, since the plot itself carries no text. */
     map: {
@@ -701,6 +714,10 @@ const en: Dictionary = {
       avgRain: "Avg rain",
     },
     googleRatingCount: "{count} reviews",
+    travelWalk: "~{minutes} min walk · {distance}",
+    travelTransit: "~{minutes} min by transit · {distance}",
+    travelTight: "tight - only {allowed} min allowed",
+    travelImpossible: "not possible - only {allowed} min allowed",
     map: {
       alt: "A plot of the day's verified stops, in order.",
       heading: "The shape of the day",
@@ -1220,6 +1237,10 @@ const bg: Dictionary = {
       avgRain: "Ср. валежи",
     },
     googleRatingCount: "{count} отзива",
+    travelWalk: "~{minutes} мин пеша · {distance}",
+    travelTransit: "~{minutes} мин с транспорт · {distance}",
+    travelTight: "малко време - само {allowed} мин",
+    travelImpossible: "не е възможно - само {allowed} мин",
     map: {
       alt: "Схема на потвърдените спирки за деня, по ред.",
       heading: "Формата на деня",

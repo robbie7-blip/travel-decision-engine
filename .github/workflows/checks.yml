@@ -73,6 +73,31 @@ jobs:
       # either. Verified end to end: without this gate the same response
       # loses the generation, with it the retry succeeds.
       - run: npm run test:shape
+      # Whether the day leaves time to get between its stops - the check
+      # the acceptance gate did not have, and the most common way an AI day
+      # plan fails. Not a wrong fact: 09:00 at the Colosseum and 09:30 at
+      # the Villa d'Este in Tivoli is a real pair of places, a real pair of
+      # times, and 34 km of Lazio in between. Every other check passes it -
+      # the prices are sourced, both venues exist, both are open, no gap, no
+      # duplicate - and the day is simply not possible. The coordinates were
+      # already on the items (checkVenues writes them) and DayMap was
+      # already drawing the day's shape from them, so the information was on
+      # the page and only a person could read it.
+      #
+      # A straight-line estimate with a detour factor, not routing: real
+      # routing is an API call per consecutive pair on a critical path
+      # already fighting a 30s budget, and street accuracy is not what
+      # catching an impossible day needs.
+      #
+      # This suite is also where the thresholds got calibrated, and it
+      # earned its keep on the first run: the headline example was written
+      # as the Vatican Museums at 09:00 and the Colosseum at 10:00, the case
+      # went red, and the numbers were right - 4.8 km is about 24 minutes
+      # across Rome and an hour is plenty. Both readings are kept, because
+      # the difference between the one that sounds impossible and the one
+      # that is IS the check. Reverting the detour factor, the cos(latitude)
+      # correction and the transit overhead makes 9 of 74 red.
+      - run: npm run test:travel
       # Which models are sent output_config.effort. DAY_MODEL exists to
       # invite a swap to a faster day model, and the obvious candidate
       # (Haiku 4.5) is one of the two models that REJECT that field - so the

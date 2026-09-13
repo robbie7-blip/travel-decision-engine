@@ -55,6 +55,7 @@ import {
   type SkeletonAccommodation,
   type SkeletonDay,
 } from "./twoPhase";
+import { formatLegDistance, travelProblemsFor } from "./travel";
 
 /** How far a lodging item's price may sit from the known per-night rate
  * before it is treated as wrong. Generous, because a day call is allowed to
@@ -474,6 +475,39 @@ export function assessQuality(
         detail: `day ${day.day} has ${to - from} unaccounted hours between ${from}:00 and ${to}:00`,
       });
     }
+  }
+
+  // --- time to actually get there --------------------------------------
+  //
+  // The check that was missing, and the most common way an AI day plan
+  // fails. Not a wrong fact: 09:00 at the Colosseum and 09:30 at the Villa
+  // d'Este in Tivoli is a real pair of places, a real pair of times, and
+  // 34 km of Lazio in between. Everything above would pass it - the prices
+  // are sourced, the venues exist, both are open, there is no gap, no
+  // duplicate. The day is simply not possible, and nothing could see that.
+  //
+  // The coordinates were already on the items (checkVenues writes them)
+  // and DayMap was already drawing the day's shape from them, which is the
+  // tell: a day that doubles across a city was visible on the page, and
+  // only a person could read it. See engine/travel.ts for why this is a
+  // straight-line estimate and not routing.
+  //
+  // Two severities, because they are two different problems. Ten minutes
+  // short is someone arriving late and mildly stressed - worth flagging,
+  // not worth failing a paid generation over. Thirty minutes short is
+  // someone who cannot be there at all, which makes the rest of the day
+  // fiction.
+  for (const problem of travelProblemsFor(days)) {
+    const { leg, verdict } = problem;
+    findings.push({
+      check: "day_travel_time",
+      severity: verdict === "impossible" ? "defect" : "warning",
+      day: problem.day,
+      detail:
+        `day ${problem.day}: "${problem.fromTitle}" to "${problem.toTitle}" is about ` +
+        `${formatLegDistance(leg.metres)} (~${leg.minutes} min ${leg.mode === "walk" ? "walk" : "by transit"}), ` +
+        `but the day allows ${leg.allowedMinutes} min`,
+    });
   }
 
   // --- prices ----------------------------------------------------------

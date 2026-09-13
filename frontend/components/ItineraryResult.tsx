@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ConfidenceTag, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
 import { TripQA } from "./TripQA";
@@ -8,6 +8,8 @@ import { TripVisitedPrompt } from "./TripVisitedPrompt";
 import { DayMap } from "./DayMap";
 import { TripCover } from "./TripCover";
 import { DayPhoto } from "./DayPhoto";
+import { TravelLegRow } from "./TravelLeg";
+import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
@@ -285,6 +287,19 @@ export function ItineraryResult({
 
   const trustScore = computeTrustScore(result);
 
+  // Every day's legs, computed once here rather than inside the day loop,
+  // which returns its JSX directly and has nowhere to put a local. Keyed
+  // `day:fromIndex` so a row can find the leg that starts at it in one
+  // lookup. Days with fewer than two coordinate-bearing stops contribute
+  // nothing, which is every day when there is no Places key - the same
+  // way DayMap renders nothing.
+  const legsByRow = new Map<string, TravelLeg>();
+  for (const day of result.days ?? []) {
+    for (const leg of travelLegsFor(day.items)) {
+      legsByRow.set(`${day.day}:${leg.fromIndex}`, leg);
+    }
+  }
+
   return (
     <div>
       {/* The cover carries the stamps, so the page opens on the place, the
@@ -469,9 +484,15 @@ export function ItineraryResult({
             {(day.items ?? []).map((item, i) => {
               const key = itemKey(day.day, i, item);
               const expanded = expandedItems.has(key);
+              // The leg that STARTS at this row, so it renders underneath
+              // it and above the next stop. Keyed by fromIndex because
+              // legs skip over unplaced items - an unverified stop between
+              // two museums must not break the chain, or the day quietly
+              // loses the leg that matters most.
+              const leg = legsByRow.get(`${day.day}:${i}`);
               return (
+                <Fragment key={key}>
                 <div
-                  key={key}
                   className="hover-card"
                   style={{
                     display: "flex",
@@ -643,6 +664,8 @@ export function ItineraryResult({
                     <ItemFeedback jobId={jobId} day={day.day} item={item} t={t} />
                   </div>
                 </div>
+                {leg && <TravelLegRow leg={leg} t={t} />}
+                </Fragment>
               );
             })}
 
