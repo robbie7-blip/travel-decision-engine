@@ -704,6 +704,34 @@ jobs:
       # "proved" the hole closed while it was wide open. Reverting both
       # layers makes 56 of 103 red.
       - run: npm run test:auth-verify-page
+      # Login CSRF on the same endpoint.
+      #
+      # POST /api/auth/verify consumes a magic-link token and sets the
+      # session cookie, and it accepted that POST from any origin. So an
+      # attacker requests a link for THEIR OWN account, puts the token in a
+      # form on a page they control, and gets a victim's browser to submit
+      # it - the victim is then silently signed in as the attacker, and
+      # every brief they type afterwards lands in an account the attacker
+      # can read. `sameSite: "lax"` does not cover this: SameSite governs
+      # whether a cookie is SENT cross-site, not whether a cross-site
+      # request may SET one, and this route sets one.
+      #
+      # Closed by reading Origin and Sec-Fetch-Site, which page script
+      # cannot set, remove or forge - a synchronizer token would mean a
+      # Redis write and read per sign-in attempt to defend against
+      # something the browser already tells us. A request carrying NEITHER
+      # header is allowed, deliberately: an attack cannot manufacture that
+      # (neither header can be stripped), while refusing it would break
+      # sign-in on any client that sends neither.
+      #
+      # Most of the suite is about the ways this check is wrong rather than
+      # absent - an Origin compared as a string, so
+      # https://yourdecide.com.evil.test passes a startsWith; an opaque
+      # "null" origin read as "no information" when a sandboxed iframe is
+      # something an attacker creates on purpose; a preview deployment
+      # refused because only SITE_URL counted as ours. Reverting the parsed
+      # comparison and the null handling makes 5 of 36 red.
+      - run: npm run test:same-origin
       # How long a trip lives. Thirty days is the wrong number for the
       # thing someone paid for: a trip planned in January for a June
       # holiday expired in February - not while nobody was looking at it,

@@ -10,12 +10,22 @@ import { checkRateLimit, getClientIp, AUTH_RATE_LIMIT } from "@/lib/ratelimit";
 import { generateMagicLinkToken, storeMagicLinkToken } from "@/lib/magicLink";
 import { sendMagicLinkEmail, EmailNotConfiguredError, EmailSendFailedError } from "@/lib/email";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { allowedOriginsFor, isCrossOriginRequest } from "@/lib/sameOrigin";
 
 export const runtime = "nodejs";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: NextRequest) {
+  // Same check as /api/auth/verify, for a smaller reason: this route sends
+  // real email from our own domain to an address the caller chooses, so a
+  // cross-origin POST is a way to make somebody else's page send mail as
+  // us. Rate-limited per IP already, which caps the volume rather than
+  // stopping it. See lib/sameOrigin.ts.
+  if (isCrossOriginRequest(request.headers, allowedOriginsFor(request.url, getSiteUrl()))) {
+    return NextResponse.json({ detail: "Request must come from the site itself." }, { status: 403 });
+  }
+
   let email: string;
   try {
     const body = await request.json();

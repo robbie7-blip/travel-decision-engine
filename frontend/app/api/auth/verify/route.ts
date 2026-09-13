@@ -34,6 +34,7 @@ import { consumeMagicLinkToken } from "@/lib/magicLink";
 import { createSessionCookieValue, SESSION_COOKIE_NAME, SESSION_COOKIE_MAX_AGE_SECONDS } from "@/lib/session";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { isMagicLinkTokenShape, renderVerifyPage } from "@/lib/authVerifyPage";
+import { allowedOriginsFor, isCrossOriginRequest } from "@/lib/sameOrigin";
 
 export const runtime = "nodejs";
 
@@ -134,6 +135,32 @@ async function extractToken(request: NextRequest): Promise<string | null> {
 
 export async function POST(request: NextRequest) {
   const site = getSiteUrl();
+
+  // Refuse a POST that did not come from this site's own pages.
+  //
+  // This is the request that consumes a magic-link token and sets the
+  // session cookie, and it used to accept it from anywhere. That is login
+  // CSRF: an attacker requests a link for THEIR OWN account, puts the token
+  // in a form on a page they control, and has a victim's browser submit it -
+  // after which the victim is silently signed in as the attacker and
+  // everything they type lands in an account the attacker can read.
+  // `sameSite: "lax"` does not cover this; it governs whether a cookie is
+  // sent cross-site, not whether a cross-site request may set one.
+  //
+  // Checked before the token is read, so a refused request never touches
+  // Redis and never burns a token. See lib/sameOrigin.ts for why the
+  // browser's own headers are sufficient here and why a request carrying
+  // neither of them is allowed through.
+  if (isCrossOriginRequest(request.headers, allowedOriginsFor(request.url, site))) {
+    console.error(
+      "[verify][POST] refused a cross-origin sign-in attempt. sec-fetch-site:",
+      JSON.stringify(request.headers.get("sec-fetch-site")),
+      "origin:",
+      JSON.stringify(request.headers.get("origin"))
+    );
+    return NextResponse.redirect(`${site}/account?error=invalid_link`, { status: 303 });
+  }
+
   const token = await extractToken(request);
 
   if (!token) {
