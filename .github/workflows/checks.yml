@@ -762,6 +762,43 @@ jobs:
       # pair instead of drifting apart. Reverting the validator makes 26 of
       # 51 red.
       - run: npm run test:trip-qa-context
+      # The destinations field's suggestions.
+      #
+      # "Make the destination a dropdown too" could not be a <select>: the
+      # airport dropdown works because its question is closed (Rome has two
+      # airports and lib/airports.ts knows both), and "where are you going"
+      # is not. A closed list would mean the engine can no longer plan the
+      # trip to Tbilisi that is its whole premise. So it suggests and
+      # filters, and still accepts anything typed.
+      #
+      # The assertions that matter are the ones about a city NOT on the
+      # list - it still goes in, and the value stays the one
+      # comma-separated string validation.ts splits, the ?dest= deep link
+      # writes, and flight import writes. Plus: every suggestion resolves
+      # to a real multi-airport entry (a name that looked right but did not
+      # resolve would be the silent version of this not working), and a
+      # Bulgarian label is never the stored value - picking "Рим" writes
+      # "Rome", which is how a Bulgarian traveller gets the
+      # Fiumicino/Ciampino dropdown that typing "Рим" never produced.
+      #
+      # One assertion here found a real defect in the filter: matching the
+      # COUNTRY as a substring made short queries useless, because "an"
+      # offered Amsterdam, Berlin and Munich via "Netherlands" and
+      # "Germany". Country now matches by prefix only.
+      - run: npm run test:city-options
+      # The arrival/departure time picker.
+      #
+      # These were free-text inputs placeholdered "e.g. 8pm, or 'evening'".
+      # Two things have to stay true for a picker to be an improvement
+      # rather than a trade, and both are asserted: a value the picker did
+      # not write is still DISPLAYED (a time typed before this existed, or
+      # one flight import wrote - a control that blanks what it does not
+      # recognise would throw it away), and "evening" is still sayable,
+      # because TripBriefInput's own comment documents it and the prompt
+      # handles it. The stored value stays canonical in both cases -
+      # "20:00" or an English word - because the prompt that interpolates
+      # it is written in English.
+      - run: npm run test:time-options
       # How long a trip lives. Thirty days is the wrong number for the
       # thing someone paid for: a trip planned in January for a June
       # holiday expired in February - not while nobody was looking at it,

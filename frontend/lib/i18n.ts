@@ -69,6 +69,11 @@ export interface Dictionary {
   form: {
     destinations: string;
     destinationsPlaceholder: string;
+    destinationsAddMore: string;
+    destinationRemove: string;
+    destinationFreeText: string;
+    timeUnknownHeading: string;
+    timeClear: string;
     compareToggleLabel: string;
     compareDestinations: string;
     compareDestinationsPlaceholder: string;
@@ -648,8 +653,13 @@ const en: Dictionary = {
     "Putting the itinerary together…",
   ],
   form: {
-    destinations: "Destinations (comma-separated)",
-    destinationsPlaceholder: "Brussels, Bruges",
+    destinations: "Destinations",
+    destinationsPlaceholder: "Start typing a city",
+    destinationsAddMore: "Add another city",
+    destinationRemove: "Remove",
+    destinationFreeText: "Not on the list? Press Enter to add it anyway.",
+    timeUnknownHeading: "Not sure of the exact time",
+    timeClear: "Clear",
     compareToggleLabel: "Compare with another destination (same budget and preferences)",
     compareDestinations: "Compare against",
     compareDestinationsPlaceholder: "e.g. Athens",
@@ -665,11 +675,11 @@ const en: Dictionary = {
     arrivalDate: "Arrival date (optional)",
     arrivalDatePlaceholder: "Select your arrival date",
     arrivalTime: "Arrival time (optional)",
-    arrivalTimePlaceholder: "e.g. 8pm, or 'evening'",
+    arrivalTimePlaceholder: "Pick a time",
     departureDate: "Departure date (optional)",
     departureDatePlaceholder: "Select your departure date",
     departureTime: "Departure time (optional)",
-    departureTimePlaceholder: "e.g. 7am, or 'late evening'",
+    departureTimePlaceholder: "Pick a time",
     arrivalAirport: "Arriving at which airport?",
     departureAirport: "Flying home from which airport?",
     airportUnknown: "Not sure / doesn't matter",
@@ -1175,8 +1185,13 @@ const bg: Dictionary = {
     "Сглобяване на плана…",
   ],
   form: {
-    destinations: "Дестинации (разделени със запетая)",
-    destinationsPlaceholder: "Брюксел, Брюж",
+    destinations: "Дестинации",
+    destinationsPlaceholder: "Започнете да пишете град",
+    destinationsAddMore: "Добавете още град",
+    destinationRemove: "Премахни",
+    destinationFreeText: "Няма го в списъка? Натиснете Enter, за да го добавите.",
+    timeUnknownHeading: "Не знам точния час",
+    timeClear: "Изчисти",
     compareToggleLabel: "Сравни с друга дестинация (същия бюджет и предпочитания)",
     compareDestinations: "Сравни със",
     compareDestinationsPlaceholder: "напр. Атина",
@@ -1193,11 +1208,11 @@ const bg: Dictionary = {
     arrivalDate: "Дата на пристигане (по избор)",
     arrivalDatePlaceholder: "Избери дата на пристигане",
     arrivalTime: "Час на пристигане (по избор)",
-    arrivalTimePlaceholder: "напр. 20:00, или 'вечерта'",
+    arrivalTimePlaceholder: "Изберете час",
     departureDate: "Дата на отпътуване (по избор)",
     departureDatePlaceholder: "Избери дата на отпътуване",
     departureTime: "Час на отпътуване (по избор)",
-    departureTimePlaceholder: "напр. 07:00, или 'късно вечерта'",
+    departureTimePlaceholder: "Изберете час",
     arrivalAirport: "На кое летище пристигаш?",
     departureAirport: "От кое летище отпътуваш?",
     airportUnknown: "Не съм сигурен / няма значение",

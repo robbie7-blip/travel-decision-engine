@@ -2,6 +2,8 @@
 
 import { DateRangePicker } from "./DateRangePicker";
 import { SingleDatePicker } from "./SingleDatePicker";
+import { CityCombobox } from "./CityCombobox";
+import { TimePicker } from "./TimePicker";
 import { Field, inputStyle } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
 import { MAX_TRIP_DAYS, tripDayCount } from "@/lib/validation";
@@ -193,11 +195,14 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         <div className="form-group-label">{t.form.groupWhere}</div>
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label={t.form.destinations}>
-            <input
-              style={inputStyle}
+            <CityCombobox
               value={value.destinations}
-              onChange={(e) => update("destinations", e.target.value)}
+              onChange={(next) => update("destinations", next)}
+              language={value.language}
               placeholder={t.form.destinationsPlaceholder}
+              addMorePlaceholder={t.form.destinationsAddMore}
+              removeLabel={t.form.destinationRemove}
+              freeTextHint={t.form.destinationFreeText}
             />
           </Field>
         </div>
@@ -304,11 +309,13 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               />
             </div>
             <Field label={t.form.arrivalTime}>
-              <input
-                style={inputStyle}
+              <TimePicker
                 value={value.arrival_time}
-                onChange={(e) => update("arrival_time", e.target.value)}
+                onChange={(next) => update("arrival_time", next)}
+                language={value.language}
                 placeholder={t.form.arrivalTimePlaceholder}
+                vagueLabel={t.form.timeUnknownHeading}
+                clearLabel={t.form.timeClear}
               />
             </Field>
             {arrivalAirports.length > 0 && (
@@ -349,11 +356,13 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               />
             </div>
             <Field label={t.form.departureTime}>
-              <input
-                style={inputStyle}
+              <TimePicker
                 value={value.departure_time}
-                onChange={(e) => update("departure_time", e.target.value)}
+                onChange={(next) => update("departure_time", next)}
+                language={value.language}
                 placeholder={t.form.departureTimePlaceholder}
+                vagueLabel={t.form.timeUnknownHeading}
+                clearLabel={t.form.timeClear}
               />
             </Field>
             {departureAirports.length > 0 && (

@@ -25,6 +25,8 @@
     "test:site-url": "tsx lib/siteUrl.test.ts",
     "test:session": "tsx lib/session.test.ts",
     "test:airports": "tsx lib/airports.test.ts",
+    "test:city-options": "tsx lib/cityOptions.test.ts",
+    "test:time-options": "tsx lib/timeOptions.test.ts",
     "test:trip-qa-context": "tsx lib/tripQAContext.test.ts",
     "test:same-origin": "tsx lib/sameOrigin.test.ts",
     "test:auth-verify-page": "tsx lib/authVerifyPage.test.ts",
