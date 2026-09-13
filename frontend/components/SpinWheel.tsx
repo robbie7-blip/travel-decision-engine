@@ -12,6 +12,34 @@
 // Every city on it is one with a real guide and a real photograph (see
 // lib/spin.ts), so a spin opens onto something rather than just naming a
 // place.
+//
+// TWO THINGS THIS GOT WRONG, both found by driving it in a phone-sized
+// browser rather than by reading it.
+//
+// It did not animate at all for anyone with "Reduce Motion" on - which on
+// iOS is one toggle in Accessibility and very commonly enabled. The
+// rotation was a CSS transition, and globals.css carries a blanket
+// `@media (prefers-reduced-motion: reduce) { * { transition: none
+// !important } }`. So the wheel teleported: one frame upright, the next at
+// its final angle, result already on screen. Measured, not guessed - five
+// consecutive samples of the computed transform during a "spin" were
+// byte-identical.
+//
+// The fix is not to ignore the preference. It is to honour what the
+// preference actually asks for - LESS motion, not none - so a reduced
+// spin travels the last 140 degrees in 900ms instead of whirling five
+// times round in 4.2 seconds. Driven with the Web Animations API rather
+// than a CSS transition, which also means the duration is chosen per spin
+// instead of fought over with a global !important, and the wheel is a
+// plain <div> rather than the <svg> root, because CSS transforms on an SVG
+// root element are the shakiest ground in this whole layout.
+//
+// And "New cities" mostly showed the same cities. It drew 12 from a pool of
+// 24 independently each time, so a fresh wheel shared six with the old one
+// on average. drawWheel now takes the current wheel as `avoid`, and since
+// the pool is exactly twice the wheel that means every city changes - see
+// lib/spin.ts. A repeat spin redraws too, because spinning again is the
+// other moment somebody is asking for something they have not seen.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -30,6 +58,26 @@ const SLICE_DEG = 360 / WHEEL_SLICES;
 const SPIN_MS = 4200;
 /** Full turns before it settles, so the deceleration reads as physics. */
 const SPIN_TURNS = 5;
+
+/** The reduced-motion spin: the final approach only, and briefly.
+ *
+ * Not zero. `prefers-reduced-motion` asks for less movement, not for a
+ * control that appears broken - and a wheel that jumps to its answer with
+ * no travel at all reads as broken, which is exactly how this was
+ * reported. 140 degrees over 900ms is a settle rather than a spin: no
+ * repeated rotation, nothing crossing the field of view more than once.
+ *
+ * The landing is identical either way. Both paths finish at the same angle
+ * with the same city under the pointer, so the honesty property this
+ * component is built around is untouched. */
+const REDUCED_SPIN_MS = 900;
+const REDUCED_SPIN_DEG = 140;
+
+/** The long tail that makes a spin feel like one: fast, then a slow settle.
+ * Was in globals.css as a transition-timing-function; it moves here with
+ * the animation it belongs to. */
+const SPIN_EASING = "cubic-bezier(0.15, 0.85, 0.15, 1)";
+const REDUCED_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 function polar(angleDeg: number, r: number): { x: number; y: number } {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -56,6 +104,11 @@ export function SpinWheel({ t, language }: { t: Dictionary; language: Language }
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<SpinSlug | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The element the rotation is applied to. A <div>, not the <svg>: CSS
+  // transforms on an SVG root element are the least reliably implemented
+  // corner of this layout, and there is no reason to stand on it.
+  const rotor = useRef<HTMLDivElement>(null);
+  const animation = useRef<Animation | null>(null);
 
   // Reshuffled after mount, not during render, so the server and the first
   // client render agree and nobody sees the wheel rebuild itself.
@@ -63,13 +116,27 @@ export function SpinWheel({ t, language }: { t: Dictionary; language: Language }
     setWheel(drawWheel());
     return () => {
       if (timer.current) clearTimeout(timer.current);
+      animation.current?.cancel();
     };
   }, []);
 
   function spin() {
     if (spinning) return;
-    const index = Math.floor(Math.random() * wheel.length);
-    const landed = wheel[index];
+
+    // Spinning again is somebody asking for something they have not seen,
+    // so the wheel is redrawn first - away from the twelve currently on it
+    // (see drawWheel's `avoid`). The first spin keeps the wheel the visitor
+    // has been looking at; only a REPEAT redraws, which is what `result`
+    // marks.
+    //
+    // Redrawn before the landing is chosen, never after, so this cannot
+    // become a way of quietly picking the answer: the index below is drawn
+    // from whatever wheel is about to turn.
+    const turning = result ? drawWheel(Math.random, wheel) : wheel;
+    if (turning !== wheel) setWheel(turning);
+
+    const index = Math.floor(Math.random() * turning.length);
+    const landed = turning[index];
 
     // Where that slice's centre has to end up: directly under the pointer
     // at twelve o'clock. Added to the current rotation rather than set
@@ -83,27 +150,65 @@ export function SpinWheel({ t, language }: { t: Dictionary; language: Language }
     const reduced =
       typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+    // Same destination on both paths. What differs is only how far the
+    // wheel travels to get there: five turns plus the delta, or a short
+    // approach that starts a fixed distance back from it.
+    const to = rotation + (reduced ? 0 : SPIN_TURNS * 360) + delta;
+    const from = reduced ? to - REDUCED_SPIN_DEG : rotation;
+    const duration = reduced ? REDUCED_SPIN_MS : SPIN_MS;
+
     setResult(null);
-    if (reduced) {
-      // No spin, but still an honest one: the wheel is set to the same
-      // final angle, so the marker points at the named city.
-      setRotation(rotation + delta);
+    setRotation(to);
+
+    const el = rotor.current;
+    // No Web Animations API means no animation - the wheel simply ends up
+    // at the right angle, which is what every path did before this.
+    if (!el || typeof el.animate !== "function") {
       setResult(landed);
       return;
     }
 
     setSpinning(true);
-    setRotation(rotation + SPIN_TURNS * 360 + delta);
-    timer.current = setTimeout(() => {
+    animation.current?.cancel();
+    // Driven here rather than by a CSS transition, which globals.css
+    // disables outright under prefers-reduced-motion with `* { transition:
+    // none !important }` - the rule that made a reduced-motion "spin" a
+    // teleport. A script-driven animation is also the only way to pick the
+    // duration per spin.
+    const anim = el.animate(
+      [{ transform: `rotate(${from}deg)` }, { transform: `rotate(${to}deg)` }],
+      { duration, easing: reduced ? REDUCED_EASING : SPIN_EASING, fill: "both" }
+    );
+    animation.current = anim;
+    anim.addEventListener("finish", () => {
+      // The element's own style already holds `to` by now (React committed
+      // it above), so dropping the animation cannot flash: both agree on
+      // the same angle.
+      anim.cancel();
+      if (animation.current === anim) animation.current = null;
       setSpinning(false);
       setResult(landed);
-    }, SPIN_MS);
+    });
+    // A belt-and-braces settle in case "finish" never arrives - a
+    // backgrounded tab can pause an animation indefinitely, and a wheel
+    // stuck on "Spinning…" with a disabled button is unrecoverable without
+    // a reload.
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (anim.playState !== "finished") {
+        anim.cancel();
+        setSpinning(false);
+        setResult(landed);
+      }
+    }, duration + 1200);
   }
 
   function reshuffle() {
     if (spinning) return;
     setResult(null);
-    setWheel(drawWheel());
+    // Away from what is on the wheel now, so "New cities" means new cities
+    // rather than a reshuffle that keeps half of them.
+    setWheel(drawWheel(Math.random, wheel));
   }
 
   const suffix = language === "bg" ? "?lang=bg" : "";
@@ -113,15 +218,8 @@ export function SpinWheel({ t, language }: { t: Dictionary; language: Language }
     <div className="spin">
       <div className="spin-stage">
         <div className="spin-pointer" aria-hidden />
-        <svg
-          viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="spin-wheel"
-          style={{
-            transform: `rotate(${rotation}deg)`,
-            transitionDuration: spinning ? `${SPIN_MS}ms` : "0ms",
-          }}
-          aria-hidden
-        >
+        <div ref={rotor} className="spin-rotor" style={{ transform: `rotate(${rotation}deg)` }}>
+        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="spin-wheel" aria-hidden>
           {wheel.map((slug, i) => {
             const labelAngle = i * SLICE_DEG + SLICE_DEG / 2;
             const labelY = CENTRE - RADIUS + 34;
@@ -152,6 +250,7 @@ export function SpinWheel({ t, language }: { t: Dictionary; language: Language }
           })}
           <circle cx={CENTRE} cy={CENTRE} r="30" fill="var(--bg-panel)" stroke="var(--line-strong)" strokeWidth="2" />
         </svg>
+        </div>
       </div>
 
       <div className="spin-controls">

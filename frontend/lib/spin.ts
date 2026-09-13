@@ -36,19 +36,53 @@ export function spinCityName(slug: string, language: Language): string {
     .join(" ");
 }
 
-/** A shuffled selection of WHEEL_SLICES cities.
+/** Fisher-Yates on a copy.
  *
- * Fisher-Yates on a copy: a naive `sort(() => Math.random() - 0.5)` is not
- * a uniform shuffle, which for a wheel means some cities quietly come up
- * more often than others. This is the one place in the product where
- * "random" is the actual promise being made to the traveler. */
-export function drawWheel(random: () => number = Math.random): SpinSlug[] {
-  const pool = [...SPIN_POOL];
+ * A naive `sort(() => Math.random() - 0.5)` is not a uniform shuffle, which
+ * for a wheel means some cities quietly come up more often than others.
+ * This is the one place in the product where "random" is the actual promise
+ * being made to the traveler. */
+function shuffled(source: readonly SpinSlug[], random: () => number): SpinSlug[] {
+  const pool = [...source];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return pool.slice(0, WHEEL_SLICES);
+  return pool;
+}
+
+/** A selection of WHEEL_SLICES cities, preferring ones NOT on `avoid`.
+ *
+ * The point of `avoid` is that "new cities" has to mean new cities. A plain
+ * shuffle of the whole pool drew 12 from 24 independently each time, so a
+ * fresh wheel shared six cities with the old one on average and could
+ * repeat most of it - which looks, correctly, like the button did nothing.
+ *
+ * The pool is exactly twice the wheel, so passing the current wheel here
+ * produces the complementary twelve: every city is different, guaranteed,
+ * not on average. Two presses therefore show the whole pool rather than
+ * circling one half of it.
+ *
+ * Falls back gracefully rather than throwing if the arithmetic ever stops
+ * being that tidy: what is available goes on first, and the shortfall is
+ * filled from the avoided set, shuffled, so the wheel is always full. A
+ * shorter wheel would leave a wedge of empty slices, which is worse than a
+ * repeat. */
+export function drawWheel(
+  random: () => number = Math.random,
+  avoid: readonly SpinSlug[] = []
+): SpinSlug[] {
+  const avoided = new Set(avoid);
+  const fresh = shuffled(
+    SPIN_POOL.filter((slug) => !avoided.has(slug)),
+    random
+  );
+  if (fresh.length >= WHEEL_SLICES) return fresh.slice(0, WHEEL_SLICES);
+  const filler = shuffled(
+    SPIN_POOL.filter((slug) => avoided.has(slug)),
+    random
+  );
+  return [...fresh, ...filler].slice(0, WHEEL_SLICES);
 }
 
 /** The first wheel, before any client-side shuffle.

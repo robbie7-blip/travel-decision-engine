@@ -785,6 +785,23 @@ jobs:
       # COUNTRY as a substring made short queries useless, because "an"
       # offered Amsterdam, Berlin and Munich via "Netherlands" and
       # "Germany". Country now matches by prefix only.
+      # The spin wheel's city draw.
+      #
+      # "New cities" mostly showed the same cities: it drew 12 from a pool
+      # of 24 independently each time, so a fresh wheel shared six with the
+      # old one on average and could repeat most of it - which looks,
+      # correctly, like the button doing nothing. The old call is kept and
+      # MEASURED here (mean overlap 5-7 of 12 over 200 draws) beside the new
+      # one, which passes the current wheel as `avoid` and therefore changes
+      # every city, guaranteed rather than on average, because the pool is
+      # exactly twice the wheel.
+      #
+      # Also holds the uniformity of the shuffle, over 4,000 draws with a
+      # seeded generator. "Random" is the actual promise this feature makes
+      # to a traveller with no idea where to go, and a biased shuffle would
+      # mean some cities quietly come up more often - the one thing it
+      # cannot get wrong.
+      - run: npm run test:spin
       - run: npm run test:city-options
       # The arrival/departure time picker.
       #
