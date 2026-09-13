@@ -34,6 +34,36 @@ jobs:
           cache-dependency-path: worker/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      # The linter, which until this commit did not run.
+      #
+      # `npm run lint` had been `eslint .` with no config file anywhere, so
+      # it exited on ESLint 9's "couldn't find a configuration file" and
+      # checkCiScripts.mjs excused it as "not yet enforced". A repo with
+      # sixteen hundred assertions and 51 CI steps had no linter at all:
+      # TypeScript checked types and nothing checked anything else.
+      #
+      # Tuned for what it can catch rather than for completeness, because a
+      # linter's failure mode is being switched off. The rules are the ones
+      # that map onto defects this product has actually shipped - floating
+      # promises (the worker runs four jobs at once and an unobserved
+      # rejection takes the others down; this needed a hand-written
+      # `.catch(() => {})` twice in one session), `!= null` guards that let
+      # NaN through into a cached price, the coercing isNaN/isFinite
+      # globals, shadowed names, unused bindings - all errors. Style is off:
+      # react/no-unescaped-entities alone was 23 of the first run's 42
+      # errors, every one a straight apostrophe in the terms page.
+      #
+      # It found real things on the first run: dead code in DayMap, a
+      # `useExample` that was not a hook and so made the react-hooks rule
+      # report a false positive on the file it protects, `t` shadowed by the
+      # job's timings in TripView, four unobserved promises, a stale-language
+      # error message in CompareView, and a JOB_TTL_SECONDS import left
+      # dead by my own change two commits earlier.
+      #
+      # Cost of the type-aware rules, measured rather than assumed: 4.3s
+      # for this package's 40-odd source files, against a job that already
+      # spends minutes on npm ci and the suites.
+      - run: npm run lint
       # The acceptance gate against itineraries broken in each of the ways
       # this product has actually shipped broken.
       - run: npm run test:quality
@@ -342,6 +372,21 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      # The linter - same config shape and same rationale as the worker's
+      # step above, plus Next's react-hooks pair. exhaustive-deps found a
+      # real one on the first run: CompareView's poll handler read
+      # `t.genericError` from a closure while its effect keyed on jobId
+      # alone, so switching language mid-poll rendered the error in the
+      # PREVIOUS language. Fixed with a ref rather than by adding `t` to
+      # the deps, which would have re-polled the job on every toggle. It
+      # ships as a warning, and `eslint .` exits 0 on warnings, so it is
+      # escalated to an error here - a rule that does not gate is a rule
+      # whose next finding scrolls past in green CI.
+      #
+      # Cost of the type-aware rules, measured rather than assumed: 14.6s
+      # over app/, components/ and lib/. That is the slow step of the two
+      # linters and still a rounding error next to `npm run build`.
+      - run: npm run lint
       # Every text color in the palette against the backgrounds it's
       # actually painted on. --ink-dim - the color of nearly every label,
       # date and helper line in the product - shipped for months at

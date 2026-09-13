@@ -61,7 +61,6 @@ const NOT_IN_CI = {
   // Long-running or interactive, not a check.
   dev: "development server",
   start: "production server",
-  lint: "not yet enforced - see the eslint config",
 };
 
 const problems = [];

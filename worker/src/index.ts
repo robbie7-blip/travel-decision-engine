@@ -38,7 +38,6 @@ import {
   type SkeletonDay,
   type TripFrame,
   type TripPlan,
-  type TripSkeleton,
 } from "./engine/twoPhase";
 import { checkBudgetIntegrity, checkFeasibility, deriveConfidenceTiers } from "./engine/checks";
 import { stripEmDashes } from "./engine/plainDashes";
@@ -70,7 +69,6 @@ import { recordQualitySample } from "./qualityStats";
 import { recordTimingSample } from "./timingStats";
 import {
   JOBS_QUEUE_KEY,
-  JOB_TTL_SECONDS,
   MAX_TRIP_DAYS,
   WORKER_HEARTBEAT_INTERVAL_MS,
   WORKER_HEARTBEAT_KEY,

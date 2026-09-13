@@ -60,12 +60,15 @@ export function TripView({ jobId }: { jobId: string }) {
       setLastBrief(brief);
       setProgress(jobProgress);
     })
-      .then(({ itinerary, brief, timings: t, quality: q }) => {
+      // Destructured under their own names: `t` is the translations
+      // object everywhere else in this file, and shadowing it with the
+      // job's timings here was one rename away from a wrong-language bug.
+      .then(({ itinerary, brief, timings: jobTimings, quality: jobQuality }) => {
         if (cancelled) return;
         setResult(itinerary);
         setLastBrief(brief);
-        setTimings(t);
-        setQuality(q);
+        setTimings(jobTimings);
+        setQuality(jobQuality);
         const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
         if (saved !== "en" && saved !== "bg") setLanguageState(brief.language);
         // Bookmarks this visit so a returning visitor can find their way

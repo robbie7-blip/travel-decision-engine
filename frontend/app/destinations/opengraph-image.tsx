@@ -70,7 +70,6 @@ export default async function DestinationsIndexOgImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img width={52} height={52} src={MARK_DATA_URI} alt="" />
           <span style={{ fontSize: 28, fontWeight: 600, color: "#2c6a4c" }}>decide</span>
         </div>

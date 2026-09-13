@@ -85,7 +85,6 @@ export function DayMap({ items, t }: { items: ItineraryItem[]; t: Dictionary }) 
   if (placed.length < 2) return null;
 
   const lats = placed.map((p) => p.lat);
-  const lngs = placed.map((p) => p.lng);
   const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
   const mPerLng = metresPerDegLng(midLat);
 

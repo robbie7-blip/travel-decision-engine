@@ -56,21 +56,21 @@ function makeCache() {
   const entries: { url: string; response: Response }[] = [];
   return {
     entries,
-    async put(request: Request | string, response: Response) {
-      const url = typeof request === "string" ? request : request.url;
+    async put(key: Request | string, response: Response) {
+      const url = typeof key === "string" ? key : key.url;
       const existing = entries.findIndex((e) => e.url === url);
       if (existing >= 0) entries.splice(existing, 1);
       entries.push({ url, response });
     },
-    async match(request: Request | string) {
-      const url = typeof request === "string" ? new URL(request, "https://d.test").href : request.url;
+    async match(key: Request | string) {
+      const url = typeof key === "string" ? new URL(key, "https://d.test").href : key.url;
       return entries.find((e) => e.url === url)?.response;
     },
     async keys() {
       return entries.map((e) => ({ url: e.url }) as Request);
     },
-    async delete(request: Request | string) {
-      const url = typeof request === "string" ? request : request.url;
+    async delete(key: Request | string) {
+      const url = typeof key === "string" ? key : key.url;
       const i = entries.findIndex((e) => e.url === url);
       if (i >= 0) entries.splice(i, 1);
       return i >= 0;
@@ -103,18 +103,18 @@ function load(options: { netFail?: boolean; body?: unknown; ok?: boolean } = {})
       delete caches[name];
       return had;
     },
-    async match(request: Request | string, opts?: { cacheName?: string }) {
-      if (opts?.cacheName) return caches[opts.cacheName]?.match(request);
+    async match(key: Request | string, opts?: { cacheName?: string }) {
+      if (opts?.cacheName) return caches[opts.cacheName]?.match(key);
       for (const cache of Object.values(caches)) {
-        const hit = await cache.match(request);
+        const hit = await cache.match(key);
         if (hit) return hit;
       }
       return undefined;
     },
   };
 
-  const fakeFetch = async (request: Request | string) => {
-    fetched.push(typeof request === "string" ? request : request.url);
+  const fakeFetch = async (input: Request | string) => {
+    fetched.push(typeof input === "string" ? input : input.url);
     if (options.netFail) throw new TypeError("Failed to fetch");
     return new Response(JSON.stringify(options.body ?? { ok: true }), {
       status: options.ok === false ? 500 : 200,
@@ -131,7 +131,6 @@ function load(options: { netFail?: boolean; body?: unknown; ok?: boolean } = {})
     clients: { claim: async () => undefined },
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval
   new Function("self", "caches", "fetch", "Response", "URL", SOURCE)(self, cachesApi, fakeFetch, Response, URL);
 
   return { listeners, caches, fetched };
@@ -272,7 +271,6 @@ async function main() {
     // answered every miss with the homepage, so res.json() threw inside
     // code written to handle a rejected fetch.
     const env = load({ netFail: true });
-    await env.caches; // no-op, keeps the cache map empty
     const r = await request(env, "/api/job/never-seen");
     const isErrorResponse = r.response?.type === "error" || r.error !== undefined;
     check("an uncached job offline is a network failure, not HTML", isErrorResponse === true, JSON.stringify({ type: r.response?.type }));

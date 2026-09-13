@@ -5,6 +5,7 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
+    "lint": "eslint .",
     "test:pipeline": "WORKER_NO_AUTOSTART=1 tsx src/pipeline.test.ts",
     "test:verify-overlap": "WORKER_NO_AUTOSTART=1 tsx src/verifyOverlap.test.ts",
     "test:quality": "WORKER_NO_AUTOSTART=1 tsx src/quality.test.ts",
@@ -35,7 +36,11 @@
     "ioredis": "^5.4.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^22.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
+    "eslint": "^9.39.5",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

@@ -43,11 +43,7 @@ import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "../
 // The report shape lives in jobs.ts because it travels ON the job to the
 // frontend, exactly like JobTimings - declaring it twice is how the two
 // sides drift.
-import type {
-  QualityCheckId,
-  QualityFinding,
-  QualityReport,
-} from "../jobs";
+import type { QualityFinding, QualityReport } from "../jobs";
 export type { QualityCheckId, QualityFinding, QualityReport } from "../jobs";
 import {
   requiredMeals,

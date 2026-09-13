@@ -52,7 +52,7 @@ export function TripVisitedPrompt({
   useEffect(() => {
     if (!tripIsOver || !destinations || destinations.length === 0) return;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const res = await fetch(`/api/place-country?cities=${encodeURIComponent(destinations.join(","))}`);
         if (!res.ok) return;

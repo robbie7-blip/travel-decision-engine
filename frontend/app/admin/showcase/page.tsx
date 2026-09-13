@@ -30,7 +30,7 @@ export default function ShowcaseAdminPage() {
     // this flag instead of probing a protected endpoint on every visitor's
     // /trip/[jobId] page load.
     markAdminUi();
-    load();
+    void load();
   }, []);
 
   async function handleAdd() {

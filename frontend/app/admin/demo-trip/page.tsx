@@ -31,7 +31,7 @@ export default function DemoTripAdminPage() {
     // this flag instead of probing a protected endpoint on every visitor's
     // /trip/[jobId] page load.
     markAdminUi();
-    load();
+    void load();
   }, []);
 
   async function handleSet() {

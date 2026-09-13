@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CurrencySwitcher, useCurrency } from "./CurrencySwitcher";
@@ -42,6 +42,17 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
   const [refineJobStatus, setRefineJobStatus] = useState<Job["status"] | null>(null);
   const [refineError, setRefineError] = useState("");
 
+  // Read through a ref, not captured.
+  //
+  // The effect below keys on jobId alone, deliberately - adding `t` would
+  // re-run it and re-poll the job every time the language toggle moved.
+  // But its catch handler reads t.genericError, so a language switch while
+  // a poll was in flight rendered the error in the PREVIOUS language. A ref
+  // is stable, so the dependency list stays honest and the message is
+  // always in the language currently selected.
+  const tRef = useRef(t);
+  tRef.current = t;
+
   useEffect(() => {
     setCurrentJobId(jobId);
     if (!jobId) return;
@@ -57,7 +68,7 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
       })
       .catch((e) => {
         if (cancelled) return;
-        setState((prev) => ({ ...prev, loadError: e instanceof ApiError ? e.message : t.genericError }));
+        setState((prev) => ({ ...prev, loadError: e instanceof ApiError ? e.message : tRef.current.genericError }));
       });
 
     return () => {

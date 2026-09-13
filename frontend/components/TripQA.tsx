@@ -260,11 +260,18 @@ export function TripQA({ context, language, t }: TripQAProps) {
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      send();
+      // send() owns its own error state; void marks the rejection as
+      // deliberately unobserved rather than leaving it unhandled.
+      void send();
     }
   }
 
-  function useExample(prompt: string) {
+  // NOT a hook, despite what the old name (`useExample`) implied. It is a
+  // plain click handler that fills the draft box, and the `use` prefix
+  // made react-hooks/rules-of-hooks report it as a hook called inside a
+  // callback - a false positive on the one rule that protects this file
+  // from real hook misuse.
+  function applyExample(prompt: string) {
     if (sending) return;
     setDraft(prompt);
   }
@@ -385,7 +392,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
             <button
               key={prompt}
               type="button"
-              onClick={() => useExample(prompt)}
+              onClick={() => applyExample(prompt)}
               className="font-ui hover-card"
               style={{
                 border: "1px solid var(--line)",

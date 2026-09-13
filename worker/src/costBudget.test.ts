@@ -200,6 +200,14 @@ function main() {
       Number.isNaN(estimateCostUsd(usage({ output_tokens: Number.NaN }))),
       String(estimateCostUsd(usage({ output_tokens: Number.NaN })))
     );
+    // The point of the next line IS that comparing with NaN silently
+    // returns false, which is exactly the guard the old code used.
+    // Rewriting it as Number.isNaN would delete the demonstration - so the
+    // rule is suppressed, and the directive sits immediately above the
+    // code because disable-next-line means the NEXT LINE, comments
+    // included. (Putting the explanation first is how I learned that: the
+    // directive landed on a comment and the check went unguarded.)
+    // eslint-disable-next-line use-isnan
     check("and NaN would have passed the old `<= 0` guard", (Number.NaN <= 0) === false);
     check("while Number.isFinite catches it", Number.isFinite(Number.NaN) === false);
   }

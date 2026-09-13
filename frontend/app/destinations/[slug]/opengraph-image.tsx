@@ -124,7 +124,6 @@ export default async function DestinationOgImage({ params }: { params: Promise<{
         }}
       >
         {photoDataUri && (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={photoDataUri}
             alt=""
@@ -151,7 +150,6 @@ export default async function DestinationOgImage({ params }: { params: Promise<{
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img width={44} height={44} src={MARK_DATA_URI} alt="" />
             <span style={{ fontSize: 24, fontWeight: 600, color: "#fffdf8" }}>decide</span>
           </div>
