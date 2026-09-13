@@ -732,6 +732,36 @@ jobs:
       # refused because only SITE_URL counted as ours. Reverting the parsed
       # comparison and the null handling makes 5 of 36 red.
       - run: npm run test:same-origin
+      # Ask a Local's trip context, which nothing validated.
+      #
+      # /api/trip-questions is a public POST and it checks `messages`
+      # thoroughly - roles, lengths, image media types, base64 shape,
+      # per-message image counts. It read `context` off the same body with a
+      # TYPE ANNOTATION and handed it straight to contextBlock, which joins
+      # two of its fields and interpolates three more. Measured against the
+      # real function:
+      #
+      #   {"destinations": "Rome"}   THREW "destinations.join is not a
+      #                              function" - an unhandled 500 from a
+      #                              public endpoint, because `?.length` is
+      #                              truthy for a string so the optional
+      #                              chain guarded nothing
+      #   [{"city": "Rome"}]         "Destination(s): [object Object]" in
+      #                              the prompt
+      #   a 200,000-char entry       a 200,050-char context block, from one
+      #                              field of five
+      #
+      # The last is the expensive one: every other input to this route is
+      # capped, and this one was billed against the shared daily budget
+      # every traveller draws from. The caps are now the BRIEF's caps,
+      # imported from validation.ts rather than re-chosen, because this
+      # context is built from a brief that already passed them - a field
+      # that is legitimate in a brief has to survive here or the
+      # "validation" is a quality regression. contextBlock moved into the
+      # same module so the validator and its one consumer are tested as a
+      # pair instead of drifting apart. Reverting the validator makes 26 of
+      # 51 red.
+      - run: npm run test:trip-qa-context
       # How long a trip lives. Thirty days is the wrong number for the
       # thing someone paid for: a trip planned in January for a June
       # holiday expired in February - not while nobody was looking at it,

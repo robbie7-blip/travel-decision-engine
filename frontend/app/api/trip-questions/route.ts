@@ -25,6 +25,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createAnthropicClient, isMissingWorkspaceIdError } from "@/lib/anthropicClient";
 import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
+import { contextBlock, readTripQAContext } from "@/lib/tripQAContext";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
 import { estimateCostUsd } from "@/lib/costBudget";
 import { getUserRecord, resolvePlan } from "@/lib/account";
@@ -38,7 +39,6 @@ import {
   TRIP_QA_IMAGE_MEDIA_TYPES,
   isLocalVoice,
   type LocalVoice,
-  type TripQAContext,
   type TripQAImage,
   type TripQAMessage,
 } from "@/lib/tripQA";
@@ -252,20 +252,6 @@ confident than you have grounds to be: a lived-in voice makes it tempting to sta
 or a current price as personal knowledge, and the honesty rules above still hold in full.`;
 }
 
-function languageLabel(language: Language): string {
-  return language === "bg" ? "Bulgarian (български)" : "English";
-}
-
-function contextBlock(context: TripQAContext | undefined, language: Language): string {
-  const lines: string[] = [];
-  if (context?.destinations?.length) lines.push(`Destination(s): ${context.destinations.join(", ")}`);
-  if (context?.start_date && context?.end_date) lines.push(`Dates: ${context.start_date} to ${context.end_date}`);
-  if (context?.party_composition) lines.push(`Travelers: ${context.party_composition}`);
-  if (context?.interests?.length) lines.push(`Interests: ${context.interests.join(", ")}`);
-  lines.push(`Respond in ${languageLabel(language)}.`);
-  return `Trip context:\n${lines.join("\n")}`;
-}
-
 /** Base64 decodes to roughly 3 bytes per 4 chars - measured off the string
  * rather than decoding it, so an oversized payload is rejected without
  * first allocating it. */
@@ -321,7 +307,13 @@ function isValidMessage(m: unknown): m is TripQAMessage {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { messages?: unknown; context?: TripQAContext; language?: Language; voice?: unknown };
+  // `context` is `unknown` here, like `messages` and `voice`. It used to be
+  // annotated `TripQAContext` and handed straight to contextBlock, which
+  // joins two of its fields and interpolates three more - so
+  // {"destinations": "Rome"} was an unhandled 500 from a public endpoint,
+  // an array of objects became "[object Object]" in the prompt, and nothing
+  // capped its size at all. See lib/tripQAContext.ts.
+  let body: { messages?: unknown; context?: unknown; language?: Language; voice?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -457,7 +449,10 @@ export async function POST(request: NextRequest) {
       // above, so the long, static instructions stay byte-identical across
       // requests and keep whatever prompt caching they earn. This block is
       // per-request anyway.
-      { type: "text" as const, text: contextBlock(body.context, language) + voiceInstruction(voice) },
+      {
+        type: "text" as const,
+        text: contextBlock(readTripQAContext(body.context), language) + voiceInstruction(voice),
+      },
     ],
     ...(isPaid
       ? { tools: [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES }] }

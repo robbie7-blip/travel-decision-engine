@@ -25,17 +25,17 @@ const VALID_TRANSPORT_PREFERENCES = new Set(["public_transit", "taxi_rideshare",
  * megabyte each is the same prompt-bloat (and the same injection surface) as
  * 50,000 short ones, at a fraction of the request size. Long enough that no
  * real interest, dietary note or must-see is ever truncated. */
-const MAX_LIST_ENTRY_CHARS = 200;
+export const MAX_LIST_ENTRY_CHARS = 200;
 
 /** Cap on entries per free-text list. */
-const MAX_LIST_ENTRIES = 50;
+export const MAX_LIST_ENTRIES = 50;
 
 /** Cap on a single free-text scalar field, in characters. Same reasoning as
  * MAX_LIST_ENTRY_CHARS: these are prompt inputs, and origin /
  * party_composition / accommodation_location were length-unbounded. Roomier
  * than a list entry because "two adults and a six-year-old who naps after
  * lunch" is a legitimate party_composition. */
-const MAX_TEXT_CHARS = 400;
+export const MAX_TEXT_CHARS = 400;
 
 /** The largest party this endpoint will accept. Not a cost multiplier the
  * way days and cities are - it doesn't fan out into more calls - but an

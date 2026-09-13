@@ -25,6 +25,7 @@
     "test:site-url": "tsx lib/siteUrl.test.ts",
     "test:session": "tsx lib/session.test.ts",
     "test:airports": "tsx lib/airports.test.ts",
+    "test:trip-qa-context": "tsx lib/tripQAContext.test.ts",
     "test:same-origin": "tsx lib/sameOrigin.test.ts",
     "test:auth-verify-page": "tsx lib/authVerifyPage.test.ts",
     "test:subscription-event": "tsx lib/subscriptionEvent.test.ts",
