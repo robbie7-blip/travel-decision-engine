@@ -828,6 +828,27 @@ jobs:
       # open-coded a weaker regex beside it. Every rejection is a
       # `continue`, so one unreadable leg costs that leg and not the whole
       # booking. Reverting the four guards makes 19 of 87 red.
+      # Throwing a dart at the globe: which country it hits and where.
+      #
+      # The honesty property is the testable one - the dart sticks INSIDE the
+      # border it names. All 168 reachable countries are sampled and each
+      # point checked against that country's own polygon, plus 600 throws
+      # through the real entry point. A dart that said "Italy" with the
+      # marker in the Adriatic would be the wheel's rigging problem with
+      # better graphics.
+      #
+      # It also reconciles the topology against the tracked country list,
+      # which is the check that would have saved a wrong fix. Seeing "CYP"
+      # and "SOM" in the polygon codes beside a country list holding "CY"
+      # and "SO" looks exactly like a key mismatch. It is not: they are
+      # Northern Cyprus and Somaliland, drawn separately, and "correcting"
+      # CYP to CY would have given Cyprus two polygons, made clicking
+      # Northern Cyprus mark Cyprus visited, and left the two fighting over
+      # the colour - breaking working code to fix a bug that was not there.
+      # The assertions now state which is which, from the data, and refuse
+      # any polygon that is neither a tracked country nor a declared
+      # territory.
+      - run: npm run test:dart-globe
       - run: npm run test:flight-import
       - run: npm run test:spin
       - run: npm run test:city-options
