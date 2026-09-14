@@ -2309,3 +2309,30 @@ p {
     text-decoration: none !important;
   }
 }
+
+/* The "how this works" note under whichever way in is showing, and the
+   switch between them. Both live in GlobeDart now rather than on the page,
+   because the dart and the wheel make different claims and each has to
+   carry its own. */
+.spin-note {
+  font-size: 11px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+  margin-top: 28px;
+  max-width: 620px;
+}
+
+.spin-switch {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.spin-switch:hover {
+  color: var(--brand-teal);
+}

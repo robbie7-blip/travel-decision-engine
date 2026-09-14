@@ -387,6 +387,17 @@ export interface Dictionary {
     planIt: string;
     readGuide: string;
     note: string;
+    throwDart: string;
+    throwing: string;
+    throwAgain: string;
+    landedIn: string;
+    guidesHere: string;
+    noGuideYet: string;
+    planHere: string;
+    globeUnavailable: string;
+    dartNote: string;
+    wheelInstead: string;
+    globeInstead: string;
   };
   tripQA: {
     navLink: string; // homepage header link to /ask
@@ -878,10 +889,10 @@ const en: Dictionary = {
     planAnother: "Plan a new comparison",
   },
   spin: {
-    navLink: "Spin the wheel",
-    pageTitle: "Spin the wheel",
+    navLink: "Decide for me",
+    pageTitle: "Decide for me",
     pageHeading: "No idea where to go?",
-    pageSubheading: "Spin it, and plan whatever it lands on. Every city on the wheel is one we have a real guide for.",
+    pageSubheading: "Throw a dart at the globe and plan wherever it sticks. Any of 168 countries - or switch to the wheel for the cities we have a full guide for.",
     spin: "Spin",
     spinning: "Spinning...",
     again: "Spin again",
@@ -890,6 +901,17 @@ const en: Dictionary = {
     planIt: "Plan this trip",
     readGuide: "Read the guide first",
     note: "Twelve of the twenty-four cities we have guides for, drawn at random. It lands where it stops - nothing here is decided in advance.",
+    throwDart: "Throw the dart",
+    throwing: "In the air...",
+    throwAgain: "Throw again",
+    landedIn: "The dart landed in",
+    guidesHere: "We have guides here:",
+    noGuideYet: "No guide for this one yet - the planner still plans it in full.",
+    planHere: "Plan a trip here",
+    globeUnavailable: "This browser can't draw the globe, so here's the wheel instead - same idea.",
+    dartNote: "Any of the 168 countries we have a border for, each with an even chance. The dart sticks inside the country it names - the country is drawn first and the landing point comes from that country's own outline, so nothing is decided after the fact. The 29 we cannot reach are the microstates and small island nations our map has no shape for.",
+    wheelInstead: "Rather spin a wheel?",
+    globeInstead: "Rather throw a dart at the globe?",
   },
   tripQA: {
     navLink: "Ask a Local",
@@ -1404,10 +1426,10 @@ const bg: Dictionary = {
     planAnother: "Планирай ново сравнение",
   },
   spin: {
-    navLink: "Завърти колелото",
-    pageTitle: "Завърти колелото",
+    navLink: "Реши за мен",
+    pageTitle: "Реши за мен",
     pageHeading: "Нямате идея къде да отидете?",
-    pageSubheading: "Завъртете и планирайте каквото се падне. Всеки град на колелото е с истински пътеводител при нас.",
+    pageSubheading: "Хвърлете стрела по глобуса и планирайте там, където се забие. Всяка от 168 държави - или минете на колелото за градовете с пълен пътеводител.",
     spin: "Завърти",
     spinning: "Върти се...",
     again: "Завърти пак",
@@ -1416,6 +1438,17 @@ const bg: Dictionary = {
     planIt: "Планирай това пътуване",
     readGuide: "Първо виж пътеводителя",
     note: "Дванадесет от двадесет и четирите града с пътеводители, изтеглени на случаен принцип. Пада се там, където спре - нищо тук не е решено предварително.",
+    throwDart: "Хвърли стрелата",
+    throwing: "Във въздуха...",
+    throwAgain: "Хвърли отново",
+    landedIn: "Стрелата се заби в",
+    guidesHere: "Тук имаме пътеводители:",
+    noGuideYet: "Още няма пътеводител за тази държава - планиращият я планира напълно.",
+    planHere: "Планирай пътуване тук",
+    globeUnavailable: "Този браузър не може да покаже глобуса, затова е колелото - същата идея.",
+    dartNote: "Всяка от 168 държави, за които имаме граница, с равен шанс. Стрелата се забива вътре в държавата, която назовава - първо се избира държавата, а точката на попадение идва от собствения ѝ контур, така че нищо не се решава след това. 29-те недостъпни са микродържавите и малките островни държави, за които картата ни няма форма.",
+    wheelInstead: "Предпочиташ колело?",
+    globeInstead: "Предпочиташ стрела по глобуса?",
   },
   tripQA: {
     navLink: "Питай местен",

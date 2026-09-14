@@ -4,9 +4,13 @@
 // have one, and "browse 24 guides" is a research task rather than an
 // answer. This makes not knowing into the fun part.
 //
-// The wheel only ever lands on a city with a real guide and a real
-// photograph, so the result is an opening rather than a suggestion: read
-// the guide, or hand the city straight to the trip form through ?dest=.
+// Two ways to be told, both honest about what they can reach. The dart at
+// the globe can land on any of the 168 countries we have a border for; the
+// wheel lands on one of the 24 cities with a curated guide and a real
+// photograph. Either way the result is an opening rather than a suggestion:
+// read the guide where there is one, or hand the place straight to the trip
+// form through ?dest=, which takes free text and is why the dart can reach
+// countries no guide covers.
 //
 // Server component with a client wheel inside it, matching every other
 // static page here: same two-row header, same ?lang= switching.
@@ -15,7 +19,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountControl } from "@/components/AccountControl";
 import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "@/components/HeaderNav";
-import { SpinWheel } from "@/components/SpinWheel";
+import { GlobeDart } from "@/components/GlobeDart";
 import { TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
@@ -123,13 +127,11 @@ export default async function SpinPage({
             </p>
           </div>
 
-          <SpinWheel t={t} language={language} />
-
-          {/* Says how it works, because "it lands where it stops" is a
-              claim and this product does not make claims it hides. */}
-          <p className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", lineHeight: 1.5, marginTop: 28, maxWidth: 620 }}>
-            {t.spin.note}
-          </p>
+          {/* Both ways in live inside this component: it leads with the
+              globe, keeps the wheel one tap away, and falls back to the
+              wheel outright where WebGL cannot draw. Each carries its own
+              "how this works" note, since the two make different claims. */}
+          <GlobeDart t={t} language={language} />
         </div>
       </div>
     </div>
