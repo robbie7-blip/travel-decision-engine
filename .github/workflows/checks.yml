@@ -801,6 +801,34 @@ jobs:
       # to a traveller with no idea where to go, and a biased shuffle would
       # mean some cities quietly come up more often - the one thing it
       # cannot get wrong.
+      # Reading a traveller's own flight history out of a pasted booking
+      # confirmation - the function that decides what their history says.
+      # It lived inside the route handler, where nothing could reach it.
+      #
+      # Measured against the version it replaces, with the real countries
+      # table:
+      #
+      #   {"flights":[null]}        THREW, and the route's catch turns any
+      #                             throw into "Couldn't read that
+      #                             confirmation. Try pasting the full email
+      #                             text" - blaming the traveller's email
+      #                             for a fault of ours, which is the exact
+      #                             thing the comment on that catch exists
+      #                             to prevent, one function away
+      #   date "9999-99-99"         accepted; the check was a SHAPE regex
+      #   date "2026-02-30"         accepted, and counted as a past visit
+      #   date "1800-01-01"         accepted as a flight in 1800
+      #   arrival_iata "the airport
+      #     in Chisinau"            accepted, uppercased, and shown to the
+      #                             traveller as an IATA code
+      #
+      # The date fix is not new code: parseCalendarDate in jobs.ts has
+      # rejected impossible days all along ("2026-02-30 would otherwise
+      # silently become March 2", says its own comment) and this route
+      # open-coded a weaker regex beside it. Every rejection is a
+      # `continue`, so one unreadable leg costs that leg and not the whole
+      # booking. Reverting the four guards makes 19 of 87 red.
+      - run: npm run test:flight-import
       - run: npm run test:spin
       - run: npm run test:city-options
       # The arrival/departure time picker.

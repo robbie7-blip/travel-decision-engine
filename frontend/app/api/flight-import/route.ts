@@ -19,12 +19,11 @@ import { checkRateLimit, getClientIp, FLIGHT_IMPORT_RATE_LIMIT } from "@/lib/rat
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
 import { estimateCostUsd } from "@/lib/costBudget";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
-import { getCountry } from "@/lib/countries";
 import {
   MAX_FLIGHT_IMPORT_CHARS,
   MIN_FLIGHT_IMPORT_CHARS,
+  readImportedFlights,
   type FlightImportResult,
-  type ImportedFlight,
 } from "@/lib/flightImport";
 
 export const runtime = "nodejs";
@@ -56,58 +55,6 @@ function extractJson(text: string): string {
     if (t.startsWith("json")) t = t.slice(4);
   }
   return t.trim();
-}
-
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-interface RawFlight {
-  departure_iata?: unknown;
-  departure_city?: unknown;
-  arrival_iata?: unknown;
-  arrival_city?: unknown;
-  arrival_country_code?: unknown;
-  date?: unknown;
-  airline?: unknown;
-  flight_number?: unknown;
-}
-
-function str(v: unknown): string {
-  return typeof v === "string" ? v.trim() : "";
-}
-
-/** Turns the model's output into flights we're willing to act on. The
- * country code is checked against the real country list rather than
- * trusted - a hallucinated code would otherwise mark a country visited
- * that the traveler has never been to, which is the one error this feature
- * absolutely must not make. */
-function toImportedFlights(raw: unknown): ImportedFlight[] {
-  const list = Array.isArray((raw as { flights?: unknown })?.flights)
-    ? ((raw as { flights: RawFlight[] }).flights)
-    : [];
-  const today = new Date().toISOString().slice(0, 10);
-  const out: ImportedFlight[] = [];
-
-  for (const f of list) {
-    const arrivalCountryCode = str(f.arrival_country_code).toUpperCase();
-    const date = str(f.date);
-    const arrivalIata = str(f.arrival_iata).toUpperCase();
-    if (!arrivalCountryCode || !getCountry(arrivalCountryCode)) continue;
-    if (!ISO_DATE_RE.test(date)) continue;
-    if (!arrivalIata) continue;
-
-    out.push({
-      arrivalIata,
-      arrivalCity: str(f.arrival_city) || arrivalIata,
-      arrivalCountryCode,
-      departureIata: str(f.departure_iata).toUpperCase(),
-      departureCity: str(f.departure_city),
-      date,
-      airline: str(f.airline) || undefined,
-      flightNumber: str(f.flight_number) || undefined,
-      isPast: date <= today,
-    });
-  }
-  return out;
 }
 
 export async function POST(request: NextRequest) {
@@ -189,7 +136,11 @@ export async function POST(request: NextRequest) {
     }
 
     const blocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-    const flights = toImportedFlights(JSON.parse(extractJson(blocks[blocks.length - 1]?.text ?? "")));
+    // Read, not asserted - see readImportedFlights. A null entry in the
+    // model's list used to throw from here into the catch below, which
+    // tells the traveller their email was unreadable for a fault that was
+    // ours.
+    const flights = readImportedFlights(JSON.parse(extractJson(blocks[blocks.length - 1]?.text ?? "")));
 
     // Only past flights count as a visit - a future booking is a plan.
     const countryCodes = [...new Set(flights.filter((f) => f.isPast).map((f) => f.arrivalCountryCode))];
