@@ -1,4 +1,5 @@
-// What counts as a price, on model-written JSON.
+// What counts as a price, and what counts as a citation for one, on
+// model-written JSON.
 //
 // THE GAP THIS CLOSES. types.ts declares `cost_estimate_eur: number` and 30-odd
 // readers believe it, but the value arrives from `JSON.parse(text) as
@@ -90,6 +91,59 @@ export function usableCostEur(value: unknown): number | null {
  * and did. */
 export function costForSum(value: unknown): number {
   return usableCostEur(value) ?? 0;
+}
+
+/** How many source URLs this item actually has, and which.
+ *
+ * `source_urls` is written directly by the model, and deriveConfidenceTiers
+ * counted it with `item.source_urls?.length ?? 0`. On a string, `.length` is
+ * the CHARACTER COUNT - so one URL written as a bare string instead of a
+ * one-element array measured 45, cleared the `>= 2` test, and with
+ * source_agreement "agree" the item was stamped "verified": the top trust
+ * tier, which means two independent sources agreed, awarded for one source
+ * because its URL was long. Measured, not inferred. That tier is the single
+ * strongest claim this product makes on a page whose whole subject is how
+ * much of the trip is actually checked.
+ *
+ * The same value then reached the page as `(item.source_urls ?? []).map(...)`,
+ * and a string has no `.map` - a TypeError during render of a paid itinerary,
+ * the failure class formatMoney's own header is about.
+ *
+ * Entries go through the URL gate rather than merely being counted, because
+ * a tier and a citation have to agree: safeHref already refuses to link
+ * "booking.com" or "(none found)", so counting them left the page showing
+ * "single source" above zero clickable links. */
+export function sourceUrlList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const urls: string[] = [];
+  for (const entry of value) {
+    const url = usableSourceUrl(entry);
+    if (url !== null) urls.push(url);
+  }
+  return urls;
+}
+
+/** An http(s) URL a traveler can be shown as the source of a price, or null.
+ *
+ * `source_url` was carried straight from the model's JSON into
+ * `source_urls`, which the trip page renders as the citation behind a
+ * "verified" badge. So a reply of `"source_url": "booking.com"` or
+ * `"(none found)"` - both things a model writes when it has nothing - put
+ * an unclickable string behind a claim that the price had been checked.
+ * Dropping it leaves `source_confidence` to speak for itself, which is
+ * what the unnamed-source case already does. */
+export function usableSourceUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+  return parsed.toString().slice(0, 500);
 }
 
 /** Whether a price of zero on this item means "free" or means "we don't

@@ -6,6 +6,7 @@
 // worker (a separate Node project outside the Next.js app), which doesn't
 // have the Next.js path-alias resolution configured.
 import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "../types";
+import { sourceUrlList } from "./money";
 
 /** Flags days with too much scheduled in them.
  *
@@ -198,7 +199,15 @@ export function checkBudgetIntegrity(
 export function deriveConfidenceTiers(itinerary: Itinerary): Itinerary {
   for (const day of itinerary.days ?? []) {
     for (const item of day.items) {
-      const urlCount = item.source_urls?.length ?? 0;
+      // `item.source_urls?.length ?? 0` - on a STRING that is the
+      // character count, so one URL written as a bare string measured 45,
+      // cleared the ">= 2" test below and was stamped "verified": the tier
+      // that means two independent sources agreed, awarded for one source
+      // because its URL was long. normalizeItineraryShape coerces the field
+      // before this runs; counting through the same reader says so here,
+      // rather than leaving the strongest claim on the page depending on
+      // something two files away.
+      const urlCount = sourceUrlList(item.source_urls).length;
       if (item.source_confidence !== "grounded") {
         item.confidence_tier = "inferred";
       } else if (urlCount === 0) {

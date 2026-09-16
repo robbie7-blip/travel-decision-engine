@@ -10,7 +10,7 @@
 // Run: npm run test:shape
 
 import type { Itinerary } from "../types";
-import { usableCostEur } from "./money";
+import { sourceUrlList, usableCostEur } from "./money";
 
 /** Thrown for a response that parsed as JSON but is not an itinerary.
  *
@@ -143,6 +143,17 @@ export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
     for (const item of day.items) {
       if (!item || typeof item !== "object") continue;
       item.cost_estimate_eur = usableCostEur(item.cost_estimate_eur) ?? 0;
+      // The citations, for the same reason and with sharper consequences.
+      // deriveConfidenceTiers counts this field's `.length`, which on a
+      // STRING is the character count - so one URL written as a bare string
+      // instead of a one-element array measured 45, cleared the ">= 2"
+      // test, and was stamped "verified", the tier that means two
+      // independent sources agreed. See sourceUrlList.
+      //
+      // Set only when the field is present at all, so an item that never
+      // claimed a source does not gain an empty array it did not have -
+      // `?? []` is what every reader already does with absence.
+      if (item.source_urls !== undefined) item.source_urls = sourceUrlList(item.source_urls);
     }
   }
   return itinerary;

@@ -14,7 +14,7 @@
 //
 // Run: npm run test:money
 
-import { costForSum, itemPriceEur, mustCost, parseCurrencyNumber, usableCostEur } from "./money";
+import { costForSum, itemPriceEur, mustCost, parseCurrencyNumber, sourceUrlList, usableCostEur } from "./money";
 import { check, finish, heading, section } from "../testutil";
 import type { ItineraryItem } from "../types";
 
@@ -165,6 +165,46 @@ function main() {
       "  and an unreadable one has no figure",
       Number.isNaN(itemPriceEur(item({ cost_estimate_eur: "15-20" as unknown as number })))
     );
+  }
+
+  {
+    section("citations, and the tier they earn");
+
+    check("two real URLs count as two", sourceUrlList(["https://a.example", "https://b.example"]).length === 2);
+    check("one counts as one", sourceUrlList(["https://a.example"]).length === 1);
+    check("an empty array counts as none", sourceUrlList([]).length === 0);
+    check("an absent field counts as none", sourceUrlList(undefined).length === 0);
+    check("null counts as none", sourceUrlList(null).length === 0);
+
+    // THE one. `item.source_urls?.length ?? 0` on a string is the character
+    // count, so a single URL written as a bare string measured 45, cleared
+    // the ">= 2" test in deriveConfidenceTiers, and was stamped "verified" -
+    // the tier that means two independent sources agreed.
+    const bare = "https://www.booking.com/hotel/it/example.html";
+    check("a bare string URL is 45 characters long", bare.length === 45, String(bare.length));
+    check("  and the old count would have cleared the >= 2 test", bare.length >= 2);
+    check("  while the reader counts it as NOT a two-source item", sourceUrlList(bare).length === 0, String(sourceUrlList(bare).length));
+
+    // The things a model writes when it has nothing, which safeHref already
+    // refuses to link - so counting them showed "single source" above zero
+    // clickable links.
+    check('"booking.com" is not a citation', sourceUrlList(["booking.com"]).length === 0);
+    check('"(none found)" is not', sourceUrlList(["(none found)"]).length === 0);
+    check("an empty string is not", sourceUrlList([""]).length === 0);
+    check("whitespace is not", sourceUrlList(["   "]).length === 0);
+    check("a non-string entry is not", sourceUrlList([42, null, {}]).length === 0);
+
+    // Scheme, because a browser executes href="javascript:..." on click.
+    check("javascript: is refused", sourceUrlList(["javascript:alert(1)"]).length === 0);
+    check("data: is refused", sourceUrlList(["data:text/html,<script>x</script>"]).length === 0);
+    check("file: is refused", sourceUrlList(["file:///etc/passwd"]).length === 0);
+    check("http is allowed", sourceUrlList(["http://a.example"]).length === 1);
+
+    // Mixed: the real ones survive and the rest do not, so an item with one
+    // URL and one apology is single_source and not verified.
+    const mixed = sourceUrlList(["https://real.example/page", "(none found)"]);
+    check("one real URL beside one apology is ONE source", mixed.length === 1, JSON.stringify(mixed));
+    check("  and it is the real one", mixed[0].startsWith("https://real.example"), JSON.stringify(mixed));
   }
 
   finish();

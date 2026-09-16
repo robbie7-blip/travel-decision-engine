@@ -17,14 +17,25 @@
 // Run: npm run test:itinerary-links
 
 import { safeHref } from "./linkify";
+import { sourceUrlList } from "./engine/money";
 import { check, finish, heading, section } from "./testutil";
 
 heading("itinerary link boundary");
 
-/** What the page now does with every URL before it becomes an href. */
-const linksFrom = (urls: unknown[]): string[] =>
-  urls
-    .map((u) => (typeof u === "string" ? safeHref(u) : null))
+/** What the page now does with the source_urls FIELD before any of it
+ * becomes an href.
+ *
+ * Takes `unknown`, not an array, which is the second gap. The page read
+ * `(item.source_urls ?? []).map(...)` - a guard on ABSENCE, with a
+ * per-entry `typeof u === "string"` check right beside it conceding the
+ * contents were untrusted while the container was taken on faith. Same
+ * misplaced-guard shape as `rates?.rates[currency]`, and a model writing one
+ * URL as a bare string rather than a one-element array reached `.map` on a
+ * string, which is not a function: a TypeError during render of a paid
+ * itinerary. */
+const linksFrom = (sourceUrls: unknown): string[] =>
+  sourceUrlList(sourceUrls)
+    .map((u) => safeHref(u))
     .filter((h): h is string => h !== null);
 
 async function main() {
@@ -89,6 +100,36 @@ async function main() {
     check("only the safe http(s) links survive", mixed.length === 2, JSON.stringify(mixed));
     check("and they keep their order", mixed[0].includes("/a") && mixed[1].includes("/b"), JSON.stringify(mixed));
   }
+
+  {
+    section("source_urls that is not an array at all");
+
+    // The render throw. Each of these reached `.map` on a non-array.
+    for (const shape of [
+      "https://www.booking.com/hotel/it/example.html",
+      "",
+      42,
+      { url: "https://a.example" },
+      true,
+    ] as unknown[]) {
+      let threw = false;
+      let links: string[] = [];
+      try {
+        links = linksFrom(shape);
+      } catch {
+        threw = true;
+      }
+      check(`${JSON.stringify(shape)?.slice(0, 32) ?? "undefined"} does not throw`, threw === false);
+      check("  and renders no links", links.length === 0, JSON.stringify(links));
+    }
+
+    // Absence and an empty array were always fine and must stay fine.
+    check("undefined renders no links", linksFrom(undefined).length === 0);
+    check("null renders no links", linksFrom(null).length === 0);
+    check("an empty array renders no links", linksFrom([]).length === 0);
+  }
+
+  section("the array the page maps over, continued");
 
   {
     // An item whose every source is unsafe must render NO link row at all,

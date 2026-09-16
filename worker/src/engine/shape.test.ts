@@ -17,6 +17,7 @@
 // Run: npm run test:shape
 
 import { assertUsableItinerary, ItineraryShapeError, normalizeItineraryShape } from "./shape";
+import { deriveConfidenceTiers } from "./checks";
 import { check, finish, heading, section } from "../testutil";
 import type { Itinerary, ItineraryItem } from "../types";
 
@@ -280,6 +281,81 @@ async function main() {
       }
       check(`budget_feasibility as ${JSON.stringify(bad) ?? "undefined"} does not throw`, threw === false);
     }
+  }
+
+  section("citations, so the trust tier cannot be earned by a long URL");
+
+  {
+    // deriveConfidenceTiers counts this field's `.length`. On a STRING that
+    // is the character count, so one URL written as a bare string measured
+    // 45, cleared the ">= 2" test and, with source_agreement "agree", was
+    // stamped "verified" - the tier that means two independent sources
+    // agreed. See engine/money.ts.
+    const it = {
+      days: [
+        {
+          day: 1,
+          items: [
+            { title: "bare string", source_urls: "https://www.booking.com/hotel/it/example.html" },
+            { title: "two real", source_urls: ["https://a.example", "https://b.example"] },
+            { title: "one real, one apology", source_urls: ["https://a.example", "(none found)"] },
+            { title: "not a url", source_urls: ["booking.com"] },
+            { title: "javascript", source_urls: ["javascript:alert(1)"] },
+            { title: "already empty", source_urls: [] },
+            { title: "never claimed one" },
+          ],
+        },
+      ],
+    } as unknown as Itinerary;
+    normalizeItineraryShape(it);
+    const counts = it.days[0].items.map((i) => i.source_urls?.length ?? 0);
+    check("a bare-string URL counts as no sources, not 45", counts[0] === 0, String(counts[0]));
+    check("two real URLs stay two", counts[1] === 2, String(counts[1]));
+    check("one real beside one apology is ONE", counts[2] === 1, String(counts[2]));
+    check('"booking.com" counts as none', counts[3] === 0, String(counts[3]));
+    check("javascript: counts as none", counts[4] === 0, String(counts[4]));
+    check("an empty array stays empty", counts[5] === 0, String(counts[5]));
+
+    // Absence is left absent: every reader does `?? []`, and an item that
+    // never claimed a source should not gain a field saying it has none.
+    check(
+      "an item that never claimed a source does not gain the field",
+      it.days[0].items[6].source_urls === undefined,
+      JSON.stringify(it.days[0].items[6])
+    );
+
+    // Every survivor must be something the page will actually link, so the
+    // tier and the citations under it cannot disagree.
+    const all = it.days[0].items.flatMap((i) => i.source_urls ?? []);
+    check(
+      "every surviving citation is an http(s) URL",
+      all.every((u) => typeof u === "string" && /^https?:\/\//.test(u)),
+      JSON.stringify(all)
+    );
+  }
+
+  {
+    // The tier itself, through the real function, on the real shape.
+    const it = {
+      days: [
+        {
+          day: 1,
+          items: [
+            {
+              title: "one bare-string URL",
+              source_confidence: "grounded",
+              source_agreement: "agree",
+              source_urls: "https://www.booking.com/hotel/it/example.html",
+            },
+          ],
+        },
+      ],
+    } as unknown as Itinerary;
+    normalizeItineraryShape(it);
+    deriveConfidenceTiers(it);
+    const tier = it.days[0].items[0].confidence_tier;
+    check('one source is not "verified"', tier !== "verified", String(tier));
+    check('  it is "fact_grounded" - grounded, with nothing to cite', tier === "fact_grounded", String(tier));
   }
 
   {

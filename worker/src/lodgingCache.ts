@@ -9,7 +9,7 @@
 
 import type Redis from "ioredis";
 import type { Itinerary, TripBriefInput } from "./types";
-import { parseCurrencyNumber } from "./engine/money";
+import { parseCurrencyNumber, usableSourceUrl } from "./engine/money";
 
 const CACHE_TTL_SECONDS = 20 * 60 * 60; // ~20h - long enough to help back-to-back testers/users on the same city, short enough that a real price swing doesn't linger
 
@@ -78,28 +78,12 @@ export function usableNightlyRate(value: unknown): number | null {
 // unchanged, and the assertions below - "a stored a string price is not
 // served as fact", the range and hedge refusals - are what say so.
 
-/** An http(s) URL a traveler can be shown as the source of a price, or null.
- *
- * `source_url` was carried straight from the model's JSON into
- * `source_urls`, which the trip page renders as the citation behind a
- * "verified" badge. So a reply of `"source_url": "booking.com"` or
- * `"(none found)"` - both things a model writes when it has nothing - put
- * an unclickable string behind a claim that the price had been checked.
- * Dropping it leaves `source_confidence` to speak for itself, which is
- * what the unnamed-source case already does. */
-export function usableSourceUrl(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    return null;
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-  return parsed.toString().slice(0, 500);
-}
+// usableSourceUrl moved to engine/money.ts alongside the price reader, for
+// the reason this file already gives for keeping the two together: "a URL
+// without a price behind it cites nothing - the price is the claim the
+// source is offered in support of". The itinerary's own source_urls needed
+// the same gate, and a citation either is one or is not.
+export { usableSourceUrl };
 
 function cleanText(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;

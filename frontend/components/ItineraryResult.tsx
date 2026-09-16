@@ -16,7 +16,7 @@ import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
 import { formatMoney, NO_FIGURE, type Currency, type FxRates } from "@/lib/currency";
-import { itemPriceEur, mustCost } from "@/lib/engine/money";
+import { itemPriceEur, mustCost, sourceUrlList } from "@/lib/engine/money";
 import { hoursLineFor, splitIntoSentences } from "@/lib/resultFormat";
 import { safeHref } from "@/lib/linkify";
 import type { FeedbackRating } from "@/lib/feedback";
@@ -193,8 +193,18 @@ function ItemEvidence({ item, t }: { item: ItineraryItem; t: Dictionary }) {
   // http/https for Ask a Local answers a few files away. A browser executes
   // href="javascript:..." on click, and the brief's free-text fields are
   // traveller-supplied. Anything safeHref rejects renders as no link at all.
-  const sourceLinks = (item.source_urls ?? [])
-    .map((url) => (typeof url === "string" ? safeHref(url) : null))
+  //
+  // `(item.source_urls ?? [])` guarded ABSENCE and not the type, which is
+  // the same misplaced-guard shape as `rates?.rates[currency]`: the per-entry
+  // `typeof url === "string"` check right beside it concedes the array's
+  // contents are untrusted while the array itself was taken on faith. A
+  // model writing one URL as a bare string rather than a one-element array
+  // reached `.map` on a string, which is not a function - a TypeError during
+  // render of a paid itinerary. sourceUrlList is the same reader
+  // deriveConfidenceTiers now counts with, so the tier on the badge and the
+  // links under it cannot disagree.
+  const sourceLinks = sourceUrlList(item.source_urls)
+    .map((url) => safeHref(url))
     .filter((href): href is string => href !== null);
   return (
     <div
