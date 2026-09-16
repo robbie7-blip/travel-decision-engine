@@ -51,6 +51,7 @@ import {
 } from "./engine/quality";
 import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
 import { assertUsableItinerary, normalizeItineraryShape } from "./engine/shape";
+import { extractJson } from "./engine/modelJson";
 import { usableCostEur } from "./engine/money";
 import { auditTimings } from "./engine/timingAudit";
 import { modelSupportsEffort } from "./engine/modelCaps";
@@ -296,17 +297,6 @@ yourself - never write a raw local-currency figure anywhere in the output.
 
 Output ONLY the final JSON matching the schema. Do not write any other text before, between, or after - no \
 commentary.`;
-
-function extractJson(text: string): string {
-  let t = text.trim();
-  if (t.startsWith("```")) {
-    const parts = t.split("```");
-    t = parts[1] ?? t;
-    if (t.startsWith("json")) t = t.slice(4);
-  }
-  t = t.trim().replace(/,(\s*[}\]])/g, "$1");
-  return t;
-}
 
 class ModelOutputError extends Error {}
 

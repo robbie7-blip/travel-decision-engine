@@ -164,6 +164,30 @@ jobs:
       # zero on a meal, a bed or a flight is a price we do not have, not
       # "Free".
       - run: npm run test:money
+      # Finding the JSON in a model reply, which every phase-1 half, every
+      # day call and every repair goes through. extractJson required the
+      # JSON to start at character zero, or a fence to. Measured: an
+      # UPPERCASE fence, a preamble before a fence, a preamble with no
+      # fence, and trailing prose all failed to parse - and "Here is your
+      # itinerary:" is about the most ordinary thing a model writes.
+      #
+      # The cost is not cosmetic. A parse failure is a ModelOutputError,
+      # which withOneRetryOf retries on the stated grounds that "malformed
+      # JSON is non-deterministic, one retry usually succeeds" - and a
+      # preamble is a HABIT, not noise, so the retry re-sends a request that
+      # fails identically, the two-phase path is abandoned, and the whole
+      # itinerary is regenerated in one serial call. Three paid calls and
+      # the slow path for a sentence in front of the answer, against a 30s
+      # budget.
+      #
+      # Candidates tried until one PARSES, rather than one cleverer
+      # extraction - guessing which slice is the payload is what the old
+      # version did. Brace counting respects strings and escapes, so a venue
+      # named `Da Enzo}` does not truncate the object, and nothing invents a
+      # closing brace: a truncated reply is a real failure with a real fix
+      # (the cap, which generatePhase1Half escalates). Reverting makes 19 of
+      # 43 red.
+      - run: npm run test:model-json
       # Whether the day leaves time to get between its stops - the check
       # the acceptance gate did not have, and the most common way an AI day
       # plan fails. Not a wrong fact: 09:00 at the Colosseum and 09:30 at
