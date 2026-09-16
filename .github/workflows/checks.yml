@@ -997,6 +997,17 @@ jobs:
       # not encodable UTF-8 and becomes a replacement character in the
       # downloaded file. Reverting the folder makes 5 cases red, reporting
       # those exact numbers.
+      #
+      # It now also covers the three model-written fields the earlier fix
+      # stopped short of. `days` and `items` were guarded; `time`, `title`
+      # and `location` were not, and one throw takes the WHOLE download with
+      # it - no file, no error, a button that does nothing on an itinerary
+      # that reads perfectly on screen, because React renders a missing
+      # title as nothing while `title.replace` throws. Plus what the
+      # calendar says about money: it printed the raw field, so a price the
+      # model wrote as "15-20" read "Estimated cost: EUR 15-20", and a
+      # dinner priced zero read "EUR 0" - the same "it's free" claim the
+      # trip page was stopped from making, in a file the traveller keeps.
       - run: npm run test:ics
       # The historical weather average - a figure shown to the traveller as
       # a real thing that happened. It was inline in the weather route,

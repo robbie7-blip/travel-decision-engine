@@ -195,6 +195,65 @@ function main() {
     check("and still returns a valid empty calendar", malformed.startsWith("BEGIN:VCALENDAR") && malformed.includes("END:VCALENDAR"));
   }
 
+  section("the three fields the last fix stopped short of");
+
+  {
+    // `days` and `items` were guarded; `time`, `title` and `location` were
+    // not, and they are model-written too. The page survives a missing
+    // title - React renders undefined as nothing - so the itinerary reads
+    // perfectly on screen while the download button does nothing at all.
+    // Each of these threw before: time.trim, title.replace, location.replace.
+    const shapes: [string, Partial<ItineraryItem>][] = [
+      ["time as a number", { time: 9 as unknown as string }],
+      ["time missing", { time: undefined as unknown as string }],
+      ["time as null", { time: null as unknown as string }],
+      ["title missing", { title: undefined as unknown as string }],
+      ["title as an object", { title: { text: "Lunch" } as unknown as string }],
+      ["location missing", { location: undefined as unknown as string }],
+      ["reasoning as a number", { reasoning: 42 as unknown as string }],
+    ];
+    for (const [name, over] of shapes) {
+      let threw = false;
+      let ics = "";
+      try {
+        ics = buildItineraryIcs(tripOf([item({ ...over, cost_estimate_eur: 20 })]), "job-6");
+      } catch {
+        threw = true;
+      }
+      check(`${name} does not throw`, threw === false);
+      check("  and the event is still written", ics.includes("BEGIN:VEVENT"), name);
+    }
+
+    // An unreadable time takes the function's own documented fallback -
+    // midday - rather than dropping the event or landing at 00:00.
+    const noTime = buildItineraryIcs(tripOf([item({ time: 9 as unknown as string })]), "job-7");
+    check("an unreadable time lands at midday", noTime.includes("DTSTART:20270501T120000"), /DTSTART[^\r\n]*/.exec(noTime)?.[0] ?? "");
+  }
+
+  section("what the calendar says about money");
+
+  {
+    // `€${item.cost_estimate_eur}` printed the raw field.
+    const ranged = buildItineraryIcs(tripOf([item({ cost_estimate_eur: "15-20" as unknown as number })]), "job-8");
+    check('a price of "15-20" does not print "€15-20"', !unfold(ranged).includes("15-20"), /Estimated cost[^\r\n]*/.exec(unfold(ranged))?.[0] ?? "(none)");
+    check("  the cost line is omitted entirely", !unfold(ranged).includes("Estimated cost"));
+
+    // The same "it's free" claim the trip page was just stopped from
+    // making, in a file the traveller keeps on their phone.
+    const freeDinner = buildItineraryIcs(tripOf([item({ type: "meal", cost_estimate_eur: 0 })]), "job-9");
+    check("a dinner priced zero does not print €0", !unfold(freeDinner).includes("Estimated cost: €0"), /Estimated cost[^\r\n]*/.exec(unfold(freeDinner))?.[0] ?? "(none)");
+
+    // A genuinely free activity still says so, because zero IS its price.
+    const freeWalk = buildItineraryIcs(tripOf([item({ type: "activity", cost_estimate_eur: 0 })]), "job-10");
+    check("a free walk still prints €0", unfold(freeWalk).includes("Estimated cost: €0"));
+
+    // And a real price is unchanged, recovered from text if need be.
+    const real = buildItineraryIcs(tripOf([item({ type: "meal", cost_estimate_eur: 28 })]), "job-11");
+    check("a real price prints", unfold(real).includes("Estimated cost: €28"));
+    const text = buildItineraryIcs(tripOf([item({ type: "meal", cost_estimate_eur: "28" as unknown as number })]), "job-12");
+    check('a price typed as "28" prints €28', unfold(text).includes("Estimated cost: €28"));
+  }
+
   finish();
 }
 

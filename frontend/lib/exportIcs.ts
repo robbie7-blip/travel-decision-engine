@@ -7,6 +7,7 @@
 // complexity for a first version of this.
 
 import type { Itinerary, ItineraryItem } from "./types";
+import { itemPriceEur } from "./engine/money";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -39,8 +40,22 @@ function formatIcsUtc(date: Date): string {
 
 /** Escapes text per RFC 5545 §3.3.11 - backslash first, then comma,
  * semicolon, and newline, in that order (escaping commas before the
- * backslash pass would double-escape the backslash just inserted). */
-function escapeIcsText(text: string): string {
+ * backslash pass would double-escape the backslash just inserted).
+ *
+ * Takes `unknown`, because every string it is handed is model-written JSON
+ * that crossed Redis under a type assertion.
+ *
+ * `title`, `location` and `time` are declared required on ItineraryItem and
+ * nothing has ever checked them. The page survives a missing title - React
+ * renders undefined as nothing - while `text.replace` here threw, and one
+ * throw takes the WHOLE download with it: no file, no error, a button that
+ * does nothing on an itinerary that reads perfectly on screen. That is the
+ * exact asymmetry this file's own comment records being fixed once already
+ * for `items` ("`days` is guarded here and `items` was not, so a day missing
+ * it threw and the calendar download failed on an itinerary that renders
+ * fine") - three fields short. */
+function escapeIcsText(text: unknown): string {
+  if (typeof text !== "string") return "";
   return text
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
@@ -109,7 +124,12 @@ export function foldIcsLine(line: string): string {
   return segments.join("\r\n ");
 }
 
-function parseTimeOfDay(time: string): { hour: number; minute: number } {
+function parseTimeOfDay(time: unknown): { hour: number; minute: number } {
+  // `time.trim()` on a model-written field that is declared a string and
+  // never checked. The function already has the right answer for a value it
+  // cannot read - midday, "a safe, visible default" - so a non-string takes
+  // that path instead of throwing the whole download away.
+  if (typeof time !== "string") return { hour: 12, minute: 0 };
   const hhmm = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
   if (hhmm) {
     return {
@@ -143,9 +163,17 @@ function buildEvent(item: ItineraryItem, dayDate: string, uid: string): string |
   const end = new Date(start.getTime() + EVENT_DURATION_MINUTES * 60_000);
 
   const tierLabel = item.confidence_tier ? TIER_LABEL[item.confidence_tier] : undefined;
+  // `€${item.cost_estimate_eur}` printed the raw field, so a price the model
+  // wrote as "15-20" read "Estimated cost: €15-20" in a calendar entry, and
+  // a dinner priced 0 read "Estimated cost: €0" - the same "it's free" claim
+  // the trip page was just stopped from making, in a file the traveller
+  // keeps. The line is OMITTED when there is no figure, which is what the
+  // page's "—" says and the only thing the calendar can say in its place.
+  const priceEur = itemPriceEur(item);
+  const costLine = Number.isFinite(priceEur) ? `Estimated cost: €${Math.round(priceEur)}` : undefined;
   const descriptionLines = [
-    item.reasoning,
-    `Estimated cost: €${item.cost_estimate_eur}`,
+    typeof item.reasoning === "string" ? item.reasoning : undefined,
+    costLine,
     tierLabel ? `Confidence: ${tierLabel}` : undefined,
   ].filter((line): line is string => Boolean(line));
 
