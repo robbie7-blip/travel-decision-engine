@@ -21,6 +21,7 @@
     "test:weather": "tsx lib/weather.test.ts",
     "test:ics": "tsx lib/exportIcs.test.ts",
     "test:local-visited": "tsx lib/localVisited.test.ts",
+    "test:curated": "tsx lib/curated.test.ts",
     "test:stats-share": "tsx lib/statsShare.test.ts",
     "test:edge-rate-limit": "tsx lib/edgeRateLimit.test.ts",
     "test:ratelimit": "tsx lib/ratelimit.test.ts",

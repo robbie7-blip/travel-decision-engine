@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
-import { DEMO_TRIP_KEY, type DemoTrip } from "@/lib/demoTrip";
+import { DEMO_TRIP_KEY, readDemoTrip, type DemoTrip } from "@/lib/demoTrip";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,11 @@ export async function GET() {
   const raw = await redis.get<string | DemoTrip>(DEMO_TRIP_KEY);
   if (!raw) return NextResponse.json({ demo: null });
 
-  const demo = typeof raw === "string" ? (JSON.parse(raw) as DemoTrip) : raw;
+  // An unreadable value is no demo, not a 500. The parse used to sit
+  // outside every try on a route the homepage calls, while this feature's
+  // whole argument is that a demo which cannot be shown is not shown.
+  const demo = readDemoTrip(raw);
+  if (!demo) return NextResponse.json({ demo: null });
 
   // Confirm the underlying job still exists and finished successfully -
   // the demo trip's own record has no TTL, but the job it points at does

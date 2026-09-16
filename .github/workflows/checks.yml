@@ -1045,6 +1045,21 @@ jobs:
       # absence and not type, and a non-array has no `.map` - the Map Pins
       # tab throws. Reverting the reader makes 23 of 64 red.
       - run: npm run test:local-visited
+      # The two admin-curated surfaces: the homepage demo trip and the
+      # /showcase gallery. Both read a stored record with an unguarded
+      # JSON.parse and an unvalidated `as` - four call sites, the same two
+      # lines each - and the showcase one is PUBLIC. loadShowcaseCards put
+      # the parse inside a `.map` and the page then rendered
+      # `card.destinations.join(" . ")`, so ONE unreadable entry among good
+      # ones took the whole gallery down five different ways: a truncated
+      # entry, a non-JSON entry, destinations as a string, destinations
+      # missing, a null entry. Not the bad card - every card, on an
+      # unauthenticated marketing page, for as long as the entry sat in an
+      # admin-written list nobody would think to look at. The demo one 500s
+      # /api/demo-trip, which the homepage calls, where the feature's own
+      # argument is that a demo it cannot show is not shown. Reverting the
+      # list reader makes 24 of 69 red.
+      - run: npm run test:curated
       # The calendar download - a file the traveller imports into a real
       # calendar app, where a malformed line means the import silently fails
       # or renders as garbage. It had no test, and the folder counted the

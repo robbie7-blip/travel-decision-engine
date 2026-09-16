@@ -7,13 +7,16 @@ import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
 import { jobKey, CURATED_JOB_TTL_SECONDS } from "@/lib/jobs";
 import { extendTtl } from "@/lib/jobTtl";
-import { MAX_SHOWCASE_ENTRIES, SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
+import { MAX_SHOWCASE_ENTRIES, readShowcaseList, SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
 
 export const runtime = "nodejs";
 
 async function loadList(redis: ReturnType<typeof getRedis>): Promise<ShowcaseTrip[]> {
   const raw = await redis.lrange<string | ShowcaseTrip>(SHOWCASE_LIST_KEY, 0, -1);
-  return raw.map((r) => (typeof r === "string" ? (JSON.parse(r) as ShowcaseTrip) : r));
+  // The same reader the public page uses. An unreadable entry drops out
+  // here too, which is what makes saveList below a repair: the next add or
+  // remove rewrites the list without it.
+  return readShowcaseList(raw);
 }
 
 // Rewrites the whole list rather than lrem/lset-ing a single value - Upstash

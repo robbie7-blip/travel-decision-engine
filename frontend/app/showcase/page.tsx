@@ -10,7 +10,7 @@ import Link from "next/link";
 import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
 import { computeTrustScore } from "@/lib/trustScore";
-import { SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
+import { readShowcaseList, SHOWCASE_LIST_KEY, type ShowcaseTrip } from "@/lib/showcase";
 import { AccountControl } from "@/components/AccountControl";
 import { Stamp } from "@/components/ui";
 import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "@/components/HeaderNav";
@@ -48,7 +48,11 @@ async function loadShowcaseCards(): Promise<ShowcaseCard[]> {
   }
 
   const raw = await redis.lrange<string | ShowcaseTrip>(SHOWCASE_LIST_KEY, 0, -1);
-  const stored = raw.map((r) => (typeof r === "string" ? (JSON.parse(r) as ShowcaseTrip) : r));
+  // Read, not asserted. `raw.map((r) => JSON.parse(r) as ShowcaseTrip)` put
+  // an unguarded parse inside a map on a PUBLIC page, and one unreadable
+  // entry among good ones took the whole gallery down - five ways, measured.
+  // See readShowcaseTrip.
+  const stored = readShowcaseList(raw);
 
   // Newest first, and re-validated against the live job on every read (same
   // as /api/demo-trip) so an expired job just quietly drops off the gallery
@@ -60,8 +64,12 @@ async function loadShowcaseCards(): Promise<ShowcaseCard[]> {
     cards.push({
       jobId: entry.jobId,
       destinations: entry.destinations,
-      tripSummary: job.result.trip_summary,
-      budgetFeasible: job.result.budget_feasibility.feasible,
+      // isJob validates the envelope and says nothing about `result`, so
+      // these two are model-written fields behind a type assertion.
+      // `budget_feasibility.feasible` was a two-level unguarded chain, and
+      // `trip_summary` is rendered straight into the card.
+      tripSummary: typeof job.result.trip_summary === "string" ? job.result.trip_summary : "",
+      budgetFeasible: job.result.budget_feasibility?.feasible === true,
       trustPercent: computeTrustScore(job.result).percent,
       dayCount: job.result.days?.length ?? 0,
     });

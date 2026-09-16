@@ -9,7 +9,7 @@ import { getRedis } from "@/lib/redis";
 import { loadJob } from "@/lib/loadJob";
 import { jobKey, CURATED_JOB_TTL_SECONDS } from "@/lib/jobs";
 import { extendTtl } from "@/lib/jobTtl";
-import { DEMO_TRIP_KEY, type DemoTrip } from "@/lib/demoTrip";
+import { DEMO_TRIP_KEY, readDemoTrip, type DemoTrip } from "@/lib/demoTrip";
 
 export const runtime = "nodejs";
 
@@ -23,8 +23,9 @@ export async function GET() {
 
   const raw = await redis.get<string | DemoTrip>(DEMO_TRIP_KEY);
   if (!raw) return NextResponse.json({ demo: null });
-  const demo = typeof raw === "string" ? (JSON.parse(raw) as DemoTrip) : raw;
-  return NextResponse.json({ demo });
+  // Same reader as the public route, so the admin page cannot show a demo
+  // the homepage would refuse - or 500 on a value the homepage survives.
+  return NextResponse.json({ demo: readDemoTrip(raw) });
 }
 
 export async function POST(request: NextRequest) {
