@@ -848,6 +848,35 @@ jobs:
       # The assertions now state which is which, from the data, and refuse
       # any polygon that is neither a tracked country nor a declared
       # territory.
+      # The 29 hand-entered country points, and the gap they close.
+      #
+      # lib/worldGeo.ts has 175 polygons; lib/countries.ts tracks 197
+      # countries. The 29 in between are the microstates and small island
+      # nations - Singapore, Malta, Monaco, Barbados, most of Oceania - and
+      # the shortfall is not this app's doing: react-svg-worldmap's own
+      # bundled topology, which that data was extracted from, does not
+      # contain them either (checked by grepping the package, not assumed).
+      # So a traveller could tick Singapore in the visited checklist and
+      # watch nothing happen on either map, and the dart could not reach
+      # those 29 at all. One missing coordinate, two features held back.
+      #
+      # These are the ONLY coordinates in this repository that came from
+      # memory rather than a dataset, so they get the strongest check
+      # actually available: each point is matched against the nearest
+      # country the topology DOES draw, and has to come out beside a
+      # plausible neighbour within a per-country tolerance. Vatican City
+      # inside Italy. Singapore inside Malaysia's outline. Malta 96km from
+      # Sicily, against a real ~90km. Bahrain 37km off Saudi Arabia. Palau
+      # 892km from the Philippines. A swapped lat/lng, a dropped minus or a
+      # wrong hemisphere moves a point thousands of kilometres and fails -
+      # and two assertions prove that by deliberately swapping Singapore
+      # and flipping Mauritius.
+      #
+      # The first run of this check FAILED on Dominica and Saint Lucia,
+      # which is the check working: it expected Guadeloupe and Martinique
+      # as neighbours and neither is in the topology at all. The
+      # coordinates were right; the expectation was wrong.
+      - run: npm run test:country-points
       - run: npm run test:dart-globe
       - run: npm run test:flight-import
       - run: npm run test:spin

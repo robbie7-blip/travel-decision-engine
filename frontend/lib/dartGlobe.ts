@@ -24,18 +24,22 @@
 // at length why a second world dataset is an accuracy risk, and this feature
 // is not a good enough reason to take it.
 //
-// WHAT THE DART CANNOT HIT, stated because it is a real limit and not a
-// rounding error: 29 of the 197 tracked countries have no polygon in that
-// topology - the microstates and small island nations, Singapore among them
-// (see DART_UNREACHABLE below). Giving them coordinates would mean typing 29
-// latitudes and longitudes by hand, and a wrong one puts the dart in the sea
-// beside the country it names. That is the same trade worldGeo.ts already
-// refused, so it is refused here too.
+// EVERY TRACKED COUNTRY IS REACHABLE. That was not true at first: 29 of the
+// 197 have no polygon in the topology - the microstates and small island
+// nations, Singapore among them - and the first version simply could not hit
+// them. The same missing coordinate also meant those 29 could never be
+// coloured in on the visited maps, a gap older and wider than this feature,
+// so lib/countryPoints.ts fills it once for both. Those 29 get a fixed
+// capital coordinate rather than a sampled point, since there is no outline
+// to sample from; countryPoints.test.ts checks each one against the nearest
+// shape the topology DOES have, which catches a swapped lat/lng or a wrong
+// ocean even though it cannot catch being thirty kilometres out.
 //
 // Run: npm run test:dart-globe
 
 import { WORLD_COUNTRY_FEATURES, type CountryFeature } from "./worldGeo";
 import { COUNTRIES, getCountry } from "./countries";
+import { countryPoint } from "./countryPoints";
 import { SPIN_POOL, type SpinSlug } from "./spin";
 
 export interface DartHit {
@@ -43,6 +47,16 @@ export interface DartHit {
   code: string;
   lat: number;
   lng: number;
+  /** False for the 29 countries with no polygon, where the point is a fixed
+   * capital coordinate rather than one sampled inside an outline.
+   *
+   * Carried rather than inferred because it is the difference between two
+   * different promises: "the dart is inside this border" and "the dart is at
+   * this country". The first is what the suite proves for the other 168; the
+   * second is all that can be promised without a shape, and a caller that
+   * highlights the country on the globe needs to know there is nothing to
+   * highlight. */
+  insideBorder: boolean;
 }
 
 /** Polygons the topology draws that lib/countries.ts deliberately does not
@@ -66,19 +80,25 @@ export const NON_COUNTRY_POLYGONS: Readonly<Record<string, string>> = {
   PR: "Puerto Rico",
 };
 
-/** Every tracked country that has geometry to land in, with it. */
-export const DART_TARGETS: readonly { code: string; feature: CountryFeature }[] =
+/** Every tracked country that has a polygon, with it. */
+export const DART_SHAPES: readonly { code: string; feature: CountryFeature }[] =
   WORLD_COUNTRY_FEATURES.flatMap((feature) => {
     const code = feature.properties.I.toUpperCase();
     if (!getCountry(code)) return [];
     return [{ code, feature }];
   }).sort((a, b) => a.code.localeCompare(b.code));
 
-/** Tracked countries the dart can never hit, because the topology has no
- * polygon for them. Exported so the UI can say so if it ever needs to, and
- * so the test can assert the list has not quietly grown. */
-export const DART_UNREACHABLE: readonly string[] = COUNTRIES.filter(
-  (c) => !DART_TARGETS.some((t) => t.code === c.code)
+/** Every tracked country, whether its position comes from an outline or
+ * from a fixed point. The dart draws from this, so the whole list is
+ * reachable - which is the point. */
+export const DART_TARGETS: readonly string[] = COUNTRIES.map((c) => c.code).sort();
+
+/** The countries positioned by a fixed capital coordinate because the
+ * topology has no outline for them. Exported so the test can assert the
+ * two sets together account for every tracked country, and neither has
+ * quietly grown. */
+export const DART_POINT_ONLY: readonly string[] = COUNTRIES.filter(
+  (c) => !DART_SHAPES.some((t) => t.code === c.code)
 )
   .map((c) => c.code)
   .sort();
@@ -228,16 +248,29 @@ export function sampleInside(feature: CountryFeature, random: () => number): { l
  * geography lesson about Siberia. */
 export function throwDart(random: () => number = Math.random): DartHit | null {
   if (DART_TARGETS.length === 0) return null;
-  const target = DART_TARGETS[Math.floor(random() * DART_TARGETS.length)];
-  if (!target) return null;
-  const { lat, lng } = sampleInside(target.feature, random);
-  return { code: target.code, lat, lng };
+  const code = DART_TARGETS[Math.floor(random() * DART_TARGETS.length)];
+  if (!code) return null;
+  return hitFor(code, random);
+}
+
+/** Where the dart lands for a given country. Split out from throwDart so
+ * the test can ask about a specific country rather than throwing until it
+ * comes up. */
+export function hitFor(code: string, random: () => number = Math.random): DartHit | null {
+  const shape = DART_SHAPES.find((t) => t.code === code);
+  if (shape) {
+    const { lat, lng } = sampleInside(shape.feature, random);
+    return { code, lat, lng, insideBorder: true };
+  }
+  const point = countryPoint(code);
+  if (point) return { code, lat: point.lat, lng: point.lng, insideBorder: false };
+  return null;
 }
 
 /** Every country the dart could pick, for the test and for anything that
  * wants to show the odds honestly. */
 export function dartCountryCodes(): string[] {
-  return DART_TARGETS.map((t) => t.code);
+  return [...DART_TARGETS];
 }
 
 /** Re-exported so a caller does not need both modules to name a hit. */

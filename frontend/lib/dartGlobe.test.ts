@@ -17,9 +17,11 @@
 // Run: npm run test:dart-globe
 
 import {
+  DART_POINT_ONLY,
+  DART_SHAPES,
   DART_TARGETS,
-  DART_UNREACHABLE,
   dartCountryCodes,
+  hitFor,
   guidesForCountry,
   isInsideCountry,
   NON_COUNTRY_POLYGONS,
@@ -88,18 +90,24 @@ function main() {
   {
     section("what the dart can and cannot hit");
 
-    check("there are targets", DART_TARGETS.length > 150, String(DART_TARGETS.length));
-    check("every target is a tracked country", DART_TARGETS.every((t) => getCountry(t.code) !== undefined));
-    check("every target has geometry", DART_TARGETS.every((t) => t.feature.geometry !== undefined));
+    // EVERY tracked country, which is the whole point of the change that
+    // added countryPoints.ts - there is no unreachable list any more.
+    check("every tracked country is a target", DART_TARGETS.length === COUNTRIES.length, String(DART_TARGETS.length));
+    check("every target is a tracked country", DART_TARGETS.every((code) => getCountry(code) !== undefined));
     check("targets are sorted", JSON.stringify(dartCountryCodes()) === JSON.stringify([...dartCountryCodes()].sort()));
     check("no duplicates", new Set(dartCountryCodes()).size === DART_TARGETS.length);
 
-    // The stated limit, asserted so it cannot quietly grow. These are the
-    // microstates and island nations with no polygon in the topology.
-    check("the unreachable list is small", DART_UNREACHABLE.length < 35, String(DART_UNREACHABLE.length));
-    check("  and accounts for every tracked country", DART_TARGETS.length + DART_UNREACHABLE.length === COUNTRIES.length);
-    check("Singapore is among them, as documented", DART_UNREACHABLE.includes("SG"));
-    // ...and the big ones are definitely reachable.
+    // The two ways a country is positioned, together accounting for all of
+    // them, so neither set can quietly grow.
+    check("shapes plus points account for every country", DART_SHAPES.length + DART_POINT_ONLY.length === COUNTRIES.length);
+    check("every shape has geometry", DART_SHAPES.every((t) => t.feature.geometry !== undefined));
+    check("the point-only list is the small one", DART_POINT_ONLY.length < 35, String(DART_POINT_ONLY.length));
+
+    // The ones that used to be unreachable, now named explicitly.
+    for (const code of ["SG", "MT", "MC", "VA", "BB", "MV", "TV", "NR"]) {
+      check(`${code} is reachable now`, dartCountryCodes().includes(code));
+      check(`  and has a landing point`, hitFor(code, () => 0.5) !== null);
+    }
     for (const code of ["IT", "FR", "JP", "US", "BR", "AU", "ZA", "IN", "MX", "TH", "GB", "BG"]) {
       check(`${code} is reachable`, dartCountryCodes().includes(code));
     }
@@ -113,12 +121,12 @@ function main() {
     // wrong is the one nobody thought of.
     const random = seeded(4242);
     const outside: string[] = [];
-    for (const target of DART_TARGETS) {
+    for (const target of DART_SHAPES) {
       const { lat, lng } = sampleInside(target.feature, random);
       if (!isInsideCountry(lng, lat, target.feature)) outside.push(target.code);
     }
     check(
-      `all ${DART_TARGETS.length} countries yield a point inside themselves`,
+      `all ${DART_SHAPES.length} countries with an outline yield a point inside themselves`,
       outside.length === 0,
       JSON.stringify(outside)
     );
@@ -127,18 +135,27 @@ function main() {
     const throws = seeded(99);
     let checked = 0;
     let wrong = 0;
+    let pointOnly = 0;
     for (let i = 0; i < 600; i++) {
       const hit = throwDart(throws);
       if (!hit) continue;
-      const target = DART_TARGETS.find((t) => t.code === hit.code);
+      checked++;
+      // A country with no outline carries insideBorder: false and cannot be
+      // checked this way - that is exactly why the flag is on the hit rather
+      // than inferred, and countryPoints.test.ts is what checks those.
+      if (!hit.insideBorder) {
+        pointOnly++;
+        continue;
+      }
+      const target = DART_SHAPES.find((t) => t.code === hit.code);
       if (!target) {
         wrong++;
         continue;
       }
-      checked++;
       if (!isInsideCountry(hit.lng, hit.lat, target.feature)) wrong++;
     }
     check(`600 throws all landed in the country they named`, wrong === 0 && checked === 600, `${wrong} wrong of ${checked}`);
+    check(`  and the point-only ones were flagged, not silently claimed`, pointOnly > 0, `${pointOnly} of 600`);
   }
 
   {
@@ -212,7 +229,7 @@ function main() {
   {
     section("point-in-polygon, on cases with a known answer");
 
-    const italy = DART_TARGETS.find((t) => t.code === "IT")?.feature;
+    const italy = DART_SHAPES.find((t) => t.code === "IT")?.feature;
     check("italy has geometry", italy !== undefined);
     if (italy) {
       // Rome, and a point well out in the Tyrrhenian Sea.
@@ -222,7 +239,7 @@ function main() {
       check("the north pole is not", isInsideCountry(0, 90, italy) === false);
     }
 
-    const france = DART_TARGETS.find((t) => t.code === "FR")?.feature;
+    const france = DART_SHAPES.find((t) => t.code === "FR")?.feature;
     if (france) {
       check("Paris is in France", isInsideCountry(2.35, 48.86, france));
       check("  and Rome is not", isInsideCountry(12.5, 41.9, france) === false);

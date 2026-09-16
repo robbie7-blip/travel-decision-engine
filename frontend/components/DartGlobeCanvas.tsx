@@ -48,6 +48,15 @@ const FLIGHT_MS = 1600;
 const REDUCED_FLIGHT_MS = 450;
 const IDLE_ALTITUDE = 1.8;
 const HIT_ALTITUDE = 0.9;
+/** Closer, for the countries with no outline to light up.
+ *
+ * Monaco is two square kilometres and Tuvalu twenty-six. At the altitude
+ * that frames Brazil nicely, the marker for one of those is a dot in an
+ * expanse of blue with nothing highlighted behind it - the country cannot
+ * be coloured because the topology has no shape for it (see
+ * lib/countryPoints.ts). Coming in closer is what makes the answer legible
+ * rather than a pin in the sea. */
+const POINT_HIT_ALTITUDE = 0.35;
 
 export default function DartGlobeCanvas({ hit, throwId, reducedMotion, onArrived }: DartGlobeCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -84,7 +93,8 @@ export default function DartGlobeCanvas({ hit, throwId, reducedMotion, onArrived
     const globe = globeRef.current;
     if (!globe || size === 0 || !hit) return;
     const ms = reducedMotion ? REDUCED_FLIGHT_MS : FLIGHT_MS;
-    globe.pointOfView({ lat: hit.lat, lng: hit.lng, altitude: HIT_ALTITUDE }, ms);
+    const altitude = hit.insideBorder ? HIT_ALTITUDE : POINT_HIT_ALTITUDE;
+    globe.pointOfView({ lat: hit.lat, lng: hit.lng, altitude }, ms);
     const timer = setTimeout(() => arrived.current(), ms);
     return () => clearTimeout(timer);
   }, [hit, throwId, size, reducedMotion]);
