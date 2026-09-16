@@ -1059,6 +1059,14 @@ jobs:
       # /api/demo-trip, which the homepage calls, where the feature's own
       # argument is that a demo it cannot show is not shown. Reverting the
       # list reader makes 24 of 69 red.
+      #
+      # Plus the feedback list, which is the same two lines a third time and
+      # the worst place for them: /admin/feedback parsed inside a map and
+      # then rendered `e.rating.toUpperCase()` and `e.item.title`, and this
+      # list has NO TTL by design ("the whole point is accumulating a
+      # correction dataset over time") - so one bad entry is permanent and
+      # the page that would show it to you is the page it breaks. Reverting
+      # that reader makes 6 more red.
       - run: npm run test:curated
       # The calendar download - a file the traveller imports into a real
       # calendar app, where a malformed line means the import silently fails

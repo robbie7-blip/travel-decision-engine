@@ -93,8 +93,28 @@ export async function GET(req: NextRequest) {
   const perCity = await Promise.all(
     destinations.map(async (city) => {
       if (redis) {
-        const cached = await redis.get<string[] | string>(cacheKey(city));
-        if (cached) return typeof cached === "string" ? (JSON.parse(cached) as string[]) : cached;
+        // Guarded, because this whole route is written to degrade - every
+        // other failure path returns [] - and the cache read was the one
+        // step that was not. Two throws sat here: the Upstash round-trip,
+        // and JSON.parse on a truncated or older-format value. Either one
+        // rejects the Promise.all below and 500s the facts endpoint, which
+        // is what the loading screen rotates through while the traveller
+        // waits out the generation.
+        //
+        // The ELEMENTS are checked too, not just that something came back.
+        // `JSON.parse('"hello"') as string[]` has a length and indexes into
+        // single characters, so a poisoned key would have shown the loading
+        // screen a fact per letter.
+        try {
+          const cached = await redis.get<string[] | string>(cacheKey(city));
+          const parsed = typeof cached === "string" ? JSON.parse(cached) : cached;
+          if (Array.isArray(parsed)) {
+            const facts = parsed.filter((f): f is string => typeof f === "string" && f.trim().length > 0);
+            if (facts.length > 0) return facts;
+          }
+        } catch {
+          // Unreadable cache is no cache. Fall through and fetch it.
+        }
       }
 
       const facts = await factsForCity(city);

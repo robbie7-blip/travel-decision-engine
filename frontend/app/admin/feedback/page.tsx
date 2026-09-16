@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { getRedis } from "@/lib/redis";
-import { FEEDBACK_LIST_KEY, type FeedbackEntry } from "@/lib/feedback";
+import { FEEDBACK_LIST_KEY, readFeedbackList, type FeedbackEntry } from "@/lib/feedback";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
@@ -20,9 +20,14 @@ async function loadFeedback(): Promise<FeedbackEntry[]> {
 
   const raw = await redis.lrange<string | FeedbackEntry>(FEEDBACK_LIST_KEY, 0, -1);
   // Upstash's client auto-deserializes JSON-looking strings, so entries may
-  // already be objects rather than strings depending on how they were set.
-  const entries = raw.map((r) => (typeof r === "string" ? (JSON.parse(r) as FeedbackEntry) : r));
-  return entries.reverse(); // newest first
+  // already be objects rather than strings depending on how they were set -
+  // readFeedbackEntry handles both, and it READS rather than asserting. The
+  // parse used to sit inside this map with an `as` after it, and the page
+  // then dereferenced `e.rating.toUpperCase()` and `e.item.title`, so one
+  // unreadable entry took the whole page down. This list has no TTL by
+  // design, so that entry would be permanent - and the page that would show
+  // it to you is the page it breaks.
+  return readFeedbackList(raw).reverse(); // newest first
 }
 
 export default async function FeedbackAdminPage() {

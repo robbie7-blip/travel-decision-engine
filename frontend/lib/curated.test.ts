@@ -30,6 +30,7 @@
 // Run: npm run test:curated
 
 import { readDemoTrip } from "./demoTrip";
+import { readFeedbackEntry, readFeedbackList, type FeedbackEntry } from "./feedback";
 import { readShowcaseList, readShowcaseTrip } from "./showcase";
 import { check, finish, heading, section } from "./testutil";
 
@@ -155,6 +156,72 @@ function main() {
       // demo set", which is exactly what an unreadable one is.
       check("  and reads as no demo", out === null, String(out));
     }
+  }
+
+  {
+    section("the feedback list, which has no TTL");
+
+    // Same two lines, third list. /admin/feedback did the parse inside a
+    // map and then rendered `e.rating.toUpperCase()` and `e.item.title` -
+    // two unguarded dereferences on fields nothing checked. And this list
+    // is stored durably on purpose ("the whole point is accumulating a
+    // correction dataset over time"), so a bad entry is permanent and the
+    // page that would show it to you is the page it breaks.
+    const good = {
+      id: "f1",
+      jobId: "job-abc",
+      createdAt: 1_700_000_000_000,
+      day: 2,
+      rating: "wrong",
+      comment: "closed when we got there",
+      item: { time: "13:00", type: "meal", title: "Lunch at Roscioli", location: "Rome", cost_estimate_eur: 28, reasoning: "r", source_confidence: "inferred" },
+    };
+
+    check("a real entry reads", readFeedbackEntry(JSON.stringify(good))?.id === "f1");
+    check("  as an object too", readFeedbackEntry(good)?.rating === "wrong");
+    check("  and keeps the comment", readFeedbackEntry(good)?.comment === "closed when we got there");
+    check("  and the item", readFeedbackEntry(good)?.item.title === "Lunch at Roscioli");
+
+    const bad: [string, unknown][] = [
+      ["a truncated entry", '{"id":"f2","rating":'],
+      ["a non-JSON entry", "not json"],
+      ["null", JSON.stringify(null)],
+      ["a number", 42],
+      ["no rating", JSON.stringify({ id: "f2", item: good.item })],
+      ["a rating that is not one", JSON.stringify({ id: "f2", rating: "meh", item: good.item })],
+      ["a numeric rating", JSON.stringify({ id: "f2", rating: 1, item: good.item })],
+    ];
+    for (const [name, entry] of bad) {
+      let threw = false;
+      let out: FeedbackEntry[] = [];
+      try {
+        out = readFeedbackList([JSON.stringify(good), entry, JSON.stringify(good)]);
+      } catch {
+        threw = true;
+      }
+      check(`${name} does not take the page down`, threw === false);
+      check("  and the two real entries survive", out.length === 2, String(out.length));
+    }
+
+    // The two dereferences the page makes, on every shape that used to
+    // reach them.
+    for (const item of [undefined, null, "Lunch", 42, {}, { title: 42 }, []] as unknown[]) {
+      const e = readFeedbackEntry({ ...good, item });
+      check(`item as ${JSON.stringify(item) ?? "undefined"} keeps the feedback`, e !== null, JSON.stringify(e));
+      // Losing a whole piece of feedback because the snapshot beside it is
+      // malformed would lose the data this list exists to keep.
+      let threw = false;
+      try {
+        // Exactly what the page does.
+        void `${e?.rating.toUpperCase()} ${e?.item.title} ${e?.item.type} ${e?.item.location}`;
+      } catch {
+        threw = true;
+      }
+      check("  and the page can render it", threw === false);
+    }
+
+    const allBad = readFeedbackList(["not json", null, 42, JSON.stringify({ nope: true })]);
+    check("an entirely unreadable list is empty, not a 500", allBad.length === 0, JSON.stringify(allBad));
   }
 
   finish();
