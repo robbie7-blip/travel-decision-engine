@@ -231,6 +231,66 @@ async function main() {
     check("all twelve survive verification", out.days[0].items.length === 12, String(out.days[0].items.length));
   }
 
+  {
+    section("one venue throwing must not abandon the pass");
+
+    // runWithLimit fails FAST by design: one throw sets `failed` and
+    // rethrows, and Promise.all over the workers rejects. That is right for
+    // the day calls it was written for and wrong here - this file's own
+    // comments say verification degrades per item ("leave the item
+    // untouched rather than deleting it", "those items ship unverified
+    // rather than being dropped").
+    //
+    // And the blast radius was the whole trip: the whole-itinerary pass and
+    // the post-repair pass are both awaited inside processJob's try with no
+    // catch of their own, so one throw marked a fully generated, fully paid
+    // itinerary "Unexpected error generating itinerary". Only the per-day
+    // passes carried `.catch(() => {})`.
+    const many = Array.from({ length: 6 }, (_, i) =>
+      meal({ title: `Dinner at Venue ${i + 1}`, venue_name: `Venue ${i + 1}` })
+    );
+    // A throw that genuinely ESCAPES lookupPlace, which is the hard part of
+    // testing this: lookupPlace's own try already swallows the fetch and
+    // the json, so a broken response body comes back as "unavailable" and
+    // proves nothing. The geocode cache is passed in by the caller
+    // (processJob hands it prewarmGeocodes' Map), and a rejecting promise
+    // in it makes `await geocode(...)` throw inside the fan-out with no try
+    // of its own between it and runWithLimit.
+    const poisoned = new Map<string, Promise<{ latitude: number; longitude: number } | null>>();
+    const rejecting = Promise.reject(new Error("geocode blew up"));
+    // Observed here so Node does not report it as unhandled before the
+    // fan-out gets to await it.
+    rejecting.catch(() => {});
+    poisoned.set("Rome", rejecting as Promise<{ latitude: number; longitude: number } | null>);
+
+    const f = stubFetch((_calls, queriedName) => ({
+      body: { places: [place({ displayName: { text: queriedName } })] },
+    }));
+    let threw = false;
+    let out: Itinerary | null = null;
+    try {
+      out = await checkVenues(trip(many), { geoCache: poisoned as never });
+    } catch {
+      threw = true;
+    }
+    f.restore();
+    check("checkVenues does not reject", threw === false);
+    // Nothing is deleted. That is the whole point: a verifier that cannot
+    // run is not evidence against a venue, and this file already says so
+    // for the "unavailable" case.
+    const items = out?.days[0].items ?? [];
+    check("  no item is lost to the failure", items.length === 6, String(items.length));
+    check(
+      "  and none is claimed as verified",
+      items.every((i) => i.google_maps_url == null),
+      JSON.stringify(items.map((i) => i.google_maps_url))
+    );
+    // Reverted (the try around verifyOne removed), runWithLimit fails fast:
+    // checkVenues rejects, and in processJob that rejection is awaited
+    // inside the try with no catch - so the paid itinerary is discarded.
+    check("  the itinerary comes back rather than an exception", out !== null);
+  }
+
   if (hadKey === undefined) delete process.env.GOOGLE_PLACES_API_KEY;
   else process.env.GOOGLE_PLACES_API_KEY = hadKey;
 

@@ -648,7 +648,11 @@ function applyPlaceData(item: ItineraryItem, place: PlacesApiPlace): void {
   }
   item.google_price_level = mapPriceLevel(place.priceLevel);
   item.google_business_status = mapBusinessStatus(place.businessStatus);
-  if (place.id && place.displayName?.text) {
+  // Strings, not merely truthy - both go into a URL via
+  // encodeURIComponent, which stringifies whatever it is handed, so a
+  // non-string here would build a Maps link to "[object Object]" and hang
+  // it off a verified badge.
+  if (typeof place.id === "string" && typeof place.displayName?.text === "string" && place.displayName.text) {
     item.google_maps_url = buildMapsUrl(place.displayName.text, place.id);
   }
 
@@ -725,8 +729,11 @@ export async function checkVenues(
   itinerary: Itinerary,
   options: CheckVenuesOptions = {}
 ): Promise<Itinerary> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) return itinerary;
+  const configuredKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!configuredKey) return itinerary;
+  // Narrowed into a const because verifyOne below is a closure, and
+  // TypeScript cannot know a closure runs before the binding could change.
+  const apiKey: string = configuredKey;
 
   // Paired with its day, because the single most valuable thing this
   // function can check - is the place open when we're sending someone -
@@ -741,11 +748,49 @@ export async function checkVenues(
   const toRemove = new Set<ItineraryItem>();
   const geoCache = options.geoCache ?? new Map<string, Promise<GeoPoint | null>>();
   let unavailable = 0;
+  let threw = 0;
 
   // Bounded fan-out rather than Promise.all over every venue - see
   // MAX_PARALLEL_PLACES. Six at a time still resolves a full trip in a
   // couple of rounds while staying inside Google's per-second budget.
+  //
+  // EVERY ITEM IS ISOLATED, which runWithLimit alone does not do: it fails
+  // fast by design - one throw sets `failed` and rethrows, and Promise.all
+  // over the workers rejects. That is right for the DAY CALLS it was
+  // written for, where a day that cannot be generated should abandon the
+  // fan-out so the caller can fall back. It is wrong here, and this file
+  // says so twice in its own words: "leave the item untouched rather than
+  // deleting it", "those items ship unverified rather than being dropped".
+  // Verification is per-item by construction and degrades per item.
+  //
+  // What it cost: the whole-itinerary pass and the post-repair pass are
+  // both awaited inside processJob's try with no catch of their own - only
+  // the per-day passes carry `.catch(() => {})`. So one unexpected throw on
+  // one venue abandoned verification for every remaining item AND marked a
+  // fully generated, fully paid itinerary "Unexpected error generating
+  // itinerary". The two calls that cover the refinement and single-call
+  // paths were the unprotected ones.
+  //
+  // Counted separately from `unavailable`, because they are different
+  // facts: a 429 or a timeout is Google not answering, and a throw in here
+  // is our own bug or a response shape nobody expected. Reporting them as
+  // the same number is how one would hide behind the other.
   await runWithLimit(targets, MAX_PARALLEL_PLACES, async ({ item, date }) => {
+    try {
+      await verifyOne(item, date);
+    } catch (e) {
+      threw++;
+      console.error(
+        `[worker] venue verification threw for "${resolveVenueName(item) ?? item.title}" - ` +
+          `leaving it unverified rather than abandoning the pass:`,
+        e instanceof Error ? e.message : String(e)
+      );
+    }
+  });
+
+  /** One venue, checked. Extracted only so the loop above can isolate it;
+   * the body is unchanged. */
+  async function verifyOne(item: ItineraryItem, date: string): Promise<void> {
       // Safe: item is only in targets because isNamedVenueItem already
       // confirmed resolveVenueName(item) is non-null.
       const venueName = resolveVenueName(item)!;
@@ -759,7 +804,15 @@ export async function checkVenues(
       }
 
       const place = lookup.status === "found" ? lookup.place : null;
-      const placeName = place?.displayName?.text;
+      // A STRING, not merely present. `place.displayName.text` is read off a
+      // payload cast with `as PlacesApiResponse`, and normalizeName does
+      // `input.toLowerCase()` - so a non-string here threw out of
+      // namesLikelyMatch, past lookupPlace's try (which only wraps the
+      // fetch and the json), and into the fan-out. Found while writing the
+      // isolation test below, which is what a reachable version of the
+      // throw that isolation exists for looks like.
+      const raw = place?.displayName?.text;
+      const placeName = typeof raw === "string" && raw.trim() ? raw : null;
       const matched = place && placeName && namesLikelyMatch(venueName, placeName);
 
       // Lodging is downgraded to unnamed instead of dropped - see
@@ -814,7 +867,14 @@ export async function checkVenues(
         // LANDMARK_RATING_COUNT).
         reject(item);
       }
-  });
+  }
+
+  if (threw > 0) {
+    console.error(
+      `[worker] venue verification threw on ${threw}/${targets.length} venue(s) - those items ship ` +
+        `unverified. This is a bug or an unexpected Places response, not a verdict on the venue.`
+    );
+  }
 
   if (unavailable > 0) {
     // Loud on purpose. Silently shipping unverified venues is the right

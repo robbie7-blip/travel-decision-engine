@@ -271,6 +271,18 @@ jobs:
       # suite report every item deleted - a Places outage emptying whole
       # trips.
       - run: npm run test:venues
+      # (test:venues also covers ISOLATION. runWithLimit fails fast by
+      # design - one throw sets `failed` and rethrows, and Promise.all over
+      # the workers rejects - which is right for the day calls it was
+      # written for and wrong for verification, a stage this file's own
+      # comments say degrades per item: "leave the item untouched rather
+      # than deleting it", "those items ship unverified rather than being
+      # dropped". The whole-itinerary pass and the post-repair pass are both
+      # awaited inside processJob's try with no catch of their own - only
+      # the per-day passes carry one - so one unexpected throw on one venue
+      # abandoned verification for every remaining item AND marked a fully
+      # generated, fully paid itinerary "Unexpected error". Reverting makes
+      # 3 red, one of them "no item is lost to the failure - 0".)
       # The accommodation cache - the highest-leverage write in the
       # pipeline. What it stores is handed to the next ~20 hours of
       # generations for that city as fact, with "do not perform a new
