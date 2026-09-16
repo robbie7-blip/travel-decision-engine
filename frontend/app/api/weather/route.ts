@@ -10,8 +10,8 @@ import { getRedis } from "@/lib/redis";
 import {
   ARCHIVE_YEARS,
   averageHistoricalYears,
-  conditionFromWmoCode,
   daysFromToday,
+  forecastDays,
   FORECAST_HORIZON_DAYS,
   shiftYear,
   type DailyBlock,
@@ -52,18 +52,10 @@ async function fetchForecast(geo: GeoResult, start: string, end: string): Promis
   );
   if (!res.ok) return [];
   const data = (await res.json()) as { daily?: DailyBlock };
-  const daily = data.daily;
-  if (!daily) return [];
-
-  return daily.time.map((date, i) => ({
-    date,
-    isForecast: true,
-    tempMaxC: Math.round(daily.temperature_2m_max[i]),
-    tempMinC: Math.round(daily.temperature_2m_min[i]),
-    precipitationChance: daily.precipitation_probability_max?.[i] ?? null,
-    precipitationMm: null,
-    condition: conditionFromWmoCode(daily.weathercode[i]),
-  }));
+  // The mapping is pure and lives in lib/weather.ts beside the averaging,
+  // for the reason that file gives: it could not be tested here without
+  // stubbing the network, and that is where the gap was.
+  return forecastDays(data.daily);
 }
 
 async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string): Promise<DayWeather[]> {
@@ -85,7 +77,12 @@ async function fetchHistoricalAverage(geo: GeoResult, start: string, end: string
 
   // The averaging itself is pure and lives in lib/weather.ts, where it can
   // be tested against the real calendar without a network stub.
-  const validYears = perYear.filter((d): d is DailyBlock => d !== null && d.time.length > 0);
+  // `d.time.length` on an archive payload read by assertion - a `daily`
+  // object with no `time` threw here, and the throw is outside the loop so
+  // it took every year with it. Same field, same fix as forecastDays.
+  const validYears = perYear.filter(
+    (d): d is DailyBlock => d !== null && Array.isArray(d.time) && d.time.length > 0
+  );
   return averageHistoricalYears(validYears, start, end);
 }
 
@@ -119,11 +116,22 @@ export async function GET(req: NextRequest) {
     redis = null;
   }
 
+  // The whole route is written to degrade - "a partial weather outlook beats
+  // none", and getRedis failing already falls through to a live fetch - and
+  // then the cache READ sat outside every try. Two unguarded throws: the
+  // Upstash round-trip itself, and `JSON.parse` on a truncated or
+  // older-format value. Either one 500s the weather panel on a trip page
+  // whose itinerary is fine, for as long as that key lives, when the answer
+  // was one un-cached fetch away.
   if (redis) {
-    const cached = await redis.get<DestinationWeather | string>(cacheKey);
-    if (cached) {
-      const parsed = typeof cached === "string" ? (JSON.parse(cached) as DestinationWeather) : cached;
-      return NextResponse.json(parsed);
+    try {
+      const cached = await redis.get<DestinationWeather | string>(cacheKey);
+      if (cached) {
+        const parsed = typeof cached === "string" ? (JSON.parse(cached) as DestinationWeather) : cached;
+        return NextResponse.json(parsed);
+      }
+    } catch {
+      // Unreadable cache is no cache. Fall through and fetch it live.
     }
   }
 
@@ -145,7 +153,13 @@ export async function GET(req: NextRequest) {
     // pick the right TTL for the whole cached response.
     const isForecast = Object.values(result).some((days) => days[0]?.isForecast);
     const ttl = isForecast ? FORECAST_CACHE_TTL_SECONDS : HISTORICAL_CACHE_TTL_SECONDS;
-    await redis.set(cacheKey, JSON.stringify(result), { ex: ttl });
+    // Guarded for the same reason as the read: failing to CACHE a forecast
+    // we already have is not a reason to withhold it from the traveller.
+    try {
+      await redis.set(cacheKey, JSON.stringify(result), { ex: ttl });
+    } catch {
+      // Served uncached this time.
+    }
   }
 
   return NextResponse.json(result);

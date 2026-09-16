@@ -29,7 +29,7 @@
 //
 // Run: npm run test:weather
 
-import { averageHistoricalYears, shiftYear, type DailyBlock } from "./weather";
+import { averageHistoricalYears, forecastDays, shiftYear, type DailyBlock } from "./weather";
 import { check, finish, heading, section } from "./testutil";
 
 heading("historical weather average");
@@ -175,6 +175,119 @@ function main() {
     check("a single-day trip yields one row", oneDay.length === 1, String(oneDay.length));
     check("with its real temperature", oneDay[0].tempMaxC === 15, String(oneDay[0].tempMaxC));
     check("and is marked as not a forecast", oneDay[0].isForecast === false);
+  }
+
+  section("the FORECAST block, which had no test at all");
+
+  {
+    // The archive half was lifted out of the route and tested; the forecast
+    // half stayed inline, read the payload with `as { daily?: DailyBlock }`,
+    // and then did `daily.time.map(...)` while indexing three sibling
+    // arrays at the same i. So both the presence of `time` and the
+    // alignment of everything else were assumed, on a network payload.
+    const good = forecastDays({
+      time: ["2026-04-10", "2026-04-11"],
+      weathercode: [0, 61],
+      temperature_2m_max: [19.4, 15.1],
+      temperature_2m_min: [9.6, 8.2],
+      precipitation_probability_max: [5, 80],
+    });
+    check("a well-formed block yields one row per day", good.length === 2, String(good.length));
+    check("temperatures are rounded", good[0].tempMaxC === 19 && good[0].tempMinC === 10, JSON.stringify(good[0]));
+    check("rain chance is carried", good[1].precipitationChance === 80, String(good[1].precipitationChance));
+    check("the condition comes from the WMO code", good[1].condition === "rain", good[1].condition);
+    check("and every row is marked a forecast", good.every((d) => d.isForecast === true));
+  }
+
+  {
+    // The throw. A `daily` object with no `time` array at all.
+    for (const [name, block] of [
+      ["no time array", { weathercode: [0], temperature_2m_max: [19], temperature_2m_min: [9] }],
+      ["time as a string", { time: "2026-04-10", temperature_2m_max: [19], temperature_2m_min: [9] }],
+      ["time as null", { time: null }],
+      ["an empty object", {}],
+      ["null", null],
+      ["undefined", undefined],
+    ] as [string, unknown][]) {
+      let threw = false;
+      let days: ReturnType<typeof forecastDays> = [];
+      try {
+        days = forecastDays(block as DailyBlock);
+      } catch {
+        threw = true;
+      }
+      check(`${name} does not throw`, threw === false);
+      check("  and yields no rows", days.length === 0, JSON.stringify(days));
+    }
+  }
+
+  {
+    // The one that cached a visibly broken strip. Arrays SHORTER than
+    // `time`: Math.round(undefined) is NaN, JSON.stringify writes null, and
+    // the page renders `{day.tempMaxC}°` as a bare "°" - for two hours,
+    // because the route caches whatever this returns.
+    const short = forecastDays({
+      time: ["2026-04-10", "2026-04-11", "2026-04-12"],
+      weathercode: [0],
+      temperature_2m_max: [19.4],
+      temperature_2m_min: [9.6],
+      precipitation_probability_max: [5],
+    });
+    check("a day with no temperature is dropped, not shown blank", short.length === 1, String(short.length));
+    check("  and the day that does have one is kept", short[0].date === "2026-04-10", JSON.stringify(short));
+    check(
+      "  so every row that survives has real numbers",
+      short.every((d) => Number.isFinite(d.tempMaxC) && Number.isFinite(d.tempMinC)),
+      JSON.stringify(short)
+    );
+
+    // Per-field, since any one of them can be the short array.
+    const nulls = forecastDays({
+      time: ["2026-04-10", "2026-04-11"],
+      weathercode: [0, 0],
+      temperature_2m_max: [19, null as unknown as number],
+      temperature_2m_min: [9, 8],
+      precipitation_probability_max: [5, 10],
+    });
+    check("a null max temperature drops that day", nulls.length === 1, String(nulls.length));
+
+    const strings = forecastDays({
+      time: ["2026-04-10"],
+      weathercode: [0],
+      temperature_2m_max: ["19" as unknown as number],
+      temperature_2m_min: [9],
+    });
+    check("a temperature sent as text drops the day rather than printing it", strings.length === 0, JSON.stringify(strings));
+
+    // Rain chance is optional in the API and optional here - a missing one
+    // must not cost the day its temperatures.
+    const noRain = forecastDays({
+      time: ["2026-04-10"],
+      weathercode: [0],
+      temperature_2m_max: [19],
+      temperature_2m_min: [9],
+    });
+    check("no rain-chance array still yields the day", noRain.length === 1, String(noRain.length));
+    check("  with rain chance null rather than NaN", noRain[0].precipitationChance === null, String(noRain[0].precipitationChance));
+
+    const badRain = forecastDays({
+      time: ["2026-04-10"],
+      weathercode: [0],
+      temperature_2m_max: [19],
+      temperature_2m_min: [9],
+      precipitation_probability_max: [null as unknown as number],
+    });
+    check("an unusable rain chance reads null, not 'NaN%'", badRain[0]?.precipitationChance === null, JSON.stringify(badRain));
+
+    // A non-string date would become the React key and the row label.
+    const badDate = forecastDays({
+      time: [20260410 as unknown as string, "2026-04-11"],
+      weathercode: [0, 0],
+      temperature_2m_max: [19, 18],
+      temperature_2m_min: [9, 8],
+    });
+    check("a non-string date is dropped", badDate.length === 1, JSON.stringify(badDate));
+    check("  and the real one beside it is kept", badDate[0].date === "2026-04-11", JSON.stringify(badDate));
   }
 
   finish();

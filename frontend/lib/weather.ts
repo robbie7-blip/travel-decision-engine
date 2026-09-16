@@ -140,6 +140,49 @@ function pickHistoricalCondition(conditions: WeatherCondition[], avgPrecipMm: nu
   return nonPrecip.length > 0 ? mostCommon(nonPrecip) : "cloudy";
 }
 
+/** Turns Open-Meteo's forecast block into one row per day.
+ *
+ * Pure, and moved out of the route for the same reason the averaging below
+ * was - it could not be tested there without stubbing the network, and that
+ * is precisely where the gap was hiding. The route read the payload with
+ * `as { daily?: DailyBlock }`, an assertion, and then wrote
+ * `daily.time.map(...)` while indexing three sibling arrays at the same i.
+ * So the presence of `time` and the alignment of everything else were
+ * assumed, on a network payload.
+ *
+ * A `daily` with no `time` threw, which the route's per-destination catch
+ * turns into "no weather for this city" - survivable. Arrays SHORTER than
+ * `time` did the damage: `Math.round(undefined)` is NaN, JSON.stringify
+ * writes null, `{day.tempMaxC}°` renders as a bare "°", and the route
+ * caches that for two hours. A visibly broken strip served from cache for a
+ * provider hiccup that lasted one request.
+ *
+ * A day with no temperature is not a forecast for that day, so it is
+ * dropped: one day fewer is honest, a day with no numbers on it is not. */
+export function forecastDays(daily: DailyBlock | undefined | null): DayWeather[] {
+  if (!daily || typeof daily !== "object") return [];
+  const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+  const times = Array.isArray(daily.time) ? daily.time : [];
+  const days: DayWeather[] = [];
+  for (const [i, date] of times.entries()) {
+    if (typeof date !== "string") continue;
+    const max = daily.temperature_2m_max?.[i];
+    const min = daily.temperature_2m_min?.[i];
+    if (!num(max) || !num(min)) continue;
+    const chance = daily.precipitation_probability_max?.[i];
+    days.push({
+      date,
+      isForecast: true,
+      tempMaxC: Math.round(max),
+      tempMinC: Math.round(min),
+      precipitationChance: num(chance) ? chance : null,
+      precipitationMm: null,
+      condition: conditionFromWmoCode(daily.weathercode?.[i]),
+    });
+  }
+  return days;
+}
+
 /** Averages the archive years into one row per TRIP day.
  *
  * Pure, and separated from the fetching for that reason - it was inline in
