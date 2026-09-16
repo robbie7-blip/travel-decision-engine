@@ -104,7 +104,10 @@ function perNightRateFor(
   item: ItineraryItem,
   accommodation: SkeletonAccommodation[]
 ): number | null {
-  const location = (item.location ?? "").toLowerCase();
+  // `(item.location ?? "")` guards absence, not type - and `.toLowerCase()`
+  // on a non-string throws, here, in a function the gate and
+  // normalizeLodgingPrices both call.
+  const location = (typeof item.location === "string" ? item.location : "").toLowerCase();
   // An entry with no city, or a blank one, matches NOTHING rather than
   // everything.
   //
@@ -269,8 +272,18 @@ export function mealSlotOf(item: ItineraryItem): MealSlot | null {
   return "dinner";
 }
 
-function parseHour(time: string | undefined): number | null {
-  if (!time) return null;
+function parseHour(time: unknown): number | null {
+  // Takes `unknown` and checks, because this is where the gate throws.
+  // `time` is declared a required string on ItineraryItem and arrives from
+  // `JSON.parse(text) as ItineraryDay`; with `"time": 1300` - a model asked
+  // for a clock time writing a number - `.exec` coerces and finds nothing,
+  // and then `time.toLowerCase()` is not a function. The gate runs last,
+  // inside processJob's try and outside every retry, so its throw marks a
+  // fully generated, fully paid itinerary "Unexpected error generating
+  // itinerary". normalizeItineraryShape coerces these now; this makes the
+  // primitive itself safe, which is the same two-layer arrangement
+  // formatMoney uses for the rate and the amount it multiplies.
+  if (typeof time !== "string" || !time) return null;
   const m = /(\d{1,2})[:.]\d{2}/.exec(time);
   if (m) {
     const h = Number(m[1]);
@@ -378,7 +391,7 @@ export function assessQuality(
   for (const day of days) {
     for (const item of day.items) {
       if (!isNamedVenueSlot(item)) continue;
-      if (item.venue_name && item.venue_name.trim()) continue;
+      if (typeof item.venue_name === "string" && item.venue_name.trim()) continue;
       findings.push({
         check: "venues_named",
         severity: "warning",
@@ -415,7 +428,7 @@ export function assessQuality(
     // row in the itinerary and usually its biggest number. Warning rather
     // than defect: sometimes there genuinely is no property worth naming,
     // and inventing one would be far worse.
-    const unnamed = lodgingItems.filter((i) => !i.venue_name || !i.venue_name.trim());
+    const unnamed = lodgingItems.filter((i) => typeof i.venue_name !== "string" || !i.venue_name.trim());
     if (unnamed.length > 0 && unnamed.length === lodgingItems.length) {
       findings.push({
         check: "lodging_named",

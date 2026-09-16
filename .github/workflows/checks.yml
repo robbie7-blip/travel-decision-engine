@@ -119,6 +119,11 @@ jobs:
       # to let a half-formed plan through. Every one of them passed the six
       # suites that existed before it.
       - run: npm run test:generation
+      # (test:generation also covers the rate-limit backoff: `Retry-After: 0`
+      # and a negative both pass Number.isFinite, and Math.min(-5000, 15000)
+      # is -5000, so setTimeout fired at once and the backoff became four
+      # requests with no wait between them - aimed at a provider that had
+      # just said it was rate-limiting us. Reverting makes 4 red.)
       # The shape gate on the single-call fallback and every refinement.
       # Those two paths did `JSON.parse(text) as Itinerary` and returned it -
       # a type assertion, not a check - so a response that parsed but was
@@ -128,6 +133,23 @@ jobs:
       # detected it, so the retry wrapping both call sites never fired
       # either. Verified end to end: without this gate the same response
       # loses the generation, with it the retry succeeds.
+      #
+      # It now also covers the item STRINGS, which is the same class one
+      # step further and the one that discards a paid trip. `time`, `title`,
+      # `location` and `reasoning` are declared required strings and arrive
+      # from the same assertion. Measured, with `"time": 1300` - a model
+      # asked for a clock time writing a number:
+      #   mealSlotOf    THREW: time.toLowerCase is not a function
+      #   assessQuality THREW: time.toLowerCase is not a function
+      # The gate runs LAST, inside processJob's try and outside every retry,
+      # so its throw marks a fully generated, fully paid itinerary
+      # "Unexpected error generating itinerary". Same for venue_name
+      # (.toLowerCase in four places including the gate) and location
+      # (perNightRateFor, which the gate and normalizeLodgingPrices both
+      # call). Absence is deliberately left alone - every reader guards
+      # falsiness, so only a wrong TYPE throws, and coercing absence would
+      # cost the no-op property the repairs depend on. Reverting makes 10 of
+      # 89 red.
       - run: npm run test:shape
       # What counts as a price. types.ts declares `cost_estimate_eur: number`
       # and 30-odd readers believe it, but the value arrives through

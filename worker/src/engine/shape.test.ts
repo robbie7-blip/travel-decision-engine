@@ -18,6 +18,7 @@
 
 import { assertUsableItinerary, ItineraryShapeError, normalizeItineraryShape } from "./shape";
 import { deriveConfidenceTiers } from "./checks";
+import { mealSlotOf } from "./quality";
 import { check, finish, heading, section } from "../testutil";
 import type { Itinerary, ItineraryItem } from "../types";
 
@@ -281,6 +282,128 @@ async function main() {
       }
       check(`budget_feasibility as ${JSON.stringify(bad) ?? "undefined"} does not throw`, threw === false);
     }
+  }
+
+  section("the strings, which is the one that discards a paid trip");
+
+  {
+    // `time`, `title`, `location` and `reasoning` are declared required
+    // strings on ItineraryItem and arrive through `JSON.parse(text) as
+    // ItineraryDay`. Measured, with `"time": 1300` - a model asked for a
+    // clock time writing a number:
+    //
+    //   mealSlotOf    THREW: time.toLowerCase is not a function
+    //   assessQuality THREW: time.toLowerCase is not a function
+    //
+    // The gate runs last, inside processJob's try and outside every retry,
+    // so its throw marks a fully generated, FULLY PAID itinerary
+    // "Unexpected error generating itinerary".
+    const it = {
+      days: [
+        {
+          day: 1,
+          items: [
+            { time: 1300, title: "Roscioli", location: "Rome", reasoning: "r" },
+            { time: { start: "13:00" }, title: { text: "Lunch" }, location: ["Rome"], reasoning: 42 },
+            { time: true, title: null, location: undefined },
+            { time: "13:00", title: "Real", location: "Centro, Rome", reasoning: "because" },
+          ],
+        },
+      ],
+    } as unknown as Itinerary;
+    normalizeItineraryShape(it);
+    const items = it.days[0].items;
+    check(
+      "every time is a string now",
+      items.every((i) => typeof i.time === "string"),
+      JSON.stringify(items.map((i) => i.time))
+    );
+    const stringOrAbsent = (v: unknown) => v === undefined || typeof v === "string";
+    check(
+      "every title, location and reasoning is a string or absent",
+      items.every((i) => stringOrAbsent(i.title) && stringOrAbsent(i.location) && stringOrAbsent(i.reasoning)),
+      JSON.stringify(items.map((i) => [i.title, i.location, i.reasoning]))
+    );
+    // ABSENT is left absent, which is the deliberate half. Every reader of
+    // these fields guards falsiness, so `undefined` returns null or "" or
+    // renders as nothing - only a wrong TYPE throws. Coercing absence too
+    // would rewrite items that had nothing wrong with them and cost the
+    // no-op property that makes this safe to run twice.
+    check("an item that never had `reasoning` does not gain one", items[2].reasoning === undefined, JSON.stringify(items[2]));
+    // "" and not a placeholder: inventing a value would put words in the
+    // model's mouth on the traveller's page.
+    check("a number time becomes empty, not \"1300\"", items[0].time === "", JSON.stringify(items[0].time));
+    check("an object title becomes empty", items[1].title === "", JSON.stringify(items[1].title));
+    check("and the real item is untouched", items[3].time === "13:00" && items[3].title === "Real", JSON.stringify(items[3]));
+
+    // The property all of it is for: the things that threw, don't.
+    let threw = false;
+    try {
+      for (const day of it.days) {
+        for (const item of day.items) {
+          // `?? ""` is what every real reader does with absence, and it is
+          // absence alone that needs it now.
+          void `${(item.time ?? "").toLowerCase()} ${(item.title ?? "").toLowerCase()} ${(item.location ?? "").toLowerCase()}`;
+        }
+      }
+    } catch {
+      threw = true;
+    }
+    check("every string field can be lowercased behind the existing `?? \"\"` guards", threw === false);
+
+    // And through the primitive that actually threw, unguarded, which is
+    // how the gate lost a paid trip. (timeOrder is the other one and lives
+    // in index.ts, which cannot be imported here without starting the
+    // worker - it takes `unknown` and checks now, same as parseHour.)
+    threw = false;
+    try {
+      for (const item of it.days[0].items) void (mealSlotOf(item) ?? "");
+    } catch {
+      threw = true;
+    }
+    check("mealSlotOf no longer throws on any of them", threw === false);
+  }
+
+  {
+    // venue_name is `string | null`, and null is what every reader treats
+    // as "this item names no business" - so an unusable one becomes null
+    // rather than "", which would be a named venue with no name and would
+    // keep the item in the verification pass.
+    const it = {
+      days: [
+        {
+          day: 1,
+          items: [
+            { venue_name: ["Roscioli", "Da Enzo"] },
+            { venue_name: 42 },
+            { venue_name: "   " },
+            { venue_name: "" },
+            { venue_name: null },
+            { venue_name: "Roscioli" },
+            { title: "never named one" },
+          ],
+        },
+      ],
+    } as unknown as Itinerary;
+    normalizeItineraryShape(it);
+    const names = it.days[0].items.map((i) => i.venue_name);
+    check("a shortlist becomes null", names[0] === null, JSON.stringify(names[0]));
+    check("a number becomes null", names[1] === null, JSON.stringify(names[1]));
+    check("whitespace becomes null", names[2] === null, JSON.stringify(names[2]));
+    check("an empty string becomes null", names[3] === null, JSON.stringify(names[3]));
+    check("null stays null", names[4] === null);
+    check("a real name survives", names[5] === "Roscioli", JSON.stringify(names[5]));
+    check("and an item that never had the field does not gain one", names[6] === undefined, JSON.stringify(names[6]));
+
+    // `.toLowerCase()` on this field runs in four places including the
+    // gate, and `.trim()` in two more.
+    let threw = false;
+    try {
+      for (const i of it.days[0].items) if (i.venue_name) void i.venue_name.toLowerCase().trim();
+    } catch {
+      threw = true;
+    }
+    check("so claimedVenues.add(item.venue_name.toLowerCase()) cannot throw", threw === false);
   }
 
   section("citations, so the trust tier cannot be earned by a long URL");

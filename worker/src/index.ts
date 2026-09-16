@@ -51,6 +51,7 @@ import {
 } from "./engine/quality";
 import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
 import { assertUsableItinerary, normalizeItineraryShape } from "./engine/shape";
+import { usableCostEur } from "./engine/money";
 import { auditTimings } from "./engine/timingAudit";
 import { modelSupportsEffort } from "./engine/modelCaps";
 import { waitForLiveOrFallback } from "./engine/raceFallback";
@@ -813,6 +814,28 @@ const withOneRetry = withOneRetryOf<Itinerary>;
  * Only rate limits and connection errors are retried. A malformed response
  * is somebody else's job (withOneRetryOf), and an auth error retried three
  * times is just an auth error three times. */
+/** How long to wait before the next attempt: the provider's own
+ * Retry-After when it sent a usable one, otherwise this attempt's backoff.
+ *
+ * `> 0`, not merely finite, which is the fix. `Retry-After: 0` and a
+ * negative value both pass Number.isFinite, and `Math.min(-5000, 15000)` is
+ * -5000 - so setTimeout fired immediately and the backoff became four
+ * requests with no wait between them, aimed at a provider that had just
+ * said it was rate-limiting us. The header is only better than our own
+ * guess when it is actually a duration.
+ *
+ * Capped at 15s either way: a provider asking us to wait ten minutes is
+ * asking for longer than the traveller will wait, and the caller has a
+ * fallback.
+ *
+ * Exported for the suite - a hot retry loop against a rate limiter is not
+ * something to leave to inspection. */
+export function retryWaitMs(header: string | null | undefined, backoffMs: number): number {
+  const seconds = Number(header ?? NaN);
+  if (!Number.isFinite(seconds) || seconds <= 0) return backoffMs;
+  return Math.min(seconds * 1000, 15_000);
+}
+
 async function withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
   const backoffsMs = [1000, 3000, 7000];
   for (let attempt = 0; ; attempt++) {
@@ -834,10 +857,7 @@ async function withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promi
           serverError);
       if (!retryable || attempt >= backoffsMs.length) throw e;
       const headers = (e as { headers?: Headers }).headers;
-      const headerSeconds = Number(headers?.get?.("retry-after") ?? NaN);
-      const waitMs = Number.isFinite(headerSeconds)
-        ? Math.min(headerSeconds * 1000, 15000)
-        : backoffsMs[attempt];
+      const waitMs = retryWaitMs(headers?.get?.("retry-after"), backoffsMs[attempt]);
       console.warn(`[worker] ${label} rate-limited, retrying in ${waitMs}ms`);
       await new Promise((r) => setTimeout(r, waitMs));
     }
@@ -1268,7 +1288,15 @@ async function repairDuplicateVenues(
           venue_name: string | null;
           reasoning: string | null;
         };
-        if (!parsed.venue_name || !parsed.title || claimed.has(parsed.venue_name.toLowerCase())) {
+        // Real STRINGS, not merely truthy. These two go straight onto a
+        // real itinerary item, and `{"venue_name": ["Roscioli", "Da Enzo"]}`
+        // - a model answering "name a different venue" with a shortlist - is
+        // the exact reply lodgingCache.ts records having hit on its own
+        // lookup ("raised v.name.trim is not a function"). An array is
+        // truthy, so the old check waved it through to `.toLowerCase()`.
+        const newName = typeof parsed.venue_name === "string" ? parsed.venue_name.trim() : "";
+        const newTitle = typeof parsed.title === "string" ? parsed.title.trim() : "";
+        if (!newName || !newTitle || claimed.has(newName.toLowerCase())) {
           // stripToUnverified, not stripVenueIdentity. The latter only nulls
           // venue_name, which left the OLD business's Maps link, star rating
           // and opening hours sitting on an item whose name had just been
@@ -1282,10 +1310,10 @@ async function repairDuplicateVenues(
           stripToUnverified(item);
           return;
         }
-        claimed.add(parsed.venue_name.toLowerCase());
-        item.title = parsed.title;
-        item.venue_name = parsed.venue_name;
-        if (parsed.reasoning) item.reasoning = parsed.reasoning;
+        claimed.add(newName.toLowerCase());
+        item.title = newTitle;
+        item.venue_name = newName;
+        if (typeof parsed.reasoning === "string" && parsed.reasoning.trim()) item.reasoning = parsed.reasoning;
         // A replaced venue has not been through Places yet, and its old
         // verification belonged to a different business entirely.
         item.google_rating = undefined;
@@ -1587,9 +1615,14 @@ async function repairMissingMeals(
           cost_estimate_eur?: number;
           reasoning?: string;
         };
-        if (!parsed.venue_name || !parsed.title) return;
-        if (taken.has(parsed.venue_name.toLowerCase())) return;
-        taken.add(parsed.venue_name.toLowerCase());
+        // Real strings, for the reason the venue repair above gives: this
+        // builds a whole new itinerary item out of the reply, and a
+        // non-string title reaches the page as a React child.
+        const mealName = typeof parsed.venue_name === "string" ? parsed.venue_name.trim() : "";
+        const mealTitle = typeof parsed.title === "string" ? parsed.title.trim() : "";
+        if (!mealName || !mealTitle) return;
+        if (taken.has(mealName.toLowerCase())) return;
+        taken.add(mealName.toLowerCase());
         const item: ItineraryItem = {
           // The time is checked against the slot it was asked to fill, not
           // taken on trust. A dinner returned at 13:00 reads as a second
@@ -1600,11 +1633,11 @@ async function repairMissingMeals(
           // arithmetic, so it's enforced here.
           time: timeForSlot(parsed.time, meal),
           type: "meal",
-          title: parsed.title,
-          venue_name: parsed.venue_name,
-          location: parsed.location || plan.city,
-          cost_estimate_eur: typeof parsed.cost_estimate_eur === "number" ? parsed.cost_estimate_eur : 0,
-          reasoning: parsed.reasoning || "",
+          title: mealTitle,
+          venue_name: mealName,
+          location: typeof parsed.location === "string" && parsed.location.trim() ? parsed.location : plan.city,
+          cost_estimate_eur: usableCostEur(parsed.cost_estimate_eur) ?? 0,
+          reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : "",
           // Not searched and not yet through Places - checkVenues runs after
           // this and will verify it like any other named venue.
           source_confidence: "inferred",
@@ -1643,8 +1676,13 @@ function timeForSlot(proposed: string | undefined, slot: MealSlot): string {
  * sensibly among existing ones. Unparseable times keep their relative
  * position by sorting to the end of the day rather than to the front, where
  * an unknown would displace a real breakfast. */
-function timeOrder(time: string | undefined): number {
-  if (!time) return 24;
+function timeOrder(time: unknown): number {
+  // Takes `unknown` and checks, because `time.toLowerCase()` on a
+  // model-written field that is declared a string is a throw, and this one
+  // runs in the day-sort loop inside processJob's try - so it costs the
+  // whole paid itinerary. 24 is the existing "no usable time" answer, which
+  // sorts the item to the end of the day.
+  if (typeof time !== "string" || !time) return 24;
   const m = /(\d{1,2})[:.](\d{2})/.exec(time);
   if (m) return Number(m[1]) + Number(m[2]) / 60;
   const t = time.toLowerCase();
@@ -2106,6 +2144,17 @@ async function writeJob(redis: Redis, job: Job): Promise<void> {
  * webhooks). Purely an early warning: checkDailyBudget on the frontend is
  * what actually blocks new generations at 100%, unaffected by this. */
 async function maybeAlertBudgetThreshold(redis: Redis, totalSpentUsd: number): Promise<void> {
+  // A non-finite total is refused, and the direction matters. The guard
+  // below is `if (total < threshold) return`, and every comparison against
+  // NaN is false - so a NaN would NOT return, would fire a nonsense alert,
+  // and would consume the SET..NX key that makes this fire once a day,
+  // suppressing the real alert for the rest of it. That is the same
+  // NaN-comparison shape recordSpend documents guarding against one
+  // function below, read the other way round.
+  if (!Number.isFinite(totalSpentUsd)) {
+    console.error(`[worker] spend total came back unreadable (${totalSpentUsd}) - not firing the budget alert on it`);
+    return;
+  }
   if (totalSpentUsd < DAILY_BUDGET_USD * ALERT_THRESHOLD_RATIO) return;
 
   // SET ... NX so only the job whose spend update first crosses the
@@ -2708,6 +2757,24 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       }
     }
 
+    // THE SHAPE, ESTABLISHED ONCE - AGAIN, because the repairs run after
+    // the first pass and are the only stages that ADD items.
+    //
+    // normalizeItineraryShape ran at line ~2547, before verification, and
+    // everything from here to the acceptance gate assumed it had. But
+    // applyMealFills inserts a model-written item and repairDuplicateVenues
+    // writes a model-written title and venue_name straight onto an existing
+    // one, both AFTER that line - so the one place the invariant is
+    // established did not cover the two places that break it. The gate then
+    // walks those fields as strings, and its throw marks a fully generated,
+    // fully paid itinerary "Unexpected error generating itinerary".
+    //
+    // Idempotent and free on a clean generation (asserted in
+    // engine/shape.test.ts), so running it twice costs nothing and makes
+    // the guarantee true for every item that reaches the gate rather than
+    // for the ones that happened to exist earlier.
+    itinerary = normalizeItineraryShape(itinerary);
+
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(
       itinerary,
@@ -2786,7 +2853,12 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       if (n > 0) fired[label] = n;
     }
     let dayRetries = 0;
-    for (let d = 1; d <= 40; d++) dayRetries += retriesFor(`day ${d}`);
+    // MAX_TRIP_DAYS, not a hand-written 40. The cap is 30 today so 40
+    // covered it, but the two numbers were coupled by nothing - raising the
+    // cap past 40 would have silently stopped counting the retries on the
+    // later days, and this log line's whole claim is that "each one is a
+    // whole extra model call".
+    for (let d = 1; d <= MAX_TRIP_DAYS; d++) dayRetries += retriesFor(`day ${d}`);
     if (dayRetries > 0) fired["day calls"] = dayRetries;
     if (Object.keys(fired).length > 0) {
       jobTimings.retries = fired;

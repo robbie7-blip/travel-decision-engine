@@ -15,6 +15,7 @@ import { assessQuality } from "./engine/quality";
 import type { SkeletonAccommodation, SkeletonDay } from "./engine/twoPhase";
 import { checkBudgetIntegrity } from "./engine/checks";
 import { MAX_TRIP_DAYS, briefSpanDays, tripDayCount } from "./jobs";
+import { retryWaitMs } from "./index";
 import { check, finish, heading, section } from "./testutil";
 import type { Itinerary, ItineraryItem, TripBriefInput } from "./types";
 
@@ -386,6 +387,35 @@ section("the trip-length cap, on the side that pays for it");
   check("reversed dates span null rather than a negative", tripDayCount("2026-04-14", "2026-04-10") === null);
   check("2026-02-30 is not a date", tripDayCount("2026-02-30", "2026-03-02") === null);
   check("a real leap day is", tripDayCount("2028-02-28", "2028-02-29") === 2);
+}
+
+{
+  section("the rate-limit backoff, which a bad Retry-After turned into a hot loop");
+
+  // The provider's own number is better than a guess, WHEN it is a
+  // duration. `Retry-After: 0` and a negative both pass Number.isFinite,
+  // and `Math.min(-5000, 15000)` is -5000 - so setTimeout fired at once and
+  // the backoff became four requests with no wait between them, aimed at a
+  // provider that had just said it was rate-limiting us.
+  check("a real Retry-After is honoured", retryWaitMs("2", 1000) === 2000, String(retryWaitMs("2", 1000)));
+  check("  in preference to the backoff", retryWaitMs("5", 1000) === 5000, String(retryWaitMs("5", 1000)));
+  check("zero falls back to the backoff", retryWaitMs("0", 1000) === 1000, String(retryWaitMs("0", 1000)));
+  check("a negative falls back", retryWaitMs("-5", 3000) === 3000, String(retryWaitMs("-5", 3000)));
+  check("  and never produces a negative wait", retryWaitMs("-5", 3000) > 0);
+
+  // An HTTP-date Retry-After is legal and is not seconds. Number() of it is
+  // NaN, which is exactly the fallback case.
+  check("an HTTP-date header falls back", retryWaitMs("Wed, 21 Oct 2026 07:28:00 GMT", 7000) === 7000);
+  check("an empty header falls back", retryWaitMs("", 1000) === 1000);
+  check("a missing header falls back", retryWaitMs(null, 1000) === 1000);
+  check("undefined falls back", retryWaitMs(undefined, 1000) === 1000);
+  check("prose falls back", retryWaitMs("soon", 1000) === 1000);
+
+  // Capped, because a provider asking for ten minutes is asking for longer
+  // than the traveller will wait and the caller has a fallback.
+  check("a huge Retry-After is capped at 15s", retryWaitMs("600", 1000) === 15_000, String(retryWaitMs("600", 1000)));
+  check("Infinity is not a duration", retryWaitMs("Infinity", 1000) === 1000, String(retryWaitMs("Infinity", 1000)));
+  check("a fractional second still waits", retryWaitMs("0.5", 1000) === 500, String(retryWaitMs("0.5", 1000)));
 }
 
 finish();

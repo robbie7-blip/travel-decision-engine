@@ -154,7 +154,62 @@ export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
       // claimed a source does not gain an empty array it did not have -
       // `?? []` is what every reader already does with absence.
       if (item.source_urls !== undefined) item.source_urls = sourceUrlList(item.source_urls);
+
+      // And the STRINGS, which is the one that discards a paid trip.
+      //
+      // `time`, `title`, `location` and `reasoning` are declared required
+      // strings on ItineraryItem and arrive from `JSON.parse(text) as
+      // ItineraryDay`. Measured, with `"time": 1300` - a model asked for a
+      // clock time writing a number, which is about the most ordinary slip
+      // available:
+      //
+      //   mealSlotOf   THREW: time.toLowerCase is not a function
+      //   assessQuality THREW: time.toLowerCase is not a function
+      //
+      // The second one is the expensive one. The acceptance gate runs at the
+      // very end, inside processJob's try and outside every retry, so its
+      // throw marks the job "error" with "Unexpected error generating
+      // itinerary" - for an itinerary that was fully generated and fully
+      // paid for. That is word for word the failure assertUsableItinerary
+      // was written for, on a different field.
+      //
+      // The same holds for `venue_name` (`.toLowerCase()` in four places
+      // including the gate, `.trim()` in two more) and `location`
+      // (`(item.location ?? "").toLowerCase()` in perNightRateFor, which
+      // the gate and normalizeLodgingPrices both call, and `.split(",")` in
+      // the geocoder).
+      // Only where the field is PRESENT and the wrong type. Absence was
+      // never the defect: every one of those readers guards falsiness, so
+      // `undefined` returns null or "" or renders as nothing, while `1300`
+      // throws. Coercing absence too would make this pass rewrite items
+      // that had nothing wrong with them, which costs the one property that
+      // makes it safe to run twice - and running it twice is exactly what
+      // the repairs need.
+      const fields = item as unknown as Record<string, unknown>;
+      fixText(fields, "time");
+      fixText(fields, "title");
+      fixText(fields, "location");
+      fixText(fields, "reasoning");
+      // venue_name is `string | null`, and null is the value every reader
+      // already treats as "this item names no business" - so an unusable one
+      // becomes null rather than "", which would be a named venue with no
+      // name and would keep the item in the verification pass.
+      if (item.venue_name !== undefined) {
+        item.venue_name = typeof item.venue_name === "string" && item.venue_name.trim() ? item.venue_name : null;
+      }
     }
   }
   return itinerary;
+}
+
+/** Replaces a present-but-not-a-string field with "", in place.
+ *
+ * "" rather than a placeholder: every reader of these fields either renders
+ * them (where empty is empty) or matches on them (where empty matches
+ * nothing), and both are behaviours that already exist. Inventing a value
+ * would put words in the model's mouth on the traveller's page.
+ *
+ * Absent is left absent, deliberately - see the call sites. */
+function fixText(item: Record<string, unknown>, key: string): void {
+  if (key in item && typeof item[key] !== "string") item[key] = "";
 }
