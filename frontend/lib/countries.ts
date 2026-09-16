@@ -269,7 +269,22 @@ export function getContinentName(continent: Continent, language: Language): stri
 
 const BY_CODE = new Map(COUNTRIES.map((c) => [c.code, c]));
 
+/** The tracked country for an ISO alpha-2 code, or undefined.
+ *
+ * Takes `string` but checks it, because this is the chokepoint every other
+ * country lookup in the app goes through - the dart, the visited maps, the
+ * share snapshot, place-country, flight import - and several of them hand it
+ * values that only a type assertion says are strings. `code.toUpperCase()`
+ * throws on a number and on null, and computeVisitedStats calls it in a loop
+ * over an array that arrives from Redis as `parsed as string[]`, on a public
+ * unauthenticated route. Measured: one non-string element there is
+ * "code.toUpperCase is not a function" and a 500 for the whole share link.
+ *
+ * Undefined is what every caller already does the right thing with - they
+ * filter on it, skip on it, or fall back to the raw code - so refusing is
+ * strictly better than throwing. */
 export function getCountry(code: string): Country | undefined {
+  if (typeof code !== "string") return undefined;
   return BY_CODE.get(code.toUpperCase());
 }
 

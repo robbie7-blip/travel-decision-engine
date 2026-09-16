@@ -26,12 +26,57 @@ const ENTRIES_KEY = "decide:visited-entries";
 const LEGACY_CODES_KEY = "decide:visited-codes";
 const SHARE_TOKEN_KEY = "decide:visited-share-token";
 
-function isValidEntry(value: unknown): value is VisitedEntry {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { code?: unknown }).code === "string"
-  );
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** One pin, or null.
+ *
+ * The same rules app/api/visited applies to a pin arriving over the wire,
+ * and for the same reason it gives there - "this only guards against garbage
+ * breaking storage downstream" - applied to the path that is now PRIMARY.
+ * This file's own header says local storage is "the source of truth for
+ * anyone who never signs in", and what came back out of it was validated on
+ * one field of three. A `pins` that is not an array reaches
+ * `(e.pins ?? []).map(...)` in VisitedPinsPanel, and a non-array has no
+ * `.map`: the Map Pins tab throws. A pin with a non-numeric lat reaches
+ * react-globe.gl as a point with no position. */
+function readPin(value: unknown): VisitedPin | null {
+  if (typeof value !== "object" || value === null) return null;
+  const p = value as Record<string, unknown>;
+  if (typeof p.id !== "string" || typeof p.label !== "string") return null;
+  if (typeof p.lat !== "number" || typeof p.lng !== "number") return null;
+  if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return null;
+  return {
+    id: p.id,
+    label: p.label.slice(0, 200),
+    lat: p.lat,
+    lng: p.lng,
+    ...(typeof p.note === "string" ? { note: p.note.slice(0, 500) } : {}),
+  };
+}
+
+/** One entry, with its optional fields actually checked, or null.
+ *
+ * This was a type predicate that tested `code` and nothing else, so
+ * `visitedAt` and `pins` came back out of storage exactly as they went in -
+ * whatever that was. Rewritten to READ rather than assert, because a
+ * predicate that narrows to VisitedEntry while checking a third of it is a
+ * claim the rest of the app then relies on. A bad optional field costs its
+ * own field now, not the entry and not the tab. */
+function readEntry(value: unknown): VisitedEntry | null {
+  if (typeof value !== "object" || value === null) return null;
+  const e = value as Record<string, unknown>;
+  if (typeof e.code !== "string" || !e.code.trim()) return null;
+  const pins = Array.isArray(e.pins)
+    ? e.pins.map(readPin).filter((p): p is VisitedPin => p !== null)
+    : undefined;
+  return {
+    code: e.code,
+    // Shaped like a date, because the Timeline and Chronology views sort and
+    // group on it - the server path checks it against this same pattern and
+    // the local one did not.
+    ...(typeof e.visitedAt === "string" && ISO_DATE_RE.test(e.visitedAt) ? { visitedAt: e.visitedAt } : {}),
+    ...(pins && pins.length > 0 ? { pins } : {}),
+  };
 }
 
 export function readLocalVisitedEntries(): VisitedEntry[] {
@@ -40,7 +85,7 @@ export function readLocalVisitedEntries(): VisitedEntry[] {
     const raw = window.localStorage.getItem(ENTRIES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.filter(isValidEntry);
+      if (Array.isArray(parsed)) return parsed.map(readEntry).filter((e): e is VisitedEntry => e !== null);
       return [];
     }
     const legacy = window.localStorage.getItem(LEGACY_CODES_KEY);

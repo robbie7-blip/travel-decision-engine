@@ -20,6 +20,7 @@
     "test:stats": "tsx lib/timingStats.test.ts",
     "test:weather": "tsx lib/weather.test.ts",
     "test:ics": "tsx lib/exportIcs.test.ts",
+    "test:local-visited": "tsx lib/localVisited.test.ts",
     "test:stats-share": "tsx lib/statsShare.test.ts",
     "test:ratelimit": "tsx lib/ratelimit.test.ts",
     "test:site-url": "tsx lib/siteUrl.test.ts",

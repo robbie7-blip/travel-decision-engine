@@ -982,7 +982,24 @@ jobs:
       # badges - published through a public read for anyone with the link.
       # Reverting the dedupe makes 6 cases red; loosening the token check
       # makes 7.
+      #
+      # It also covers a NON-STRING code, which was a 500 on that public
+      # link: getAnonymousShareSnapshot returned `parsed as string[]` over a
+      # Redis value, computeVisitedStats calls getCountry on every element,
+      # and `code.toUpperCase()` is not a function on a number - so one bad
+      # element in a stored snapshot broke the link for everyone holding it,
+      # for the 400 days that key lives.
       - run: npm run test:stats-share
+      # This device's own storage, which is the PRIMARY store for the
+      # visited tracker - "the source of truth for anyone who never signs
+      # in" - and what it read back was validated on one field of three.
+      # The asymmetry is the finding: app/api/visited, the OPTIONAL sync
+      # path, validates a pin field by field and checks visitedAt against an
+      # ISO pattern; the path that needs no account had neither. A `pins`
+      # that is not an array reaches `(e.pins ?? []).map(...)`, which guards
+      # absence and not type, and a non-array has no `.map` - the Map Pins
+      # tab throws. Reverting the reader makes 23 of 64 red.
+      - run: npm run test:local-visited
       # The calendar download - a file the traveller imports into a real
       # calendar app, where a malformed line means the import silently fails
       # or renders as garbage. It had no test, and the folder counted the

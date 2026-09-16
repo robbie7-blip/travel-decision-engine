@@ -12,13 +12,29 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { getEmailForShareToken, getAnonymousShareSnapshot } from "@/lib/statsShare";
+import { getEmailForShareToken, getAnonymousShareSnapshot, isValidShareToken } from "@/lib/statsShare";
 import { getVisitedCodes, computeVisitedStats } from "@/lib/visited";
 
 export const runtime = "nodejs";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+
+  // Shape-checked before it touches Redis, which the WRITE side of this
+  // token already does and the read side did not - and this is the public,
+  // unauthenticated one. isValidShareToken exists precisely because the
+  // token "becomes a Redis key suffix, so whatever arrives, colons and
+  // newlines included, lands in the keyspace", and both real issuers fit
+  // inside it: 16 base64url characters server-side, 32 hex from a device.
+  // A path segment is URL-decoded before it reaches here, so arbitrary
+  // bytes and arbitrary length were both reachable.
+  //
+  // 404 rather than 400, deliberately: to anyone holding a link, a token
+  // that cannot be one of ours and a token with nothing behind it are the
+  // same fact, and the wording is already right for it.
+  if (!isValidShareToken(token)) {
+    return NextResponse.json({ detail: "That share link isn't valid." }, { status: 404 });
+  }
 
   let redis;
   try {

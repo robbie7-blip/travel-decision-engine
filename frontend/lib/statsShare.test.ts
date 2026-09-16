@@ -29,6 +29,7 @@
 
 import { isValidShareToken } from "./statsShare";
 import { computeVisitedStats, sanitizeVisitedCodes } from "./visited";
+import { getCountry } from "./countries";
 import { check, finish, heading, section } from "./testutil";
 
 heading("anonymous share token and snapshot");
@@ -167,6 +168,64 @@ function main() {
       `${before.countriesVisited} vs ${after.countriesVisited}`
     );
     check("and count each country once", after.countriesVisited === 2, String(after.countriesVisited));
+  }
+
+  section("a NON-STRING code, which was a 500 on a public link");
+
+  {
+    // getAnonymousShareSnapshot returned `parsed as string[]` - an
+    // assertion over a Redis value - and app/api/stats-share/[token] hands
+    // it straight to computeVisitedStats, which calls getCountry on every
+    // element. `code.toUpperCase()` is not a function on a number, and that
+    // route is public and unauthenticated, so one bad element in a stored
+    // snapshot was a 500 for everyone holding that link until it expired -
+    // 400 days.
+    //
+    // Measured before the fix: "code.toUpperCase is not a function" for a
+    // number, "Cannot read properties of null" for a null.
+    for (const [name, snapshot] of [
+      ["a number", ["FR", 42]],
+      ["null", ["FR", null]],
+      ["undefined", ["FR", undefined]],
+      ["an object", ["FR", { code: "IT" }]],
+      ["a nested array", ["FR", ["IT"]]],
+      ["a boolean", ["FR", true]],
+    ] as [string, unknown[]][]) {
+      let threw = false;
+      let count = -1;
+      try {
+        count = computeVisitedStats(snapshot as string[]).countriesVisited;
+      } catch {
+        threw = true;
+      }
+      check(`${name} beside a real code does not throw`, threw === false);
+      check("  and the real code still counts", count === 1, String(count));
+    }
+  }
+
+  {
+    // The chokepoint itself. Every country lookup in the app goes through
+    // getCountry, and several callers hand it values only a type assertion
+    // says are strings.
+    for (const bad of [42, null, undefined, {}, [], true]) {
+      let threw = false;
+      let result: unknown = "not-called";
+      try {
+        result = getCountry(bad as string);
+      } catch {
+        threw = true;
+      }
+      check(`getCountry(${JSON.stringify(bad) ?? "undefined"}) does not throw`, threw === false);
+      check("  and answers undefined", result === undefined, String(result));
+    }
+    check("a real code still resolves", getCountry("fr")?.code === "FR");
+  }
+
+  {
+    // And the sanitizer drops them, which is what the reader now applies on
+    // the way out as well as the way in.
+    const mixed = sanitizeVisitedCodes(["FR", 42, null, { code: "IT" }, "jp", "ZZ"]);
+    check("only the real codes survive", JSON.stringify(mixed) === '["FR","JP"]', JSON.stringify(mixed));
   }
 
   finish();

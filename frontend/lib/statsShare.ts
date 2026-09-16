@@ -20,6 +20,7 @@
 
 import { randomBytes } from "crypto";
 import type { Redis } from "@upstash/redis";
+import { sanitizeVisitedCodes } from "./visited";
 
 function tokenForEmailKey(email: string): string {
   return `statsShareToken:${email.toLowerCase().trim()}`;
@@ -90,13 +91,24 @@ export function isValidShareToken(token: unknown): token is string {
   return typeof token === "string" && SHARE_TOKEN.test(token);
 }
 
+/** The codes behind an anonymous share token, or null if there is no
+ * snapshot.
+ *
+ * Sanitized on the way OUT as well as in, for the reason computeVisitedStats
+ * gives for deduplicating in both places: "snapshots stored before the
+ * write-side check exists are still being read". The write side bounds the
+ * value; this bounds what a READER can be handed, and the reader here is
+ * app/api/stats-share/[token] - public, unauthenticated, and it passes the
+ * array straight to computeVisitedStats, which calls getCountry on every
+ * element. `parsed as string[]` is an assertion over a Redis value, and one
+ * non-string element in it was a 500 for the whole share link. */
 export async function getAnonymousShareSnapshot(redis: Redis, token: string): Promise<string[] | null> {
   const raw = await redis.get<string | string[]>(snapshotKey(token));
   if (!raw) return null;
-  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw)) return sanitizeVisitedCodes(raw);
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as string[]) : null;
+    return Array.isArray(parsed) ? sanitizeVisitedCodes(parsed) : null;
   } catch {
     return null;
   }
