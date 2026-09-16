@@ -22,13 +22,44 @@ export async function storeMagicLinkToken(redis: Redis, token: string, email: st
   await redis.set(tokenKey(token), email, { ex: TOKEN_TTL_SECONDS });
 }
 
+/** Whether a string could have come from generateMagicLinkToken.
+ *
+ * Checked BEFORE the key is built, which is the same argument
+ * app/api/auth/verify's GET handler already makes for itself in as many
+ * words: "a token that cannot have come from generateMagicLinkToken is not
+ * a token, so there is nothing to lose by refusing it here rather than
+ * discovering it is unknown one Redis round-trip later." That guard was on
+ * the GET, which only RENDERS - and missing from the POST, which is the
+ * request that actually reaches Redis and consumes the token.
+ *
+ * So an arbitrary-length, arbitrary-character string became a Redis key
+ * suffix on an unauthenticated endpoint. It can only ever miss, because the
+ * `magiclink:` prefix is prepended rather than appended - the cost is a
+ * pointless round-trip on whatever a caller chooses to send, which is the
+ * same shape the anonymous share-token read had.
+ *
+ * Deliberately NOT imported from lib/authVerifyPage.ts, which owns the
+ * identical regex: that module is about rendering a page safely and this
+ * one is about what may become a key. Sharing it would couple the storage
+ * layer to an HTML concern. The two agreeing is asserted in the suite. */
+const TOKEN_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
+
+export function isStorableTokenShape(token: unknown): token is string {
+  return typeof token === "string" && TOKEN_SHAPE.test(token);
+}
+
 /** Consumes the token: returns the email it was issued for, or null if it
- * doesn't exist/already expired/already used. Deletes it either way it's
- * found so a token can never be replayed. */
+ * doesn't exist/already expired/already used.
+ *
+ * GETDEL, not GET-then-DEL. The header above says a token is "single-use
+ * (deleted on verify)" and the old comment here said "a token can never be
+ * replayed" - and with two round-trips that was not quite true: two POSTs
+ * arriving together both read the email before either delete landed, and
+ * both minted a session. Same email, so nothing escalates, but the file
+ * claimed a property it did not have. One command makes the claim true.
+ *
+ * The shape check is what makes the round-trip itself conditional. */
 export async function consumeMagicLinkToken(redis: Redis, token: string): Promise<string | null> {
-  const key = tokenKey(token);
-  const email = await redis.get<string>(key);
-  if (!email) return null;
-  await redis.del(key);
-  return email;
+  if (!isStorableTokenShape(token)) return null;
+  return (await redis.getdel<string>(tokenKey(token))) ?? null;
 }

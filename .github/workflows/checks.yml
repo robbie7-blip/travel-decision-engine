@@ -819,6 +819,20 @@ jobs:
       # which JSON.stringify escapes - and a single-case test would have
       # "proved" the hole closed while it was wide open. Reverting both
       # layers makes 56 of 103 red.
+      #
+      # It also covers the SECOND lock being on only one of the two doors.
+      # The GET refuses a token that cannot have come from the generator,
+      # and argues for itself in as many words - "there is nothing to lose
+      # by refusing it here rather than discovering it is unknown one Redis
+      # round-trip later" - while the POST, which is the request that
+      # actually reaches Redis and consumes the token, had no such check.
+      # So an arbitrary-length, arbitrary-character string became a Redis
+      # key suffix on an unauthenticated endpoint: reverting prints
+      # `get magiclink:` followed by ten thousand characters. And the
+      # consume is GETDEL now rather than GET-then-DEL, because the file
+      # claimed "a token can never be replayed" and two POSTs arriving
+      # together both read the email before either delete landed. Reverting
+      # makes 3 red.
       - run: npm run test:auth-verify-page
       # Login CSRF on the same endpoint.
       #

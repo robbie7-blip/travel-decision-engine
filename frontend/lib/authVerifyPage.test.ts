@@ -27,7 +27,7 @@ import {
   renderVerifyPage,
   scriptStringLiteral,
 } from "./authVerifyPage";
-import { generateMagicLinkToken } from "./magicLink";
+import { consumeMagicLinkToken, generateMagicLinkToken, isStorableTokenShape } from "./magicLink";
 import { check, finish, heading, section } from "./testutil";
 
 heading("the sign-in page's escaping");
@@ -51,7 +51,7 @@ const BREAKOUTS = [
   "x</script >y",
 ];
 
-function main() {
+async function main() {
   {
     section("the token shape check, which kills the class");
 
@@ -183,6 +183,124 @@ function main() {
       "  but it still smuggles the terminator, which is the actual defect",
       JSON.stringify(withQuotes).includes("</script>")
     );
+  }
+
+  {
+    section("the SECOND lock on the same door, which was only on the GET");
+
+    // The GET handler refuses a token that cannot have come from the
+    // generator, and says why in its own words: "there is nothing to lose
+    // by refusing it here rather than discovering it is unknown one Redis
+    // round-trip later". The POST is the request that actually reaches
+    // Redis and consumes the token, and it had no such check - so an
+    // arbitrary-length, arbitrary-character string became a Redis key
+    // suffix on an unauthenticated endpoint.
+    //
+    // Two regexes, deliberately: authVerifyPage owns one because it is
+    // about rendering a page safely, magicLink owns the other because it is
+    // about what may become a key, and coupling the storage layer to an
+    // HTML concern to save six characters would be the wrong trade. What
+    // must hold is that they AGREE, which is asserted here rather than
+    // assumed.
+    for (let i = 0; i < 20; i++) {
+      const real = generateMagicLinkToken();
+      check(`the two checks agree on a real token (${real.slice(0, 6)}…)`, isStorableTokenShape(real) === isMagicLinkTokenShape(real));
+    }
+    const shapes: unknown[] = [
+      ...BREAKOUTS,
+      "<", ">", '"', "'", "&", "\\", "a b", "a\nb", "tok=en", "tok.en", "tok/en", "tok+en",
+      "%3Cscript%3E", "", "short", "a".repeat(129), "a".repeat(128), "a".repeat(16),
+      "magiclink:someone@example.com", "*", "?", "[a]", "a\r\nb",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
+    ];
+    for (const shape of shapes) {
+      check(
+        `and on ${JSON.stringify(shape).slice(0, 34)}`,
+        isStorableTokenShape(shape) === isMagicLinkTokenShape(shape as string),
+        `${isStorableTokenShape(shape)} vs ${isMagicLinkTokenShape(shape as string)}`
+      );
+    }
+
+    // Non-strings reach the storage check from a form body; the render
+    // check is only ever handed a string by its caller.
+    for (const value of [null, undefined, 42, {}, [], true]) {
+      check(`${JSON.stringify(value) ?? "undefined"} is not storable`, isStorableTokenShape(value) === false);
+    }
+
+    // The specific thing the key-suffix guard is for: a value that would
+    // otherwise be pasted into `magiclink:${token}`.
+    check("a colon is refused", isStorableTokenShape("magiclink:a@b.com") === false);
+    check("a newline is refused", isStorableTokenShape("abcdefghijklmnop\nabcdefghijklmnop") === false);
+    check("a 10,000-character body is refused", isStorableTokenShape("a".repeat(10_000)) === false);
+  }
+
+  {
+    section("consuming a token: one command, and none at all for a non-token");
+
+    /** A Redis stand-in that records what it was asked. */
+    function fakeRedis(stored: Record<string, string>) {
+      const calls: string[] = [];
+      return {
+        calls,
+        client: {
+          async getdel<T>(key: string): Promise<T | null> {
+            calls.push(`getdel ${key}`);
+            const value = stored[key];
+            delete stored[key];
+            return (value as T) ?? null;
+          },
+          async get<T>(key: string): Promise<T | null> {
+            calls.push(`get ${key}`);
+            return (stored[key] as T) ?? null;
+          },
+          async del(key: string): Promise<number> {
+            calls.push(`del ${key}`);
+            return delete stored[key] ? 1 : 0;
+          },
+        },
+      };
+    }
+
+    const token = generateMagicLinkToken();
+
+    {
+      const r = fakeRedis({ [`magiclink:${token}`]: "robbie@example.com" });
+      const email = await consumeMagicLinkToken(r.client as never, token);
+      check("a real token returns its email", email === "robbie@example.com", String(email));
+      // GETDEL, not GET-then-DEL: two POSTs arriving together both read the
+      // email before either delete landed, and both minted a session. Same
+      // email, so nothing escalates - but the file claimed "a token can
+      // never be replayed", and that was not quite true.
+      check("  in ONE command", r.calls.length === 1, JSON.stringify(r.calls));
+      check("  and that command is getdel", r.calls[0].startsWith("getdel "), r.calls[0]);
+    }
+
+    {
+      // Single-use, for real: the second attempt gets nothing.
+      const store = { [`magiclink:${token}`]: "robbie@example.com" };
+      const r = fakeRedis(store);
+      await consumeMagicLinkToken(r.client as never, token);
+      const again = await consumeMagicLinkToken(r.client as never, token);
+      check("a consumed token cannot be used twice", again === null, String(again));
+    }
+
+    {
+      // The point of the shape check: a non-token never becomes a key.
+      const r = fakeRedis({});
+      for (const bad of ["", "short", "a".repeat(10_000), "magiclink:a@b.com", "tok en"]) {
+        const email = await consumeMagicLinkToken(r.client as never, bad);
+        check(`${JSON.stringify(bad).slice(0, 26)} yields no email`, email === null);
+      }
+      check("and reached Redis zero times", r.calls.length === 0, JSON.stringify(r.calls));
+    }
+
+    {
+      // A well-shaped token that simply is not ours: one round-trip, no email.
+      const r = fakeRedis({});
+      const email = await consumeMagicLinkToken(r.client as never, "a".repeat(43));
+      check("an unknown but well-shaped token yields no email", email === null);
+      check("  after exactly one round-trip", r.calls.length === 1, JSON.stringify(r.calls));
+    }
   }
 
   finish();

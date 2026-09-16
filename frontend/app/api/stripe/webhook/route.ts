@@ -57,10 +57,45 @@ async function handleCheckoutCompleted(
   // failure is silent and expensive - the charge succeeds, paid access is
   // granted to an address nobody signs in with, and the traveller sees a
   // free account with the money gone.
-  const email = (session.metadata?.email as string | undefined) ?? session.customer_details?.email;
+  const fromMetadata = session.metadata?.email;
+  const email = (typeof fromMetadata === "string" ? fromMetadata : null) ?? session.customer_details?.email;
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
   const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-  if (!email || !customerId) return;
+
+  // LOUDLY, not silently. This branch is the failure the paragraph above
+  // exists to avoid, arrived at from the other direction: the charge
+  // succeeded, no access was granted, Stripe's dashboard shows the event
+  // delivered successfully - and nothing anywhere said so. The handler
+  // already logs an access-control event it declines to apply, for exactly
+  // this reason ("Stripe's own dashboard shows it delivered successfully -
+  // which it was"), and this earlier return had no such line.
+  //
+  // Still a 200. A retry cannot conjure an address that is not in the
+  // session, so asking Stripe to redeliver would only repeat the same
+  // nothing on a backoff schedule. The log is the actionable part, and the
+  // session id is what makes it actionable: it is enough to find the
+  // payment and fix the account by hand.
+  if (!email || !customerId) {
+    console.error(
+      `[stripe] checkout.session.completed for ${session.id} has no usable ` +
+        `${!email ? "email" : "customer id"} - PAID ACCESS WAS NOT GRANTED. ` +
+        `metadata.email ${fromMetadata === undefined ? "absent" : typeof fromMetadata}, ` +
+        `customer_details.email ${session.customer_details?.email ? "present" : "absent"}. ` +
+        `Sessions this app creates always carry metadata.email (see app/api/checkout), so this ` +
+        `is a session created elsewhere - a dashboard payment link, or a Stripe-side change.`
+    );
+    return;
+  }
+
+  // A subscription-mode session always carries one, so its absence is the
+  // same class of problem: the charge went through and the record would be
+  // written with a null status, which resolvePlan reads as "free".
+  if (!subscriptionId) {
+    console.error(
+      `[stripe] checkout.session.completed for ${session.id} (${email}) has no subscription id - ` +
+        `the account will be recorded with no status, which reads as the free plan.`
+    );
+  }
 
   await linkStripeCustomerToEmail(redis, customerId, email);
 
