@@ -183,11 +183,117 @@ async function main() {
 
   {
     // Idempotent, because it runs on a path that may already be clean.
+    //
+    // Compared after ONE pass rather than before any, because the first pass
+    // legitimately changes things - a day with no items array gains one, an
+    // item with no readable price gains a zero. What idempotence means is
+    // that the second pass changes nothing, which is what this asserts.
     const it = { days: [{ day: 1, date: "d", items: [{ title: "a" }] }] } as unknown as Itinerary;
-    const before = JSON.stringify(it);
     normalizeItineraryShape(it);
+    const afterOne = JSON.stringify(it);
     normalizeItineraryShape(it);
-    check("running it twice changes nothing", JSON.stringify(it) === before, JSON.stringify(it));
+    check("running it a second time changes nothing", JSON.stringify(it) === afterOne, JSON.stringify(it));
+
+    const clean = { days: [{ day: 1, date: "d", items: [{ title: "a", cost_estimate_eur: 20 }] }] } as unknown as Itinerary;
+    const cleanBefore = JSON.stringify(clean);
+    normalizeItineraryShape(clean);
+    check("an already-clean itinerary is untouched", JSON.stringify(clean) === cleanBefore, JSON.stringify(clean));
+  }
+
+  section("every price made a number");
+
+  {
+    // The other half of what this function guarantees, and the same
+    // argument: 30-odd readers believe `cost_estimate_eur: number` because
+    // types.ts says so, and the value arrived through a type assertion.
+    // See engine/money.ts for what `"20"` did to the trip total.
+    const it = {
+      budget_feasibility: { feasible: true, min_realistic_total_eur: 1200, reasoning: "" },
+      days: [
+        {
+          day: 1,
+          date: "d",
+          items: [
+            { title: "text price", cost_estimate_eur: "20" },
+            { title: "decorated", cost_estimate_eur: "EUR 140" },
+            { title: "a range", cost_estimate_eur: "15-20" },
+            { title: "prose", cost_estimate_eur: "about twenty" },
+            { title: "missing" },
+            { title: "null", cost_estimate_eur: null },
+            { title: "negative", cost_estimate_eur: -30 },
+            { title: "nan", cost_estimate_eur: Number.NaN },
+            { title: "real", cost_estimate_eur: 28 },
+            { title: "really free", cost_estimate_eur: 0 },
+          ],
+        },
+      ],
+    } as unknown as Itinerary;
+    normalizeItineraryShape(it);
+    const prices = it.days[0].items.map((i) => i.cost_estimate_eur);
+    check("every price is a number now", prices.every((p) => typeof p === "number"), JSON.stringify(prices));
+    check("  and every one is finite", prices.every((p) => Number.isFinite(p)), JSON.stringify(prices));
+    check('"20" recovers to 20', prices[0] === 20, String(prices[0]));
+    check('"EUR 140" recovers to 140', prices[1] === 140, String(prices[1]));
+    // Not 15, and not 20. Picking an end of the range would invent a price.
+    check('"15-20" becomes 0, not one end of the range', prices[2] === 0, String(prices[2]));
+    check("prose becomes 0", prices[3] === 0, String(prices[3]));
+    check("missing becomes 0", prices[4] === 0, String(prices[4]));
+    check("null becomes 0", prices[5] === 0, String(prices[5]));
+    check("negative becomes 0 - a line item may not subtract", prices[6] === 0, String(prices[6]));
+    check("NaN becomes 0", prices[7] === 0, String(prices[7]));
+    check("a real price is left exactly alone", prices[8] === 28, String(prices[8]));
+    check("and a real zero stays zero", prices[9] === 0, String(prices[9]));
+
+    // The property all of it is for: the total can be added up.
+    const total = it.days.reduce((s, d) => s + d.items.reduce((t, i) => t + i.cost_estimate_eur, 0), 0);
+    check("the trip total is a number", typeof total === "number" && Number.isFinite(total), JSON.stringify(total));
+    check("  and it is 20+140+28 = 188", total === 188, String(total));
+  }
+
+  {
+    // min_realistic_total_eur is treated the OPPOSITE way, and the reason is
+    // its reader: ItineraryResult prints the minimum-estimate line only if
+    // Number.isFinite passes. Recovering "1200" puts a line back that a paid
+    // itinerary would otherwise drop; writing 0 for an unreadable one would
+    // pass that guard and state a minimum of EUR 0 as fact.
+    const recovered = { budget_feasibility: { min_realistic_total_eur: "1,200" }, days: [] } as unknown as Itinerary;
+    normalizeItineraryShape(recovered);
+    check("a text minimum estimate is recovered", recovered.budget_feasibility.min_realistic_total_eur === 1200, String(recovered.budget_feasibility.min_realistic_total_eur));
+
+    const unreadable = { budget_feasibility: { min_realistic_total_eur: "about 1200" }, days: [] } as unknown as Itinerary;
+    normalizeItineraryShape(unreadable);
+    check(
+      "an unreadable one is left unreadable, so the page hides the line",
+      Number.isFinite(unreadable.budget_feasibility.min_realistic_total_eur) === false,
+      JSON.stringify(unreadable.budget_feasibility.min_realistic_total_eur)
+    );
+
+    // And it must not throw on the shapes assertUsableItinerary rejects,
+    // because this function repairs rather than rejects.
+    for (const bad of [null, undefined, "feasible", 42]) {
+      const it = { budget_feasibility: bad, days: [] } as unknown as Itinerary;
+      let threw = false;
+      try {
+        normalizeItineraryShape(it);
+      } catch {
+        threw = true;
+      }
+      check(`budget_feasibility as ${JSON.stringify(bad) ?? "undefined"} does not throw`, threw === false);
+    }
+  }
+
+  {
+    // A price on a non-object item must not throw either - the items array
+    // is the model's, and nothing says its entries are objects.
+    const it = { days: [{ day: 1, items: [null, "lunch", 42, { title: "real", cost_estimate_eur: "12" }] }] } as unknown as Itinerary;
+    let threw = false;
+    try {
+      normalizeItineraryShape(it);
+    } catch {
+      threw = true;
+    }
+    check("a non-object item does not throw", threw === false);
+    check("  and the real item beside it is still normalized", it.days[0].items[3].cost_estimate_eur === 12, JSON.stringify(it.days[0].items[3]));
   }
 
   {

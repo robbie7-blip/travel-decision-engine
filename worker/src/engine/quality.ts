@@ -52,6 +52,7 @@ import {
   type SkeletonDay,
 } from "./twoPhase";
 import { formatLegDistance, travelProblemsFor } from "./travel";
+import { costForSum, mustCost } from "./money";
 
 /** How far a lodging item's price may sit from the known per-night rate
  * before it is treated as wrong. Generous, because a day call is allowed to
@@ -512,8 +513,10 @@ export function assessQuality(
   // understates the trip total the traveler is budgeting against.
   for (const day of days) {
     for (const item of day.items) {
-      const mustCost = item.type === "meal" || item.type === "lodging" || item.is_flight === true;
-      if (!mustCost) continue;
+      // The judgement itself moved to engine/money.ts, because the trip page
+      // needed the same one and had been answering it differently - printing
+      // "Free" for exactly the zeros this check calls a defect.
+      if (!mustCost(item)) continue;
       if (typeof item.cost_estimate_eur === "number" && item.cost_estimate_eur > 0) continue;
       findings.push({
         check: "prices_present",
@@ -685,8 +688,16 @@ export function assessQuality(
   // total is over despite that, which makes a false positive very unlikely.
   const stated = brief.budget_total_eur ?? 0;
   if (stated > 0 && itinerary.budget_feasibility?.feasible === true) {
+    // `sum + (i.cost_estimate_eur || 0)`, which is string CONCATENATION the
+    // moment one price is a string: `10 + "20" + 30` is "102030", and
+    // Math.round of that is 102030 - so a single mistyped price reported
+    // "the items add up to EUR 102030 against a EUR 2000 budget" and
+    // stamped a defect on a trip that was fine. normalizeItineraryShape now
+    // coerces every price before this runs; this says so at the sum, since
+    // a sum that only works because of something three files away is the
+    // arrangement money.ts exists to end.
     const itemTotal = days.reduce(
-      (sum, day) => sum + day.items.reduce((s, i) => s + (i.cost_estimate_eur || 0), 0),
+      (sum, day) => sum + day.items.reduce((s, i) => s + costForSum(i.cost_estimate_eur), 0),
       0
     );
     if (itemTotal > stated) {

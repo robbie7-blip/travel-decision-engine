@@ -12,6 +12,7 @@ import { Stamp } from "./ui";
 import { ApiError, pollJob, refineItinerary } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { formatMoney } from "@/lib/currency";
+import { costForSum } from "@/lib/engine/money";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS, type Dictionary } from "@/lib/i18n";
 import type { Job } from "@/lib/jobs";
 import type { Itinerary, Language } from "@/lib/types";
@@ -112,9 +113,18 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
   return { ...state, currentJobId, handleRefine, refining, refineJobStatus, refineError, lastQuestion };
 }
 
+/** The compared trips' headline figure, added up from the line items.
+ *
+ * `daySum + (item.cost_estimate_eur || 0)` was string CONCATENATION for any
+ * price the model wrote as text: `10 + "20" + 30` is "102030", and this
+ * function's declared return type is `number`, so nothing objected - the
+ * comparison table offered "€102030" as the cost of four days in Rome, next
+ * to a real figure for the other column. costForSum is the same function
+ * the worker decides prices with (engine/money.ts, mirrored), so an
+ * unreadable price counts as nothing here instead of poisoning the total. */
 function totalCost(itinerary: Itinerary): number {
   return (itinerary.days ?? []).reduce(
-    (sum, day) => sum + (day.items ?? []).reduce((daySum, item) => daySum + (item.cost_estimate_eur || 0), 0),
+    (sum, day) => sum + (day.items ?? []).reduce((daySum, item) => daySum + costForSum(item.cost_estimate_eur), 0),
     0
   );
 }

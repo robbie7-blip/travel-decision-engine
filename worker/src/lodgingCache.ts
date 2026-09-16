@@ -9,6 +9,7 @@
 
 import type Redis from "ioredis";
 import type { Itinerary, TripBriefInput } from "./types";
+import { parseCurrencyNumber } from "./engine/money";
 
 const CACHE_TTL_SECONDS = 20 * 60 * 60; // ~20h - long enough to help back-to-back testers/users on the same city, short enough that a real price swing doesn't linger
 
@@ -71,27 +72,11 @@ export function usableNightlyRate(value: unknown): number | null {
   return Math.round(value);
 }
 
-/** The number inside a string a model wrote for a numeric field, or NaN.
- *
- * Accepts one number with optional currency decoration and thousands
- * separators around it, and refuses everything else - a range ("120-160")
- * and a hedge ("about 140, maybe more") both have to be refused, because
- * picking one end of a range is inventing a price. */
-function parseCurrencyNumber(value: string): number {
-  const stripped = value
-    .trim()
-    // Currency symbols and codes, on either side.
-    .replace(/^(eur|usd|gbp|€|\$|£)\s*/i, "")
-    .replace(/\s*(eur|usd|gbp|€|\$|£)$/i, "")
-    // Thousands separators, but only between digit groups, so "1,200"
-    // becomes 1200 while "1,2" is left to fail the test below.
-    .replace(/(?<=\d),(?=\d{3}(\D|$))/g, "")
-    .trim();
-  // A plain decimal number and nothing else. Number("") is 0 and
-  // Number(" ") is 0, which is why the pattern is required rather than
-  // relying on Number() to refuse.
-  return /^\d+(\.\d+)?$/.test(stripped) ? Number(stripped) : Number.NaN;
-}
+// The number-inside-a-string reader this file used to own now lives in
+// engine/money.ts, because the itinerary's own prices needed exactly the
+// same question answered and a price either is one or is not. Behaviour is
+// unchanged, and the assertions below - "a stored a string price is not
+// served as fact", the range and hedge refusals - are what say so.
 
 /** An http(s) URL a traveler can be shown as the source of a price, or null.
  *

@@ -25,6 +25,11 @@
 //                 the worker sends, so a divergence changes what the model
 //                 is asked without changing what anyone thinks it was
 //                 asked.
+//   money.ts      what counts as a price. The worker coerces model-written
+//                 prices before storing; the app formats the ones already
+//                 stored. Two different answers to "is this a price" is a
+//                 page showing a figure the worker rejected, or "no figure"
+//                 for one it accepted.
 //
 // The one legitimate divergence is marked in the file itself: a block
 // between FRONTEND-ONLY sentinels is stripped from the frontend copy before
@@ -46,6 +51,7 @@ const PAIRS = [
   ["worker/src/engine/prompt.ts", "frontend/lib/engine/prompt.ts"],
   ["worker/src/engine/travel.ts", "frontend/lib/engine/travel.ts"],
   ["worker/src/engine/timingAudit.ts", "frontend/lib/engine/timingAudit.ts"],
+  ["worker/src/engine/money.ts", "frontend/lib/engine/money.ts"],
 ];
 
 const BEGIN = "// --- FRONTEND-ONLY (not mirrored to the worker) ---";

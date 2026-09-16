@@ -10,6 +10,7 @@
 // Run: npm run test:shape
 
 import type { Itinerary } from "../types";
+import { usableCostEur } from "./money";
 
 /** Thrown for a response that parsed as JSON but is not an itinerary.
  *
@@ -75,7 +76,8 @@ export function assertUsableItinerary(value: unknown): asserts value is Itinerar
   }
 }
 
-/** Guarantees `days` and every `day.items` is an array, in place.
+/** Guarantees `days` and every `day.items` is an array, and every price a
+ * number, in place.
  *
  * assertUsableItinerary above THROWS on a missing items array, which is
  * right for a fresh model response - but it runs in exactly one place, the
@@ -104,13 +106,43 @@ export function assertUsableItinerary(value: unknown): asserts value is Itinerar
  *
  * Idempotent, and it never touches a day that already has an array. */
 export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
+  // The model's own estimate of the floor, and the ONE model-written number
+  // whose reader already guards it: ItineraryResult renders the line only
+  // `Number.isFinite(min_realistic_total_eur)`. So it is RECOVERED when it
+  // can be - "1200" puts the minimum-estimate line back on a paid itinerary
+  // that would otherwise silently drop it - and left exactly as it is when
+  // it cannot. Writing 0 here would be worse than leaving it broken: the
+  // guard would pass and the page would state a minimum of EUR 0 as fact.
+  if (itinerary.budget_feasibility && typeof itinerary.budget_feasibility === "object") {
+    const recovered = usableCostEur(itinerary.budget_feasibility.min_realistic_total_eur);
+    if (recovered !== null) itinerary.budget_feasibility.min_realistic_total_eur = recovered;
+  }
+
   if (!Array.isArray(itinerary.days)) {
     itinerary.days = [];
     return itinerary;
   }
   for (const day of itinerary.days) {
-    if (day && typeof day === "object" && !Array.isArray(day.items)) {
+    if (!day || typeof day !== "object") continue;
+    if (!Array.isArray(day.items)) {
       day.items = [];
+      continue;
+    }
+    // Every price, made a number, for the same reason the items array is
+    // made an array: because everything downstream already believes it is
+    // one. See money.ts for what `"20"` did to the trip total.
+    //
+    // Unusable becomes 0 rather than being left alone, which is the
+    // opposite of the decision above, and the difference is who reads it.
+    // Nothing guards `cost_estimate_eur` - it is summed, divided by party
+    // size, compared against a nightly rate and printed - so leaving a
+    // string there only moves the failure downstream. 0 is the value all of
+    // those already handle, and it is the value prices_present already
+    // calls a defect for a meal, a bed or a flight, so an unusable price
+    // reports itself through machinery that exists rather than silently.
+    for (const item of day.items) {
+      if (!item || typeof item !== "object") continue;
+      item.cost_estimate_eur = usableCostEur(item.cost_estimate_eur) ?? 0;
     }
   }
   return itinerary;

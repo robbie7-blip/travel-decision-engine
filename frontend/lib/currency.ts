@@ -7,6 +7,8 @@
 // looks authoritative - worse than just leaving that prose in EUR - so
 // those stay untouched; only the structured fields convert.
 
+import { usableCostEur } from "./engine/money";
+
 export const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "BGN", "JPY", "CHF"] as const;
 export type Currency = (typeof SUPPORTED_CURRENCIES)[number];
 
@@ -18,6 +20,15 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   JPY: "¥",
   CHF: "CHF ",
 };
+
+/** What a figure looks like when there isn't one.
+ *
+ * An em dash, not a translated phrase, on purpose: it reads the same in
+ * every language this app ships and needs no i18n key to stay in step with
+ * the two it has. It appears where a price could not be read at all, which
+ * is rare enough that the honest answer is "no number here" rather than a
+ * sentence explaining why. */
+export const NO_FIGURE = "—";
 
 // Shared with the language preference's storage convention (see
 // lib/i18n.ts's LANGUAGE_STORAGE_KEY) - one localStorage key, sticks across
@@ -42,7 +53,25 @@ export function isSupportedCurrency(value: string): value is Currency {
  * currency isn't EUR but no live rate is available for it (rates still
  * loading, upstream API down) - never fabricates a conversion. */
 export function formatMoney(amountEur: number, currency: Currency, rates: FxRates | null): string {
-  if (currency === "EUR") return `€${Math.round(amountEur)}`;
+  // The AMOUNT has to be a usable number too, not only the rate below.
+  //
+  // Every figure passed in here is model-written JSON that crossed Redis
+  // under a type assertion - `cost_estimate_eur: number` is what types.ts
+  // declares, not what was checked - and `Math.round` of a string prints
+  // "€NaN" against a real currency symbol on a paid itinerary. A price the
+  // model wrote as "15-20" did exactly that. Measured, not inferred.
+  //
+  // The worker coerces these at the shape gate now (engine/money.ts, whose
+  // frontend copy this uses), so this is the backstop for the itineraries
+  // ALREADY STORED, which no worker change can reach. It answers with the
+  // same function the worker decides with, so a price one of them accepts
+  // is not one the other prints as nonsense: "20" recovers to €20 as it
+  // does today, and "15-20" - which cannot be recovered without inventing
+  // an end of the range - shows NO_FIGURE rather than €NaN. Never €0, which
+  // would be a claim that the thing is free.
+  const amount = usableCostEur(amountEur);
+  if (amount === null) return NO_FIGURE;
+  if (currency === "EUR") return `€${Math.round(amount)}`;
 
   // `rates?.rates[currency]` - note where the optional chain stops. It
   // guarded the whole object being null and NOT the `rates` map inside it
@@ -65,10 +94,10 @@ export function formatMoney(amountEur: number, currency: Currency, rates: FxRate
   // either nonsense or "NaN" against a real currency symbol, which is worse
   // than showing the honest EUR figure.
   if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) {
-    return `€${Math.round(amountEur)}`;
+    return `€${Math.round(amount)}`;
   }
 
-  return `${CURRENCY_SYMBOLS[currency]}${Math.round(amountEur * rate)}`;
+  return `${CURRENCY_SYMBOLS[currency]}${Math.round(amount * rate)}`;
 }
 
 /** Keeps only the entries that are genuinely usable rates.

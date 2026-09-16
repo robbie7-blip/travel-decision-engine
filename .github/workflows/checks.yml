@@ -129,6 +129,19 @@ jobs:
       # either. Verified end to end: without this gate the same response
       # loses the generation, with it the retry succeeds.
       - run: npm run test:shape
+      # What counts as a price. types.ts declares `cost_estimate_eur: number`
+      # and 30-odd readers believe it, but the value arrives through
+      # `JSON.parse(text) as ItineraryDay` - an assertion, not a check - and
+      # nothing between there and the trip total ever tested its type.
+      # Measured: one item priced "20" instead of 20 makes `10 + "20" + 30`
+      # the STRING "102030", so budget_matches_items reported "the items add
+      # up to EUR 102030 against a EUR 2000 budget" and stamped a defect on a
+      # sound trip, while the item's own line rendered a perfect "€20". A
+      # range ("15-20") made the total NaN instead. The same suite covers the
+      # judgement the page had been getting wrong in the other direction:
+      # zero on a meal, a bed or a flight is a price we do not have, not
+      # "Free".
+      - run: npm run test:money
       # Whether the day leaves time to get between its stops - the check
       # the acceptance gate did not have, and the most common way an AI day
       # plan fails. Not a wrong fact: 09:00 at the Colosseum and 09:30 at

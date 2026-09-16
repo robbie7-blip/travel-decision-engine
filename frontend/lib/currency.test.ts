@@ -26,7 +26,7 @@
 //
 // Run: npm run test:currency
 
-import { formatMoney, isSupportedCurrency, sanitizeRates, type FxRates } from "./currency";
+import { formatMoney, isSupportedCurrency, NO_FIGURE, sanitizeRates, type FxRates } from "./currency";
 import { check, finish, heading, section } from "./testutil";
 
 heading("currency conversion");
@@ -90,6 +90,45 @@ function main() {
     check("NaN falls back rather than printing $NaN", bad(Number.NaN) === "€100", bad(Number.NaN));
     check("Infinity falls back", bad(Number.POSITIVE_INFINITY) === "€100", bad(Number.POSITIVE_INFINITY));
     check("null falls back", bad(null) === "€100", bad(null));
+  }
+
+  section("an AMOUNT that is present but not usable");
+
+  {
+    // The other half of the same mistake, found by asking why the rate got
+    // a guard and the figure it multiplies did not. Both are model-written
+    // or network-borne JSON that crossed a type assertion; `cost_estimate_eur:
+    // number` is what types.ts declares, not what anything checked.
+    //
+    // This is the render-side backstop. The worker coerces prices at the
+    // shape gate now (engine/money.ts), which fixes every itinerary
+    // generated from here on and cannot reach one already in Redis.
+    const eur = (v: unknown) => formatMoney(v as number, "EUR", null);
+    const usd = (v: unknown) => formatMoney(v as number, "USD", withRates({ USD: 1.08 }));
+
+    // Recovered, because the price is real and only its type is wrong - and
+    // recovered by the SAME function the worker decides with, so the page
+    // cannot print nonsense for a figure the worker accepted.
+    check('"20" prints as €20, as it did before', eur("20") === "€20", eur("20"));
+    check("  and converts", usd("100") === "$108", usd("100"));
+
+    // These printed "€NaN" against a real currency symbol on a paid trip.
+    check('a range shows no figure, not "€NaN"', eur("15-20") === NO_FIGURE, eur("15-20"));
+    check("  nor when converted", usd("15-20") === NO_FIGURE, usd("15-20"));
+    check("prose shows no figure", eur("about twenty") === NO_FIGURE, eur("about twenty"));
+    check("NaN shows no figure", eur(Number.NaN) === NO_FIGURE, eur(Number.NaN));
+    check("Infinity shows no figure", eur(Number.POSITIVE_INFINITY) === NO_FIGURE, eur(Number.POSITIVE_INFINITY));
+    check("undefined shows no figure", eur(undefined) === NO_FIGURE, eur(undefined));
+    check("an object shows no figure", eur({ eur: 20 }) === NO_FIGURE, eur({ eur: 20 }));
+
+    // And never €0, which would be a claim that the thing is free. null
+    // coerces to 0 under Math.round, so this is the specific case where the
+    // old code printed "€0" for a price it did not have.
+    check("null is not printed as free", eur(null) === NO_FIGURE, eur(null));
+    check("a negative is not printed", eur(-30) === NO_FIGURE, eur(-30));
+
+    // A real zero still prints, because a free museum is a real price.
+    check("a real zero still prints as €0", eur(0) === "€0", eur(0));
   }
 
   section("sanitizeRates, which is what stops any of that being cached");

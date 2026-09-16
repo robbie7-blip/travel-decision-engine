@@ -15,7 +15,8 @@ import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
 import { downloadItineraryIcs } from "@/lib/exportIcs";
-import { formatMoney, type Currency, type FxRates } from "@/lib/currency";
+import { formatMoney, NO_FIGURE, type Currency, type FxRates } from "@/lib/currency";
+import { itemPriceEur, mustCost } from "@/lib/engine/money";
 import { hoursLineFor, splitIntoSentences } from "@/lib/resultFormat";
 import { safeHref } from "@/lib/linkify";
 import type { FeedbackRating } from "@/lib/feedback";
@@ -160,6 +161,23 @@ function ItemFeedback({
  * a lunch break), and React keys have to be unique among siblings. */
 function itemKey(day: number, index: number, item: ItineraryItem): string {
   return `${day}|${item.time ?? ""}|${item.venue_name ?? item.title ?? ""}|${index}`;
+}
+
+/** The price cell: the figure, and its provenance when there is a figure for
+ * the provenance to be about.
+ *
+ * The tier label used to be appended unconditionally, which is right for
+ * "€28 (single source)" and wrong for a price that could not be read at all
+ * - "— (single source)" cites a source for a number that is not there. */
+function priceCell(
+  item: ItineraryItem,
+  currency: Currency,
+  rates: FxRates | null,
+  tierLabel: string | undefined
+): string {
+  const figure = formatMoney(itemPriceEur(item), currency, rates);
+  if (figure === NO_FIGURE || !tierLabel) return figure;
+  return `${figure} (${tierLabel})`;
 }
 
 /** The "how do we know this?" disclosure - a tier-specific plain-language
@@ -574,14 +592,24 @@ export function ItineraryResult({
                           >
                             {t.result.checkFlightPrices} ↗
                           </a>
-                        ) : item.cost_estimate_eur === 0 ? (
+                        ) : item.cost_estimate_eur === 0 && !mustCost(item) ? (
+                          // Free, and genuinely so: a park, a walk, a
+                          // viewpoint. A MEAL, a BED or a FLIGHT priced
+                          // zero is not free, it is a price the app does
+                          // not have - quality.ts says exactly that in its
+                          // own words ("zero is a real, valid price for a
+                          // free museum or a walk. It is not a valid price
+                          // for a meal, a bed, or a flight") and records it
+                          // as a prices_present defect. The page said
+                          // "Free" for all of them, contradicting its own
+                          // gate and telling the traveler a restaurant
+                          // dinner cost nothing - a claim about money the
+                          // app cannot back. Those now fall through to
+                          // formatMoney's "—", the same as any other
+                          // figure that could not be read.
                           t.result.free
                         ) : (
-                          `${formatMoney(item.cost_estimate_eur, currency, rates)}${
-                            t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]
-                              ? ` (${t.result.inlineTierLabel[item.confidence_tier ?? "inferred"]})`
-                              : ""
-                          }`
+                          priceCell(item, currency, rates, t.result.inlineTierLabel[item.confidence_tier ?? "inferred"])
                         )}
                       </span>
                     </div>
