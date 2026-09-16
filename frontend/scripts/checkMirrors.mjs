@@ -1,6 +1,6 @@
 // The mirrored files, checked.
 //
-// Four files exist twice, once under worker/src/ and once under
+// Several files exist twice, once under worker/src/ and once under
 // frontend/lib/, and each says in its own header that the two copies are
 // "kept byte-identical". Nothing enforced that. The worker writes over
 // ioredis and the app reads over the Upstash REST client, so neither can
@@ -39,7 +39,7 @@
 //
 // Run: npm run check:mirrors
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
@@ -109,8 +109,47 @@ function firstDifference(a, b) {
   return null;
 }
 
+// A file that exists in BOTH engine directories and is not declared above.
+//
+// The list was hand-maintained, which makes it exactly as reliable as the
+// comments it replaced. frontend/lib/engine/checks.ts proved that: a fourth
+// copy nobody had declared, three fixes behind its worker twin - missing the
+// arrival-night repair, the plan-is-authority night count, and the
+// needs_lodging guard that stops a traveller who already has a bed from
+// having one stray lodging line cloned onto every remaining night. It was
+// dead code, so none of that ran, which is the only reason it cost nothing;
+// the next person to want a confidence tier on the client would have
+// imported it and silently got the old behaviour.
+//
+// So the pairs are now checked against the FILESYSTEM. A shared basename
+// between the two engine directories is either declared and compared, or it
+// fails here.
+const ENGINE_DIRS = ["worker/src/engine", "frontend/lib/engine"];
+
+function undeclaredDuplicates() {
+  const [workerDir, frontendDir] = ENGINE_DIRS;
+  const declared = new Set(PAIRS.map(([w]) => w));
+  const inWorker = new Set(readdirSync(resolve(ROOT, workerDir)));
+  return readdirSync(resolve(ROOT, frontendDir))
+    .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"))
+    .filter((name) => inWorker.has(name))
+    .map((name) => `${workerDir}/${name}`)
+    .filter((path) => !declared.has(path));
+}
+
 let failed = 0;
 let allowedBlocks = 0;
+
+const undeclared = undeclaredDuplicates();
+if (undeclared.length > 0) {
+  failed++;
+  console.error(`\nUNDECLARED DUPLICATE: ${undeclared.join(", ")}`);
+  console.error(
+    `  These exist under both ${ENGINE_DIRS[0]}/ and ${ENGINE_DIRS[1]}/ and are not in PAIRS,\n` +
+      `  so nothing compares them and they will drift.\n` +
+      `  fix: add the pair above, or delete the copy that is not used.`
+  );
+}
 
 for (const [workerPath, frontendPath] of PAIRS) {
   const worker = readFileSync(resolve(ROOT, workerPath), "utf8");
@@ -135,7 +174,7 @@ for (const [workerPath, frontendPath] of PAIRS) {
 }
 
 if (failed > 0) {
-  console.error(`\n${failed} mirrored file pair(s) have drifted.\n`);
+  console.error(`\n${failed} problem(s) with the mirrored files.\n`);
   process.exit(1);
 }
 
