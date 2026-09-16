@@ -16,6 +16,7 @@
 
 import type { WorkerHeartbeat } from "./jobs";
 import { MIN_SESSION_SECRET_CHARS, isUsableSessionSecret } from "./session";
+import { MIN_ADMIN_PASSWORD_CHARS, isUsableAdminPassword } from "./adminAuth";
 
 /** How much it matters when this one is missing.
  *
@@ -64,6 +65,16 @@ export const FRONTEND_ENV: readonly EnvCheck[] = [
     name: "SESSION_SECRET",
     criticality: "required",
     what: "Signing in, saved trips, subscriptions",
+  },
+  // Absent from this list until the audit, which is its own small version of
+  // the failure this page exists for: the variable that gates THIS PAGE had
+  // nowhere to be reported, so a two-character admin password showed up
+  // nowhere at all. Middleware 503s when it is unset, so absence is loud;
+  // weakness was silent.
+  {
+    name: "ADMIN_PASSWORD",
+    criticality: "required",
+    what: "This page, /admin/feedback, and test-mode generation",
   },
   {
     name: "RESEND_API_KEY",
@@ -180,15 +191,31 @@ export function worstOf(verdicts: Verdict[]): Verdict {
 export function checkFrontendEnv(): CheckedEnv[] {
   return FRONTEND_ENV.map((check) => {
     const present = Boolean(process.env[check.name]);
-    // The one variable whose presence is not the whole question. Everything
-    // else here either works or is absent; SESSION_SECRET can be there and
-    // still leave every account forgeable - see lib/session.ts.
+    // The two variables whose presence is not the whole question. Everything
+    // else here either works or is absent; a secret can be there and still
+    // be worthless. SESSION_SECRET can leave every account forgeable - see
+    // lib/session.ts - and ADMIN_PASSWORD gates this page and the test-mode
+    // key that skips the spend cap.
     if (check.name === "SESSION_SECRET" && present && !isUsableSessionSecret(process.env.SESSION_SECRET)) {
       return {
         ...check,
         present,
         weak: true,
         weakBecause: `set, but under ${MIN_SESSION_SECRET_CHARS} characters - short enough to guess offline from one cookie, which would mint a session for any email. Sign-in refuses until it is replaced: \`openssl rand -base64 32\`.`,
+      };
+    }
+    // The second, and the wording is different because the attack is. This
+    // one can only be guessed ONLINE, against the limiter middleware now
+    // puts in front of failed attempts, so a mediocre password is no longer
+    // brute-forceable and /admin keeps working - this reports rather than
+    // refuses. It still matters: the same value is the test-mode key
+    // /api/generate accepts to skip the daily spend cap.
+    if (check.name === "ADMIN_PASSWORD" && present && !isUsableAdminPassword(process.env.ADMIN_PASSWORD)) {
+      return {
+        ...check,
+        present,
+        weak: true,
+        weakBecause: `set, but under ${MIN_ADMIN_PASSWORD_CHARS} characters. Failed attempts are rate limited, so this is no longer guessable at speed - but it is also the test-mode key that skips the daily spend cap, so it is worth a real one: \`openssl rand -base64 24\`.`,
       };
     }
     return { ...check, present };

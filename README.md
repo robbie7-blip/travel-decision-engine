@@ -542,6 +542,25 @@ opening unprotected. This is deliberately minimal - a single-owner internal
 tool, not a multi-user auth system - proportional to a solo developer
 checking on feedback occasionally, not a real admin dashboard.
 
+"Minimal" stopped covering one thing, though. **Failed** attempts are rate
+limited (10/hour, 40/day per IP), because until the audit this was the only
+credential surface here with nothing limiting the guessing - every other one
+is capped, and this one answered 401 and recorded nothing, so it could be
+tried as fast as the network allows, forever, with nothing logged. Behind it
+sit travellers' own feedback text and the same value is the test-mode key
+`/api/generate` accepts to skip the daily spend cap, so a guessed password
+also spends real money. Only failures count, so a correct password is never
+throttled and costs no round-trip; the compare is constant-time, matching
+what `/api/generate` already did with the same secret; and the limiter fails
+**closed**, since losing an internal tool during a Redis outage is
+recoverable and unlimited guesses are not.
+
+`/admin/health` now lists `ADMIN_PASSWORD` and marks it weak below 16
+characters - presence only, never the value and never its length. It does
+not refuse (unlike a short `SESSION_SECRET`, which is guessable offline from
+one cookie and so blocks sign-in): this one can only be guessed online
+against the limiter. `openssl rand -base64 24` is still the right answer.
+
 ## Running Phase 2 locally
 
 Needs three things running at once: a Redis instance, the worker, and the

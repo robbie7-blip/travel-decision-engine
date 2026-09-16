@@ -168,7 +168,7 @@ function itemKey(day: number, index: number, item: ItineraryItem): string {
  *
  * The tier label used to be appended unconditionally, which is right for
  * "€28 (single source)" and wrong for a price that could not be read at all
- * - "— (single source)" cites a source for a number that is not there. */
+ * - "- (single source)" cites a source for a number that is not there. */
 function priceCell(
   item: ItineraryItem,
   currency: Currency,
@@ -615,8 +615,8 @@ export function ItineraryResult({
                           // gate and telling the traveler a restaurant
                           // dinner cost nothing - a claim about money the
                           // app cannot back. Those now fall through to
-                          // formatMoney's "—", the same as any other
-                          // figure that could not be read.
+                          // formatMoney's NO_FIGURE, the same as any
+                          // other figure that could not be read.
                           t.result.free
                         ) : (
                           priceCell(item, currency, rates, t.result.inlineTierLabel[item.confidence_tier ?? "inferred"])

@@ -163,8 +163,8 @@ export function mustCost(item: Pick<ItineraryItem, "type" | "is_flight">): boole
 /** The figure to PRINT for an item, which is not always the figure stored.
  *
  * A zero on a meal, a bed or a flight is not a price, so it is handed on as
- * one that cannot be read - formatMoney answers "—" and the page states no
- * figure rather than a wrong one. Everything else passes straight through,
+ * one that cannot be read - formatMoney answers its NO_FIGURE marker and
+ * the page states no figure rather than a wrong one. Everything else passes straight through,
  * including a real zero on a free activity. */
 export function itemPriceEur(item: Pick<ItineraryItem, "type" | "is_flight" | "cost_estimate_eur">): number {
   const usable = usableCostEur(item.cost_estimate_eur);

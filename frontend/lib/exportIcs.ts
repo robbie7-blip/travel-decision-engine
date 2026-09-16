@@ -168,7 +168,8 @@ function buildEvent(item: ItineraryItem, dayDate: string, uid: string): string |
   // a dinner priced 0 read "Estimated cost: €0" - the same "it's free" claim
   // the trip page was just stopped from making, in a file the traveller
   // keeps. The line is OMITTED when there is no figure, which is what the
-  // page's "—" says and the only thing the calendar can say in its place.
+  // page's own "no figure" marker says, and the only thing a calendar can
+  // say in its place.
   const priceEur = itemPriceEur(item);
   const costLine = Number.isFinite(priceEur) ? `Estimated cost: €${Math.round(priceEur)}` : undefined;
   const descriptionLines = [

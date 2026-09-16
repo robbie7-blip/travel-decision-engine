@@ -592,6 +592,51 @@ jobs:
       # - still without reading a character of the secret, or even
       # reporting its length. Reverting both halves makes 24 of 90 red.
       - run: npm run test:session
+      # The OTHER shared secret, which was the one credential surface in this
+      # app with nothing limiting the guessing. /admin/* compared a password,
+      # answered 401 and recorded nothing, so it could be tried as fast as
+      # the network allows, forever, with nothing in any log - while every
+      # other credential-ish surface here is rate limited. Behind it:
+      # /admin/feedback lists travellers' own feedback text and the itinerary
+      # items they rated, and the same value is the test-mode key
+      # /api/generate accepts to SKIP the daily spend cap and every rate
+      # limit, so a guessed password spends the owner's Anthropic money
+      # without bound. Also: the compare was `===` while /api/generate uses
+      # timingSafeEqual on the same secret, and /admin/health did not list
+      # ADMIN_PASSWORD at all, so a two-character one had nowhere to appear.
+      #
+      # The decoding assertions matter as much as the security ones - this
+      # sits in front of a tool the owner already has a working password for,
+      # and a "safer" parse that rejects it locks them out of their own site.
+      - run: npm run test:admin-auth
+      # And the policy, through the real middleware, because the two
+      # decisions most easily got subtly wrong are not in the parser. A
+      # request with NO credential must not spend a limiter attempt - the
+      # browser's first request never carries one, so counting those lets
+      # anyone lock the owner out by opening the URL ten times. And the
+      # owner's correct password must cost no Redis round-trip, which is what
+      # makes it safe for the limiter to fail CLOSED. Both are asserted from
+      # outside with no Redis configured at all: a counted attempt would come
+      # back 429, so a 401 proves the limiter was never consulted. Reverting
+      # the first makes 9 of 32 red, the second 3 of 31.
+      - run: npm run test:admin-gate
+      # The counter behind that gate, which had to be written from scratch
+      # because lib/ratelimit.ts CANNOT RUN where it was needed. Middleware
+      # is Edge; that module reaches @upstash/redis's nodejs.mjs, and the
+      # build says "A Node.js API is used (process.version) which is not
+      # supported in the Edge Runtime" - a WARNING, so the first version
+      # would have deployed and then either 500'd every /admin request or
+      # worked until it didn't. It also cost 25 kB of middleware bundle for
+      # one counter (34.2 kB -> 59.9 kB, back to 35.0 kB once replaced).
+      #
+      # Upstash REST over plain fetch instead, with the window number inside
+      # the key - which is what makes re-setting the TTL on every increment
+      # safe, since the next window is a different key starting from zero.
+      # Every failure path refuses: unconfigured, non-200, unparseable,
+      # unreachable, timed out, or a count that is not a number. It is the
+      # only limiter here that fails CLOSED, because the others bound cost
+      # and this one bounds guesses at a credential.
+      - run: npm run test:edge-rate-limit
       # Which airport, for the cities where that changes the itinerary.
       # Rome Fiumicino is ~32 km west with a 32-minute train to Termini;
       # Ciampino is ~15 km southeast with no rail link at all - so the

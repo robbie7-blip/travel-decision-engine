@@ -23,12 +23,18 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
 
 /** What a figure looks like when there isn't one.
  *
- * An em dash, not a translated phrase, on purpose: it reads the same in
+ * A plain hyphen, not a translated phrase, on purpose: it reads the same in
  * every language this app ships and needs no i18n key to stay in step with
  * the two it has. It appears where a price could not be read at all, which
  * is rare enough that the honest answer is "no number here" rather than a
- * sentence explaining why. */
-export const NO_FIGURE = "—";
+ * sentence explaining why.
+ *
+ * A hyphen and not an em dash because check:dashes fails the build on one,
+ * and that guard is right: "the em dash is the most recognisable tell that a
+ * piece of text was written by a model, and this product asks travelers to
+ * read its output as advice from a person." It caught this on its first run
+ * after the change. */
+export const NO_FIGURE = "-";
 
 // Shared with the language preference's storage convention (see
 // lib/i18n.ts's LANGUAGE_STORAGE_KEY) - one localStorage key, sticks across
