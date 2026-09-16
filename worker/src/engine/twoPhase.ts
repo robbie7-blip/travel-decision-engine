@@ -69,6 +69,7 @@ import type {
 } from "../types";
 import { buildContext } from "./prompt";
 import { briefSpanDays } from "../jobs";
+import { usableCostEur } from "./money";
 
 /** Phase 1's combined output. Deliberately mirrors the final Itinerary's
  * trip-level fields exactly (budget_feasibility/trip_summary/key_decisions/
@@ -588,7 +589,39 @@ export function assembleItinerary(skeleton: TripSkeleton, days: ItineraryDay[]):
 export function isUsableFrame(frame: unknown): frame is TripFrame {
   if (!frame || typeof frame !== "object") return false;
   const f = frame as Partial<TripFrame>;
-  if (!f.budget_feasibility || typeof f.trip_summary !== "string") return false;
+  if (typeof f.trip_summary !== "string") return false;
+  // budget_feasibility, checked rather than merely truthy - the same
+  // argument this function already makes for the lists below, on the field
+  // that carries the trip's money claims.
+  //
+  // `!f.budget_feasibility` accepted a string, a number, a boolean and an
+  // array, and all four caused something. Measured:
+  //
+  //   "feasible"  applyVerifiedAccommodation THREW "Cannot create property
+  //               'min_realistic_total_eur' on string" - ES modules are
+  //               strict mode, so assigning a property to a primitive is a
+  //               TypeError. Caught far away by generateItinerary's broad
+  //               catch, which abandons the parallel path and regenerates
+  //               the whole trip in one serial call: a full second paid
+  //               generation and the ~2-minute path this design exists to
+  //               avoid.
+  //   []          passes, absorbs the write, and min_realistic_total_eur
+  //               ends up NaN on an array nothing will ever read.
+  //
+  // And on the page, `result.budget_feasibility.feasible` on a non-object
+  // is undefined, which <Stamp ok={...}> renders as NOT FEASIBLE - so every
+  // such trip would tell the traveller their budget does not work.
+  const bf = f.budget_feasibility as Partial<BudgetFeasibility> | undefined;
+  if (typeof bf !== "object" || bf === null || Array.isArray(bf)) return false;
+  // A finite number, because applyVerifiedAccommodation does arithmetic on
+  // it - see normalizeFrame for the one shape that is recovered first
+  // rather than rejected, and what "1200" did before either existed.
+  if (typeof bf.min_realistic_total_eur !== "number" || !Number.isFinite(bf.min_realistic_total_eur)) return false;
+  // A boolean, because it is a stamp on the traveller's budget. "yes" is
+  // truthy and "" is not, so a non-boolean makes that stamp arbitrary. Not
+  // coerced in normalizeFrame either: guessing a verdict is exactly what
+  // that function's header refuses to do.
+  if (typeof bf.feasible !== "boolean") return false;
   // EVERY list, not just accommodation. mergeSkeleton uses `?? []`, which
   // only replaces null and undefined - so a frame answering
   // "key_decisions": "none" passed this gate, survived merge, was recorded
@@ -618,6 +651,38 @@ export function isUsableFrame(frame: unknown): frame is TripFrame {
       typeof (entry as SkeletonAccommodation).cost_per_night_eur === "number" &&
       Number.isFinite((entry as SkeletonAccommodation).cost_per_night_eur)
   );
+}
+
+/** Repairs the one frame field with a single obvious reading, before the
+ * validator rejects the whole frame over it.
+ *
+ * Symmetrical with normalizePlan below, and for the same reason its header
+ * gives: "isUsablePlan is a wall: one day missing one field and the entire
+ * plan is thrown away and regenerated from scratch", which for a phase-1
+ * half is the most expensive thing in the pipeline. The frame half passed no
+ * normalize hook at all, so every defect in it went straight to the wall.
+ *
+ * Deliberately one field. `min_realistic_total_eur: "1200"` is a real number
+ * typed as text - the same slip engine/money.ts exists for - and recovering
+ * it is not a guess. Measured, before this existed and before isUsableFrame
+ * checked the field: applyVerifiedAccommodation added its delta to the
+ * string, so `"1200" + 80` became "120080", Math.round kept it, and the trip
+ * page offered a MINIMUM ESTIMATE OF EUR 120,080 for four days in Rome. A
+ * finite number that looks legitimate, which is why the itinerary-level
+ * recovery cannot catch it: the damage is done before assembly.
+ *
+ * `feasible` is NOT coerced. "yes" is not a boolean and turning it into one
+ * would be inventing a verdict about somebody's budget, which is the line
+ * normalizePlan draws for itself in its last paragraph. */
+export function normalizeFrame(frame: unknown): unknown {
+  if (!frame || typeof frame !== "object") return frame;
+  const f = frame as { budget_feasibility?: unknown };
+  const bf = f.budget_feasibility;
+  if (!bf || typeof bf !== "object" || Array.isArray(bf)) return frame;
+  const holder = bf as { min_realistic_total_eur?: unknown };
+  const recovered = usableCostEur(holder.min_realistic_total_eur);
+  if (recovered !== null) holder.min_realistic_total_eur = recovered;
+  return frame;
 }
 
 /** Fills in the day-plan fields the BRIEF already determines, before the
@@ -909,11 +974,30 @@ export function applyVerifiedAccommodation(
   // Only correctable once the frame exists - when accommodation is applied
   // before it (the fast path), the caller re-applies against the real
   // budget as soon as the frame lands.
-  if (hasPrice && nights > 0 && baselinePerNight > 0 && skeleton.budget_feasibility) {
+  //
+  // The GUARDS on this arithmetic are not decoration. `skeleton.
+  // budget_feasibility` being merely truthy let a string through, and
+  // assigning a property to a primitive is a TypeError in strict mode -
+  // which every ES module is - so a frame whose budget_feasibility was the
+  // word "feasible" threw here and cost a whole second generation on the
+  // serial path. And `min_realistic_total_eur` being merely present let a
+  // STRING through, where `"1200" + 80` is "120080" and Math.round keeps
+  // it: a minimum estimate of EUR 120,080 for four days. isUsableFrame and
+  // normalizeFrame now stop both upstream; this is the layer that makes
+  // them unable to matter, on the same reasoning formatMoney uses for
+  // guarding the amount as well as the rate.
+  const budget = skeleton.budget_feasibility;
+  const currentMinimum = budget?.min_realistic_total_eur;
+  if (
+    hasPrice &&
+    nights > 0 &&
+    baselinePerNight > 0 &&
+    budget != null &&
+    typeof budget === "object" &&
+    typeof currentMinimum === "number" &&
+    Number.isFinite(currentMinimum)
+  ) {
     const delta = (verified.costPerNightEur! - baselinePerNight) * nights;
-    skeleton.budget_feasibility.min_realistic_total_eur = Math.max(
-      0,
-      Math.round(skeleton.budget_feasibility.min_realistic_total_eur + delta)
-    );
+    budget.min_realistic_total_eur = Math.max(0, Math.round(currentMinimum + delta));
   }
 }

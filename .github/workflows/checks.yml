@@ -119,6 +119,26 @@ jobs:
       # to let a half-formed plan through. Every one of them passed the six
       # suites that existed before it.
       - run: npm run test:generation
+      # It also covers budget_feasibility, which isUsableFrame checked with
+      # `!f.budget_feasibility` - truthy, not a shape - on the one field
+      # carrying the trip's money claims. Four values passed and each cost
+      # something. `"feasible"`: applyVerifiedAccommodation raised "Cannot
+      # create property 'min_realistic_total_eur' on string", because
+      # assigning to a primitive is a TypeError in strict mode and every ES
+      # module is - caught far away by generateItinerary's broad catch,
+      # which abandons the parallel path and regenerates the whole trip in
+      # one serial call. An array absorbed the write silently. And
+      # `min_realistic_total_eur: "1200"` concatenated: `"1200" + 80` is
+      # "120080", Math.round kept it, and the page offered a MINIMUM
+      # ESTIMATE OF EUR 120,080 for four days in Rome - a finite number that
+      # looks legitimate, which is why the itinerary-level recovery cannot
+      # catch it, since the damage happens before assembly. The frame half
+      # also had no normalize hook while the plan half did, so every defect
+      # in it went straight to the validator's wall; normalizeFrame recovers
+      # the one field with a single obvious reading and refuses to guess a
+      # verdict for `feasible`. Reverting makes 16 of 96 red, printing
+      # 120080.
+      #
       # (test:generation also covers the rate-limit backoff: `Retry-After: 0`
       # and a negative both pass Number.isFinite, and Math.min(-5000, 15000)
       # is -5000, so setTimeout fired at once and the backoff became four

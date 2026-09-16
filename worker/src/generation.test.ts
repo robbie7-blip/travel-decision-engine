@@ -9,7 +9,7 @@
 //
 // Run: npm run test:generation
 
-import { applyVerifiedAccommodation, isUsableFrame, isUsablePlan, requiredMeals } from "./engine/twoPhase";
+import { applyVerifiedAccommodation, isUsableFrame, isUsablePlan, normalizeFrame, requiredMeals } from "./engine/twoPhase";
 import { isOpenAt, namesLikelyMatch, normalizeName, stripToUnverified } from "./engine/venueVerification";
 import { assessQuality } from "./engine/quality";
 import type { SkeletonAccommodation, SkeletonDay } from "./engine/twoPhase";
@@ -202,6 +202,112 @@ section("phase 1 is rejected when it would break something downstream");
     !isUsableFrame({ ...base, accommodation: [], key_decisions: [], things_to_skip: {} })
   );
   check("a missing list is rejected", !isUsableFrame({ ...base, accommodation: [] }));
+}
+
+// budget_feasibility was checked with `!f.budget_feasibility` - truthy, not
+// a shape - on the field that carries the trip's money claims. Four values
+// passed, and every one of them cost something.
+{
+  const lists = { accommodation: [], key_decisions: [], things_to_skip: [] };
+  const frame = (bf: unknown) => ({ ...lists, trip_summary: "s", budget_feasibility: bf });
+  /** Exactly what generatePhase1Half does: normalize, then validate. */
+  const accepted = (bf: unknown) => isUsableFrame(normalizeFrame(frame(bf)));
+
+  check("a real one passes", accepted({ feasible: true, min_realistic_total_eur: 1200, reasoning: "r" }));
+  check("  and feasible: false is just as valid", accepted({ feasible: false, min_realistic_total_eur: 9000, reasoning: "r" }));
+  check("  and a minimum of 0", accepted({ feasible: true, min_realistic_total_eur: 0, reasoning: "r" }));
+
+  // The THROW. Assigning a property to a primitive is a TypeError in strict
+  // mode, which every ES module is, so applyVerifiedAccommodation raised
+  // "Cannot create property 'min_realistic_total_eur' on string" - caught
+  // far away by generateItinerary's broad catch, which abandons the
+  // parallel path and regenerates the whole trip in one serial call.
+  check('the string "feasible" is rejected', accepted("feasible") === false);
+  check("a number is rejected", accepted(1) === false);
+  check("true is rejected", accepted(true) === false);
+  // An array absorbs the write silently and nothing ever reads it again.
+  check("an array is rejected", accepted([]) === false);
+  check("null is rejected", accepted(null) === false);
+  check("absent is rejected", isUsableFrame({ ...lists, trip_summary: "s" }) === false);
+
+  // min_realistic_total_eur is arithmetic input. `"1200" + 80` is "120080",
+  // Math.round keeps it, and the page offered a MINIMUM ESTIMATE OF EUR
+  // 120,080 for four days in Rome - a finite number that looks legitimate,
+  // which is why the itinerary-level recovery cannot catch it: the damage
+  // happens before assembly.
+  check("a numeric-string minimum is RECOVERED, not rejected", accepted({ feasible: true, min_realistic_total_eur: "1200", reasoning: "r" }));
+  {
+    const f = frame({ feasible: true, min_realistic_total_eur: "1200", reasoning: "r" }) as { budget_feasibility: { min_realistic_total_eur: unknown } };
+    normalizeFrame(f);
+    check("  and recovered to the number 1200", f.budget_feasibility.min_realistic_total_eur === 1200, JSON.stringify(f.budget_feasibility.min_realistic_total_eur));
+  }
+  // Recovering a RANGE would be inventing a figure, so it is refused - the
+  // same line engine/money.ts draws.
+  check("a range is not recovered", accepted({ feasible: true, min_realistic_total_eur: "1200-1500", reasoning: "r" }) === false);
+  check("prose is not recovered", accepted({ feasible: true, min_realistic_total_eur: "about 1200", reasoning: "r" }) === false);
+  check("a missing minimum is rejected", accepted({ feasible: true, reasoning: "r" }) === false);
+  check("NaN is rejected", accepted({ feasible: true, min_realistic_total_eur: Number.NaN, reasoning: "r" }) === false);
+  check("Infinity is rejected", accepted({ feasible: true, min_realistic_total_eur: Number.POSITIVE_INFINITY, reasoning: "r" }) === false);
+
+  // feasible is a stamp on the traveller's budget, and on the page
+  // `<Stamp ok={feasible}>` with a non-boolean renders NOT FEASIBLE - so a
+  // non-boolean makes that stamp arbitrary. Deliberately NOT coerced:
+  // turning "yes" into true would be inventing a verdict.
+  check('feasible as "yes" is rejected', accepted({ feasible: "yes", min_realistic_total_eur: 1200, reasoning: "r" }) === false);
+  check("feasible as 1 is rejected", accepted({ feasible: 1, min_realistic_total_eur: 1200, reasoning: "r" }) === false);
+  check("a missing feasible is rejected", accepted({ min_realistic_total_eur: 1200, reasoning: "r" }) === false);
+}
+
+// And the arithmetic itself, which is the layer that makes the two above
+// unable to matter - formatMoney's own reasoning for guarding the amount as
+// well as the rate.
+{
+  const skeletonWith = (bf: unknown) => ({
+    days: [
+      { day: 1, date: "2027-05-01", city: "Rome", theme: "", anchors: [], meals: [], include_lodging: true },
+      { day: 2, date: "2027-05-02", city: "Rome", theme: "", anchors: [], meals: [], include_lodging: true },
+    ],
+    accommodation: [{ city: "Rome", name: null, area: null, cost_per_night_eur: 120, source_confidence: "inferred" as const, source_urls: [] }],
+    budget_feasibility: bf as { min_realistic_total_eur: unknown },
+  });
+  const verified = { costPerNightEur: 160, name: "Hotel X", area: "Centro", sourceUrls: ["https://a.example"] };
+
+  {
+    const sk = skeletonWith({ feasible: true, min_realistic_total_eur: 1200, reasoning: "r" });
+    applyVerifiedAccommodation(sk as never, "Rome", verified, 120);
+    check("a real budget is corrected by the real delta", sk.budget_feasibility.min_realistic_total_eur === 1280, JSON.stringify(sk.budget_feasibility.min_realistic_total_eur));
+  }
+
+  for (const [name, bf] of [
+    ["a string", "feasible"],
+    ["a number", 1],
+    ["true", true],
+    ["null", null],
+    ["undefined", undefined],
+  ] as [string, unknown][]) {
+    const sk = skeletonWith(bf);
+    let threw = false;
+    try {
+      applyVerifiedAccommodation(sk as never, "Rome", verified, 120);
+    } catch {
+      threw = true;
+    }
+    check(`budget_feasibility as ${name} does not throw`, threw === false);
+    // The accommodation itself is still applied - that half has nothing to
+    // do with the budget line, and losing it would cost the trip its
+    // verified rate over an unrelated field.
+    check("  and the verified rate is still applied", sk.accommodation[0].cost_per_night_eur === 160, String(sk.accommodation[0].cost_per_night_eur));
+  }
+
+  {
+    const sk = skeletonWith({ feasible: true, min_realistic_total_eur: "1200", reasoning: "r" });
+    applyVerifiedAccommodation(sk as never, "Rome", verified, 120);
+    check(
+      'a string minimum is left alone rather than becoming "120080"',
+      sk.budget_feasibility.min_realistic_total_eur === "1200",
+      JSON.stringify(sk.budget_feasibility.min_realistic_total_eur)
+    );
+  }
 }
 
 // city and include_lodging are both dereferenced downstream with no guard.

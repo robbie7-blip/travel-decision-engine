@@ -32,6 +32,7 @@ import {
   applyVerifiedAccommodation,
   isUsableFrame,
   isUsablePlan,
+  normalizeFrame,
   normalizePlan,
   planCoversTrip,
   type MealSlot,
@@ -1722,7 +1723,16 @@ function startPhase1(
           buildFramePrompt(brief, cachedLodgingFacts),
           isUsableFrame,
           onUsage,
-          { effort: FRAME_EFFORT, onCallTiming: (timing) => onHalfCallTiming?.("frame", timing) }
+          {
+            effort: FRAME_EFFORT,
+            // The frame half had no normalize hook while the plan half did,
+            // so every defect in it went straight to the validator's wall -
+            // and a rejected phase-1 half is the most expensive retry in the
+            // pipeline. See normalizeFrame for the one field it repairs and
+            // what that field did unrepaired.
+            normalize: normalizeFrame,
+            onCallTiming: (timing) => onHalfCallTiming?.("frame", timing),
+          }
         ),
       "trip frame"
       )
