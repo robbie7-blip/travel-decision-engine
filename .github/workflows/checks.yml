@@ -603,6 +603,24 @@ jobs:
       # arithmetic on a Google array ordering that isn't guaranteed, so the
       # page could print the wrong day's hours under a green "open on this
       # day" badge.
+      # Does the trip PAGE render. Every other suite here asserts about a
+      # function; this one renders the component with react-dom/server,
+      # because the failure this product has had twice is a render throw on
+      # a field nothing guarantees, and the blast radius is a blank page on
+      # an itinerary somebody paid for. currency.ts's own header records
+      # one: a cached rates body with no `rates` key threw inside formatMoney
+      # "for every visitor, for twelve hours, on itineraries people had paid
+      # for."
+      #
+      # The itinerary it renders is deliberately UNNORMALIZED - twelve items
+      # carrying every mistyped shape the worker now coerces at the shape
+      # gate - because no worker change can reach a record already sitting in
+      # Redis. Measured with today's render fixes reverted: the page did NOT
+      # throw, it produced 27,939 characters containing "EUR NaN", and "Free"
+      # appeared TWICE, the second being a dinner priced zero. That is the
+      # shape this suite is for: not a crash, a confident wrong number on a
+      # page about money.
+      - run: npm run test:render-trip
       - run: npm run test:result-format
       # Money on the page, in the currency the traveller picked - and the
       # second defect here blanked the trip page. formatMoney read

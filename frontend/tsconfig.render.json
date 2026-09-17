@@ -1,0 +1,12 @@
+{
+  // Exists for one suite: lib/renderTrip.test.tsx, which renders the trip
+  // page with react-dom/server to prove a paid itinerary does not blank.
+  //
+  // The main tsconfig sets "jsx": "preserve", which is right - Next's own
+  // bundler does the transform. But that leaves a file compiled by tsx with
+  // raw JSX and no React in scope, and every component in this app relies on
+  // Next providing the automatic runtime. So the render suite compiles under
+  // "react-jsx" and nothing else changes.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "jsx": "react-jsx" }
+}

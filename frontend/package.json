@@ -48,6 +48,7 @@
     "test:recent-trips": "tsx lib/recentTrips.test.ts",
     "test:currency": "tsx lib/currency.test.ts",
     "test:validation": "tsx lib/validation.test.ts",
+    "test:render-trip": "TSX_TSCONFIG_PATH=./tsconfig.render.json tsx lib/renderTrip.test.tsx",
     "test:result-format": "tsx lib/resultFormat.test.ts",
     "test:env-number": "tsx lib/envNumber.test.ts",
     "test": "npm run test:linkify && npm run test:stats && npm run test:validation && npm run test:result-format && npm run test:env-number && npm run test:itinerary-links",
