@@ -422,7 +422,32 @@ async function streamMessage(
   const startedAt = Date.now();
   let firstEventMs: number | null = null;
   let firstTextMs: number | null = null;
-  const stream = client.messages.stream(body, { timeout: options?.timeout });
+  // `{ timeout: options?.timeout }` - and that object was the bug that
+  // broke every generation.
+  //
+  // The SDK validates the option by PRESENCE OF THE KEY, not by its value
+  // (client.ts): `if ('timeout' in options) validatePositiveInteger(
+  // 'timeout', options.timeout)`. `'timeout' in { timeout: undefined }` is
+  // true, and validatePositiveInteger throws on undefined - so building the
+  // object unconditionally sent an explicit `timeout: undefined` on every
+  // call and the SDK refused it in buildRequest, BEFORE any HTTP request
+  // was made.
+  //
+  // What that cost: all three callers of this function reach it without a
+  // timeout (the day/phase-1 path passes only `onTiming`), so every
+  // streamed call threw instantly. And the thrown value is AnthropicError,
+  // the SDK's base class, which is NOT an APIError - so it matched none of
+  // processJob's named cases and every traveler got "Unexpected error
+  // generating itinerary." after 6ms.
+  //
+  // Found by booting this worker against a local Redis with a deliberately
+  // invalid API key and reading the failure record it wrote - the
+  // diagnostics added earlier today, which is the only reason the message
+  // "timeout must be an integer" was ever visible.
+  const stream = client.messages.stream(
+    body,
+    options?.timeout === undefined ? {} : { timeout: options.timeout }
+  );
   if (options?.onTiming) {
     // `once` would be wrong for streamEvent: the SDK emits it for every
     // event, and the first one is the only one worth a timestamp, so the
@@ -3040,7 +3065,27 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
               ? `Model provider error: ${e.message}`
               : e instanceof ModelOutputError
                 ? "The model's response was malformed twice in a row - try a shorter or simpler trip brief."
-                : "Unexpected error generating itinerary.";
+                // AnthropicError is the SDK's BASE class and the last named
+                // case, because APIError extends it - so this only catches
+                // what the other branches did not: an error the SDK raises
+                // about the REQUEST, before one is ever sent.
+                //
+                // Added because that is exactly what broke every
+                // generation. The SDK validates `timeout` by presence of
+                // the key, so an explicit `timeout: undefined` threw
+                // "timeout must be an integer" in buildRequest - an
+                // AnthropicError, which is not an APIError, so it fell all
+                // the way through and every traveler was told "Unexpected
+                // error generating itinerary." after 6ms. The request bug
+                // is fixed at its source in streamMessage; this is so the
+                // NEXT one of its kind says what it is.
+                //
+                // The message is included because it is the SDK's own and
+                // names the option it rejected. It is a client-side
+                // validation string with no credential in it.
+                : e instanceof Anthropic.AnthropicError
+                  ? `The request to the model provider was rejected before it was sent: ${e.message}`
+                  : "Unexpected error generating itinerary.";
   }
 
   jobTimings.totalMs = Date.now() - jobStartedAt;

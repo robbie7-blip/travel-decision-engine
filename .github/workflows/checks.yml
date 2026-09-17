@@ -115,6 +115,26 @@ jobs:
       # returns a Message or throws, and the only way to produce one is to
       # replace the whole `messages` object, which nothing in production
       # does.
+      #
+      # AND THE ONE THAT BROKE EVERY GENERATION. streamMessage built its
+      # request options as `{ timeout: options?.timeout }` unconditionally,
+      # and the SDK validates that option by PRESENCE OF THE KEY
+      # (client.ts): `if ('timeout' in options) validatePositiveInteger(
+      # 'timeout', options.timeout)`. `'timeout' in { timeout: undefined }`
+      # is true and validatePositiveInteger throws on undefined, so every
+      # streamed call - all three callers reach it without a timeout -
+      # threw "timeout must be an integer" in buildRequest, before any HTTP
+      # request was made. AnthropicError is the SDK's base class and not an
+      # APIError, so it matched none of the named cases and every traveler
+      # got "Unexpected error generating itinerary." after 6ms.
+      #
+      # The stub here reproduces that one SDK line and nothing else, so the
+      # assertion is about the provider's contract rather than the shape of
+      # our own code. Reverting the fix makes 2 of 47 red. Found by booting
+      # the worker against a local Redis with an invalid key and reading
+      # the failure record it wrote, and confirmed fixed the same way -
+      # where the same job then came back "Server is misconfigured (invalid
+      # API key)."
       - run: npm run test:failure-log
       # The brief the worker takes off the queue, and the write that has to
       # land. Both found by injecting faults into the real processJob.

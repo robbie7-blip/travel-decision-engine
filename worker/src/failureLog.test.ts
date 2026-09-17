@@ -43,7 +43,7 @@
 // Run: npm run test:failure-log
 
 import type Redis from "ioredis";
-import type Anthropic from "@anthropic-ai/sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import { processJob } from "./index";
 import { jobKey, readWorkerFailure, WORKER_FAILURES_KEY, type Job, type WorkerFailure } from "./jobs";
 import { check, finish, heading, section } from "./testutil";
@@ -465,6 +465,113 @@ async function main() {
         `${job?.status}: ${job?.error}`
       );
     }
+  }
+
+  section("the request options, which the SDK validates by KEY not by value");
+
+  {
+    // THE BUG THAT BROKE EVERY GENERATION, as a test.
+    //
+    // streamMessage built its request options as
+    // `{ timeout: options?.timeout }` - unconditionally. The SDK checks
+    // that option like this (client.ts:1457):
+    //
+    //   if ('timeout' in options) validatePositiveInteger('timeout', options.timeout);
+    //
+    // `'timeout' in { timeout: undefined }` is TRUE, and
+    // validatePositiveInteger throws on undefined. All three callers of
+    // streamMessage reach it without a timeout - the phase-1 and day path
+    // passes only `onTiming` - so every streamed call threw
+    // "timeout must be an integer" in buildRequest, before any HTTP
+    // request was made. And AnthropicError is the SDK's base class, not an
+    // APIError, so it matched none of the named cases: every traveler got
+    // "Unexpected error generating itinerary." after 6ms.
+    //
+    // The stub below reproduces that one line and nothing else, so this
+    // asserts the actual contract rather than the shape of our own code.
+    // Found by booting the worker against a local Redis with an invalid
+    // key and reading the failure record; confirmed fixed the same way,
+    // where the same job then came back "Server is misconfigured (invalid
+    // API key)".
+    const seen: string[] = [];
+    const validatingClient = {
+      messages: {
+        stream: (body: unknown, options: Record<string, unknown> = {}) => {
+          if ("timeout" in options) {
+            seen.push(`timeout=${String(options.timeout)}`);
+            if (typeof options.timeout !== "number" || !Number.isInteger(options.timeout)) {
+              throw new Anthropic.AnthropicError("timeout must be an integer");
+            }
+          } else {
+            seen.push("no timeout key");
+          }
+          const sys = JSON.stringify((body as { system?: unknown }).system ?? "");
+          const text = sys.includes("STAGE 1A") ? frameJson() : sys.includes("STAGE 1B") ? planJson() : dayJson();
+          return {
+            on: () => {},
+            abort: () => {},
+            finalMessage: async () => ({
+              content: [{ type: "text", text }],
+              stop_reason: "end_turn",
+              usage: { input_tokens: 10, output_tokens: 10 },
+            }),
+          };
+        },
+        create: async () => ({
+          content: [{ type: "text", text: JSON.stringify({ cost_estimate_eur: 55, source_url: "https://e.com/r" }) }],
+          stop_reason: "end_turn",
+          usage: { input_tokens: 10, output_tokens: 10 },
+        }),
+      },
+    } as unknown as Anthropic;
+
+    const fake = makeRedis();
+    seed(fake, "job-timeout");
+    let escaped = "";
+    try {
+      await processJob(fake.redis, validatingClient, "job-timeout");
+    } catch (e) {
+      escaped = e instanceof Error ? e.message : String(e);
+    }
+    const job = jobFrom(fake, "job-timeout");
+    check("nothing escapes", escaped === "", escaped);
+    check("the streamed calls happened", seen.length > 0, String(seen.length));
+    check(
+      "and NONE of them carried a timeout key it could reject",
+      seen.every((s) => s === "no timeout key" || /timeout=\d+$/.test(s)),
+      seen.join(" | ")
+    );
+    check("so the job is not an error", job?.status === "done", `${job?.status}: ${job?.error}`);
+  }
+
+  {
+    // And if an SDK-level request error does happen again, it says so
+    // instead of falling through to the sentence that explains nothing.
+    // AnthropicError is the base class and APIError extends it, so the
+    // order of the named cases is what this checks.
+    const fake = makeRedis();
+    seed(fake, "job-sdk-error");
+    await processJob(
+      fake.redis,
+      {
+        messages: {
+          stream: () => {
+            throw new Anthropic.AnthropicError("max_tokens must be an integer");
+          },
+          create: async () => {
+            throw new Anthropic.AnthropicError("max_tokens must be an integer");
+          },
+        },
+      } as unknown as Anthropic,
+      "job-sdk-error"
+    );
+    const job = jobFrom(fake, "job-sdk-error");
+    check(
+      "an SDK request error names itself",
+      (job?.error ?? "").includes("rejected before it was sent"),
+      job?.error
+    );
+    check("and quotes what it rejected", (job?.error ?? "").includes("max_tokens"), job?.error);
   }
 
   section("a successful generation records nothing");
