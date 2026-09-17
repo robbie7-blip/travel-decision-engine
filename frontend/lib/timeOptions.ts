@@ -146,3 +146,35 @@ export function normalizeTimeValue(value: string): string | null {
 
   return null;
 }
+
+/** Does this slot or phrase match what has been typed?
+ *
+ * Digits match the clock loosely on purpose: "9" has to find 09:00, and
+ * "930" and "9:30" both have to find 09:30, because those are the three
+ * ways somebody reads a boarding pass out loud. Anything non-numeric
+ * matches the times of day by substring instead.
+ *
+ * Lives here rather than in TimePicker so the pure matching rule is
+ * covered by test:time-options alongside clockSlots and formatClockTime,
+ * instead of only through a rendered list. */
+export function matchesTimeQuery(slot: string, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (/^[\d:.\s]+$/.test(q)) {
+    const digits = q.replace(/\D/g, "");
+    if (!digits) return true;
+    const slotDigits = slot.replace(/\D/g, ""); // "09:30" -> "0930"
+    // The slot is offered BOTH ways - "0930" and "930" - rather than the
+    // query being padded, because there is no single padding that works for
+    // both "9" (an hour) and "930" (an hour and minutes). Padding "930" to
+    // four would give "0930" and match, but the same rule applied to "9"
+    // gives "0009", which is not a time anybody typed. Stripping the
+    // slot's own leading zero instead makes one rule cover every reading:
+    // "9" and "09" find 09:00/09:30, "930"/"9:30"/"0930" find 09:30, and
+    // "16" finds 16:00/16:30.
+    const unpadded = slotDigits.replace(/^0+/, "");
+    return slotDigits.startsWith(digits) || (unpadded.length > 0 && unpadded.startsWith(digits));
+  }
+  return slot.toLowerCase().includes(q);
+}
+

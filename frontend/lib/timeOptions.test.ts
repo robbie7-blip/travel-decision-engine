@@ -14,6 +14,7 @@ import {
   formatClockTime,
   formatTimeValue,
   isClockTime,
+  matchesTimeQuery,
   normalizeTimeValue,
   TIMES_OF_DAY,
   TIME_STEP_MINUTES,
@@ -126,6 +127,55 @@ function main() {
       // ...and round-trips through the formatter without becoming blank.
       check(`  and formats`, formatTimeValue(normalized ?? "", "en").length > 0);
     }
+  }
+
+  section("typing filters the clock, because 48 stacked slots is not a picker");
+
+  {
+    // The list was one column of 48 half-hour slots - "a huge dropdown to
+    // choose from which isn't really UX friendly". It is a four-column grid
+    // now AND it filters as you type, which is the faster of the two for
+    // the only person who uses this field: somebody reading a time off a
+    // booking in front of them.
+    //
+    // Digits match loosely on purpose, because "9", "930" and "9:30" are
+    // the three ways that time gets read out loud.
+    const matching = (q: string) => clockSlots().filter((s) => matchesTimeQuery(s, q));
+
+    check("an empty query keeps everything", matching("").length === clockSlots().length);
+    check("a blank query keeps everything", matching("   ").length === clockSlots().length);
+
+    check('"9" finds 09:00 and 09:30', JSON.stringify(matching("9")) === '["09:00","09:30"]', JSON.stringify(matching("9")));
+    check('"09" finds the same two', JSON.stringify(matching("09")) === '["09:00","09:30"]', JSON.stringify(matching("09")));
+    check('"16" finds 16:00 and 16:30', JSON.stringify(matching("16")) === '["16:00","16:30"]', JSON.stringify(matching("16")));
+    check('"930" finds exactly 09:30', JSON.stringify(matching("930")) === '["09:30"]', JSON.stringify(matching("930")));
+    check('"9:30" finds exactly 09:30', JSON.stringify(matching("9:30")) === '["09:30"]', JSON.stringify(matching("9:30")));
+    check('"0930" finds exactly 09:30', JSON.stringify(matching("0930")) === '["09:30"]', JSON.stringify(matching("0930")));
+    check('"1" finds the 1x hours and 01:00', matching("1").length > 2, String(matching("1").length));
+    check('"23:30" finds the last slot', JSON.stringify(matching("23:30")) === '["23:30"]', JSON.stringify(matching("23:30")));
+
+    // 24:00 does not exist and 99 is not a time - an empty list is the
+    // honest answer, and the popover says so rather than showing nothing
+    // with no explanation.
+    check('"25" finds nothing', matching("25").length === 0, JSON.stringify(matching("25")));
+    check('"99" finds nothing', matching("99").length === 0);
+
+    // A word filters the times of day instead, and must not accidentally
+    // match a clock slot.
+    for (const option of TIMES_OF_DAY) {
+      check(
+        `"${option.value}" matches itself`,
+        matchesTimeQuery(option.value, option.value),
+        option.value
+      );
+    }
+    check('"even" finds no clock slot', matching("even").length === 0);
+    check(
+      '"even" does find the evening',
+      TIMES_OF_DAY.some((o) => matchesTimeQuery(o.value, "even")),
+      TIMES_OF_DAY.map((o) => o.value).join(",")
+    );
+    check("the match is case-insensitive", matchesTimeQuery("Evening", "EVEN"));
   }
 
   finish();

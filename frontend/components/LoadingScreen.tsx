@@ -1,54 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { Dictionary } from "@/lib/i18n";
-
-interface CityFactsResponse {
-  facts: string[];
-}
-
-/** Self-fetches trivia for the given destinations from /api/city-facts -
- * curated facts/*.json when the city is one of the ~24 hand-verified ones,
- * a live Wikipedia summary otherwise, so every possible destination has
- * something to show, not just the curated set. */
-function useCityFacts(destinations?: string[]): string[] {
-  const [facts, setFacts] = useState<string[]>([]);
-  const key = destinations?.join(",") ?? "";
-
-  useEffect(() => {
-    if (!key) return;
-    let cancelled = false;
-
-    fetch(`/api/city-facts?destinations=${encodeURIComponent(key)}`)
-      .then((res) => res.json())
-      .then((data: CityFactsResponse) => {
-        if (!cancelled) setFacts(data.facts ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setFacts([]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [key]);
-
-  return facts;
-}
-
-const ROTATE_INTERVAL_MS = 6000;
-
-function useRotatingIndex(length: number): number {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    if (length <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % length), ROTATE_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [length]);
-
-  return length > 0 ? index % length : 0;
-}
+// Shared with TripBuilding, which is what the trip page actually renders -
+// see lib/useCityFacts.ts for why the rotation moved out of this file.
+import { useCityFacts, useRotatingIndex } from "@/lib/useCityFacts";
 
 /** Shown while a trip (or one side of a comparison) is generating - replaces
  * the old bare status text with a spinner + card so the wait feels designed

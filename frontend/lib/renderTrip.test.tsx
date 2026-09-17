@@ -28,6 +28,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ItineraryResult } from "../components/ItineraryResult";
+import { TripBuilding } from "../components/TripBuilding";
 import { TRANSLATIONS } from "./i18n";
 import { check, finish, heading, section } from "./testutil";
 import type { Itinerary } from "./types";
@@ -173,6 +174,58 @@ function main() {
 
     // No days at all.
     check("no days array does not blank the page", render({ budget_feasibility: {}, trip_summary: "s" } as unknown as Itinerary) !== null);
+  }
+
+  section("the wait, which is the longest visual moment in the product");
+
+  {
+    // TripBuilding replaced LoadingScreen so the wait could show the real
+    // outline as phase 1 and each day land - and in doing so it silently
+    // dropped the city facts, which only ever existed in LoadingScreen.
+    // Nothing renders LoadingScreen on the trip page any more, so the first
+    // twenty seconds of every generation (20 of the 52 on the measured Rome
+    // run) were a title and one status line. Reported from a live run:
+    // "when building, we need the facts still for the city, no idea why you
+    // removed them".
+    const building = (progress: unknown) =>
+      renderToStaticMarkup(
+        <TripBuilding
+          progress={progress as never}
+          destinations={["Rome"]}
+          message="Putting the itinerary together..."
+          t={TRANSLATIONS.en}
+        />
+      );
+
+    check("it renders before any outline exists", building(undefined).length > 0);
+    const withDays = building({
+      days: [
+        { day: 1, date: "2027-05-01", city: "Rome", theme: "Ancient core", itemCount: 5, titles: ["Forum"] },
+        { day: 2, date: "2027-05-02", city: "Rome", theme: "Vatican" },
+      ],
+    });
+    check("and with one", withDays.includes("Ancient core"), "Ancient core");
+    check("counting only the days actually written", withDays.includes("1") && withDays.includes("2"));
+
+    // The FACT TEXT cannot be asserted here and it is worth saying why
+    // rather than leaving a gap that looks like coverage:
+    // renderToStaticMarkup does not run effects, and the facts arrive from
+    // /api/city-facts inside one. So what is asserted is the thing that
+    // actually regressed - whether the component the trip page renders is
+    // wired to the rotation at all. LoadingScreen had it and TripBuilding
+    // did not; both now share lib/useCityFacts.ts.
+    const source = (name: string) =>
+      require("node:fs").readFileSync(
+        require("node:path").join(__dirname, "..", "components", name),
+        "utf8"
+      ) as string;
+    for (const name of ["TripBuilding.tsx", "LoadingScreen.tsx"]) {
+      check(`${name} uses the shared facts rotation`, source(name).includes("useCityFacts"), name);
+    }
+    check(
+      "and TripBuilding renders the did-you-know label",
+      source("TripBuilding.tsx").includes("t.trip.didYouKnow")
+    );
   }
 
   finish();

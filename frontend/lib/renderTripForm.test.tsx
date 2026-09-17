@@ -19,6 +19,24 @@
 // answer "which div is this inside" is out of proportion to the question,
 // and this file is the only place that asks it.
 //
+// It also covers two UI defects the owner reported from a live run:
+//
+//   - "picking departing city isn't the same as the destination (dropdown),
+//     this must be changed, due to simple UI rules" - the origin field was
+//     a bare text input sitting under a chip-and-suggestions combobox, so
+//     one screen asked "name a city" twice and answered it two ways;
+//   - "when you choose the time it doesn't disappear but you have to click
+//     somewhere else" - which was NOT the TimePicker. Its own `choose`
+//     always closed the popover. The <label> that Field wraps every field
+//     in forwards a click on itself to the first labelable control inside
+//     it, which is the trigger button, so the click that chose a time
+//     reopened the list. The two date pickers already worked around it
+//     with hand-copied <div>s; the time pickers did not.
+//
+// The second one is why this suite asserts on ELEMENT NAMES and not only
+// on text: the bug is invisible in the rendered text and lives entirely in
+// which tag wraps what.
+//
 // Run: npm run test:render-trip-form
 
 import React from "react";
@@ -77,6 +95,22 @@ function childDivs(inner: string): string[] {
     i = start + 1 + body.length;
   }
   return out;
+}
+
+/** Is this text inside a <label> element?
+ *
+ * By the last label tag before it: if that tag opened one, the text is
+ * inside it. Exact here because this form never nests labels, and it is the
+ * only question that distinguishes the fixed markup from the broken markup
+ * - both render the identical visible text inside an identical inner
+ * <div>, so a walk to the nearest enclosing tag answers "div" either way.
+ * That was this helper's first version, and it passed the popover
+ * assertions for the wrong reason. */
+function wrappedInLabel(html: string, text: string): boolean {
+  const at = html.indexOf(text);
+  if (at === -1) return false;
+  const before = html.slice(0, at);
+  return before.lastIndexOf("<label") > before.lastIndexOf("</label>");
 }
 
 function render(over: Partial<TripFormState>): string {
@@ -185,6 +219,56 @@ function main() {
     check(
       "and no arrival field has leaked into the departure column",
       !(cols[1] ?? "").includes(t.form.arrivalDate)
+    );
+  }
+
+  section("no popover field is wrapped in a <label>");
+
+  {
+    // The whole defect, as a structural assertion. A <label> forwards a
+    // click on itself to the first labelable control it contains, so for a
+    // field whose value is chosen by clicking a button inside a popover,
+    // choosing reopens what the choice just closed.
+    //
+    // Each of these four labels must therefore sit in a <div>, not a
+    // <label>. Asserted by finding the label's text and walking back to the
+    // nearest enclosing tag, which is the only thing that actually
+    // distinguishes the fixed markup from the broken markup.
+    const popoverLabels: [string, string][] = [
+      ["the arrival date", t.form.arrivalDate],
+      ["the arrival time", t.form.arrivalTime],
+      ["the departure date", t.form.departureDate],
+      ["the departure time", t.form.departureTime],
+      ["the trip dates", t.form.dates],
+    ];
+    for (const [name, text] of popoverLabels) {
+      check(`${name} is not inside a <label>`, !wrappedInLabel(html, text), name);
+    }
+
+    // And a field that is NOT a popover keeps its <label>, because that is
+    // what makes clicking the label focus the input. The fix must not have
+    // been applied with a broom.
+    check("but an ordinary field still is", wrappedInLabel(html, t.form.partySize), t.form.partySize);
+    check("and so does the arrival AIRPORT, which is a plain <select>", wrappedInLabel(html, t.form.arrivalAirport));
+    check("and the destinations field", wrappedInLabel(html, t.form.destinations));
+  }
+
+  section("the origin field is the same control as the destinations field");
+
+  {
+    // "Picking departing city isn't the same as the destination (dropdown),
+    // this must be changed, due to simple UI rules."
+    const origin = render({ origin: "Sof", needs_flight: true, destinations: "Rome" });
+    check("the origin label is on the page", origin.includes(t.form.origin));
+    // Two comboboxes now, not one: destinations and origin. role="combobox"
+    // is what the control IS, and it is what a screen reader announces, so
+    // it is the right thing to count.
+    const comboboxes = (origin.match(/role="combobox"/g) ?? []).length;
+    check("there are two comboboxes on the form", comboboxes === 2, String(comboboxes));
+    check(
+      "and the origin input carries the typed value, not a draft",
+      origin.includes('value="Sof"'),
+      "value=\"Sof\""
     );
   }
 

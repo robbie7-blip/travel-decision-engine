@@ -1,6 +1,7 @@
 "use client";
 
 import { DateRangePicker } from "./DateRangePicker";
+import { OriginCombobox } from "./OriginCombobox";
 import { SingleDatePicker } from "./SingleDatePicker";
 import { CityCombobox } from "./CityCombobox";
 import { TimePicker } from "./TimePicker";
@@ -263,12 +264,18 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
           </div>
         )}
         <div style={{ gridColumn: "1 / -1" }}>
+          {/* The same control the destinations field is, for the same kind
+              of question. It was a bare text input directly under a
+              chip-and-suggestions combobox: one screen asking "name a
+              city" twice and answering it two different ways. See
+              OriginCombobox. */}
           <Field label={t.form.origin}>
-            <input
-              style={inputStyle}
+            <OriginCombobox
               value={value.origin}
-              onChange={(e) => update("origin", e.target.value)}
+              onChange={(next) => update("origin", next)}
+              language={value.language}
               placeholder={t.form.originPlaceholder}
+              freeTextHint={t.form.destinationFreeText}
             />
           </Field>
         </div>
@@ -309,17 +316,15 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
           // one column in journey order.
           <div className="flight-legs">
             <div>
-              <div>
-                {/* Not <Field>: same label-click-forwarding reason as the
-                    DATES field below - a plain <div> replicates Field's
-                    label styling without a popover-reopening side
-                    effect. */}
-                <div
-                  className="font-ui"
-                  style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
-                >
-                  {t.form.arrivalDate}
-                </div>
+              {/* <Field popover>, for every control on this form whose value
+                  is chosen by clicking a button inside a popover. A plain
+                  <label> forwards that click to the first control it
+                  contains - the trigger - which reopens the popover the
+                  choice had just closed. The date pickers worked around it
+                  with hand-copied <div>s; the TIME pickers did not, which
+                  is why picking a time left its list open until you clicked
+                  elsewhere. See Field in ui.tsx. */}
+              <Field label={t.form.arrivalDate} popover>
                 <SingleDatePicker
                   date={value.arrival_date}
                   onChange={(date) => update("arrival_date", date)}
@@ -328,8 +333,8 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                   prevMonthLabel={t.form.calendarPrevMonth}
                   nextMonthLabel={t.form.calendarNextMonth}
                 />
-              </div>
-              <Field label={t.form.arrivalTime}>
+              </Field>
+              <Field label={t.form.arrivalTime} popover>
                 <TimePicker
                   value={value.arrival_time}
                   onChange={(next) => update("arrival_time", next)}
@@ -337,6 +342,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                   placeholder={t.form.arrivalTimePlaceholder}
                   vagueLabel={t.form.timeUnknownHeading}
                   clearLabel={t.form.timeClear}
+                  filterLabel={t.form.timeFilter}
                 />
               </Field>
               {arrivalAirports.length > 0 && (
@@ -360,15 +366,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               )}
             </div>
             <div>
-              <div>
-                {/* Plain <div> rather than <Field>, same label-click reason
-                    as the arrival date above. */}
-                <div
-                  className="font-ui"
-                  style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
-                >
-                  {t.form.departureDate}
-                </div>
+              <Field label={t.form.departureDate} popover>
                 <SingleDatePicker
                   date={value.departure_date}
                   onChange={(date) => update("departure_date", date)}
@@ -377,8 +375,8 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                   prevMonthLabel={t.form.calendarPrevMonth}
                   nextMonthLabel={t.form.calendarNextMonth}
                 />
-              </div>
-              <Field label={t.form.departureTime}>
+              </Field>
+              <Field label={t.form.departureTime} popover>
                 <TimePicker
                   value={value.departure_time}
                   onChange={(next) => update("departure_time", next)}
@@ -386,6 +384,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
                   placeholder={t.form.departureTimePlaceholder}
                   vagueLabel={t.form.timeUnknownHeading}
                   clearLabel={t.form.timeClear}
+                  filterLabel={t.form.timeFilter}
                 />
               </Field>
               {departureAirports.length > 0 && (
@@ -435,38 +434,28 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             </Field>
           </div>
         )}
-        <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
-          {/* Not <Field>: its wrapping <label> would forward a click from any
-              button inside it (the calendar's day buttons) to the first
-              control in the label - the trigger button - re-toggling it
-              open right after a day-click closes it. Plain <div> here
-              replicates Field's label styling without that label-click
-              side effect. */}
-          <div
-            className="font-ui"
-            style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
-          >
-            {t.form.dates}
-          </div>
-          <DateRangePicker
-            startDate={value.start_date}
-            endDate={value.end_date}
-            onChange={(start, end) => onChange({ ...value, start_date: start, end_date: end })}
-            language={value.language}
-            placeholder={t.form.datesPlaceholder}
-            toLabel={t.form.datesPickEnd}
-            prevMonthLabel={t.form.calendarPrevMonth}
-            nextMonthLabel={t.form.calendarNextMonth}
-          />
-          {tooLong && (
-            <div
-              className="font-ui"
-              role="alert"
-              style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 7, lineHeight: 1.5 }}
-            >
-              {t.form.datesTooLong.replace("{days}", String(dayCount)).replace("{max}", String(MAX_TRIP_DAYS))}
-            </div>
-          )}
+        <div style={{ gridColumn: "1 / -1" }}>
+          <Field label={t.form.dates} popover>
+            <DateRangePicker
+              startDate={value.start_date}
+              endDate={value.end_date}
+              onChange={(start, end) => onChange({ ...value, start_date: start, end_date: end })}
+              language={value.language}
+              placeholder={t.form.datesPlaceholder}
+              toLabel={t.form.datesPickEnd}
+              prevMonthLabel={t.form.calendarPrevMonth}
+              nextMonthLabel={t.form.calendarNextMonth}
+            />
+            {tooLong && (
+              <div
+                className="font-ui"
+                role="alert"
+                style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 7, lineHeight: 1.5 }}
+              >
+                {t.form.datesTooLong.replace("{days}", String(dayCount)).replace("{max}", String(MAX_TRIP_DAYS))}
+              </div>
+            )}
+          </Field>
         </div>
         <div className="form-group-label">{t.form.groupWho}</div>
         <Field label={t.form.partySize}>

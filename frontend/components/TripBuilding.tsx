@@ -18,9 +18,22 @@
 // exists, which is why it can be shown at all: a bar that animates on a
 // timer is a lie about a wait, and this product's whole argument is that
 // it does not do that.
+//
+// AND THE CITY FACTS, which this component lost by existing. They were in
+// LoadingScreen, the thing it replaced, and nothing renders LoadingScreen
+// on the trip page any more - so the first twenty seconds of every
+// generation, before phase 1 publishes the outline, were a title and one
+// status line. That is precisely the dead time the facts were written for,
+// and on the measured Rome run it is 20 of the 52 seconds.
+//
+// They stay after the outline arrives rather than being swapped out, in one
+// line under it: by then there is real content to read, so the fact steps
+// down from being the main thing to being the thing to read while the next
+// day lands.
 
 import type { JobProgress } from "@/lib/jobs";
 import type { Dictionary } from "@/lib/i18n";
+import { useCityFacts, useRotatingIndex } from "@/lib/useCityFacts";
 
 export function TripBuilding({
   progress,
@@ -36,6 +49,9 @@ export function TripBuilding({
 }) {
   const days = progress?.days ?? [];
   const written = days.filter((d) => typeof d.itemCount === "number").length;
+  const facts = useCityFacts(destinations);
+  const factIndex = useRotatingIndex(facts.length);
+  const fact = facts[factIndex];
 
   return (
     <div className="trip-building">
@@ -47,6 +63,16 @@ export function TripBuilding({
         </div>
         <div className="font-ui trip-building-status">{message}</div>
       </div>
+
+      {/* Before the outline exists this is the only thing on the card, so
+          it gets the room. Once days arrive it moves below them (see the
+          second copy further down) and becomes one quiet line. */}
+      {fact && days.length === 0 && (
+        <div className="trip-building-fact trip-building-fact-alone">
+          <div className="font-ui trip-building-fact-label">{t.trip.didYouKnow}</div>
+          <div className="trip-building-fact-text">{fact}</div>
+        </div>
+      )}
 
       {days.length > 0 && (
         <>
@@ -84,6 +110,13 @@ export function TripBuilding({
               );
             })}
           </ol>
+
+          {fact && (
+            <div className="trip-building-fact">
+              <div className="font-ui trip-building-fact-label">{t.trip.didYouKnow}</div>
+              <div className="trip-building-fact-text">{fact}</div>
+            </div>
+          )}
         </>
       )}
     </div>

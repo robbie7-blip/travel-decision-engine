@@ -704,6 +704,16 @@ jobs:
       # appeared TWICE, the second being a dinner priced zero. That is the
       # shape this suite is for: not a crash, a confident wrong number on a
       # page about money.
+      # Also covers the WAIT, the longest visual moment in the product.
+      # TripBuilding replaced LoadingScreen so the wait could show the real
+      # outline as phase 1 and each day land, and in doing so silently
+      # dropped the city facts - which only ever existed in LoadingScreen, a
+      # component nothing renders on the trip page any more. The first
+      # twenty seconds of every generation (20 of the 52 on the measured
+      # Rome run) were a title and one status line. The rotation is shared
+      # now. renderToStaticMarkup does not run effects and the facts arrive
+      # in one, so what is asserted is the thing that actually regressed:
+      # whether the component the page renders is wired to the rotation.
       - run: npm run test:render-trip
       # Does the flight section group by LEG - arrival down one side,
       # departure down the other?
@@ -724,6 +734,19 @@ jobs:
       # columns depend on, which lives in a different file and is
       # referenced only by a string. Reverting the two per-leg wrappers
       # makes 13 of 32 red - measured.
+      #
+      # It also covers two defects reported off a live run. The origin field
+      # was a bare text input sitting under a chip-and-suggestions combobox,
+      # so one screen asked "name a city" twice and answered it two ways -
+      # it is the same control now, and this counts the comboboxes. And
+      # picking a time left its list open: not a TimePicker bug (its own
+      # `choose` always closed it) but the <label> that Field wraps every
+      # field in, forwarding the click straight back to the trigger button,
+      # which reopened it. The date pickers carried hand-copied <div>s
+      # working around exactly that; the time pickers did not. Field takes a
+      # `popover` prop now, and the suite asserts on ELEMENT NAMES, because
+      # the bug is invisible in the rendered text and lives entirely in
+      # which tag wraps what. Reverting the prop makes 5 of 43 red.
       - run: npm run test:render-trip-form
       - run: npm run test:result-format
       # Money on the page, in the currency the traveller picked - and the

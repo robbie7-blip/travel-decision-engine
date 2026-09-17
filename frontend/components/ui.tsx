@@ -95,9 +95,36 @@ export function Stamp({ ok, color, children }: { ok: boolean; color?: string; ch
   );
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+/** A labelled field.
+ *
+ * `popover` swaps the wrapping <label> for a <div>, and it is not
+ * cosmetic - it is required for any control whose value is chosen by
+ * clicking a button inside a popover.
+ *
+ * A <label> forwards a click on itself to the first labelable control it
+ * contains. That is correct HTML, and for these controls it is a loop: the
+ * trigger is a <button>, clicking a time in the list sets the value and
+ * closes the popover, then the label forwards that same click to the
+ * trigger, which toggles it straight back open. The traveler sees their
+ * choice land and the list stay open, and has to click somewhere else to
+ * dismiss it.
+ *
+ * The two date pickers already worked around this with hand-copied <div>s
+ * and a comment explaining why; the time pickers did not, so both of them
+ * had exactly that bug in production. Making it a prop is what stops the
+ * next popover control from having to rediscover it. */
+export function Field({
+  label,
+  children,
+  popover = false,
+}: {
+  label: string;
+  children: ReactNode;
+  popover?: boolean;
+}) {
+  const Wrapper = popover ? "div" : "label";
   return (
-    <label style={{ display: "block", marginBottom: 20 }}>
+    <Wrapper style={{ display: "block", marginBottom: 20 }}>
       {/* Was 11px uppercase in --ink-dim with 0.08em tracking: a caption,
           floating over a field that had no edges of its own. On the one
           surface that has to be obviously fillable, the label should read
@@ -115,7 +142,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
         {label}
       </div>
       {children}
-    </label>
+    </Wrapper>
   );
 }
 

@@ -8,6 +8,8 @@ node_modules/
 .next/
 frontend/.env.local
 frontend/tsconfig.tsbuildinfo
+# The render suite's own config produces its own, when tsc is pointed at it.
+frontend/tsconfig.render.tsbuildinfo
 
 .DS_Store
 

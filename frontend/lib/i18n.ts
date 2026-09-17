@@ -74,6 +74,8 @@ export interface Dictionary {
     destinationFreeText: string;
     timeUnknownHeading: string;
     timeClear: string;
+    /** Placeholder in the time popover's filter box. */
+    timeFilter: string;
     compareToggleLabel: string;
     compareDestinations: string;
     compareDestinationsPlaceholder: string;
@@ -671,6 +673,7 @@ const en: Dictionary = {
     destinationFreeText: "Not on the list? Press Enter to add it anyway.",
     timeUnknownHeading: "Not sure of the exact time",
     timeClear: "Clear",
+    timeFilter: "Type a time, e.g. 9 or 1630",
     compareToggleLabel: "Compare with another destination (same budget and preferences)",
     compareDestinations: "Compare against",
     compareDestinationsPlaceholder: "e.g. Athens",
@@ -1214,6 +1217,7 @@ const bg: Dictionary = {
     destinationFreeText: "Няма го в списъка? Натиснете Enter, за да го добавите.",
     timeUnknownHeading: "Не знам точния час",
     timeClear: "Изчисти",
+    timeFilter: "Въведете час, напр. 9 или 1630",
     compareToggleLabel: "Сравни с друга дестинация (същия бюджет и предпочитания)",
     compareDestinations: "Сравни със",
     compareDestinationsPlaceholder: "напр. Атина",

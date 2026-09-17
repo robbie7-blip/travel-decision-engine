@@ -1582,6 +1582,37 @@ p {
   gap: 14px;
 }
 
+/* The "did you know" line during the wait. It was lost when TripBuilding
+   replaced LoadingScreen, which left the first twenty seconds of every
+   generation - before phase 1 publishes the outline - as a title and a
+   status line. See the note in TripBuilding.tsx. */
+.trip-building-fact {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* Before the outline exists it is the only thing on the card, so it is
+   given the middle of it rather than sitting at the bottom of nothing. */
+.trip-building-fact-alone {
+  margin-top: 4px;
+  padding: 20px 0 4px;
+  max-width: 56ch;
+}
+
+.trip-building-fact-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.trip-building-fact-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
 /* A day that has not landed yet is dimmed rather than hidden, so the
    outline's full length is visible from the moment phase 1 returns and
    the list never jumps as rows arrive. */
