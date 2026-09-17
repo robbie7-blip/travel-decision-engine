@@ -345,6 +345,30 @@ button {
   }
 }
 
+/* The two halves of the journey, one per column: arrival date and arrival
+   time down one side, departure date and departure time down the other.
+   Six siblings in the form's own grid laid them out in source order, which
+   put the arrival airport beside the DEPARTURE date - so the columns
+   carried no meaning and reading down one side crossed from one leg to the
+   other. See the note in TripForm.tsx.
+
+   Same columns and the same gutter as .trip-form-grid deliberately, so
+   nesting changes the grouping and not a single field's width, and the
+   same breakpoint, so on a phone it is one column in journey order:
+   arrival, then departure. */
+.flight-legs {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 28px;
+}
+
+@media (max-width: 560px) {
+  .flight-legs {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* The panel the form sits in. Not the old card - no drop shadow, no
    coloured border - but a real surface: white against the warm ground,
    one hairline, and enough padding that the fields have room to be

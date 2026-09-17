@@ -476,6 +476,38 @@ key simply stops existing shortly after the process writing it stops.
 Note that a worker running a build from before the heartbeat existed reads
 as down; deploy the worker as well as the frontend.
 
+### Failed generations
+
+The page's first card is the last two weeks of failures, newest first, with
+the error's own class name, message, stack and the pipeline stages it got
+through.
+
+It exists because of an asymmetry. A failed generation tells the traveler
+one of seven sentences and six of them name the cause; the seventh -
+"Unexpected error generating itinerary." - is the fallthrough in
+`processJob`'s catch, meaning the thrown value matched none of the named
+cases. So the one failure class that by definition cannot explain itself
+was also the only one whose diagnosis needed log access to Railway, and a
+generation costs real money per attempt.
+
+The record is deliberately **not** on the job: `/api/job/[id]` is public and
+unauthenticated (see `publicJob`'s field-by-field allowlist), and a stack
+trace is not something a shared trip link should carry. It goes to a capped
+list in Redis (`worker:failures`, 25 entries, 14-day TTL) behind the
+`ADMIN_PASSWORD` gate.
+
+Every stored string is redacted first (`redactSecrets` in the `jobs.ts`
+mirrors). This is a value written into Redis and read back onto a web page -
+the same pair the heartbeat refuses to let a credential near - and an
+arbitrary client's error message is one of the few strings in the process
+that can carry one: ioredis names the connection target it could not reach,
+and a Redis URL is `redis://default:<password>@host:6379`. The redaction
+covers URL userinfo, prefixed provider keys, Google keys, Authorization
+header values, and anything else long and opaque enough to be a token (the
+Upstash REST token has no prefix to match on). Covered by
+`npm run test:worker-failure` against five real credential shapes, and end
+to end through `processJob` by `npm run test:failure-log` in the worker.
+
 ### Generation latency
 
 `/admin/stats` carries a latency panel next to the quality one, fed by

@@ -539,6 +539,218 @@ export interface WorkerHeartbeat {
 }
 
 // ---------------------------------------------------------------------------
+// Failure diagnostics
+//
+// A failed generation tells the traveler one of seven sentences, and six of
+// them name the cause. The seventh - "Unexpected error generating
+// itinerary." - is the fallthrough in processJob's catch, and it means the
+// thrown value matched none of the named cases: a TypeError on a
+// model-written field, a Redis write that failed, anything at all. The real
+// error and its stack go to console.error, which lives on Railway.
+//
+// So the one failure class that by definition does not say what happened is
+// also the one whose diagnosis needs log access to the other deployment.
+// That is the wrong way round, and it has now cost a paid generation: the
+// only artifact of the last failure was a screenshot of that sentence.
+//
+// This puts the error where the operator already looks. A capped list in
+// Redis, rendered on /admin/health behind the password - NOT on the job
+// record, which /api/job/[id] serves unauthenticated to anyone holding the
+// link (see publicJob's field-by-field allowlist), and not in the sentence
+// the traveler reads.
+//
+// REDACTED, not raw. This is a value written into Redis and read back onto
+// a web page, which is the exact pair the heartbeat note above refuses to
+// let a credential near - and a client's error message is one of the few
+// strings in this process that can carry one. ioredis names the connection
+// target it could not reach, and `redis://default:<password>@host:6379` is
+// a password in an error message. Every stored string goes through
+// redactSecrets first.
+
+export const WORKER_FAILURES_KEY = "worker:failures";
+
+/** How many failures the list keeps. Enough to show a pattern across a
+ * morning's runs, small enough that reading it is one Redis call. */
+export const WORKER_FAILURES_KEPT = 25;
+
+/** How long the list survives untouched. Two weeks: long enough that a
+ * failure over a weekend is still there on Monday, short enough that it
+ * does not become a permanent record of one bad afternoon. */
+export const WORKER_FAILURE_TTL_SECONDS = 60 * 60 * 24 * 14;
+
+/** Caps, so one enormous message cannot push the other 24 failures out of
+ * a Redis value or off the page. */
+const MAX_FAILURE_MESSAGE_CHARS = 500;
+const MAX_FAILURE_STACK_FRAMES = 12;
+
+export interface WorkerFailure {
+  /** The job it threw on, so the record can be matched to the trip page. */
+  jobId: string;
+  /** When it threw (epoch ms). */
+  at: number;
+  /** The error's constructor name - "TypeError" is the whole diagnosis
+   * about half the time, because it means a field the model wrote was not
+   * the type its declaration claims. */
+  name: string;
+  /** The message, redacted and capped. */
+  message: string;
+  /** The stack as lines, redacted and capped. Never the raw stack: a
+   * message embedded in frame zero would otherwise skip the redaction the
+   * message itself gets. */
+  stack: string[];
+  /** Which timed stages had finished when it threw, in order. This is what
+   * says WHERE, and it is the half a stack trace does not give: a stack
+   * naming shape.ts is a different bug depending on whether verification
+   * had already run. */
+  reached: string[];
+  /** The trip's length in days, or null. A count, not the brief - it is
+   * the single strongest predictor of which failures reproduce, and it
+   * discloses nothing about the traveler. */
+  days: number | null;
+}
+
+/** Patterns that must never reach Redis or a web page.
+ *
+ * Ordered: the specific shapes first, then one deliberately blunt rule for
+ * anything long and opaque enough to be a token. The Upstash REST token is
+ * about a hundred characters of base64url with no recognisable prefix, so
+ * no allowlist of key formats would catch it. 40 characters is past any
+ * build hash or minified identifier a stack frame carries, and the cost of
+ * a false positive here is one unreadable substring in a diagnostic - the
+ * cost of a false negative is a published credential. */
+const SECRET_PATTERNS: [RegExp, string][] = [
+  // A URL's userinfo half. Every connection error prints its target.
+  [/\/\/[^\s/@]*:[^\s/@]*@/g, "//[redacted]@"],
+  // Prefixed provider keys: Anthropic, Stripe, and anything shaped like
+  // them.
+  [/\b(sk|rk|pk)[-_][A-Za-z0-9_-]{8,}/g, "$1-[redacted]"],
+  // Google API keys, which is the family this product holds most of.
+  [/\bAIza[0-9A-Za-z_-]{10,}/g, "AIza[redacted]"],
+  // An Authorization header's value, however the client spelled the
+  // scheme.
+  [/\b(bearer|basic)(\s+)[A-Za-z0-9._~+/=-]{8,}/gi, "$1$2[redacted]"],
+  // The blunt rule, last.
+  [/[A-Za-z0-9_-]{40,}/g, "[redacted]"],
+];
+
+/** Removes anything that looks like a credential from a diagnostic string. */
+export function redactSecrets(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of SECRET_PATTERNS) out = out.replace(pattern, replacement);
+  return out;
+}
+
+/** Describes a thrown value without assuming it is an Error.
+ *
+ * `String(e)` is not safe on every throwable - a BigInt in a template
+ * literal throws, and a plain object stringifies to "[object Object]",
+ * which is the least useful thing a diagnostic can say. Nothing here may
+ * throw: it runs inside the handler for something that already went
+ * wrong. */
+/** The most specific name available for what was thrown.
+ *
+ * `error.name` is not it. Every custom error in this codebase is declared
+ * `class ModelOutputError extends Error {}` and none of them set `name`, so
+ * `name` reads "Error" for all of them - and this field is the one the
+ * operator scans first. The constructor's name is the real answer:
+ * "ItineraryShapeError" says which layer rejected the model's output,
+ * "Error" says nothing. Measured through processJob: a day-call failure
+ * recorded itself as plain "Error" until this existed.
+ *
+ * Wrapped, because reading .constructor on a Proxy - which is what a
+ * wrapped provider error can be by the time it reaches a catch - can
+ * itself throw. */
+function nameOfThrown(error: unknown): string {
+  const err = error instanceof Error ? error : null;
+  if (!err) return `non-Error (${typeof error})`;
+  try {
+    const ctor = err.constructor?.name;
+    if (typeof ctor === "string" && ctor.length > 0 && ctor !== "Object") return ctor;
+  } catch {
+    // Fall through to err.name below.
+  }
+  return typeof err.name === "string" && err.name ? err.name : "Error";
+}
+
+function describeThrown(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error) ?? String(error);
+  } catch {
+    return "a thrown value that could not be described";
+  }
+}
+
+/** Builds the record from whatever was caught.
+ *
+ * Total, not partial: every field has an answer for a thrown string, a
+ * thrown null and a thrown Error alike, because the caller is a catch
+ * block and the alternative to a thin record is no record. */
+export function buildWorkerFailure(
+  jobId: string,
+  error: unknown,
+  opts: { reached: string[]; days: number | null; now?: number }
+): WorkerFailure {
+  const err = error instanceof Error ? error : null;
+  const stack = typeof err?.stack === "string" ? err.stack.split("\n") : [];
+  return {
+    jobId,
+    at: opts.now ?? Date.now(),
+    name: nameOfThrown(error),
+    message: redactSecrets(describeThrown(error)).slice(0, MAX_FAILURE_MESSAGE_CHARS),
+    stack: stack
+      .map((line) => redactSecrets(line).trim())
+      .filter((line) => line.length > 0)
+      .slice(0, MAX_FAILURE_STACK_FRAMES),
+    reached: opts.reached,
+    days: typeof opts.days === "number" && Number.isFinite(opts.days) ? opts.days : null,
+  };
+}
+
+/** True when what came out of the list is actually a failure record.
+ *
+ * Same reasoning as isJob above. This one is read straight onto a page, so
+ * an older build's shape must render as "one record could not be read"
+ * rather than throwing during the render of the page whose only job is to
+ * say what is broken. */
+export function isWorkerFailure(value: unknown): value is WorkerFailure {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const f = value as Partial<WorkerFailure>;
+  return (
+    typeof f.jobId === "string" &&
+    Number.isFinite(f.at) &&
+    typeof f.name === "string" &&
+    typeof f.message === "string" &&
+    Array.isArray(f.stack) &&
+    Array.isArray(f.reached)
+  );
+}
+
+/** Reads one entry as either Redis client hands it back, or null. */
+export function readWorkerFailure(raw: unknown): WorkerFailure | null {
+  if (raw == null) return null;
+  let value: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (!isWorkerFailure(value)) return null;
+  // The arrays are checked as arrays above and their contents are not, so
+  // narrow them here rather than letting a stray number reach a render
+  // that calls .trim() on it.
+  return {
+    ...value,
+    stack: value.stack.filter((line): line is string => typeof line === "string"),
+    reached: value.reached.filter((line): line is string => typeof line === "string"),
+    days: typeof value.days === "number" && Number.isFinite(value.days) ? value.days : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Trip length
 //
 // The single most expensive thing a request can get wrong, and for a long

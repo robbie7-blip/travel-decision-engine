@@ -81,7 +81,11 @@ import {
   WORKER_HEARTBEAT_INTERVAL_MS,
   WORKER_HEARTBEAT_KEY,
   WORKER_HEARTBEAT_TTL_SECONDS,
+  WORKER_FAILURES_KEY,
+  WORKER_FAILURES_KEPT,
+  WORKER_FAILURE_TTL_SECONDS,
   briefSpanDays,
+  buildWorkerFailure,
   STALE_RUNNING_MS,
   jobKey,
   readJobRecord,
@@ -90,6 +94,7 @@ import {
   type JobTimings,
   type ProgressDay,
   type RefinementRequest,
+  type WorkerFailure,
   type WorkerHeartbeat,
 } from "./jobs";
 import {
@@ -2241,6 +2246,31 @@ function unverifiedVenueItems(itinerary: Itinerary): Set<ItineraryItem> {
   return out;
 }
 
+/** Pushes one failure onto the capped list /admin/health renders.
+ *
+ * Every failure mode of this function is swallowed, loudly. It runs when a
+ * generation has ALREADY failed, and a diagnostic that can turn one failure
+ * into two - a throw here would escape processJob's catch entirely and
+ * leave the job stuck at "running" until stallReason times it out - is
+ * worse than no diagnostic at all. The console.error is the fallback, which
+ * is where this information used to live in full.
+ *
+ * Not a pipeline: three round trips on a path that runs at most once per
+ * failed job, in exchange for each one's failure being attributable. */
+async function recordWorkerFailure(redis: Redis, failure: WorkerFailure): Promise<void> {
+  try {
+    await redis.lpush(WORKER_FAILURES_KEY, JSON.stringify(failure));
+    await redis.ltrim(WORKER_FAILURES_KEY, 0, WORKER_FAILURES_KEPT - 1);
+    await redis.expire(WORKER_FAILURES_KEY, WORKER_FAILURE_TTL_SECONDS);
+    console.error(
+      `[worker] recorded the failure on ${failure.jobId} for /admin/health: ` +
+        `${failure.name}: ${failure.message}`
+    );
+  } catch (e) {
+    console.error("[worker] could not record the failure diagnostics:", e);
+  }
+}
+
 export async function processJob(redis: Redis, client: Anthropic, id: string): Promise<void> {
   const raw = await redis.get(jobKey(id));
   if (!raw) {
@@ -2452,6 +2482,18 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   const claimedVenues = new Set<string>();
   let lastDayLandedAt = 0;
   let verifyIdleUntil = 0;
+
+  /** What was caught, kept past the catch block.
+   *
+   * The catch turns the error into the sentence the traveler reads and then
+   * has no further use for it, which is why the six named cases are the
+   * only thing this product has ever known about a failure. The value is
+   * held here so the diagnostics can be recorded AFTER the timing audit is
+   * assembled - the audit is what says which stage it got to, and that is
+   * half the diagnosis. A sentinel object rather than `undefined`, because
+   * `throw undefined` is legal and a job that failed must not read as a job
+   * that succeeded. */
+  let caught: { error: unknown } | null = null;
 
   try {
     let itinerary: Itinerary;
@@ -2815,6 +2857,25 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // the sort had already run, dropping an accommodation line at the bottom
     // of a day regardless of its time.
     for (const day of itinerary.days ?? []) {
+      // A null day is skipped rather than sorted. normalizeItineraryShape
+      // guarantees `days` is an array and that every OBJECT day has an
+      // items array - it cannot give a `null` entry one, so it leaves it
+      // alone (see the `if (!day || typeof day !== "object") continue` in
+      // shape.ts). This line then read `null.items`, which is a TypeError
+      // inside processJob's try and outside every retry: a fully
+      // generated, fully paid itinerary marked "Unexpected error
+      // generating itinerary".
+      //
+      // Depth rather than a live hole, and measured as such: pushing
+      // `{"days": [null, {...}]}` through the refinement path in
+      // failureLog.test.ts is caught upstream by callModel's own validator
+      // ("Model returned an itinerary with a day that is not an object"),
+      // so the model cannot get a null day this far today. The guard is
+      // one line and the failure it prevents is a fully generated, fully
+      // paid itinerary thrown away, so it stays - but it is not standing
+      // in for a reachable path, and this comment should not pretend it
+      // is.
+      if (!day || !Array.isArray(day.items)) continue;
       day.items.sort((a, b) => timeOrder(a.time) - timeOrder(b.time));
     }
 
@@ -2845,6 +2906,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     job.result = itinerary;
   } catch (e) {
     console.error(`[worker] job ${id} failed:`, e);
+    caught = { error: e };
     job.status = "error";
     job.error =
       isMissingWorkspaceIdError(e)
@@ -2914,6 +2976,23 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         (audit.generateUnaccountedMs !== null ? `; ${audit.generateUnaccountedMs}ms unaccounted inside generation` : "")
     );
     for (const note of audit.notes) console.log(`[worker] timing audit: ${note}`);
+
+    // The failure, written where it can be read without Railway.
+    //
+    // Here rather than in the catch because the audit above is what names
+    // the stage it got to, and "TypeError in shape.ts" is a different bug
+    // depending on whether verification had already run. See the failure
+    // diagnostics note in jobs.ts for why the record is redacted and why it
+    // goes to an admin-only list instead of onto the job.
+    if (caught) {
+      await recordWorkerFailure(
+        redis,
+        buildWorkerFailure(id, caught.error, {
+          reached: audit.stages.filter((st) => st.ms > 0).map((st) => `${st.label} ${st.ms}ms`),
+          days: spanDays,
+        })
+      );
+    }
   }
   job.timings = jobTimings;
 

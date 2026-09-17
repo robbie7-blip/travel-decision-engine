@@ -15,7 +15,15 @@
 import Link from "next/link";
 import { getRedis } from "@/lib/redis";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
-import { JOBS_QUEUE_KEY, WORKER_HEARTBEAT_KEY, type WorkerHeartbeat } from "@/lib/jobs";
+import {
+  JOBS_QUEUE_KEY,
+  WORKER_FAILURES_KEY,
+  WORKER_FAILURES_KEPT,
+  WORKER_HEARTBEAT_KEY,
+  readWorkerFailure,
+  type WorkerFailure,
+  type WorkerHeartbeat,
+} from "@/lib/jobs";
 import {
   checkFrontendEnv,
   checkWorkerEnv,
@@ -39,6 +47,13 @@ interface RedisState {
   pingMs: number | null;
   queueDepth: number | null;
   heartbeat: WorkerHeartbeat | null;
+  /** Newest first, as the worker pushed them. */
+  failures: WorkerFailure[];
+  /** Entries in the list this build could not read - an older worker's
+   * shape, or a half-written value. Counted rather than dropped silently,
+   * because "no failures" and "three failures I cannot show you" are
+   * different answers on a page whose whole job is saying what is wrong. */
+  failuresUnreadable: number;
   error: string | null;
 }
 
@@ -48,6 +63,8 @@ async function loadRedisState(): Promise<RedisState> {
     pingMs: null,
     queueDepth: null,
     heartbeat: null,
+    failures: [],
+    failuresUnreadable: 0,
     error: null,
   };
 
@@ -75,14 +92,23 @@ async function loadRedisState(): Promise<RedisState> {
 
   let queueDepth: number | null = null;
   let heartbeat: WorkerHeartbeat | null = null;
+  let failures: WorkerFailure[] = [];
+  let failuresUnreadable = 0;
   let error: string | null = null;
 
   try {
-    const [depth, raw] = await Promise.all([
+    const [depth, raw, rawFailures] = await Promise.all([
       redis.llen(JOBS_QUEUE_KEY),
       redis.get<string | WorkerHeartbeat>(WORKER_HEARTBEAT_KEY),
+      // One read for the whole list. The worker caps it at
+      // WORKER_FAILURES_KEPT with an LTRIM on every push, so this cannot
+      // grow past that however many jobs fail.
+      redis.lrange<string | WorkerFailure>(WORKER_FAILURES_KEY, 0, WORKER_FAILURES_KEPT - 1),
     ]);
     queueDepth = depth;
+    const read = (Array.isArray(rawFailures) ? rawFailures : []).map(readWorkerFailure);
+    failures = read.filter((f): f is WorkerFailure => f !== null);
+    failuresUnreadable = read.length - failures.length;
     // Upstash's client parses JSON values for you, except when it doesn't
     // (older writes, non-JSON strings), so handle both - same as loadJob.
     const parsed = raw == null ? null : typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -101,7 +127,7 @@ async function loadRedisState(): Promise<RedisState> {
     error = e instanceof Error ? e.message : "Could not read the queue or the heartbeat";
   }
 
-  return { reachable: true, pingMs, queueDepth, heartbeat, error };
+  return { reachable: true, pingMs, queueDepth, heartbeat, failures, failuresUnreadable, error };
 }
 
 // Text and rules take different colours for the same verdict, because the
@@ -199,6 +225,50 @@ function EnvTable({ checks }: { checks: CheckedEnv[] }) {
   );
 }
 
+/** How recent a failure has to be for this card to read DEGRADED.
+ *
+ * The list keeps two weeks, which is the right memory for spotting a
+ * pattern and the wrong one for a verdict: a bad afternoon a fortnight ago
+ * must not leave the page permanently amber. Six hours is "this is
+ * happening now". */
+const FAILURE_FRESH_MS = 6 * 60 * 60 * 1000;
+
+function FailureEntry({ failure }: { failure: WorkerFailure }) {
+  return (
+    <div style={{ borderTop: "1px solid var(--line)", padding: "10px 0", fontSize: 12, lineHeight: 1.7 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", color: "var(--ink-dim)" }}>
+        <span>{new Date(failure.at).toLocaleString("en-GB")}</span>
+        <span style={{ color: VERDICT_TEXT.down }}>{failure.name}</span>
+        <span>job {failure.jobId}</span>
+        {failure.days !== null && <span>{failure.days}-day trip</span>}
+      </div>
+      <div style={{ marginTop: 4, wordBreak: "break-word" }}>{failure.message || "(no message)"}</div>
+      {/* Which stages finished. This is the half a stack trace does not
+          give: the same throw means different things before and after
+          verification has run. */}
+      {failure.reached.length > 0 && (
+        <div style={{ marginTop: 4, color: "var(--ink-dim)" }}>reached: {failure.reached.join(" + ")}</div>
+      )}
+      {failure.stack.length > 0 && (
+        <details style={{ marginTop: 6 }}>
+          <summary style={{ cursor: "pointer", color: "var(--grounded)" }}>stack</summary>
+          <pre
+            style={{
+              margin: "6px 0 0",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              fontSize: 11,
+              color: "var(--ink-dim)",
+            }}
+          >
+            {failure.stack.join("\n")}
+          </pre>
+        </details>
+      )}
+    </div>
+  );
+}
+
 export default async function HealthAdminPage() {
   const redis = await loadRedisState();
   const frontendChecks = checkFrontendEnv();
@@ -225,6 +295,17 @@ export default async function HealthAdminPage() {
 
   const age = redis.heartbeat ? heartbeatAgeSeconds(redis.heartbeat) : null;
 
+  // Deliberately NOT folded into `overall`. That banner answers a
+  // configuration question - "is anything set on one host and missing on
+  // the other" - and a generation that threw on a model-written field is a
+  // different kind of problem with different words. Folding it in would
+  // have the page say "something switched off that nobody would notice"
+  // about a TypeError. The card carries its own verdict and sits first,
+  // which is where the answer to "what just broke" belongs.
+  const newestFailureAt = redis.failures[0]?.at ?? null;
+  const failuresVerdict: Verdict =
+    newestFailureAt !== null && Date.now() - newestFailureAt < FAILURE_FRESH_MS ? "warn" : "ok";
+
   return (
     <div className="font-mono" style={{ padding: "32px 24px", maxWidth: 900, margin: "0 auto", color: "var(--ink)" }}>
       <MarkAdminUi />
@@ -246,6 +327,33 @@ export default async function HealthAdminPage() {
           feedback →
         </Link>
       </div>
+
+      <Card title="Failed generations" verdict={failuresVerdict}>
+        {redis.failures.length === 0 ? (
+          <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: 0, lineHeight: 1.7 }}>
+            Nothing has failed in the last two weeks - or the worker is running a build from before it
+            started recording failures here.
+          </p>
+        ) : (
+          <>
+            <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: "0 0 4px", lineHeight: 1.7 }}>
+              The real error behind each one, newest first. A traveler is told &ldquo;Unexpected error
+              generating itinerary&rdquo; whenever the thrown value matched none of the named cases, which
+              means this list is the only place that sentence is ever explained.
+            </p>
+            {redis.failures.map((failure, i) => (
+              <FailureEntry key={`${failure.jobId}-${failure.at}-${i}`} failure={failure} />
+            ))}
+            {redis.failuresUnreadable > 0 && (
+              <p style={{ fontSize: 12, color: "var(--ink-dim)", margin: "10px 0 0", lineHeight: 1.7 }}>
+                {redis.failuresUnreadable} further{" "}
+                {redis.failuresUnreadable === 1 ? "entry was" : "entries were"} in the list but not in a
+                shape this build understands.
+              </p>
+            )}
+          </>
+        )}
+      </Card>
 
       <Card title="Worker" verdict={workerVerdict}>
         {redis.heartbeat && age !== null ? (

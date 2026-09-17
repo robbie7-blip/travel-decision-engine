@@ -288,103 +288,127 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
           </div>
         )}
         {value.origin.trim() && !value.needs_flight && (
-          <>
+          // ARRIVAL DOWN ONE SIDE, DEPARTURE DOWN THE OTHER.
+          //
+          // These six fields used to be six children of the form's own
+          // two-column grid, which laid them out in source order: arrival
+          // date beside arrival time, then arrival airport beside DEPARTURE
+          // date, then departure time beside departure airport. So the
+          // second row mixed the two halves of the journey and the columns
+          // meant nothing - a traveler reading down the left-hand side went
+          // arrival, arrival, departure.
+          //
+          // A nested grid instead of reordering the children, because the
+          // groups are what the reader is looking for: one leg per column,
+          // each leg's fields under its own heading order, and the airport
+          // dropdown (which only exists for a multi-airport city) lands
+          // under the leg it belongs to rather than shifting the other
+          // leg's fields sideways when it appears. Same columns and the
+          // same 28px gutter as the parent, so every field keeps the width
+          // it had, and the same 560px collapse, so on a phone it is still
+          // one column in journey order.
+          <div className="flight-legs">
             <div>
-              {/* Not <Field>: same label-click-forwarding reason as the
-                  DATES field below - a plain <div> replicates Field's label
-                  styling without a popover-reopening side effect. */}
-              <div
-                className="font-ui"
-                style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
-              >
-                {t.form.arrivalDate}
-              </div>
-              <SingleDatePicker
-                date={value.arrival_date}
-                onChange={(date) => update("arrival_date", date)}
-                language={value.language}
-                placeholder={t.form.arrivalDatePlaceholder}
-                prevMonthLabel={t.form.calendarPrevMonth}
-                nextMonthLabel={t.form.calendarNextMonth}
-              />
-            </div>
-            <Field label={t.form.arrivalTime}>
-              <TimePicker
-                value={value.arrival_time}
-                onChange={(next) => update("arrival_time", next)}
-                language={value.language}
-                placeholder={t.form.arrivalTimePlaceholder}
-                vagueLabel={t.form.timeUnknownHeading}
-                clearLabel={t.form.timeClear}
-              />
-            </Field>
-            {arrivalAirports.length > 0 && (
-              <Field label={t.form.arrivalAirport}>
-                <select
-                  style={inputStyle}
-                  value={value.arrival_airport}
-                  onChange={(e) => update("arrival_airport", e.target.value)}
+              <div>
+                {/* Not <Field>: same label-click-forwarding reason as the
+                    DATES field below - a plain <div> replicates Field's
+                    label styling without a popover-reopening side
+                    effect. */}
+                <div
+                  className="font-ui"
+                  style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
                 >
-                  <option value="">{t.form.airportUnknown}</option>
-                  {arrivalAirports.map((airport) => {
-                    const label = airportLabel(arrivalCity, airport);
-                    return (
-                      <option key={airport.code} value={label}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
+                  {t.form.arrivalDate}
+                </div>
+                <SingleDatePicker
+                  date={value.arrival_date}
+                  onChange={(date) => update("arrival_date", date)}
+                  language={value.language}
+                  placeholder={t.form.arrivalDatePlaceholder}
+                  prevMonthLabel={t.form.calendarPrevMonth}
+                  nextMonthLabel={t.form.calendarNextMonth}
+                />
+              </div>
+              <Field label={t.form.arrivalTime}>
+                <TimePicker
+                  value={value.arrival_time}
+                  onChange={(next) => update("arrival_time", next)}
+                  language={value.language}
+                  placeholder={t.form.arrivalTimePlaceholder}
+                  vagueLabel={t.form.timeUnknownHeading}
+                  clearLabel={t.form.timeClear}
+                />
               </Field>
-            )}
+              {arrivalAirports.length > 0 && (
+                <Field label={t.form.arrivalAirport}>
+                  <select
+                    style={inputStyle}
+                    value={value.arrival_airport}
+                    onChange={(e) => update("arrival_airport", e.target.value)}
+                  >
+                    <option value="">{t.form.airportUnknown}</option>
+                    {arrivalAirports.map((airport) => {
+                      const label = airportLabel(arrivalCity, airport);
+                      return (
+                        <option key={airport.code} value={label}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </Field>
+              )}
+            </div>
             <div>
-              {/* Plain <div> rather than <Field>, same label-click reason as
-                  the arrival date above. */}
-              <div
-                className="font-ui"
-                style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
-              >
-                {t.form.departureDate}
-              </div>
-              <SingleDatePicker
-                date={value.departure_date}
-                onChange={(date) => update("departure_date", date)}
-                language={value.language}
-                placeholder={t.form.departureDatePlaceholder}
-                prevMonthLabel={t.form.calendarPrevMonth}
-                nextMonthLabel={t.form.calendarNextMonth}
-              />
-            </div>
-            <Field label={t.form.departureTime}>
-              <TimePicker
-                value={value.departure_time}
-                onChange={(next) => update("departure_time", next)}
-                language={value.language}
-                placeholder={t.form.departureTimePlaceholder}
-                vagueLabel={t.form.timeUnknownHeading}
-                clearLabel={t.form.timeClear}
-              />
-            </Field>
-            {departureAirports.length > 0 && (
-              <Field label={t.form.departureAirport}>
-                <select
-                  style={inputStyle}
-                  value={value.departure_airport}
-                  onChange={(e) => update("departure_airport", e.target.value)}
+              <div>
+                {/* Plain <div> rather than <Field>, same label-click reason
+                    as the arrival date above. */}
+                <div
+                  className="font-ui"
+                  style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 7 }}
                 >
-                  <option value="">{t.form.airportUnknown}</option>
-                  {departureAirports.map((airport) => {
-                    const label = airportLabel(departureCity, airport);
-                    return (
-                      <option key={airport.code} value={label}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
+                  {t.form.departureDate}
+                </div>
+                <SingleDatePicker
+                  date={value.departure_date}
+                  onChange={(date) => update("departure_date", date)}
+                  language={value.language}
+                  placeholder={t.form.departureDatePlaceholder}
+                  prevMonthLabel={t.form.calendarPrevMonth}
+                  nextMonthLabel={t.form.calendarNextMonth}
+                />
+              </div>
+              <Field label={t.form.departureTime}>
+                <TimePicker
+                  value={value.departure_time}
+                  onChange={(next) => update("departure_time", next)}
+                  language={value.language}
+                  placeholder={t.form.departureTimePlaceholder}
+                  vagueLabel={t.form.timeUnknownHeading}
+                  clearLabel={t.form.timeClear}
+                />
               </Field>
-            )}
-          </>
+              {departureAirports.length > 0 && (
+                <Field label={t.form.departureAirport}>
+                  <select
+                    style={inputStyle}
+                    value={value.departure_airport}
+                    onChange={(e) => update("departure_airport", e.target.value)}
+                  >
+                    <option value="">{t.form.airportUnknown}</option>
+                    {departureAirports.map((airport) => {
+                      const label = airportLabel(departureCity, airport);
+                      return (
+                        <option key={airport.code} value={label}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </Field>
+              )}
+            </div>
+          </div>
         )}
         <div style={{ gridColumn: "1 / -1", marginBottom: 16 }}>
           <label className="check-row" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
