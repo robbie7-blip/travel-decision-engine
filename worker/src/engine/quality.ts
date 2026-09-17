@@ -164,6 +164,87 @@ const MAX_UNPLANNED_HOURS = 4;
 const DAY_ACTIVE_FROM = 7;
 const DAY_ACTIVE_UNTIL = 21;
 
+/** How long before a flight the traveler has to stop doing things: time at
+ * the airport plus getting there.
+ *
+ * Deliberately coarse, and one number rather than per-airport. The prompt
+ * works back from the NAMED airport because it is writing the day; this is
+ * only deciding whether there was room for one activity at all, and three
+ * hours is the answer for every airport to within the precision that
+ * question needs. */
+const AIRPORT_LEAVE_ALLOWANCE_HOURS = 3;
+
+/** And the mirror of it on arrival: immigration, bags, transfer into town. */
+const ARRIVAL_SETTLE_HOURS = 2;
+
+/** Below this many usable hours, a day is not expected to hold an activity.
+ *
+ * Two and a half, which is what separates the two real cases. Landing at
+ * 16:00 leaves the evening from about 18:00, and an evening stroll is a
+ * genuine thing to do - so that day is still held to the travel-day floor
+ * of one. A 09:00 flight means leaving at about 06:00, so the day has
+ * nothing in it before the traveler is gone, and holding it to a floor of
+ * one is asking for an activity that cannot happen. */
+const MIN_HOURS_FOR_ONE_ACTIVITY = 2.5;
+
+/** How many hours of the city this day actually has, from the traveler's
+ * own arrival and departure times. Null when the brief does not say.
+ *
+ * THE GATE WAS CONTRADICTING THE PROMPT. buildPrompt tells the model, in
+ * these words, that "an early departure means the last day is mostly
+ * travel and should be planned as such" - and goes further, instructing it
+ * to drop meals the departure time removes. The model followed that: a
+ * live Rome run with a 09:00 flight home produced a last day of breakfast
+ * and the airport run, which is correct. The gate then reported "day 3 has
+ * 0 thing(s) to do across 2 item(s)" as a DEFECT, because the floor was a
+ * constant and knew nothing about when the traveler leaves.
+ *
+ * That is the worst kind of finding this file can produce, and its own
+ * must_see check says why: "a false alarm here trains you to ignore it."
+ * The same conflict was already found and fixed once for meals - the plan
+ * now drops a meal an early departure removes - and this is the other half
+ * of it.
+ *
+ * Only consulted when needs_flight is false, because that is the only case
+ * these fields mean anything (see TripBriefInput). */
+function usableHoursFor(
+  day: ItineraryDay,
+  brief: TripBriefInput,
+  firstDay: number,
+  lastDay: number
+): number | null {
+  if (brief.needs_flight !== false) return null;
+
+  // Matched by DATE when the brief gives one, because a departure_date can
+  // differ from end_date; by position otherwise, which is what
+  // TripBriefInput's own comment says a bare time means ("departure_time
+  // alone refers to the trip's end_date").
+  const isArrivalDay = brief.arrival_date?.trim()
+    ? day.date === brief.arrival_date.trim()
+    : day.day === firstDay;
+  const isDepartureDay = brief.departure_date?.trim()
+    ? day.date === brief.departure_date.trim()
+    : day.day === lastDay;
+
+  let from = DAY_ACTIVE_FROM;
+  let until = DAY_ACTIVE_UNTIL;
+  let known = false;
+
+  const arrivalHour = isArrivalDay ? parseHour(brief.arrival_time) : null;
+  if (arrivalHour !== null) {
+    from = Math.max(from, arrivalHour + ARRIVAL_SETTLE_HOURS);
+    known = true;
+  }
+  const departureHour = isDepartureDay ? parseHour(brief.departure_time) : null;
+  if (departureHour !== null) {
+    until = Math.min(until, departureHour - AIRPORT_LEAVE_ALLOWANCE_HOURS);
+    known = true;
+  }
+
+  if (!known) return null;
+  return Math.max(0, until - from);
+}
+
 /** Coarse per-person floors for what Google's price tier implies a meal
  * costs, in EUR. Deliberately well below what each tier really means, so
  * only a clear mismatch fires - the tiers are relative to a city, and an
@@ -453,7 +534,13 @@ export function assessQuality(
     // the mode of travel does not need to come into it.
     const isTravelDay =
       day.day === firstDay || day.day === lastDay || day.items.some((i) => i.is_flight === true);
-    const floor = isTravelDay ? MIN_ACTIVITIES_PER_TRAVEL_DAY : MIN_ACTIVITIES_PER_FULL_DAY;
+    // And a third case below the travel day: a day the traveler's own
+    // booking leaves no room in. See usableHoursFor - this can only ever
+    // LOWER the floor, so it removes a finding that was wrong and cannot
+    // create one that is new.
+    const usableHours = usableHoursFor(day, brief, firstDay, lastDay);
+    const noRoom = usableHours !== null && usableHours < MIN_HOURS_FOR_ONE_ACTIVITY;
+    const floor = noRoom ? 0 : isTravelDay ? MIN_ACTIVITIES_PER_TRAVEL_DAY : MIN_ACTIVITIES_PER_FULL_DAY;
     if (activities.length < floor) {
       findings.push({
         check: "day_not_empty",
@@ -630,6 +717,102 @@ export function assessQuality(
         severity: "defect",
         day: day.day,
         detail: `day ${day.day} "${item.title}" is closed at that time on that day`,
+      });
+    }
+  }
+
+  // --- the half of the product nothing was scoring ----------------------
+  //
+  // Every check above this line is about the DAYS. The frame's output -
+  // trip_summary, key_decisions, things_to_skip, the budget minimum - was
+  // read in exactly one place in this file, as a substring haystack for
+  // must-see coverage, and never scored. So the half the product is
+  // actually sold on ("Your job is not to list options - it is to DECIDE
+  // and justify"; "Surface tradeoffs, not just plans") had no automated
+  // signal on it at all, and a quiet degradation there would only be
+  // caught by somebody reading two itineraries side by side.
+  //
+  // These are deliberately CONTRACT checks, not taste checks. Whether a
+  // decision is a good one is not something this file can know. Whether a
+  // decision came with a reason, whether a skip came with a reason, and
+  // whether the minimum covers the beds it includes - those are objective,
+  // and they are the failures that make the section read as filler.
+  {
+    const decisions = itinerary.key_decisions ?? [];
+    if (decisions.length === 0) {
+      findings.push({
+        check: "decisions_justified",
+        severity: "defect",
+        detail: "no key decisions at all - the itinerary lists a plan without deciding anything",
+      });
+    }
+    // EMPTINESS ONLY, with no length bar, and that is a deliberate limit.
+    //
+    // The degradation worth catching here is a VACUOUS reason ("Good
+    // option", "It's better"), and there is no objective test for that. A
+    // minimum length is the obvious proxy and it is a false-positive
+    // generator: "Too far." is eight characters and a complete answer. This
+    // file's own must_see check states the rule it is held to - "a false
+    // alarm here trains you to ignore it" - so this checks the contract
+    // (there is a reason at all) and leaves the judgement to a person
+    // reading the output, which is the honest division of labour.
+    const unreasoned = decisions.filter((d) => typeof d?.reasoning !== "string" || !d.reasoning.trim());
+    if (unreasoned.length > 0) {
+      findings.push({
+        check: "decisions_justified",
+        severity: "defect",
+        detail: `${unreasoned.length}/${decisions.length} key decision(s) carry no reasoning`,
+      });
+    }
+    const noTradeoff = decisions.filter(
+      (d) => typeof d?.alternative_considered !== "string" || !d.alternative_considered.trim()
+    );
+    if (decisions.length > 0 && noTradeoff.length === decisions.length) {
+      findings.push({
+        check: "decisions_justified",
+        severity: "warning",
+        detail: `no key decision names an alternative considered (${decisions.length} decision(s))`,
+      });
+    }
+
+    const skips = itinerary.things_to_skip ?? [];
+    const unexplained = skips.filter((s) => typeof s?.reasoning !== "string" || !s.reasoning.trim());
+    if (unexplained.length > 0) {
+      findings.push({
+        check: "skips_explained",
+        severity: "defect",
+        detail: `${unexplained.length}/${skips.length} skipped item(s) say what to skip without saying why`,
+      });
+    }
+
+    // The minimum has to cover the beds the trip itself contains.
+    //
+    // min_realistic_total_eur is the figure the page states as "this trip
+    // cannot be done for less", and it was checked by nothing. An audit
+    // found a model writing it as the STRING "1200", which the page then
+    // rendered as a minimum of EUR 120,080 for four days in Rome; the
+    // shape gate now coerces that, but coercion only makes the field a
+    // number, not a true one.
+    //
+    // One-directional and against the itinerary's own lodging lines, which
+    // makes a false positive very unlikely: a minimum BELOW the beds
+    // already in the plan is wrong whatever else it got right, while a
+    // high minimum is a judgement this file has no business second-
+    // guessing. Only when there are lodging items to compare against.
+    const lodgingTotal = days.reduce(
+      (sum, day) =>
+        sum +
+        day.items.filter((i) => i.type === "lodging").reduce((s, i) => s + costForSum(i.cost_estimate_eur), 0),
+      0
+    );
+    const minimum = itinerary.budget_feasibility?.min_realistic_total_eur;
+    if (lodgingTotal > 0 && typeof minimum === "number" && Number.isFinite(minimum) && minimum < lodgingTotal) {
+      findings.push({
+        check: "minimum_covers_lodging",
+        severity: "defect",
+        detail:
+          `the stated minimum of EUR ${Math.round(minimum)} is below the EUR ${Math.round(lodgingTotal)} ` +
+          `of accommodation in the itinerary itself`,
       });
     }
   }

@@ -66,6 +66,33 @@ jobs:
       - run: npm run lint
       # The acceptance gate against itineraries broken in each of the ways
       # this product has actually shipped broken.
+      # Two changes worth naming, both from a live run.
+      #
+      # The gate was CONTRADICTING THE PROMPT. buildPrompt tells the model
+      # "an early departure means the last day is mostly travel and should
+      # be planned as such", and to drop meals the departure removes. A real
+      # Rome trip with a 09:00 flight home did exactly that - breakfast and
+      # the airport run - and the gate called it a defect, because the
+      # activity floor was a constant that knew nothing about when the
+      # traveler leaves. The same conflict had already been found and fixed
+      # once for meals; this is the other half. It only ever LOWERS a floor,
+      # so it cannot invent a finding, and the suite asserts that both ways:
+      # a 09:00 flight exempts the day, a 22:00 one does not.
+      #
+      # And the FRAME'"'"'S HALF, which nothing scored. trip_summary,
+      # key_decisions, things_to_skip and the budget minimum were read in
+      # exactly one place in quality.ts - as a substring haystack for
+      # must-see coverage - so the half the product is sold on ("your job is
+      # not to list options, it is to DECIDE and justify") had no automated
+      # signal at all. Three contract checks, not taste checks: a decision
+      # with no reason, a skip with no reason, a minimum below the beds in
+      # its own itinerary. Deliberately no minimum-length bar on the
+      # reasoning - "Too far." is eight characters and a complete answer,
+      # and this file'"'"'s own rule is that a false alarm trains you to ignore
+      # it.
+      #
+      # Reverting the departure fix makes 3 of 111 red; removing the frame
+      # checks makes 6 - measured.
       - run: npm run test:quality
       # The real pipeline over a realistic fake generation, reading the
       # finished trip. This is the one that catches the small, visible

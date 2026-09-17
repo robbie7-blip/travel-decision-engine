@@ -101,7 +101,22 @@ function itinerary(days: ItineraryDay[]): Itinerary {
   return {
     budget_feasibility: { feasible: true, min_realistic_total_eur: 900, reasoning: "r" },
     trip_summary: "s",
-    key_decisions: [],
+    // A real key decision, with a reason and an alternative.
+    //
+    // This was `key_decisions: []`, which the gate had no opinion about
+    // until it gained decisions_justified - and an empty list is not what
+    // a generation produces. The prompt's first line is "your job is not to
+    // list options, it is to DECIDE and justify", key_decisions is required
+    // on Itinerary, and every real run fills it. A fixture that skips it
+    // was a fixture asserting a shape the product never emits.
+    key_decisions: [
+      {
+        decision: "Base in Ubud rather than moving nightly",
+        reasoning: "One unpack for a three-day trip beats two hours of transfers",
+        alternative_considered: "A night in Canggu as well",
+        confidence: "high" as const,
+      },
+    ],
     days,
     things_to_skip: [],
   };
@@ -728,6 +743,216 @@ section("a lost plan is reported, not silently skipped");
   check(
     "meal check simply does not fire rather than passing falsely",
     !report.findings.some((f) => f.check === "meals_present")
+  );
+}
+
+section("a day the traveler's own booking leaves no room in");
+{
+  // THE GATE WAS CONTRADICTING THE PROMPT, on a live run.
+  //
+  // buildPrompt tells the model "an early departure means the last day is
+  // mostly travel and should be planned as such", and instructs it to drop
+  // meals the departure removes. A real Rome trip with a 09:00 flight home
+  // did exactly that - breakfast and the airport run - and the gate
+  // reported "day 3 has 0 thing(s) to do across 2 item(s)" as a DEFECT.
+  //
+  // This file's own must_see check says why that is the worst finding it
+  // can produce: "a false alarm here trains you to ignore it."
+  const preBooked = (over: Partial<TripBriefInput>): TripBriefInput => ({
+    ...BRIEF,
+    needs_flight: false,
+    ...over,
+  });
+
+  // Day 3 of the fixture, emptied down to a meal and a transfer, which is
+  // what an early departure correctly produces.
+  const earlyDeparture = (): ItineraryDay[] => {
+    const days = baseline();
+    days[2].items = [
+      item({ type: "meal", title: "Breakfast at Warung Biah Biah", venue_name: "Warung Biah Biah", time: "06:00" }),
+      item({ type: "transport", title: "Car to the airport", venue_name: null, time: "06:30", is_flight: false }),
+    ];
+    return days;
+  };
+
+  check(
+    "with no departure time, an empty last day is still a defect",
+    firedChecks2(earlyDeparture(), preBooked({})).includes("day_not_empty")
+  );
+  check(
+    "a 09:00 flight home exempts it",
+    !firedChecks2(earlyDeparture(), preBooked({ departure_time: "09:00" })).includes("day_not_empty"),
+    firedChecks2(earlyDeparture(), preBooked({ departure_time: "09:00" })).join(", ")
+  );
+  check(
+    "and so does an 07:00 one, which the prompt calls travel and nothing else",
+    !firedChecks2(earlyDeparture(), preBooked({ departure_time: "07:00" })).includes("day_not_empty")
+  );
+  // The other direction, which is what stops this being a blanket exemption
+  // for every last day: a late flight leaves a real day, so an empty one is
+  // still wrong.
+  check(
+    "a 22:00 flight does NOT exempt it",
+    firedChecks2(earlyDeparture(), preBooked({ departure_time: "22:00" })).includes("day_not_empty"),
+    firedChecks2(earlyDeparture(), preBooked({ departure_time: "22:00" })).join(", ")
+  );
+  check(
+    "nor does a 13:00 one, which still has a morning in it",
+    firedChecks2(earlyDeparture(), preBooked({ departure_time: "13:00" })).includes("day_not_empty")
+  );
+  // "evening" rather than a clock time - the field accepts a phrase and
+  // parseHour already reads one.
+  check(
+    'a departure "in the evening" does not exempt it',
+    firedChecks2(earlyDeparture(), preBooked({ departure_time: "evening" })).includes("day_not_empty")
+  );
+  // The times only mean anything when the traveler booked their own
+  // travel; with needs_flight true they are not their trip's facts.
+  check(
+    "a departure time is ignored when needs_flight is true",
+    firedChecks2(earlyDeparture(), { ...BRIEF, departure_time: "09:00" }).includes("day_not_empty")
+  );
+
+  // Arrival, the mirror of it. Landing at 16:00 leaves an evening, so one
+  // thing to do is still expected; landing at 23:00 does not.
+  const lateArrival = (): ItineraryDay[] => {
+    const days = baseline();
+    days[0].items = [
+      item({ type: "transport", title: "Car to Ubud", venue_name: null, time: "23:30", is_flight: false }),
+    ];
+    return days;
+  };
+  check(
+    "landing at 16:00 still expects something to do",
+    firedChecks2(lateArrival(), preBooked({ arrival_time: "16:00" })).includes("day_not_empty")
+  );
+  check(
+    "landing at 23:00 does not",
+    !firedChecks2(lateArrival(), preBooked({ arrival_time: "23:00" })).includes("day_not_empty"),
+    firedChecks2(lateArrival(), preBooked({ arrival_time: "23:00" })).join(", ")
+  );
+
+  // The property that makes this safe to ship: it can only ever LOWER a
+  // floor, so no brief can turn a clean itinerary into a flagged one.
+  for (const time of ["06:00", "09:00", "13:00", "22:00", "evening", "not a time"]) {
+    const report = assessQuality(
+      itinerary(baseline()),
+      preBooked({ departure_time: time, arrival_time: time }),
+      plan()
+    );
+    check(`a clean trip stays clean with departure_time "${time}"`, report.findings.length === 0, report.findings.map((f) => f.detail).join("; "));
+  }
+}
+
+section("the frame's half, which nothing was scoring");
+{
+  // Every check above this point is about the days. trip_summary,
+  // key_decisions, things_to_skip and the budget minimum were read in one
+  // place - as a substring haystack for must-see coverage - and never
+  // scored, so the half the product is sold on had no signal on it.
+  //
+  // Contract checks, not taste: whether a decision is GOOD is not
+  // something this file can know. Whether it came with a reason is.
+  const withFrame = (over: Partial<Itinerary>): Itinerary => ({ ...itinerary(baseline()), ...over });
+  const firedOn = (it: Itinerary): string[] =>
+    assessQuality(it, BRIEF, plan()).findings.map((f) => f.check);
+
+  check(
+    "no key decisions at all is a defect",
+    firedOn(withFrame({ key_decisions: [] })).includes("decisions_justified")
+  );
+  check(
+    "a decision with no reasoning is a defect",
+    firedOn(
+      withFrame({
+        key_decisions: [{ decision: "Base in Ubud", reasoning: "", confidence: "high" }],
+      })
+    ).includes("decisions_justified")
+  );
+  // NOT a length bar, deliberately - see the note in quality.ts. A terse
+  // reason is a complete one, and this check is the contract, not the
+  // taste.
+  check(
+    "but a terse reason is accepted, because a length bar would cry wolf",
+    !firedOn(
+      withFrame({
+        key_decisions: [
+          { decision: "Skip Kuta", reasoning: "Too far.", alternative_considered: "A day trip", confidence: "high" },
+        ],
+      })
+    ).includes("decisions_justified")
+  );
+  check(
+    "no decision naming an alternative is a warning, not a defect",
+    assessQuality(
+      withFrame({
+        key_decisions: [
+          {
+            decision: "Base in Ubud rather than moving nightly",
+            reasoning: "One unpack beats two hours of transfers",
+            confidence: "high",
+          },
+        ],
+      }),
+      BRIEF,
+      plan()
+    ).findings.find((f) => f.check === "decisions_justified")?.severity === "warning"
+  );
+  check(
+    "one decision with an alternative is enough",
+    !firedOn(withFrame({})).includes("decisions_justified"),
+    firedOn(withFrame({})).join(", ")
+  );
+
+  check(
+    "a skip with no reason is a defect",
+    firedOn(withFrame({ things_to_skip: [{ item: "Kuta", reasoning: "" }] })).includes("skips_explained")
+  );
+  check(
+    "a skip with a real reason is not",
+    !firedOn(
+      withFrame({ things_to_skip: [{ item: "Kuta", reasoning: "An hour each way for a beach Ubud already has" }] })
+    ).includes("skips_explained")
+  );
+  check(
+    "and no skips at all is not a finding - sometimes nothing is worth cutting",
+    !firedOn(withFrame({ things_to_skip: [] })).includes("skips_explained")
+  );
+
+  // The minimum, against the beds already in the itinerary. An audit found
+  // a model writing this field as the STRING "1200", which the page
+  // rendered as a minimum of EUR 120,080 - the shape gate coerces that
+  // now, but coercion makes the field a number, not a true one.
+  const lodgingTotal = baseline()
+    .flatMap((d) => d.items)
+    .filter((i) => i.type === "lodging")
+    .reduce((s, i) => s + (i.cost_estimate_eur || 0), 0);
+  check("the fixture has beds to compare against", lodgingTotal > 0, String(lodgingTotal));
+  check(
+    "a minimum below its own accommodation is a defect",
+    firedOn(
+      withFrame({
+        budget_feasibility: { feasible: true, min_realistic_total_eur: lodgingTotal - 1, reasoning: "r" },
+      })
+    ).includes("minimum_covers_lodging")
+  );
+  check(
+    "a minimum that covers them is not",
+    !firedOn(
+      withFrame({
+        budget_feasibility: { feasible: true, min_realistic_total_eur: lodgingTotal + 1, reasoning: "r" },
+      })
+    ).includes("minimum_covers_lodging")
+  );
+  // One-directional, like budget_matches_items: a HIGH minimum is a
+  // judgement this file has no business second-guessing.
+  check(
+    "a generously high minimum is never a finding",
+    !firedOn(
+      withFrame({
+        budget_feasibility: { feasible: true, min_realistic_total_eur: 99_999, reasoning: "r" },
+      })
+    ).includes("minimum_covers_lodging")
   );
 }
 

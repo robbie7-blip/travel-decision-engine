@@ -39,6 +39,11 @@ export const QUALITY_CHECKS: { id: QualityCheckId; label: string }[] = [
   { id: "must_see_covered", label: "Must-see dropped silently" },
   { id: "budget_matches_items", label: "Items cost more than the budget" },
   { id: "grounded_ratio", label: "Low grounding" },
+  // The frame's half - the first checks on the reasoning the product is
+  // actually sold on, which nothing scored until now.
+  { id: "decisions_justified", label: "Decision with no reason or tradeoff" },
+  { id: "skips_explained", label: "Skipped something without saying why" },
+  { id: "minimum_covers_lodging", label: "Minimum estimate below its own beds" },
 ];
 
 export interface QualitySnapshot {

@@ -82,10 +82,23 @@ function exportedConstants(path) {
  * otherwise be counted by the worker and displayed by nobody. */
 function qualityCheckIds() {
   const source = readFileSync(join(REPO, "worker", "src", "jobs.ts"), "utf8");
-  const block = source.slice(
-    source.indexOf("export type QualityCheckId"),
-    source.indexOf(";", source.indexOf("export type QualityCheckId"))
-  );
+  // COMMENTS STRIPPED FIRST, and that is not tidiness.
+  //
+  // This sliced from the declaration to the first ";" in the raw source. A
+  // `//` comment between the ids containing a semicolon - "about the days;
+  // these three are..." - ends the slice early, and every id after it
+  // silently drops out of the set. That direction is caught (they show up
+  // as orphan labels), but the mirror of it is not: a NEW id added after
+  // such a comment with no label on /admin/stats would not appear in
+  // `unlabelled`, so the check that exists to stop a counter being
+  // displayed by nobody would pass while exactly that was true.
+  //
+  // Measured: adding a comment with a semicolon in it to the union made
+  // this report three ids as "labels for checks the gate can no longer
+  // emit" when the gate had just gained them.
+  const withoutComments = source.replace(/\/\/[^\n]*/g, "");
+  const start = withoutComments.indexOf("export type QualityCheckId");
+  const block = withoutComments.slice(start, withoutComments.indexOf(";", start));
   return new Set([...block.matchAll(/"([a-z0-9_]+)"/g)].map((m) => m[1]));
 }
 

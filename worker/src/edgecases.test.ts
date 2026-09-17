@@ -88,7 +88,15 @@ function stubFor(shape: Shape) {
     JSON.stringify({
       budget_feasibility: { feasible: true, min_realistic_total_eur: 600, reasoning: "r" },
       trip_summary: bg ? "Кратко пътуване." : "A short trip.",
-      key_decisions: [],
+      // A real decision, not an empty list: the gate now scores the
+      // frame's half (decisions_justified), and every real generation
+      // fills this - key_decisions is required on Itinerary and the
+      // system prompt's first rule is to decide and justify. A stub that
+      // left it empty was asserting "no defects" about a shape the
+      // product does not emit.
+      key_decisions: [
+        { decision: "d", reasoning: "One unpack beats two transfers", alternative_considered: "a", confidence: "high" },
+      ],
       things_to_skip: [],
       accommodation: brief.needs_lodging
         ? cities.map((city, i) => ({

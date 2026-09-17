@@ -127,7 +127,14 @@ export type QualityCheckId =
   | "time_to_visit"
   | "must_see_covered"
   | "budget_matches_items"
-  | "grounded_ratio";
+  | "grounded_ratio"
+  // The frame's half. Every id above this line is about the days; these
+  // three are the first checks on trip_summary/key_decisions/
+  // things_to_skip and the budget minimum, which nothing scored - see the
+  // note above them in engine/quality.ts.
+  | "decisions_justified"
+  | "skips_explained"
+  | "minimum_covers_lodging";
 
 export interface QualityFinding {
   check: QualityCheckId;
