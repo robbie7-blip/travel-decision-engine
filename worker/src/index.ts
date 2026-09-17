@@ -75,6 +75,7 @@ import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
 import { recordQualitySample } from "./qualityStats";
 import { recordTimingSample } from "./timingStats";
+import { checkBrief } from "./briefShape";
 import {
   JOBS_QUEUE_KEY,
   MAX_TRIP_DAYS,
@@ -310,6 +311,43 @@ Output ONLY the final JSON matching the schema. Do not write any other text befo
 commentary.`;
 
 class ModelOutputError extends Error {}
+
+/** The last text block of a model response, as a string, whatever came
+ * back.
+ *
+ * Seven places did this in two lines each:
+ *
+ *   const textBlocks = response.content.filter((b) => b.type === "text");
+ *   const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+ *
+ * Both lines are assertions over an API response. `content` is declared an
+ * array and `.text` a string, and neither is checked - so the `?? ""` at
+ * the end guards the one case that cannot happen (a missing block, when the
+ * filter already returned an array) and nothing guards the two that can.
+ * Measured by injecting response shapes into processJob:
+ *
+ *   content: "text"                response.content.filter is not a function
+ *   content: [{type:"text",text:42}]   text.matchAll is not a function
+ *
+ * Both landed on "Unexpected error generating itinerary." - the sentence
+ * that explains nothing - from inside the accounting and parsing code
+ * rather than from anything about the trip.
+ *
+ * An empty string is the right answer for all of it, because every caller
+ * already handles one: it fails extractJson, which throws
+ * ModelOutputError, which is a NAMED failure with a retry behind it. The
+ * old code would have retried a truncated response and crashed on a
+ * mistyped one. */
+function lastTextOf(response: unknown): string {
+  const content = (response as { content?: unknown } | null | undefined)?.content;
+  if (!Array.isArray(content)) return "";
+  for (let i = content.length - 1; i >= 0; i--) {
+    const block = content[i] as { type?: unknown; text?: unknown } | null;
+    if (!block || block.type !== "text") continue;
+    return typeof block.text === "string" ? block.text : "";
+  }
+  return "";
+}
 
 /** One model call, STREAMED, returning the finished message.
  *
@@ -574,8 +612,7 @@ async function prefetchLodging(
         );
         return { value: null, retryWorthwhile: true };
       }
-      const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-      const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+      const text = lastTextOf(response);
       return { value: read(JSON.parse(extractJson(text))), retryWorthwhile: true };
     } catch (e) {
       // Either half failing degrades the result rather than the run: no rate
@@ -736,10 +773,7 @@ async function callModel(
     );
   }
 
-  const textBlocks = response.content.filter(
-    (block): block is Anthropic.TextBlock => block.type === "text"
-  );
-  const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+  const text = lastTextOf(response);
 
   const jsonText = extractJson(text);
   let parsed: unknown;
@@ -1166,8 +1200,7 @@ async function generateDay(
     );
   }
 
-  const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-  const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+  const text = lastTextOf(response);
   let parsed: ItineraryDay;
   try {
     parsed = JSON.parse(extractJson(text)) as ItineraryDay;
@@ -1283,8 +1316,7 @@ async function repairDuplicateVenues(
           stripToUnverified(item);
           return;
         }
-        const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-        const parsed = JSON.parse(extractJson(textBlocks[textBlocks.length - 1]?.text ?? "")) as {
+        const parsed = JSON.parse(extractJson(lastTextOf(response))) as {
           title: string | null;
           venue_name: string | null;
           reasoning: string | null;
@@ -1427,7 +1459,12 @@ export async function generatePhase1Half<T>(
     // generated a lot" from "this call sat in a queue", and comparing it
     // across the halves and the day calls says which stage is actually
     // expensive rather than merely last to finish.
-    const out = response.usage.output_tokens;
+    // `response.usage?.output_tokens` - optional, because a response with
+    // no usage on it is the same assertion-over-an-API-payload that made
+    // estimateCostUsd throw from inside the accounting. Here it would only
+    // have made one log line read NaN, which is why it is a `?? 0` and not
+    // a guard with an opinion.
+    const out = response.usage?.output_tokens ?? 0;
     const perSecond = elapsedMs > 0 ? Math.round((out / elapsedMs) * 1000) : 0;
     // The decomposition, in the log line too. queue is time to the first
     // stream event, think is from there to the first character of output,
@@ -1469,8 +1506,7 @@ export async function generatePhase1Half<T>(
       );
     }
 
-    const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-    const text = textBlocks[textBlocks.length - 1]?.text ?? "";
+    const text = lastTextOf(response);
     let parsed: unknown;
     try {
       parsed = JSON.parse(extractJson(text));
@@ -1607,8 +1643,7 @@ async function repairMissingMeals(
           );
           return;
         }
-        const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text");
-        const parsed = JSON.parse(extractJson(textBlocks[textBlocks.length - 1]?.text ?? "")) as {
+        const parsed = JSON.parse(extractJson(lastTextOf(response))) as {
           time?: string;
           title?: string;
           venue_name?: string | null;
@@ -2133,6 +2168,50 @@ function generateRefinement(
  * job record does not carry a second copy of the whole itinerary. */
 const MAX_PROGRESS_TITLES = 4;
 
+/** Backoff for the one write that has to land. Three retries, ~1.2s all
+ * told, which is nothing against a generation and is long enough to ride
+ * out a connection being re-established. */
+const FINAL_WRITE_RETRY_MS = [100, 300, 800];
+
+/** The finished job, published, insisting.
+ *
+ * The comment on the progress writes already says "the final writeJob is
+ * the one that has to land" - and nothing made it. Injecting a Redis `set`
+ * failure into processJob showed what that meant: the write threw, it sits
+ * after the catch so nothing handled it, and the error escaped processJob
+ * entirely into runConsumer's catch-and-continue. The record was left at
+ * "running" with no result, so a fully generated, FULLY PAID itinerary was
+ * gone - and four minutes later stallReason told the traveler "This
+ * generation stopped unexpectedly - the server restarted while it was
+ * running", which had not happened.
+ *
+ * Retried, then given up on loudly. If the last attempt fails there is
+ * nothing else to try: Redis is the only channel between this process and
+ * the page. But the log line says a paid itinerary was lost, which is a
+ * sentence worth being able to search for. */
+async function publishJob(redis: Redis, job: Job): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await writeJob(redis, job);
+      if (attempt > 0) console.warn(`[worker] published ${job.id} on attempt ${attempt + 1}`);
+      return;
+    } catch (e) {
+      const wait = FINAL_WRITE_RETRY_MS[attempt];
+      if (wait === undefined) {
+        console.error(
+          `[worker] CRITICAL: could not publish ${job.id} after ${FINAL_WRITE_RETRY_MS.length + 1} attempts. ` +
+            `A ${job.status === "done" ? "generated and paid-for" : "failed"} job is being dropped and the ` +
+            `traveler will be told it stalled:`,
+          e
+        );
+        return;
+      }
+      console.error(`[worker] publishing ${job.id} failed, retrying in ${wait}ms:`, e);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+}
+
 async function writeJob(redis: Redis, job: Job): Promise<void> {
   job.updatedAt = Date.now();
   // ttlForJob, not JOB_TTL_SECONDS.
@@ -2302,6 +2381,46 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     });
     return;
   }
+
+  // THE BRIEF, MADE THE SHAPE EVERYTHING BELOW BELIEVES IT IS.
+  //
+  // Same reasoning as the day cap immediately after this, and the same
+  // measured cost. readJobRecord checks that `brief` is an object and
+  // stops, because parseTripBrief owns the contents - on the other
+  // deployment, before enqueue. This process takes whatever is on the
+  // queue.
+  //
+  // Injecting brief shapes into this function found five that broke it,
+  // all of them one wrong type on a list field. Three threw BEFORE the try
+  // below, so nothing marked the job failed and the traveler watched a
+  // spinner until stallReason told them the server had restarted:
+  // `{}` gave "destinations is not iterable", `destinations: "Rome"` gave
+  // ".join is not a function", and a null inside destinations gave
+  // "Cannot read properties of null (reading 'split')". Two threw INSIDE
+  // it, which is the expensive shape - `interests: "food"` and
+  // `must_see: null` both landed on "Unexpected error generating
+  // itinerary.", the sentence that explains nothing, potentially after a
+  // full generation had been paid for.
+  //
+  // See briefShape.ts for what is coerced and what is fatal. The repairs
+  // are logged loudly: a job that only ran because of this gate should not
+  // look like an ordinary one.
+  const checked = checkBrief(job.brief);
+  if (!checked.ok) {
+    console.error(`[worker] job ${id} has an unusable brief (${checked.problem.reason}) - refusing before any model call`);
+    job.status = "error";
+    job.error = checked.problem.travelerMessage;
+    job.updatedAt = Date.now();
+    await writeJob(redis, job);
+    return;
+  }
+  if (checked.repaired.length > 0) {
+    console.warn(
+      `[worker] brief repairs on ${id}: ${checked.repaired.join(", ")} - ` +
+        `queued fields of the wrong type, which this job would have thrown on`
+    );
+  }
+  job.brief = checked.brief;
 
   // The trip-length cap, enforced again on the side that pays for it.
   //
@@ -3008,7 +3127,10 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // to land, then the finished job is published.
   jobFinished = true;
   await progressWrites.catch(() => {});
-  await writeJob(redis, job);
+  // publishJob, not writeJob: this is the write that has to land, and it
+  // sits after the catch above, so a throw here escaped processJob and lost
+  // the itinerary. See publishJob.
+  await publishJob(redis, job);
 
   const breakdown = Object.entries(timings)
     .map(([label, ms]) => `${label} ${(ms / 1000).toFixed(1)}s`)

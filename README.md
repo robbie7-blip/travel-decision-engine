@@ -508,6 +508,34 @@ Upstash REST token has no prefix to match on). Covered by
 `npm run test:worker-failure` against five real credential shapes, and end
 to end through `processJob` by `npm run test:failure-log` in the worker.
 
+### What the worker re-checks for itself
+
+The worker takes whatever is on the queue and is the side that spends, so
+it re-checks three things `/api/generate` already validated: the trip
+length (`MAX_TRIP_DAYS`, refused before the first model call), the brief's
+shape (`briefShape.ts`), and the model response's shape.
+
+The brief one was not theoretical. `readJobRecord` checks that `brief` is an
+object and stops, because `parseTripBrief` owns the contents - on the other
+deployment, before enqueue. Injecting brief shapes into `processJob` found
+five that broke it, each a single wrong type on a list field: `{}`,
+`destinations: "Rome"` and a null inside `destinations` threw before
+`processJob`'s try, so nothing marked the job failed and the traveler sat on
+a spinner until the stall timeout; `interests: "food"` and `must_see: null`
+threw inside it and produced "Unexpected error generating itinerary." A
+sixth was worse than a crash - `start_date: "soon"` generated a complete,
+paid trip with nonsense on every day, because `briefSpanDays` returns null
+for an unparseable pair so the day cap never fired either.
+
+The gate coerces wherever there is an obvious right answer (a missing list
+is an empty one, a `"2"` party size is 2) and is fatal only for a brief with
+no usable destination and no usable dates, since those decide what is
+generated and how many paid model calls it takes. Repairs are logged by
+field name, so a job that only ran because of the gate says so.
+
+`npm run test:brief-shape` covers it, end to end through the real
+`processJob`.
+
 ### Generation latency
 
 `/admin/stats` carries a latency panel next to the quality one, fed by

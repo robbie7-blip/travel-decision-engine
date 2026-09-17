@@ -407,6 +407,66 @@ async function main() {
     check("naming the layer that rejected it", f?.name === "ModelOutputError", f?.name);
   }
 
+  section("the shape of the response the SDK hands over");
+
+  {
+    // `response.content` is declared an array and `.text` a string and
+    // `usage` an object, all three asserted over an API payload, and seven
+    // places read them. Injecting response shapes into this function found
+    // four that landed on the catch-all:
+    //
+    //   content: "text"                  .filter is not a function
+    //   content: [{type:"text",text:42}] text.matchAll is not a function
+    //   no usage at all                  reading 'server_tool_use' of undefined
+    //
+    // The third is the one worth naming: that TypeError came from
+    // estimateCostUsd, so the ACCOUNTING threw and the traveler was told
+    // "Unexpected error generating itinerary" by the code that adds up the
+    // bill. All of these now read as an empty text block or a zero cost,
+    // which fails extractJson and produces the NAMED malformed-output
+    // error with a retry behind it.
+    const shapes: [string, unknown][] = [
+      ["no content blocks", { content: [], stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 } }],
+      [
+        "only a thinking block",
+        { content: [{ type: "thinking", thinking: "hm" }], stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 } },
+      ],
+      [
+        "text that is a number",
+        { content: [{ type: "text", text: 42 }], stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 } },
+      ],
+      ["content that is a string", { content: "text", stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 } }],
+      ["content that is null", { content: null, stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 } }],
+      ["a null block inside content", { content: [null], stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 } }],
+      ["no usage at all", { content: [{ type: "text", text: "{}" }], stop_reason: "end_turn" }],
+      ["usage that is a string", { content: [{ type: "text", text: "{}" }], stop_reason: "end_turn", usage: "none" }],
+      ["no stop_reason", { content: [{ type: "text", text: "{}" }], usage: { input_tokens: 1, output_tokens: 1 } }],
+    ];
+
+    for (const [label, response] of shapes) {
+      const fake = makeRedis();
+      const id = `job-shape-${label.replace(/\W+/g, "-")}`;
+      seed(fake, id);
+      let escaped = "";
+      try {
+        await processJob(
+          fake.redis,
+          { messages: fakeMessages(async () => response) } as unknown as Anthropic,
+          id
+        );
+      } catch (e) {
+        escaped = e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e);
+      }
+      const job = jobFrom(fake, id);
+      check(`${label}: nothing escapes processJob`, escaped === "", escaped);
+      check(
+        `${label}: and it is a named failure, not the catch-all`,
+        job?.error !== "Unexpected error generating itinerary.",
+        `${job?.status}: ${job?.error}`
+      );
+    }
+  }
+
   section("a successful generation records nothing");
 
   {

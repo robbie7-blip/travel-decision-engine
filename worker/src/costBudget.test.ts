@@ -80,6 +80,51 @@ function main() {
     check("an empty call costs nothing", estimateCostUsd(usage()) === 0);
   }
 
+  section("the usage object itself, which is an API payload");
+
+  {
+    // `usage: ModelUsage` is a type assertion over a model response, and
+    // every caller reaches this as
+    // `onUsage?.(response.usage, response.model)` with nothing in between.
+    // A response with no usage on it made this `undefined.server_tool_use`
+    // - a TypeError thrown from the ACCOUNTING, inside processJob's try and
+    // outside every retry, so the traveler was told "Unexpected error
+    // generating itinerary." by the code that adds up the bill. Measured
+    // by injecting response shapes into the real processJob.
+    //
+    // Zero rather than a throw, and the direction is deliberate: the
+    // counter being low by one call is a rounding error against losing
+    // that call's entire output.
+    const broken: [string, unknown][] = [
+      ["undefined", undefined],
+      ["null", null],
+      ["a string", "1000 tokens"],
+      ["a number", 1000],
+      ["an array", [1, 2]],
+    ];
+    for (const [label, value] of broken) {
+      let out: number | "threw" = "threw";
+      try {
+        out = estimateCostUsd(value as never);
+      } catch {
+        out = "threw";
+      }
+      check(`a usage that is ${label} costs zero and does not throw`, out === 0, String(out));
+    }
+  }
+
+  {
+    // The FIELDS are left alone on purpose - see "a NaN token count
+    // propagates rather than silently reading as zero" further down, which
+    // is an older and considered decision: a zero would be a silently
+    // wrong cost where a NaN is a visible one, and recordSpend refuses a
+    // non-finite value so it cannot poison the daily counter. The guard
+    // above is about the OBJECT, which is a different thing - a missing
+    // usage object is not an odd number, it is a TypeError.
+    const withNan = estimateCostUsd(usage({ output_tokens: Number.NaN }));
+    check("a NaN field still propagates, as it always did", Number.isNaN(withNan), String(withNan));
+  }
+
   section("server-tool requests, which are not tokens");
 
   {

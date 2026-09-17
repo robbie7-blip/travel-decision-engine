@@ -178,6 +178,29 @@ export interface ModelUsage {
  * provider-side fallback is priced as what actually ran. Omitting it keeps
  * the previous behaviour exactly: the env-configured default pair. */
 export function estimateCostUsd(usage: ModelUsage, model?: string | null): number {
+  // The USAGE OBJECT itself, not only its fields.
+  //
+  // `usage: ModelUsage` is a type assertion over an API response, and every
+  // caller reaches this as `onUsage?.(response.usage, response.model)` with
+  // nothing in between. A response with no usage on it made this
+  // `undefined.server_tool_use` - a TypeError thrown from the accounting,
+  // inside processJob's try and outside every retry, so the traveler was
+  // told "Unexpected error generating itinerary." by the code that adds up
+  // the bill rather than by anything to do with their trip. Measured by
+  // injecting response shapes into processJob.
+  //
+  // 0 rather than a throw, and that is the right direction here: this
+  // number feeds a spend counter and a daily cap, and the counter being
+  // low by one call is a rounding error against losing the call's entire
+  // output. The caller logs the cost, so a run that is priced at zero says
+  // so in the log.
+  // The FIELDS are deliberately not coerced - see "a NaN token count
+  // propagates rather than silently reading as zero" in the suite. A zero
+  // there would be a silently wrong cost where a NaN is a visible one, and
+  // recordSpend already refuses a non-finite value so it cannot poison the
+  // daily counter. That reasoning does not extend to the object: a missing
+  // usage object is not an odd number, it is a crash.
+  if (!usage || typeof usage !== "object" || Array.isArray(usage)) return 0;
   const { input, output } = ratesFor(model);
   const serverToolRequests =
     (usage.server_tool_use?.web_search_requests ?? 0) + (usage.server_tool_use?.web_fetch_requests ?? 0);

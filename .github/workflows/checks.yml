@@ -97,12 +97,52 @@ jobs:
       # and leave the job at "running" for the four minutes
       # STALE_RUNNING_MS allows.
       #
-      # Building it also measured something no assertion states: nothing
-      # the stub model can do reaches that seventh sentence. A thrown day
-      # call is absorbed, a null day is rejected by callModel's validator,
-      # and every awaited Redis write inside the try is individually
-      # caught - so model output cannot produce it through this pipeline.
+      # It also drives nine shapes of MODEL RESPONSE through processJob,
+      # which found four more routes to that seventh sentence. `content`
+      # is declared an array, `.text` a string and `usage` an object, all
+      # asserted over an API payload and read in seven places: a string
+      # `content` gave ".filter is not a function", a numeric `.text` gave
+      # "text.matchAll is not a function", and a response with no `usage`
+      # gave "reading 'server_tool_use' of undefined" - that last one
+      # thrown by estimateCostUsd, so the ACCOUNTING killed the job and
+      # the traveler was told the itinerary failed by the code that adds
+      # up the bill. All of them now read as an empty text block or a zero
+      # cost, which fails extractJson and produces the named
+      # malformed-output error with a retry behind it. Reverting the
+      # guards makes 5 of 41 red.
+      #
+      # What is deliberately NOT guarded: a null response object. The SDK
+      # returns a Message or throws, and the only way to produce one is to
+      # replace the whole `messages` object, which nothing in production
+      # does.
       - run: npm run test:failure-log
+      # The brief the worker takes off the queue, and the write that has to
+      # land. Both found by injecting faults into the real processJob.
+      #
+      # readJobRecord checks that `brief` is an object and stops, because
+      # parseTripBrief owns the contents - on the OTHER deployment, before
+      # enqueue. This process takes whatever is on the queue, and five
+      # shapes broke it, each one a single wrong type on a list field. `{}`,
+      # `destinations: "Rome"` and a null inside destinations all threw
+      # BEFORE processJob's try, so nothing marked the job failed: the
+      # record sat at "running" until stallReason told the traveler the
+      # server had restarted, which had not happened. `interests: "food"`
+      # and `must_see: null` threw INSIDE it and landed on "Unexpected
+      # error generating itinerary." after work that may already have been
+      # paid for. A sixth was worse than a crash: `start_date: "soon"`
+      # generated a complete, paid trip with nonsense on every day, because
+      # briefSpanDays returns null for an unparseable pair so the day cap
+      # never fired either.
+      #
+      # And the final write. The comment above the progress writes already
+      # said "the final writeJob is the one that has to land" and nothing
+      # made it: a Redis set failure threw after the catch, escaped
+      # processJob into runConsumer's catch-and-continue, and dropped a
+      # generated and fully paid itinerary with the record left at
+      # "running". publishJob retries it and gives up loudly.
+      #
+      # Reverting both makes 8 of 71 red - measured.
+      - run: npm run test:brief-shape
       # Does venue verification actually run ALONGSIDE the day calls.
       # The timing audit's floor is why: on the 102.4s run an instant
       # phase 1 still lands at 33.6s, because the stages after it do not

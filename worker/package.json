@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "test:pipeline": "WORKER_NO_AUTOSTART=1 tsx src/pipeline.test.ts",
     "test:failure-log": "WORKER_NO_AUTOSTART=1 tsx src/failureLog.test.ts",
+    "test:brief-shape": "WORKER_NO_AUTOSTART=1 tsx src/briefShape.test.ts",
     "test:verify-overlap": "WORKER_NO_AUTOSTART=1 tsx src/verifyOverlap.test.ts",
     "test:quality": "WORKER_NO_AUTOSTART=1 tsx src/quality.test.ts",
     "test": "npm run test:pipeline && npm run test:quality && npm run test:hours && npm run test:itinerary && npm run test:edges && npm run test:timing && npm run test:generation && npm run test:shape && npm run test:money && npm run test:model-json && npm run test:model-caps && npm run test:race-fallback && npm run test:concurrency && npm run test:venues && npm run test:accommodation-cache && npm run test:accommodation-pricing",
