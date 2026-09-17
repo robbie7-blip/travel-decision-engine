@@ -76,6 +76,49 @@ export function assertUsableItinerary(value: unknown): asserts value is Itinerar
   }
 }
 
+/** What normalizeItineraryShape had to repair, if anything.
+ *
+ * Counted because today's fixes are all justified by shapes a model COULD
+ * send, and a silent repair leaves that as an argument rather than a fact.
+ * `normalizeLodgingPrices` already sets the precedent - it returns a count
+ * and index.ts logs "corrected N accommodation item(s)" - and this is the
+ * same question about a wider set of fields.
+ *
+ * A non-zero count on a real generation is the evidence that the guards
+ * earn their keep. A zero count, run after run, is worth knowing too: it
+ * says the model is well-behaved here and these are backstops rather than
+ * live corrections. Either answer is better than not asking. */
+export interface ShapeRepairs {
+  /** Days given an items array they did not have. */
+  days: number;
+  /** Prices coerced to a usable number (or to 0). */
+  prices: number;
+  /** time/title/location/reasoning replaced with "". */
+  strings: number;
+  /** source_urls entries dropped, or a non-array replaced. */
+  citations: number;
+  /** venue_name set to null because it was not a usable string. */
+  venueNames: number;
+  /** min_realistic_total_eur recovered from text. */
+  minimumEstimate: number;
+}
+
+export function newShapeRepairs(): ShapeRepairs {
+  return { days: 0, prices: 0, strings: 0, citations: 0, venueNames: 0, minimumEstimate: 0 };
+}
+
+/** One line naming what was repaired, or null when nothing was. */
+export function describeShapeRepairs(r: ShapeRepairs): string | null {
+  const parts: string[] = [];
+  if (r.days > 0) parts.push(`${r.days} day(s) with no items array`);
+  if (r.prices > 0) parts.push(`${r.prices} price(s)`);
+  if (r.strings > 0) parts.push(`${r.strings} text field(s)`);
+  if (r.citations > 0) parts.push(`${r.citations} source_urls field(s)`);
+  if (r.venueNames > 0) parts.push(`${r.venueNames} venue_name(s)`);
+  if (r.minimumEstimate > 0) parts.push(`the minimum estimate`);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 /** Guarantees `days` and every `day.items` is an array, and every price a
  * number, in place.
  *
@@ -105,7 +148,7 @@ export function assertUsableItinerary(value: unknown): asserts value is Itinerar
  * the whole itinerary. That is the same trade normalizePlan makes.
  *
  * Idempotent, and it never touches a day that already has an array. */
-export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
+export function normalizeItineraryShape(itinerary: Itinerary, repairs?: ShapeRepairs): Itinerary {
   // The model's own estimate of the floor, and the ONE model-written number
   // whose reader already guards it: ItineraryResult renders the line only
   // `Number.isFinite(min_realistic_total_eur)`. So it is RECOVERED when it
@@ -114,8 +157,12 @@ export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
   // it cannot. Writing 0 here would be worse than leaving it broken: the
   // guard would pass and the page would state a minimum of EUR 0 as fact.
   if (itinerary.budget_feasibility && typeof itinerary.budget_feasibility === "object") {
-    const recovered = usableCostEur(itinerary.budget_feasibility.min_realistic_total_eur);
-    if (recovered !== null) itinerary.budget_feasibility.min_realistic_total_eur = recovered;
+    const current = itinerary.budget_feasibility.min_realistic_total_eur;
+    const recovered = usableCostEur(current);
+    if (recovered !== null && recovered !== current) {
+      itinerary.budget_feasibility.min_realistic_total_eur = recovered;
+      if (repairs) repairs.minimumEstimate++;
+    }
   }
 
   if (!Array.isArray(itinerary.days)) {
@@ -126,6 +173,7 @@ export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
     if (!day || typeof day !== "object") continue;
     if (!Array.isArray(day.items)) {
       day.items = [];
+      if (repairs) repairs.days++;
       continue;
     }
     // Every price, made a number, for the same reason the items array is
@@ -142,7 +190,9 @@ export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
     // reports itself through machinery that exists rather than silently.
     for (const item of day.items) {
       if (!item || typeof item !== "object") continue;
-      item.cost_estimate_eur = usableCostEur(item.cost_estimate_eur) ?? 0;
+      const price = usableCostEur(item.cost_estimate_eur) ?? 0;
+      if (repairs && price !== item.cost_estimate_eur) repairs.prices++;
+      item.cost_estimate_eur = price;
       // The citations, for the same reason and with sharper consequences.
       // deriveConfidenceTiers counts this field's `.length`, which on a
       // STRING is the character count - so one URL written as a bare string
@@ -153,7 +203,11 @@ export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
       // Set only when the field is present at all, so an item that never
       // claimed a source does not gain an empty array it did not have -
       // `?? []` is what every reader already does with absence.
-      if (item.source_urls !== undefined) item.source_urls = sourceUrlList(item.source_urls);
+      if (item.source_urls !== undefined) {
+        const before = Array.isArray(item.source_urls) ? item.source_urls.length : -1;
+        item.source_urls = sourceUrlList(item.source_urls);
+        if (repairs && item.source_urls.length !== before) repairs.citations++;
+      }
 
       // And the STRINGS, which is the one that discards a paid trip.
       //
@@ -186,16 +240,17 @@ export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
       // makes it safe to run twice - and running it twice is exactly what
       // the repairs need.
       const fields = item as unknown as Record<string, unknown>;
-      fixText(fields, "time");
-      fixText(fields, "title");
-      fixText(fields, "location");
-      fixText(fields, "reasoning");
+      for (const key of ["time", "title", "location", "reasoning"]) {
+        if (fixText(fields, key) && repairs) repairs.strings++;
+      }
       // venue_name is `string | null`, and null is the value every reader
       // already treats as "this item names no business" - so an unusable one
       // becomes null rather than "", which would be a named venue with no
       // name and would keep the item in the verification pass.
       if (item.venue_name !== undefined) {
-        item.venue_name = typeof item.venue_name === "string" && item.venue_name.trim() ? item.venue_name : null;
+        const name = typeof item.venue_name === "string" && item.venue_name.trim() ? item.venue_name : null;
+        if (repairs && name !== item.venue_name) repairs.venueNames++;
+        item.venue_name = name;
       }
     }
   }
@@ -210,6 +265,10 @@ export function normalizeItineraryShape(itinerary: Itinerary): Itinerary {
  * would put words in the model's mouth on the traveller's page.
  *
  * Absent is left absent, deliberately - see the call sites. */
-function fixText(item: Record<string, unknown>, key: string): void {
-  if (key in item && typeof item[key] !== "string") item[key] = "";
+function fixText(item: Record<string, unknown>, key: string): boolean {
+  if (key in item && typeof item[key] !== "string") {
+    item[key] = "";
+    return true;
+  }
+  return false;
 }

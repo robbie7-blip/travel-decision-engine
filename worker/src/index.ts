@@ -51,7 +51,12 @@ import {
   summarizeQuality,
 } from "./engine/quality";
 import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
-import { assertUsableItinerary, normalizeItineraryShape } from "./engine/shape";
+import {
+  assertUsableItinerary,
+  describeShapeRepairs,
+  newShapeRepairs,
+  normalizeItineraryShape,
+} from "./engine/shape";
 import { extractJson } from "./engine/modelJson";
 import { usableCostEur } from "./engine/money";
 import { auditTimings } from "./engine/timingAudit";
@@ -2593,7 +2598,12 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // walk `day.items` unguarded, and what makes that safe is three
     // separate mechanisms in three separate files - see
     // normalizeItineraryShape. This is the line that makes it one.
-    itinerary = normalizeItineraryShape(itinerary);
+    // Counted across BOTH passes, so one line at the end says what the
+    // model actually sent rather than leaving today's guards as an argument
+    // about what it could send. Same precedent as normalizeLodgingPrices,
+    // which returns a count and logs it.
+    const shapeRepairs = newShapeRepairs();
+    itinerary = normalizeItineraryShape(itinerary, shapeRepairs);
 
     // Before anything sums item costs. A day call that wrote the whole
     // stay's price onto every night would otherwise double the largest
@@ -2773,7 +2783,16 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // engine/shape.test.ts), so running it twice costs nothing and makes
     // the guarantee true for every item that reaches the gate rather than
     // for the ones that happened to exist earlier.
-    itinerary = normalizeItineraryShape(itinerary);
+    itinerary = normalizeItineraryShape(itinerary, shapeRepairs);
+    {
+      const repairSummary = describeShapeRepairs(shapeRepairs);
+      if (repairSummary) {
+        // Loud, because every one of these is a field the model declared
+        // one type for and sent another, and the readers downstream do not
+        // guard them. A quiet repair is a defect nobody learns about.
+        console.warn(`[worker] shape repairs on ${id}: ${repairSummary} - model-written fields of the wrong type`);
+      }
+    }
 
     itinerary = checkFeasibility(itinerary);
     itinerary = checkBudgetIntegrity(

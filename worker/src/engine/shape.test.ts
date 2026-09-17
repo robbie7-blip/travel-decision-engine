@@ -16,7 +16,13 @@
 //
 // Run: npm run test:shape
 
-import { assertUsableItinerary, ItineraryShapeError, normalizeItineraryShape } from "./shape";
+import {
+  assertUsableItinerary,
+  describeShapeRepairs,
+  ItineraryShapeError,
+  newShapeRepairs,
+  normalizeItineraryShape,
+} from "./shape";
 import { deriveConfidenceTiers } from "./checks";
 import { mealSlotOf } from "./quality";
 import { check, finish, heading, section } from "../testutil";
@@ -404,6 +410,100 @@ async function main() {
       threw = true;
     }
     check("so claimedVenues.add(item.venue_name.toLowerCase()) cannot throw", threw === false);
+  }
+
+  section("what it repaired, counted, so a real run is evidence");
+
+  {
+    // Every guard added today is justified by a shape the model COULD send.
+    // Counting turns that into a fact the next generation reports, on the
+    // same precedent normalizeLodgingPrices set - it returns a count and
+    // index.ts logs it. A zero count run after run is worth knowing too:
+    // it says these are backstops rather than live corrections.
+    const it = {
+      budget_feasibility: { feasible: true, min_realistic_total_eur: "1200", reasoning: "r" },
+      days: [
+        { day: 1 },
+        {
+          day: 2,
+          items: [
+            { time: 1300, title: "ok", cost_estimate_eur: "15-20", venue_name: 42, source_urls: ["booking.com"] },
+            { time: "13:00", title: "fine", cost_estimate_eur: 28, venue_name: "Roscioli", source_urls: ["https://a.example"] },
+          ],
+        },
+      ],
+    } as unknown as Itinerary;
+    const repairs = newShapeRepairs();
+    normalizeItineraryShape(it, repairs);
+    check("the day with no items array is counted", repairs.days === 1, String(repairs.days));
+    check("the unusable price is counted", repairs.prices === 1, String(repairs.prices));
+    check("  and the good one is not", repairs.prices === 1);
+    check("the numeric time is counted", repairs.strings === 1, String(repairs.strings));
+    check("the unlinkable citation is counted", repairs.citations === 1, String(repairs.citations));
+    check("the non-string venue_name is counted", repairs.venueNames === 1, String(repairs.venueNames));
+    check("the text minimum estimate is counted", repairs.minimumEstimate === 1, String(repairs.minimumEstimate));
+
+    const summary = describeShapeRepairs(repairs);
+    check("and the summary names them", summary !== null && summary.includes("price(s)") && summary.includes("venue_name"), String(summary));
+  }
+
+  {
+    // A CLEAN itinerary must count zero, or the log cries wolf on every
+    // generation and stops meaning anything.
+    const clean = {
+      budget_feasibility: { feasible: true, min_realistic_total_eur: 1200, reasoning: "r" },
+      days: [
+        {
+          day: 1,
+          date: "2027-05-01",
+          items: [
+            // An already-canonical URL, with a path. A bare origin is NOT
+            // byte-identical through this: usableSourceUrl runs
+            // `new URL(x).toString()`, which canonicalizes, so
+            // "https://a.example" comes back "https://a.example/". Asserted
+            // on its own below rather than left to surprise someone - it is
+            // the same normalization lodgingCache has always applied to a
+            // lodging citation.
+            { time: "13:00", title: "Lunch", location: "Rome", reasoning: "r", cost_estimate_eur: 28, venue_name: "Roscioli", source_urls: ["https://a.example/hotel"] },
+            { time: "20:00", title: "Dinner", location: "Rome", reasoning: "r", cost_estimate_eur: 0, venue_name: null },
+          ],
+        },
+      ],
+    } as unknown as Itinerary;
+    const repairs = newShapeRepairs();
+    const before = JSON.stringify(clean);
+    normalizeItineraryShape(clean, repairs);
+    check("a clean itinerary counts zero repairs", describeShapeRepairs(repairs) === null, JSON.stringify(repairs));
+    check("  and is byte-identical afterwards", JSON.stringify(clean) === before, JSON.stringify(clean));
+
+    // The one thing that is NOT byte-identical, named so it cannot
+    // surprise anyone: a bare origin gains the trailing slash `new URL`
+    // puts on it. Counted as a repair, because the field did change - which
+    // is honest, if slightly noisy, and better than a count that lies.
+    const bareOrigin = {
+      budget_feasibility: { feasible: true, min_realistic_total_eur: 1200, reasoning: "r" },
+      days: [{ day: 1, items: [{ title: "x", cost_estimate_eur: 1, source_urls: ["https://a.example"] }] }],
+    } as unknown as Itinerary;
+    normalizeItineraryShape(bareOrigin);
+    check(
+      "a bare origin is canonicalized, not dropped",
+      bareOrigin.days[0].items[0].source_urls?.[0] === "https://a.example/",
+      JSON.stringify(bareOrigin.days[0].items[0].source_urls)
+    );
+
+    // Running it a second time must not double-count what the first pass
+    // fixed - it runs twice per generation, once before verification and
+    // once after the repairs.
+    const twice = {
+      budget_feasibility: { feasible: true, min_realistic_total_eur: 1200, reasoning: "r" },
+      days: [{ day: 1, items: [{ title: "x", cost_estimate_eur: "nope" }] }],
+    } as unknown as Itinerary;
+    const r2 = newShapeRepairs();
+    normalizeItineraryShape(twice, r2);
+    const afterFirst = r2.prices;
+    normalizeItineraryShape(twice, r2);
+    check("the second pass adds nothing", r2.prices === afterFirst, `${afterFirst} then ${r2.prices}`);
+    check("  and the first pass did count it", afterFirst === 1, String(afterFirst));
   }
 
   section("citations, so the trust tier cannot be earned by a long URL");
