@@ -140,39 +140,56 @@ export function SiteHeader({
                 {contextLink.label}
               </Link>
             )}
-            {extraControls}
-            {/* Sign in, the language switch and the mobile Menu button stay
-                together as one unit. Left as loose siblings they wrapped
-                independently, and on a narrow screen the Menu button was
-                the one pushed onto a line of its own - which is the thing
-                moving it up here was meant to stop. Grouped, the three
-                either all fit beside the logo or all drop to the next line
-                together. */}
+            {/* The currency, sign in, the language switch and the mobile
+                Menu button stay together as one unit. Left as loose
+                siblings they wrapped independently, and on a narrow screen
+                the Menu button was the one pushed onto a line of its own -
+                which is the thing moving it up here was meant to stop.
+                Grouped, they either all fit beside the logo or all drop to
+                the next line together.
+
+                extraControls (the currency switcher, its only caller in
+                all three places it is passed) is INSIDE the group now. It
+                was a sibling just outside it, so at a true 390px layout
+                the header wrapped with the EUR select alone on a line
+                above the other three - the same orphaning the group exists
+                to prevent, one control further out.
+
+                Measured at 390/360/320px in a same-origin iframe (headless
+                Chromium enforces a 500px minimum layout viewport, so a
+                narrow window is not a narrow layout): four controls come to
+                314-326px, which fits 390 and 360 but is 26px wider than a
+                320px screen. The .header-extra-control wrapper is what the
+                <=345px rule in globals.css targets to put this one control
+                back on its own line down there - it needs a class of its
+                own because on pages that pass no extraControls the group's
+                first child is Sign in, which must not be broken out. */}
             <div className="header-account-group">
-            <AccountControl language={language} t={t} />
-            <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
-              {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => onLanguageChange(lang)}
-                  data-active={language === lang}
-                  style={{
-                    border: "none",
-                    padding: "6px 12px",
-                    fontSize: 11,
-                    letterSpacing: "0.04em",
-                    cursor: "pointer",
-                    background: "transparent",
-                    color: "var(--ink-dim)",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  {lang.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <HeaderNavToggle t={t} />
+              {extraControls && <div className="header-extra-control">{extraControls}</div>}
+              <AccountControl language={language} t={t} />
+              <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
+                {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => onLanguageChange(lang)}
+                    data-active={language === lang}
+                    style={{
+                      border: "none",
+                      padding: "6px 12px",
+                      fontSize: 11,
+                      letterSpacing: "0.04em",
+                      cursor: "pointer",
+                      background: "transparent",
+                      color: "var(--ink-dim)",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {lang.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <HeaderNavToggle t={t} />
             </div>
           </div>
         </div>

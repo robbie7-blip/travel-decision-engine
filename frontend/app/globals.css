@@ -526,16 +526,52 @@ button {
   }
 }
 
-/* Sign in + language switch + the mobile Menu button, as one unit. nowrap
-   is the whole point: these three wrap together or not at all, so the
-   Menu button can never end up alone on a line the way it did when it
-   lived in its own row. Comfortably narrow enough to sit beside the logo
-   on a 390px phone. */
+/* The currency switch + Sign in + language switch + the mobile Menu
+   button, as one unit. nowrap is the whole point: these wrap together or
+   not at all, so the Menu button can never end up alone on a line the way
+   it did when it lived in its own row - and the currency select can never
+   end up alone on one either, which is what happened while it was a
+   sibling just outside this box. */
 .header-account-group {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
   gap: 12px;
+}
+
+/* One exception, and the number is measured rather than chosen.
+   All four controls come to 314px (68 currency + 64 Sign in + 73 language
+   + 73 Menu + 3x12 gap); the header keeps 32px of padding each side, so
+   they stay on screen down to 346px of viewport and no further. Below
+   that the group pushed the page 26px wider than the screen and gave
+   every page a horizontal scrollbar - measured at 320px, where the
+   arrangement this replaced had none.
+   So under 346px the group is allowed to break, and the currency is the
+   control that goes: it is the least load-bearing of the four (the other
+   three are how you sign in, read the site in your language, and reach
+   any other page), and putting it on its own line is what the layout did
+   here before anyway. flex-basis rather than order/width so it takes the
+   whole first line and the remaining three - 249px, which fits - stay
+   together on the second, exactly as they do at every other width.
+   .header-extra-control is a wrapper that exists only to be this hook:
+   :first-child would break out Sign in on the pages that pass no
+   currency switcher. */
+@media (max-width: 345px) {
+  .header-account-group {
+    flex-wrap: wrap;
+  }
+
+  .header-account-group .header-extra-control {
+    flex-basis: 100%;
+  }
+}
+
+/* The wrapper is layout-only: it must not change the select's own box,
+   which .currency-select (and the 44px touch-target block) still styles
+   directly. */
+.header-extra-control {
+  display: flex;
+  align-items: center;
 }
 
 /* Hidden on desktop - only meaningful once the rule above turns it on
