@@ -1185,10 +1185,18 @@ p {
 
      Scoped to (pointer: coarse), so nothing on a desktop moves, and to
      the input types that actually take typed text - a <select> opens a
-     picker wheel instead of zooming, and a checkbox has no text at all. */
+     picker wheel instead of zooming, and a checkbox has no text at all.
+
+     AND NONE UNDER 44px TALL, for the same set and the same reason it is
+     one rule rather than a list: the trip form's fields were raised by
+     name, and the email field on /pricing (270x40) and the one on /account
+     (276x40) were not, because nobody was thinking about them at the time.
+     A field you type into is a field you have to hit first. min-height
+     rather than padding, so a page that sets its own padding keeps it. */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="file"]),
   textarea {
     font-size: 16px !important;
+    min-height: 44px;
   }
 
   /* The label already wraps the box and its text, so it is the target -
@@ -1229,12 +1237,67 @@ p {
 
   /* Inline text links sitting on their own line, where the line-height is
      the whole target. inline-flex rather than padding so the extra height
-     is centred on the text instead of pushing the layout down. */
+     is centred on the text instead of pushing the layout down.
+
+     .header-context-link is the way back to the trip form from every other
+     page - the one added precisely because "click the wordmark" is a
+     convention you have to already know. It was 326x15 on a phone:
+     readable, and a line of text to aim at. It is the most-used link on
+     the site after the logo and it was the smallest. */
   .footer-links a,
-  .inline-link {
+  .inline-link,
+  .header-context-link {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
+  }
+
+  /* The controls on the pages that are not the trip form.
+     ====================================================
+
+     The block above covers the header, the calendar, the trip form and the
+     footer, which is where the first sweep looked. Measured again with all
+     four (pointer: coarse) blocks applied - the first sweep extracted only
+     the first one and was wrong about the gallery dots, which were already
+     fixed - every remaining control under 44px was on a secondary page:
+
+       130x40  the logo link, on all nine headers
+       270x40  the email field on /pricing, 276x40 on /account
+       270x40  Subscribe, 199x35 "Email me a sign-in link", 59x35 Ask
+       266x29  the two example questions on /ask, 43x39 its photo button
+        59x15  "New cities" on /spin, that page's only other control
+       110x15  "All destinations" and 151x15 Wikipedia on a city guide
+
+     Several are 4px short rather than badly wrong, because .btn-primary's
+     own padding already nearly gets there and an inline padding override
+     on the page undoes it. min-height is what survives that: the page sets
+     padding, this sets the floor, and neither has to know about the other.
+
+     The two links inside "By subscribing, you agree to our Terms and
+     Privacy Policy" on /pricing are deliberately NOT here. They are inside
+     a sentence, which WCAG 2.5.8 exempts, and giving them a 44px box would
+     break the line they sit in. */
+  /* min-height alone, with no display change, and that is deliberate.
+     Every control in this list is a <button> or the logo's flex <Link>,
+     and a button already centres its own label in whatever height it is
+     given. Adding inline-flex here would have made it inline-level, and
+     two of these buttons carry width: 100% - the trip form's own "Build
+     my trip" and /pricing's Subscribe - where inline-level adds a line
+     box under the button. The links that DO need inline-flex, because a
+     bare <a> does not centre anything, are in the rule above. */
+  .header-logo,
+  .btn-primary,
+  .qa-example,
+  .qa-photo,
+  .spin-reshuffle {
+    min-height: 44px;
+  }
+
+  /* Short labels like "New cities" are wide enough to read and too narrow
+     to hit, same as the footer's "Terms". */
+  .spin-reshuffle,
+  .qa-photo {
+    min-width: 44px;
   }
 
   /* Short words like "Terms" are wide enough to read and too narrow to

@@ -282,6 +282,10 @@ export default function AccountPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t.account.emailPlaceholder}
+                    // No visible label at all here, only the placeholder -
+                    // which is not a label and is gone as soon as you type.
+                    // This is the sign-in field.
+                    aria-label={t.account.emailLabel}
                     style={{
                       flex: 1,
                       minWidth: 200,

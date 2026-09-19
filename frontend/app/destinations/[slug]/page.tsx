@@ -142,7 +142,7 @@ export default async function DestinationPage({
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <HeaderNavProvider>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
-            <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <Link href={`/${langSuffix}`} className="header-logo" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
               <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
@@ -174,9 +174,13 @@ export default async function DestinationPage({
               >
                 {t.trip.planAnother} &rarr;
               </Link>
+              {/* The same slot, the same style and now the same class as
+                  the link above it: this is a header context link too, and
+                  carrying the class is what gives it the 44px target on a
+                  phone that every other one already had. It was 110x15. */}
               <Link
                 href={`/destinations${langSuffix}`}
-                className="font-ui"
+                className="font-ui header-context-link"
                 style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
               >
                 {dt.backToAll}
@@ -236,6 +240,20 @@ export default async function DestinationPage({
       <div style={{ padding: "36px clamp(32px, 8%, 180px) 0" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 900 }}>
+          {/* The page's heading, and the reason it is clipped rather than
+              drawn: the city name IS already the largest thing on this page
+              at 46px - but it is an absolutely-positioned overlay on the
+              photo (DestinationHero), or SVG <text> inside a generated
+              banner when there is no photo (DestinationBanner). Neither can
+              carry heading semantics without moving the art, and the two
+              paths would need two different fixes.
+
+              So the guide pages had no <h1> at all. These are the pages
+              built to be found - they carry generateMetadata, JSON-LD and
+              Bulgarian translations - and a reader navigating by headings
+              landed on one with nothing to land on. One clipped h1 covers
+              both paths identically and duplicates nothing on screen. */}
+          <h1 className="sr-only">{displayCity}</h1>
           <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
           {photo?.credit && (
             <p className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
@@ -324,7 +342,10 @@ export default async function DestinationPage({
             href={`https://en.wikipedia.org/wiki/${encodeURIComponent(destination.city)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-ui"
+            // inline-link: it sits on a line of its own rather than inside
+            // a sentence, so it is a control and gets a control's 44px
+            // target on a phone. It was 151x15.
+            className="font-ui inline-link"
             style={{ fontSize: 12, color: "var(--grounded)", textDecoration: "underline" }}
           >
             {dt.readMoreWikipedia}

@@ -393,7 +393,11 @@ export function TripQA({ context, language, t }: TripQAProps) {
               key={prompt}
               type="button"
               onClick={() => applyExample(prompt)}
-              className="font-ui hover-card"
+              // qa-example is only a touch-target hook: these pills were
+              // 266x29 on a phone, and .hover-card is shared with the full
+              // city cards, which must not be given a 44px floor they do
+              // not need.
+              className="font-ui hover-card qa-example"
               style={{
                 border: "1px solid var(--line)",
                 background: "var(--bg-panel-raised)",
@@ -590,7 +594,10 @@ export function TripQA({ context, language, t }: TripQAProps) {
           disabled={sending}
           aria-label={t.tripQA.addPhoto}
           title={t.tripQA.addPhoto}
-          className="font-ui"
+          // 43x39 on a phone, and this is the camera button - the control
+          // for the one moment this feature is for, standing in front of
+          // the thing you are asking about.
+          className="font-ui qa-photo"
           style={{
             border: "1px solid var(--line)",
             background: "var(--bg-panel)",
@@ -620,6 +627,11 @@ export function TripQA({ context, language, t }: TripQAProps) {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t.tripQA.placeholder}
+          // A placeholder is not a label: it is the only thing naming this
+          // box, and it disappears the moment you start typing. This box is
+          // the whole feature, so with a screen reader it announced as an
+          // unnamed edit field.
+          aria-label={t.tripQA.placeholder}
           rows={2}
           // A class, not inline styles, for two reasons that are the same
           // reason: the size of this box has to change with the viewport.

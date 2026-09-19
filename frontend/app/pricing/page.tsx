@@ -263,6 +263,13 @@ export default function PricingPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t.account.emailPlaceholder}
+                  // The visible label above is a <div>, so nothing connects
+                  // the two: with a screen reader this was an unnamed edit
+                  // field at the point money changes hands. aria-label
+                  // rather than htmlFor because the label is not a <label>
+                  // and making it one would put a click target around text
+                  // that is doing a heading's job here.
+                  aria-label={t.account.emailLabel}
                   style={{
                     width: "100%",
                     background: "var(--bg-panel-raised)",

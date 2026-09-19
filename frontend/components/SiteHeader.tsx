@@ -100,7 +100,7 @@ export function SiteHeader({
             paddingBottom: large ? 20 : 14,
           }}
         >
-          <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: large ? 22 : 12, textDecoration: "none" }}>
+          <Link href={`/${langSuffix}`} className="header-logo" style={{ display: "flex", alignItems: "center", gap: large ? 22 : 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={large ? 84 : 40} height={large ? 84 : 40} style={{ flexShrink: 0 }} />
             <div>

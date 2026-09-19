@@ -56,7 +56,7 @@ export default async function WhyDecidePage({
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <HeaderNavProvider>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
-            <Link href={`/${langSuffix}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <Link href={`/${langSuffix}`} className="header-logo" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
               <span className="font-display" style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>

@@ -182,11 +182,28 @@ export function CompareView() {
       <div style={{ minHeight: "100%" }}>
         {header}
         <div style={{ padding: "36px 24px" }}>
+          {/* The same heading the loaded page carries. Without it this
+              branch - which is what /compare renders when you arrive with
+              no trip ids, i.e. the state anyone visiting the bare URL sees
+              - was a page with no <h1> on it at all, just a red sentence. */}
+          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+            <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 16px", color: "var(--brand-teal)" }}>
+              {t.compare.heading}
+            </h1>
+          </div>
           <div className="font-ui" style={{ maxWidth: 960, margin: "0 auto", fontSize: 14, color: "var(--infeasible)" }}>
-            {t.compare.missingJobs}{" "}
-            <Link href="/" style={{ color: "var(--infeasible)" }}>
-              {t.compare.planAnother} →
-            </Link>
+            {t.compare.missingJobs}
+            {/* On its own line rather than trailing the sentence, and
+                inline-link so it gets a 44px target on a phone. This is a
+                dead end: that link is the only way out of it, and it was
+                17px of text at the end of an error message. The fine print
+                links on /pricing stay inline because they are inside a
+                sentence you read, not the way out of a page. */}
+            <div style={{ marginTop: 4 }}>
+              <Link href="/" className="inline-link" style={{ color: "var(--infeasible)" }}>
+                {t.compare.planAnother} →
+              </Link>
+            </div>
           </div>
         </div>
       </div>

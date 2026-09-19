@@ -169,11 +169,23 @@ export function CompareStatsView() {
       <div style={{ minHeight: "100%" }}>
         {header}
         <div style={{ padding: "36px 24px" }}>
+          {/* The same heading the loaded page carries - see the identical
+              gap on CompareView. This branch is what the bare URL renders,
+              and it had no <h1> on it. */}
+          <div style={{ maxWidth: 860, margin: "0 auto" }}>
+            <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 16px", color: "var(--brand-teal)" }}>
+              {t.compareStats.heading}
+            </h1>
+          </div>
           <div className="font-ui" style={{ maxWidth: 860, margin: "0 auto", fontSize: 14, color: "var(--infeasible)" }}>
-            {t.compareStats.missingLink}{" "}
-            <Link href="/account/visited" style={{ color: "var(--infeasible)" }}>
-              {t.compareStats.getYourLink}
-            </Link>
+            {t.compareStats.missingLink}
+            {/* Own line, 44px target - same dead end as CompareView, same
+                reasoning there. */}
+            <div style={{ marginTop: 4 }}>
+              <Link href="/account/visited" className="inline-link" style={{ color: "var(--infeasible)" }}>
+                {t.compareStats.getYourLink}
+              </Link>
+            </div>
           </div>
         </div>
       </div>
