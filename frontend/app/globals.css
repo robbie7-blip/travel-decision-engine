@@ -439,12 +439,25 @@ button {
 
    IT WAS 1000px AND 893px, and both numbers moved together on purpose. A
    breakpoint is only worth having if it tracks the thing it is about, and
-   the links just went from 12px to 13px to make them legible. Re-measured
-   in Chromium rather than estimated: the same seven links render 897px at
-   12px - within half a percent of the 893px recorded here originally,
-   which is what says the harness is measuring the right thing - and 943px
-   at 13px. So the row grew about 5%, the real figure is ~938px, and
-   1040px keeps the same ~100px of margin 1000px used to give.
+   the links went from 12px to 13px to make them legible.
+
+   Re-measured in Chromium: the same seven links render 885px at 12px -
+   within about a percent of the 893px recorded here originally, which is
+   what says the harness is measuring the right row - and 931px at 13px.
+   Scaling the recorded 893 by that 5.2% gives ~939px, so 1040px keeps
+   roughly the ~100px of margin 1000px used to give.
+
+   WHAT THAT HARNESS CANNOT SEE, stated because a measurement with an
+   unmarked blind spot is worse than none: it renders in a FALLBACK font,
+   which has no distinct faces at these weights, so 600, 650 and 700 all
+   came back at exactly 931px. The weight's real cost is therefore not
+   measured here. In Inter it is on the order of a percent or two - call
+   it 940-950px at 700 - which still leaves 1040px comfortable, but it is
+   an estimate and the 931px is not. (An earlier version of this comment
+   said 897px and 943px. The first included a 2px gap per link the desktop
+   row does not have, and the second was measured at weight 650 rather
+   than the 600 that shipped - so it was reading a weight difference this
+   harness cannot actually resolve.)
 
    (Before the two-row split, this was 700px,
    which - fighting logo+account+language for the same row - left a dead
@@ -788,7 +801,11 @@ a {
      Contrast only improves: #1b1a17 against the header's panel is a
      stronger pair than the #45423c checkContrast already passes. */
   color: var(--ink);
-  font-weight: 600;
+  /* 700, a real Inter face - layout.tsx loads 400/500/600/700 for both the
+     Latin and Cyrillic subsets, so this is an actual weight rather than the
+     browser smearing 600 into faux bold. 800 would be faux, which is why
+     the active state below no longer tries to go further. */
+  font-weight: 700;
   padding: 7px 14px;
   border-radius: 999px;
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -802,7 +819,12 @@ a {
 .nav-link[data-active="true"] {
   background: var(--color-blue);
   color: white !important;
-  font-weight: 700;
+  /* No font-weight here any more. It was 700 to lift the active item above
+     a 600 base, and the base is 700 now - so the declaration did nothing
+     while looking like it did something. Raising it to 800 instead would
+     be faux bold, since Inter only loads up to 700 here. The solid teal
+     fill and white text are the distinction, and they always did the
+     work. */
 }
 
 .nav-link[data-active="true"]:hover {
