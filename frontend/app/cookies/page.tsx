@@ -51,6 +51,30 @@ export default async function CookiesPage({
               </span>
             </Link>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+              {/* The way back to the trip form, in words.
+                  
+                  The logo has always linked home and still does, on every
+                  page - but "click the wordmark" is a convention you have
+                  to already know, and these eight pages hand-roll their
+                  header rather than using SiteHeader, so they were the
+                  ones with no context link at all. SiteHeader puts one
+                  exactly here, first inside the right-hand group; this is
+                  the same slot, the same style and the same class, so the
+                  responsive rule that gives it its own line on a narrow
+                  screen already applies.
+                  
+                  Labelled "Plan your own trip", not "Home". The homepage
+                  IS the trip form, so the label that helps says what you
+                  get rather than where you go - and it is the label the
+                  trip, ask and compare pages already use for this exact
+                  link. */}
+              <Link
+                href={`/${langSuffix}`}
+                className="font-ui header-context-link"
+                style={{ fontSize: 12, letterSpacing: "0.04em", color: "var(--ink-soft)", textDecoration: "none" }}
+              >
+                {t.trip.planAnother} &rarr;
+              </Link>
               <div className="header-account-group">
               <AccountControl language={language} t={t} />
               <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
