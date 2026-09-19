@@ -275,7 +275,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               onChange={(next) => update("origin", next)}
               language={value.language}
               placeholder={t.form.originPlaceholder}
-              freeTextHint={t.form.destinationFreeText}
+              freeTextHint={t.form.originFreeText}
             />
           </Field>
         </div>

@@ -72,6 +72,12 @@ export interface Dictionary {
     destinationsAddMore: string;
     destinationRemove: string;
     destinationFreeText: string;
+    /** The origin field's version. NOT destinationFreeText: that one says
+     * "press Enter to add it anyway", which is the chip field's gesture -
+     * the origin holds one value and the typed text already IS it, so
+     * pressing Enter does nothing and telling someone to is instructing
+     * them to fix a problem they do not have. */
+    originFreeText: string;
     timeUnknownHeading: string;
     timeClear: string;
     /** Placeholder in the time popover's filter box. */
@@ -671,6 +677,7 @@ const en: Dictionary = {
     destinationsAddMore: "Add another city",
     destinationRemove: "Remove",
     destinationFreeText: "Not on the list? Press Enter to add it anyway.",
+    originFreeText: "Not one we list, but we will use it exactly as you typed it.",
     timeUnknownHeading: "Not sure of the exact time",
     timeClear: "Clear",
     timeFilter: "Type a time, e.g. 9 or 1630",
@@ -1215,6 +1222,7 @@ const bg: Dictionary = {
     destinationsAddMore: "Добавете още град",
     destinationRemove: "Премахни",
     destinationFreeText: "Няма го в списъка? Натиснете Enter, за да го добавите.",
+    originFreeText: "Не е в списъка ни, но ще го използваме точно както сте го въвели.",
     timeUnknownHeading: "Не знам точния час",
     timeClear: "Изчисти",
     timeFilter: "Въведете час, напр. 9 или 1630",

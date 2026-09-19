@@ -1255,6 +1255,26 @@ jobs:
       - run: npm run test:dart-globe
       - run: npm run test:flight-import
       - run: npm run test:spin
+      # The suggestion list, which was 43 cities and not a list of places
+      # anyone types: the 24 with curated facts, plus the 19 the airport
+      # table happens to know. Two other lists glued together. It showed
+      # the day somebody typed "Sofia" - this product's own example origin,
+      # in a product that ships in Bulgarian - and was told "not on the
+      # list". 274 now: every European capital, the European cities people
+      # fly from, and the rest of the world weighted to where travelers go.
+      #
+      # It is still NOT exhaustive and cannot be - a closed list would mean
+      # the engine can no longer plan the trip to somewhere nobody listed,
+      # which is its whole premise - so the free-text path is asserted
+      # right beside the coverage.
+      #
+      # Every country string is checked against lib/countries.ts, the
+      # app's own 197-entry dataset, rather than against a reviewer's
+      # memory: a hand-written list of hundreds of cities is exactly where
+      # "Sofia, Romania" gets in, and that is worse in a travel product
+      # than offering nothing. It caught one on its first run that predates
+      # the new list - Istanbul filed under "Türkiye", not the spelling the
+      # rest of the app uses.
       - run: npm run test:city-options
       # The arrival/departure time picker.
       #

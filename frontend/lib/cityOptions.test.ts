@@ -17,6 +17,7 @@ import {
   splitCities,
 } from "./cityOptions";
 import { airportsFor } from "./airports";
+import { COUNTRIES } from "./countries";
 import { parseTripBrief } from "./validation";
 import { check, finish, heading, section } from "./testutil";
 
@@ -48,6 +49,68 @@ function main() {
     // working.
     const unresolvable = CITY_OPTIONS.filter((o) => airportsFor(o.name).length === 1);
     check("no option resolves to a single-airport stub", unresolvable.length === 0, JSON.stringify(unresolvable.map((o) => o.name)));
+  }
+
+  {
+    section("it covers the places people type");
+
+    // The list used to be 43: the 24 curated cities plus the 19 the airport
+    // table happens to know about. Not a list of places travelers name -
+    // two other lists glued together. It showed the day somebody typed
+    // "Sofia", this product's own example origin, in a product that ships
+    // in Bulgarian, and was told it was "not on the list".
+    check("the list is a few hundred, not a few dozen", CITY_OPTIONS.length > 200, String(CITY_OPTIONS.length));
+
+    // The home market first, because that is where the gap was found.
+    for (const name of ["Sofia", "Plovdiv", "Varna", "Burgas"]) {
+      check(`${name} is suggestable`, names().includes(name));
+    }
+
+    // Every European capital, which is the bar a travel product in Europe
+    // has to clear. Sampled across the continent rather than listed in
+    // full - the point is the shape of the coverage, not a second copy of
+    // the data.
+    for (const name of [
+      "Dublin", "Warsaw", "Bucharest", "Belgrade", "Zagreb", "Ljubljana", "Bratislava",
+      "Tallinn", "Riga", "Vilnius", "Helsinki", "Reykjavik", "Kyiv", "Valletta", "Nicosia",
+      "Sarajevo", "Skopje", "Podgorica", "Tirana", "Bern", "Luxembourg", "Ankara",
+    ]) {
+      check(`${name} is suggestable`, names().includes(name), name);
+    }
+
+    // And the places the rest of the world goes.
+    for (const name of ["Sydney", "Cape Town", "Marrakech", "Hanoi", "Kyoto", "Vancouver", "Lima", "Tel Aviv"]) {
+      check(`${name} is suggestable`, names().includes(name), name);
+    }
+
+    // The free-text path is the reason this list does NOT have to be
+    // exhaustive, and it has to keep working - a closed list would mean
+    // the engine can no longer plan the trip this product was built to
+    // plan. Asserted here next to the coverage so the two are read
+    // together.
+    check("a city nobody listed is still nothing to the filter", filterCityOptions("Chisinau-by-the-sea", "en").length === 0);
+  }
+
+  {
+    section("every country is one the app itself recognises");
+
+    // A hand-written list of a few hundred cities is exactly where a wrong
+    // country slips in, and "Sofia, Romania" in a travel product is worse
+    // than offering no suggestion at all. So the country strings are
+    // checked against lib/countries.ts - the app's own 197-entry dataset,
+    // which is already the source of truth for the visited tracker - not
+    // against a reviewer's memory.
+    //
+    // This caught one on its first run that predates the new list:
+    // Istanbul was filed under "Türkiye", which is not the spelling the
+    // rest of the app uses.
+    const known = new Set(COUNTRIES.map((c) => c.name));
+    const wrong = CITY_OPTIONS.filter((o) => !known.has(o.country));
+    check(
+      "no city names a country the app does not know",
+      wrong.length === 0,
+      JSON.stringify(wrong.map((o) => `${o.name} -> ${o.country}`))
+    );
   }
 
   {
@@ -103,10 +166,19 @@ function main() {
     // ...but by PREFIX only. Substring-matching the country made short
     // queries useless: "an" offered Amsterdam, Berlin and Munich, because
     // "Netherlands" and "Germany" both contain "an".
-    const an = filterCityOptions("an", "en", [], 30).map((o) => o.name);
-    check("a country is not matched mid-word", an.includes("Berlin") === false, JSON.stringify(an));
-    check("  nor Amsterdam via Netherlands", an.includes("Amsterdam") === false, JSON.stringify(an));
-    check("  while the city names that do contain it are kept", an.includes("Milan") && an.includes("Bangkok"), JSON.stringify(an));
+    //
+    // The limit is high on purpose. At 30 this read `an.includes("Milan")`
+    // and started failing the moment the list grew past a few dozen
+    // cities - not because the rule broke, but because prefix matches
+    // ("Ankara", "Antwerp", "Andorra la Vella") now fill the first 30 and
+    // the contains-matches rank after them, exactly as intended. The
+    // assertion is about ORDERING and what is excluded, so it must not be
+    // measured through a cut-off.
+    const an = filterCityOptions("an", "en", [], 400).map((o) => o.name);
+    check("a country is not matched mid-word", an.includes("Berlin") === false, JSON.stringify(an.slice(0, 20)));
+    check("  nor Amsterdam via Netherlands", an.includes("Amsterdam") === false, JSON.stringify(an.slice(0, 20)));
+    check("  while the city names that do contain it are kept", an.includes("Milan") && an.includes("Bangkok"), JSON.stringify(an.slice(0, 20)));
+    check("  and a prefix match is offered before a contains match", an.indexOf("Ankara") < an.indexOf("Milan"), JSON.stringify(an.slice(0, 6)));
 
     // A Bulgarian reader typing Cyrillic - which before this change found
     // nothing and produced no airport dropdown.
@@ -164,8 +236,17 @@ function main() {
 
     // THE case the whole design turns on: a city that is not on the
     // suggestion list goes in untouched.
-    check("a city not on the list is accepted", JSON.stringify(addCity([], "Tbilisi")) === '["Tbilisi"]');
-    check("  and is not on the list", filterCityOptions("Tbilisi", "en").length === 0);
+    //
+    // DERIVED, not hard-coded. This used to name Tbilisi, which is now ON
+    // the list - it is a European capital, and the list grew to cover
+    // those. A fixed example silently stops testing what it says the
+    // moment the suggestions catch up with it, which is the worst way for
+    // an assertion to fail: by passing. So the list is asked for a name it
+    // does not have.
+    const offList = ["Tbilisi", "Veliko Tarnovo", "Kotor", "Nowhere-on-Sea"].find((n) => !names().includes(n)) ?? "Nowhere-on-Sea";
+    check(`${offList} is genuinely not on the list`, !names().includes(offList), offList);
+    check("  a city not on the list is accepted", JSON.stringify(addCity([], offList)) === JSON.stringify([offList]));
+    check("  and the filter offers nothing for it", filterCityOptions(offList, "en").length === 0);
     check(
       "  and survives into the value",
       joinCities(addCity(addCity([], "Tbilisi"), "Kutaisi")) === "Tbilisi, Kutaisi"
