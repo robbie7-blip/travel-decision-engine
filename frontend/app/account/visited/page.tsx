@@ -423,6 +423,11 @@ export default function VisitedPage() {
                 key={tabDef.id}
                 type="button"
                 onClick={() => setTab(tabDef.id)}
+                // visited-tab exists only to be reachable from the
+                // (pointer: coarse) block: these eight were 33px tall on a
+                // phone, and they are how you switch between every view
+                // this page has.
+                className="visited-tab"
                 style={{
                   padding: "8px 14px",
                   fontSize: 12,
@@ -522,7 +527,11 @@ export default function VisitedPage() {
                           key={c.code}
                           type="button"
                           onClick={() => toggle(c.code)}
-                          className="font-ui"
+                          // 197 of these, at 29px tall on a phone, and
+                          // tapping them IS how you record a country -
+                          // this checklist is the feature. visited-country
+                          // is the hook for the (pointer: coarse) block.
+                          className="font-ui visited-country"
                           style={{
                             display: "flex",
                             alignItems: "center",

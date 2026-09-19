@@ -1289,7 +1289,13 @@ p {
   .btn-primary,
   .qa-example,
   .qa-photo,
-  .spin-reshuffle {
+  .spin-reshuffle,
+  /* Places you've been, and both were found by check:touch-targets rather
+     than by looking: the eight view tabs at 33px, and the 197 pills in the
+     country checklist at 29px - which is not a detail on that page, it is
+     how you record having been somewhere. */
+  .visited-tab,
+  .visited-country {
     min-height: 44px;
   }
 

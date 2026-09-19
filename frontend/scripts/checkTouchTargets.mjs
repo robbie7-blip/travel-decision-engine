@@ -1,0 +1,491 @@
+// No control under 44px on a phone, on any page.
+//
+// The rules that do this live in globals.css under (pointer: coarse) and
+// they name their targets by class. That is the most breakable kind of
+// coupling there is - a control shipped with its own padding and no class
+// in that list is simply not covered, and nothing anywhere says so. A
+// sweep found nine of them, on seven pages, long after each shipped:
+//
+//   326x15  the header context link back to the trip form, EVERY page
+//   130x40  the logo link, on all nine hand-written headers
+//   270x40  the email field on /pricing, 276x40 the one on /account
+//   270x40  Subscribe, 199x35 "Email me a sign-in link", 59x35 Ask
+//   266x29  the two example questions on /ask, 43x39 its photo button
+//    59x15  "New cities" on /spin, that page's only other control
+//   110x15  "All destinations" and 151x15 Wikipedia, on every city guide
+//   171x17  the only link out of /compare's empty state
+//
+// Nothing looked broken. A 15px link is perfectly legible; it is just not
+// hittable with a thumb, which is invisible on a laptop and is the whole
+// experience on a phone.
+//
+// WHY THIS ONE NEEDS A BROWSER, unlike checkPrint.mjs next to it. A
+// control's height comes from its font size, its line height, its padding,
+// its flex context and any inline style the page sets, resolved together.
+// There is no text-level version of this question: the previous static
+// idea - "does every interactive element carry a covered class" - cannot
+// see that a button inside .trip-form-grid is already covered by an
+// ancestor rule, so it reports every one of them and proves nothing.
+//
+// It runs after `npm run build` in CI (see .github/workflows/checks.yml),
+// where the runner already has Chrome, and it drives the real pages rather
+// than a fixture so that a control added to a page is covered by being on
+// that page at all.
+//
+// HOW THE MEASUREMENT WORKS, and why it is not just a narrow window.
+// Headless Chromium enforces a 500px MINIMUM layout viewport and crops
+// screenshots to the requested width, so `--window-size=390,900` lays the
+// page out at 500px and hands back a 390px-wide crop of it. Every
+// conclusion drawn that way is wrong. The page is therefore loaded in a
+// same-origin iframe of an exact width, and measured through the DOM.
+//
+// Chromium also cannot be made to report (pointer: coarse) - not with
+// --touch-events=enabled, not with any flag. So the body of every such
+// block is lifted out of globals.css and injected into the page as plain
+// CSS. EVERY block: the first attempt at this measurement took only the
+// first of four and reported the gallery dots as 10x10 when a later block
+// had already fixed them to 44x44.
+
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const FRONTEND = resolve(HERE, "..");
+const PUBLIC = join(FRONTEND, "public");
+
+/** The minimum target, in CSS pixels. Apple HIG and WCAG 2.5.5 AAA. The
+ * stylesheet's own comment cites the same number, so this is not a second
+ * opinion about what the bar is. */
+const MIN = 44;
+
+/** Measured at 390 - iPhone 12/13/14/15, the most common phone width in
+ * the wild - and at 360, the most common Android one. Not at 320: the
+ * header is allowed to reflow below 346px (see .header-account-group) and
+ * a second reflow is a different check, not this one. */
+const WIDTHS = [390, 360];
+
+/** The pages this drives, and what it deliberately leaves out.
+ *
+ * ROUTES_NOT_CHECKED is the anti-dormancy part: a new page under app/ that
+ * is in neither list fails this script, rather than quietly not being
+ * measured. That is the failure mode this repo has been bitten by twice
+ * (see checkCiScripts.mjs), so a new route has to say which it is. */
+const PAGES = [
+  "/",
+  "/ask",
+  "/pricing",
+  "/account",
+  "/account/visited",
+  "/destinations",
+  "/showcase",
+  "/spin",
+  "/why-decide",
+  "/terms",
+  "/privacy",
+  "/cookies",
+  "/compare",
+  "/compare-stats",
+];
+
+const ROUTES_NOT_CHECKED = {
+  "/admin": "behind a password, and an internal tool nobody uses on a phone",
+  "/admin/demo-trip": "see /admin",
+  "/admin/feedback": "see /admin",
+  "/admin/health": "see /admin",
+  "/admin/showcase": "see /admin",
+  "/admin/stats": "see /admin",
+  "/admin/test-mode": "see /admin",
+  // Needs a generated trip in Redis, which means a real model call and
+  // real money. Its controls come from ItineraryResult and TripQA, and
+  // TripQA's are measured on /ask, which renders the same component.
+  "/trip/[jobId]": "needs a paid generation to render",
+  // Measured, but through a real slug rather than the literal route - see
+  // GUIDE_PAGE below.
+  "/destinations/[slug]": "measured through a real slug instead",
+};
+
+/** One real city guide, resolved from the destination list rather than
+ * hard-coded, so this keeps working when the list changes. */
+function guidePage() {
+  const dir = join(FRONTEND, "public", "destinations");
+  const slug = existsSync(dir)
+    ? readdirSync(dir)
+        .filter((f) => f.endsWith(".jpg"))
+        .map((f) => f.replace(/\.jpg$/, ""))
+        .sort()[0]
+    : null;
+  return slug ? `/destinations/${slug}` : null;
+}
+
+function fail(lines) {
+  console.error(lines.join("\n"));
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------- chromium
+
+/** A Chrome or Chromium binary, or nothing - in which case this script
+ * FAILS rather than passing. A check that skips itself when a dependency
+ * is missing is the dormant guard this repo already learned not to ship. */
+function findChrome() {
+  if (process.env.CHROME_PATH && existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH;
+  const pwRoot = process.env.PLAYWRIGHT_BROWSERS_PATH || "/opt/pw-browsers";
+  if (existsSync(pwRoot)) {
+    for (const entry of readdirSync(pwRoot).sort().reverse()) {
+      const candidate = join(pwRoot, entry, "chrome-linux", "chrome");
+      if (entry.startsWith("chromium-") && existsSync(candidate)) return candidate;
+    }
+  }
+  for (const name of ["google-chrome-stable", "google-chrome", "chromium", "chromium-browser"]) {
+    const found = spawnSync("which", [name], { encoding: "utf8" });
+    if (found.status === 0 && found.stdout.trim()) return found.stdout.trim();
+  }
+  const mac = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  if (existsSync(mac)) return mac;
+  return null;
+}
+
+// ------------------------------------------------------------- coarse rules
+
+/** The body of every @media (pointer: coarse) block in globals.css.
+ *
+ * Brace-matched rather than regexed, because the blocks contain nested
+ * rules. ALL of them - taking only the first is a mistake already made
+ * once here, and it reported controls as undersized that a later block
+ * had already fixed. */
+function coarseRules(css) {
+  const at = "@media (pointer: coarse) {";
+  const blocks = [];
+  let from = 0;
+  for (;;) {
+    const start = css.indexOf(at, from);
+    if (start === -1) break;
+    let i = start + at.length;
+    let depth = 1;
+    for (; i < css.length && depth > 0; i += 1) {
+      if (css[i] === "{") depth += 1;
+      else if (css[i] === "}") depth -= 1;
+    }
+    blocks.push(css.slice(start + at.length, i - 1));
+    from = i;
+  }
+  return blocks;
+}
+
+// ------------------------------------------------------------------- probe
+
+/** The page that does the measuring.
+ *
+ * It reports its result base64-encoded, so that --dump-dom's HTML escaping
+ * of quotes and angle brackets cannot corrupt it. */
+const PROBE_HTML = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0}</style></head><body>
+<iframe id="f" style="border:0"></iframe><pre id="out">PENDING</pre>
+<script>
+const q = new URLSearchParams(location.search);
+const page = q.get('p'), W = Number(q.get('w'));
+const f = document.getElementById('f');
+f.style.width = W + 'px';
+f.style.height = '3000px';
+f.src = page;
+function label(el) {
+  const cls = (typeof el.className === 'string' ? el.className : '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).join('.');
+  const text = (el.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 40);
+  return '<' + el.tagName.toLowerCase() + '>' + (cls ? '.' + cls : '') + (text ? ' "' + text + '"' : '');
+}
+function report(value) {
+  const json = JSON.stringify(value);
+  document.getElementById('out').textContent =
+    btoa(String.fromCharCode(...new TextEncoder().encode(json)));
+}
+f.onload = async () => {
+  let css = '';
+  try { css = await (await fetch('/__touch-coarse.css')).text(); }
+  catch (err) { report({ error: 'could not load the injected coarse rules: ' + err.message }); return; }
+  const d = f.contentDocument, w = f.contentWindow;
+  if (!d) { report({ error: 'the iframe document was not readable' }); return; }
+  const style = d.createElement('style');
+  style.textContent = css;
+  d.head.appendChild(style);
+  setTimeout(() => {
+    try {
+      const small = [];
+      let measured = 0;
+      for (const el of d.querySelectorAll('a,button,select,input,textarea,[role="button"]')) {
+        const cs = w.getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || cs.pointerEvents === 'none') continue;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        // A country on a map is the size of the country. SVG geometry is
+        // WCAG 2.5.8's "essential" exemption: the world map on
+        // /account/visited has 341 tappable <path>s and Haiti is 2x2.
+        if (el.ownerSVGElement || el.tagName.toLowerCase() === 'svg') continue;
+        // WCAG 2.5.8 exempts a target inside a sentence: the text around it
+        // sets the line height and a 44px box would break the line. Measured
+        // as the parent's OWN text nodes - its whole textContent includes
+        // every sibling element's text, which excused every link in the
+        // header and left these pages reporting one control each. The
+        // "only N controls" tripwire below is what caught that.
+        const parent = el.parentElement;
+        const ownText = parent
+          ? [...parent.childNodes]
+              .filter((node) => node.nodeType === 3)
+              .map((node) => node.textContent.trim())
+              .join('')
+          : '';
+        if (el.tagName === 'A' && ownText.length > 1) continue;
+        // A checkbox whose own <label> is the target. .check-row is 44px
+        // tall and wraps both the box and its text, so the box is 20px by
+        // design and hitting anywhere on the row works.
+        const lab = el.closest('label');
+        if (lab && lab !== el && lab.getBoundingClientRect().height >= ${MIN} - 0.5) continue;
+        measured += 1;
+        if (r.height < ${MIN} - 0.5 || r.width < ${MIN} - 0.5) {
+          const cls = (typeof el.className === 'string' ? el.className : '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).join('.');
+          small.push({
+            size: Math.round(r.width) + 'x' + Math.round(r.height),
+            what: label(el),
+            // What it is, without its text, so many copies of one control
+            // group into one finding.
+            kind: '<' + el.tagName.toLowerCase() + '>' + (cls ? '.' + cls : ''),
+          });
+        }
+      }
+      report({ measured, small });
+    } catch (err) {
+      report({ error: err && err.message ? err.message : String(err) });
+    }
+  }, 2600);
+};
+</script></body></html>
+`;
+
+// -------------------------------------------------------------------- main
+
+const css = readFileSync(join(FRONTEND, "app", "globals.css"), "utf8");
+const blocks = coarseRules(css);
+if (blocks.length === 0 || !blocks.join("").includes("min-height")) {
+  fail([
+    "Found no @media (pointer: coarse) rules with a min-height in app/globals.css.",
+    "",
+    "Either the touch-target rules have been removed - in which case every",
+    "control on every page is back to its desktop size on a phone - or this",
+    "script can no longer find them. Both need a person.",
+  ]);
+}
+
+if (!existsSync(join(FRONTEND, ".next"))) {
+  fail([
+    "No .next directory, so there is nothing to serve.",
+    "",
+    "This check drives the real pages, so it needs a build first:",
+    "  npm run build && npm run check:touch-targets",
+  ]);
+}
+
+const chrome = findChrome();
+if (!chrome) {
+  fail([
+    "No Chrome or Chromium binary found, and this check cannot run without one.",
+    "",
+    "Set CHROME_PATH to one, or install Chromium. It is NOT skipped when the",
+    "browser is missing: a check that quietly passes when it did not run is",
+    "worse than one that does not exist.",
+  ]);
+}
+
+const guide = guidePage();
+const pages = guide ? [...PAGES, guide] : PAGES;
+if (!guide) {
+  fail([
+    "Could not resolve a real destination slug from public/destinations,",
+    "so the city guide pages would not be measured. They carry two of the",
+    "controls this check exists for.",
+  ]);
+}
+
+// Every route under app/ is either measured or excused.
+const routes = [];
+(function walk(dir, prefix) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (entry.name === "api") continue;
+    const route = `${prefix}/${entry.name}`;
+    if (existsSync(join(dir, entry.name, "page.tsx"))) routes.push(route);
+    walk(join(dir, entry.name), route);
+  }
+})(join(FRONTEND, "app"), "");
+
+const unaccounted = routes.filter(
+  (route) => !PAGES.includes(route) && !Object.hasOwn(ROUTES_NOT_CHECKED, route)
+);
+if (unaccounted.length > 0) {
+  fail([
+    "A page exists that this check neither measures nor excuses.\n",
+    ...unaccounted.map((route) => `  ${route}`),
+    "",
+    "Add it to PAGES so its controls are measured on a phone, or to",
+    "ROUTES_NOT_CHECKED with a reason. A page that is silently not checked",
+    "is how every target in the list at the top of this file shipped.",
+  ]);
+}
+
+const probePath = join(PUBLIC, "__touch-probe.html");
+const cssPath = join(PUBLIC, "__touch-coarse.css");
+let server = null;
+
+function cleanup() {
+  for (const path of [probePath, cssPath]) {
+    try {
+      rmSync(path, { force: true });
+    } catch {
+      /* best effort - a leftover probe is served but harmless */
+    }
+  }
+  if (server && !server.killed) server.kill("SIGTERM");
+}
+
+process.on("exit", cleanup);
+process.on("SIGINT", () => {
+  cleanup();
+  process.exit(130);
+});
+
+// Written BEFORE the server starts, deliberately: `next start` builds its
+// list of public files at boot, so a file added afterwards 404s. That cost
+// an afternoon of empty measurements once already.
+mkdirSync(PUBLIC, { recursive: true });
+writeFileSync(cssPath, blocks.join("\n"));
+writeFileSync(probePath, PROBE_HTML);
+
+const port = 3100 + Math.floor(Math.random() * 800);
+server = spawn("npx", ["next", "start", "-p", String(port)], {
+  cwd: FRONTEND,
+  stdio: ["ignore", "pipe", "pipe"],
+  env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+});
+let serverLog = "";
+server.stdout.on("data", (chunk) => {
+  serverLog += chunk;
+});
+server.stderr.on("data", (chunk) => {
+  serverLog += chunk;
+});
+
+async function waitForServer() {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/__touch-probe.html`);
+      if (res.ok) return true;
+    } catch {
+      /* not up yet */
+    }
+    await new Promise((done) => setTimeout(done, 500));
+  }
+  return false;
+}
+
+if (!(await waitForServer())) {
+  fail([
+    `next start never answered on port ${port}, so nothing was measured.`,
+    "",
+    "Usually the port was already taken - a stray `next start` from an",
+    "earlier run will do it. The server's own output follows.",
+    "",
+    serverLog.trim() || "(the server printed nothing)",
+  ]);
+}
+
+/** One page at one width, measured. */
+function measure(page, width) {
+  const url = `http://127.0.0.1:${port}/__touch-probe.html?p=${encodeURIComponent(page)}&w=${width}`;
+  const run = spawnSync(
+    chrome,
+    [
+      "--headless=new",
+      "--no-sandbox",
+      "--disable-gpu",
+      "--hide-scrollbars",
+      "--window-size=1400,3200",
+      // Fast-forwards the probe's own timers so --dump-dom sees the result
+      // rather than "PENDING".
+      "--virtual-time-budget=14000",
+      "--dump-dom",
+      url,
+    ],
+    { encoding: "utf8", timeout: 90_000, maxBuffer: 64 * 1024 * 1024 }
+  );
+  if (run.status !== 0 && !run.stdout) {
+    return { error: `chrome exited ${run.status}: ${(run.stderr || "").slice(0, 300)}` };
+  }
+  const match = /<pre id="out">([\s\S]*?)<\/pre>/.exec(run.stdout || "");
+  if (!match) return { error: "the probe's output element was not in the dumped DOM" };
+  const payload = match[1].trim();
+  if (payload === "PENDING") return { error: "the probe never finished (the page may not have loaded)" };
+  try {
+    return JSON.parse(Buffer.from(payload, "base64").toString("utf8"));
+  } catch (err) {
+    return { error: `could not read the probe's output: ${err.message}` };
+  }
+}
+
+const problems = [];
+let totalMeasured = 0;
+
+for (const page of pages) {
+  for (const width of WIDTHS) {
+    const result = measure(page, width);
+    if (result.error) {
+      problems.push(`${page} @${width}: ${result.error}`);
+      continue;
+    }
+    // A page with almost no controls means the probe measured an error
+    // page, not the page. Every page here has at least the logo, Sign in
+    // and the language switch.
+    if (result.measured < 3) {
+      problems.push(
+        `${page} @${width}: only ${result.measured} controls were measured, so this page did not render`
+      );
+      continue;
+    }
+    totalMeasured += result.measured;
+    // Grouped by what the control IS rather than listed one by one: the
+    // flag grid on /account/visited is 196 buttons of one kind, and 196
+    // lines saying the same thing buries the other findings.
+    const byKind = new Map();
+    for (const { size, what, kind } of result.small) {
+      const seen = byKind.get(kind);
+      if (seen) seen.count += 1;
+      else byKind.set(kind, { count: 1, size, what });
+    }
+    for (const [kind, { count, size, what }] of byKind) {
+      problems.push(
+        count === 1
+          ? `${page} @${width}: ${size} ${what}`
+          : `${page} @${width}: ${size} ${kind} x${count}, e.g. ${what}`
+      );
+    }
+  }
+}
+
+cleanup();
+
+if (problems.length > 0) {
+  console.error(`Controls under ${MIN}px on a phone.\n`);
+  for (const problem of problems) console.error(`  ${problem}`);
+  console.error(
+    `\nGive it a class with a min-height in the (pointer: coarse) block of\n` +
+      `app/globals.css. min-height, not padding, so nothing moves on a desktop\n` +
+      `and an inline padding set by the page does not undo it.\n\n` +
+      `If the target is genuinely inside a sentence, WCAG 2.5.8 exempts it and\n` +
+      `so does this check - but a link that is the only way out of a page is\n` +
+      `not fine print. Put it on its own line and give it .inline-link.`
+  );
+  process.exit(1);
+}
+
+console.log(
+  `Every touch target is ${MIN}px or more ` +
+    `(${totalMeasured} controls across ${pages.length} pages at ${WIDTHS.join("/")}px).`
+);

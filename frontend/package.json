@@ -10,6 +10,7 @@
     "check:contrast": "node scripts/checkContrast.mjs",
     "check:touch-zoom": "node scripts/checkTouchZoom.mjs",
     "check:header-group": "node scripts/checkHeaderGroup.mjs",
+    "check:touch-targets": "node scripts/checkTouchTargets.mjs",
     "check:dashes": "node scripts/checkDashes.mjs",
     "check:covers": "node scripts/checkCoverPhotos.mjs",
     "check:stats-keys": "node scripts/checkStatsKeys.mjs",
