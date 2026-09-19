@@ -204,6 +204,12 @@ export const inputStyle: CSSProperties = {
   borderRadius: 6,
   padding: "12px 14px",
   color: "var(--ink)",
-  fontSize: 15,
+  // 16, not 15, and the one pixel is not cosmetic: iOS Safari zooms the
+  // whole page in when a focused text field is under 16px and does not zoom
+  // back out. globals.css enforces a 16px floor on every field on a touch
+  // device, so this is the same number at its source - which keeps the form
+  // one size on a laptop and a phone instead of changing at the breakpoint.
+  // See the (pointer: coarse) block in globals.css.
+  fontSize: 16,
   boxSizing: "border-box",
 };

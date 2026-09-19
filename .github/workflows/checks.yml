@@ -597,6 +597,33 @@ jobs:
       # arithmetic over the stylesheet: no browser, no network, runs in
       # milliseconds.
       - run: npm run check:contrast
+      # Can a traveler type on a phone without the page zooming in?
+      #
+      # iOS Safari zooms the whole page when a focused text field is under
+      # 16px and does not zoom back out, so the layout ends up wider than
+      # the viewport and you pan sideways to finish the form. Reported from
+      # a real phone: "when trying to type something it zooms in and messes
+      # up the sizing of the page, looks unprofessional, none of the big
+      # apps like booking, wizz and rest do that." They don't, because 16px
+      # is the only thing that switches it off.
+      #
+      # This guard is here for the fix that looks easier and is wrong.
+      # `maximum-scale=1` also stops the zoom - by taking pinch-zoom away
+      # from everyone, including the people who need it to read at all
+      # (WCAG 1.4.4) - and newer Safari ignores it, so it trades an
+      # accessibility failure for nothing. It is one line and it is the top
+      # answer everywhere. So the guard checks the viewport stays zoomable,
+      # that the 16px floor still covers inputs AND textareas inside a
+      # touch media query with !important (a sweep found 29 fields between
+      # 11px and 15px across 13 files, mostly inline styles a plain rule
+      # cannot reach), and that the shared inputStyle is 16 at its source
+      # so the form is not one size on a laptop and another on a phone.
+      #
+      # All three reverts were measured red. It does not re-derive the list
+      # of small fields: the floor covers them by construction, and a
+      # scanner would fail on every new 11px label in an admin panel while
+      # proving nothing.
+      - run: npm run check:touch-zoom
       # No em dashes anywhere in the repo. It is the single most
       # recognisable sign that a line of text was written by a model, and
       # this product asks travelers to read its output as advice from a

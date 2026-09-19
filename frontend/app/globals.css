@@ -299,7 +299,8 @@ button {
   border: 1px solid var(--line-strong) !important;
   border-radius: 6px !important;
   padding: 12px 14px !important;
-  font-size: 15px !important;
+  /* 16, not 15 - see the (pointer: coarse) block below. */
+  font-size: 16px !important;
   color: var(--ink) !important;
   box-shadow: none !important;
   transition: border-color 0.12s ease, box-shadow 0.12s ease !important;
@@ -1066,6 +1067,45 @@ p {
     justify-content: center;
   }
 
+  /* NO FIELD UNDER 16px, ANYWHERE, ON A TOUCH DEVICE.
+     =================================================
+
+     iOS Safari zooms the whole page in when you focus a text field whose
+     font-size is below 16px, and it does not zoom back out. The layout is
+     then wider than the viewport, the traveler is panning sideways to see
+     the rest of the form, and it reads as a broken page - which is the
+     complaint, from a real phone: "when trying to type something it zooms
+     in and messes up the sizing of the page, looks unprofessional, none of
+     the big apps do that."
+
+     They don't, because they all obey this one rule. It is not a Safari
+     bug and there is no setting for it: the zoom is Safari deciding the
+     text is too small to type into, and the only thing that switches it
+     off is text that isn't.
+
+     THE FIX THAT LOOKS EASIER AND IS WRONG: `maximum-scale=1` or
+     `user-scalable=no` in the viewport meta. It takes pinch-zoom away from
+     everybody, including the people who need it to read anything at all -
+     WCAG 2.1 SC 1.4.4 - and newer Safari ignores it anyway, so it trades
+     an accessibility failure for nothing. The viewport stays
+     `width=device-width, initial-scale=1`; scripts/checkTouchZoom.mjs
+     fails the build if that ever changes.
+
+     A sweep found 29 fields between 11px and 15px across 13 files, so this
+     is one rule rather than 29 edits and a 30th that forgets. !important
+     because most of those sizes are inline styles, which a plain rule
+     cannot reach. The shared inputStyle and the trip form are ALSO raised
+     to 16px at their source, so the main form is the same size on a laptop
+     and a phone rather than changing under you at the breakpoint.
+
+     Scoped to (pointer: coarse), so nothing on a desktop moves, and to
+     the input types that actually take typed text - a <select> opens a
+     picker wheel instead of zooming, and a checkbox has no text at all. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="file"]),
+  textarea {
+    font-size: 16px !important;
+  }
+
   /* The label already wraps the box and its text, so it is the target -
      it was just 16px tall. */
   .check-row {
@@ -1580,6 +1620,36 @@ p {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* The Ask a Local box.
+   =====================
+
+   Was inline styles at 13px. Under 16px iOS Safari zooms the page in on
+   focus (see the (pointer: coarse) block), and at 16px the placeholder -
+   "What should I pack? Is it safe at night? Ask anything..." - wants a
+   third line on a phone, which the two-row box was already clipping at
+   13px. Both problems are about size changing with the viewport, which is
+   what a class can do and an inline style cannot. */
+.trip-qa-input {
+  flex: 1;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+@media (max-width: 560px) {
+  /* Three lines of placeholder plus the padding, so the invitation to ask
+     something is legible in full rather than cut off mid-word. It still
+     resizes by hand, and it still grows as you type. */
+  .trip-qa-input {
+    min-height: 88px;
+  }
 }
 
 /* The "did you know" line during the wait. It was lost when TripBuilding

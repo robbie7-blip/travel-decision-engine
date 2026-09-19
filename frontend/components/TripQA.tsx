@@ -621,17 +621,13 @@ export function TripQA({ context, language, t }: TripQAProps) {
           onKeyDown={handleKeyDown}
           placeholder={t.tripQA.placeholder}
           rows={2}
-          className="font-ui"
-          style={{
-            flex: 1,
-            resize: "vertical",
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid var(--line)",
-            background: "var(--bg-panel)",
-            color: "var(--ink)",
-            fontSize: 13,
-          }}
+          // A class, not inline styles, for two reasons that are the same
+          // reason: the size of this box has to change with the viewport.
+          // It was 13px, which is under the 16px iOS Safari demands before
+          // it will let you type without zooming the whole page in - and at
+          // 16px on a phone the placeholder needs a third line, which it
+          // was already clipping at 13. Both are in .trip-qa-input.
+          className="font-ui trip-qa-input"
         />
         <button
           type="button"
