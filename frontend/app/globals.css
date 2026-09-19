@@ -531,7 +531,12 @@ button {
    not at all, so the Menu button can never end up alone on a line the way
    it did when it lived in its own row - and the currency select can never
    end up alone on one either, which is what happened while it was a
-   sibling just outside this box. */
+   sibling just outside this box.
+
+   Nine files hand-write this header, and a control is only in the row if
+   it is a DIRECT child of this box - which seven of them had quietly
+   stopped being for the Menu button. npm run check:header-group reads the
+   JSX and fails on any control that is outside it or nested inside it. */
 .header-account-group {
   display: flex;
   align-items: center;

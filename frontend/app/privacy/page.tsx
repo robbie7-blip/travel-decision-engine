@@ -130,8 +130,12 @@ export default async function PrivacyPage({
                   BG
                 </Link>
               </div>
-            </div>
-            <HeaderNavToggle t={t} />
+              {/* Inside .header-account-group, not beside it. See that
+                  rule in globals.css for what the box is for;
+                  check:header-group is what keeps every hand-rolled copy
+                  of this header honest about it. */}
+              <HeaderNavToggle t={t} />
+              </div>
             </div>
           </div>
           <HeaderNavRow t={t} language={language} />

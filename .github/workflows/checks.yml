@@ -624,6 +624,15 @@ jobs:
       # scanner would fail on every new 11px label in an admin panel while
       # proving nothing.
       - run: npm run check:touch-zoom
+      # That the header controls which have to wrap as one unit are
+      # actually inside the box that makes them wrap as one unit. Nine
+      # files hand-write that header, and the Menu button had drifted out
+      # of the box in seven of them while still happening to share a line;
+      # the currency switch had drifted out in the one place where it did
+      # not, and wrapped alone above the rest at 390px. Text only, no
+      # browser - it reads the JSX and checks each control is a direct
+      # child of .header-account-group.
+      - run: npm run check:header-group
       # No em dashes anywhere in the repo. It is the single most
       # recognisable sign that a line of text was written by a model, and
       # this product asks travelers to read its output as advice from a
