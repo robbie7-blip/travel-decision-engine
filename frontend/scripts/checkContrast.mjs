@@ -73,10 +73,15 @@ function contrast(a, b) {
 const PAIRS = [
   { fg: "--ink", bg: "--bg", min: AA_NORMAL, note: "body text on the page" },
   { fg: "--ink", bg: "--bg-panel", min: AA_NORMAL, note: "body text on a panel" },
-  { fg: "--ink", bg: "--bg-panel-raised", min: AA_NORMAL, note: "body text on a raised panel" },
+  { fg: "--ink", bg: "--bg-panel-raised", min: AA_NORMAL, note: "body text, and the header nav links, on a raised panel" },
   { fg: "--ink-soft", bg: "--bg", min: AA_NORMAL, note: "secondary text on the page" },
   { fg: "--ink-soft", bg: "--bg-panel", min: AA_NORMAL, note: "secondary text on a panel" },
-  { fg: "--ink-soft", bg: "--bg-panel-raised", min: AA_NORMAL, note: "nav links in the header" },
+  // Was noted as "nav links in the header" and is not any more: those went
+  // to --ink because they read as decoration rather than navigation. Kept,
+  // because --ink-soft is still the secondary text on this ground and the
+  // pair has to hold - but the note now says what it actually covers,
+  // since a stale note is how a pair survives the thing it was protecting.
+  { fg: "--ink-soft", bg: "--bg-panel-raised", min: AA_NORMAL, note: "secondary text on a raised panel" },
   { fg: "--ink-dim", bg: "--bg", min: AA_NORMAL, note: "labels and helper copy on the page" },
   { fg: "--ink-dim", bg: "--bg-panel", min: AA_NORMAL, note: "form labels on a panel" },
   { fg: "--ink-dim", bg: "--bg-panel-raised", min: AA_NORMAL, note: "dates and hours on a raised panel" },

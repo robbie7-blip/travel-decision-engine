@@ -54,7 +54,11 @@ export function CurrencySwitcher({
         padding: "6px 10px",
         fontSize: 11,
         letterSpacing: "0.04em",
-        background: "var(--bg-panel)",
+        // transparent, not --bg-panel. This was the only control in the
+        // header with a white fill - the language toggle and the account
+        // pill both sit on the cream - so it read as a plain browser
+        // <select> dropped into a row of tinted chips. See .currency-select.
+        background: "transparent",
         color: "var(--ink-dim)",
         cursor: "pointer",
       }}

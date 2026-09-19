@@ -119,7 +119,18 @@ export function NavMenu({
             href={link.href}
             className="font-ui nav-link"
             data-active={isActive(link.href)}
-            style={{ fontSize: 12, letterSpacing: "0.04em", textDecoration: "none", gap: 6 }}
+            // 13px in the FULL ink, not 12px in --ink-soft. Reported off
+            // the live site: "these titles are not stressed on and visible
+            // enough". They were the quietest thing in the header - a row
+            // of small grey labels under a display-size wordmark - and on
+            // the homepage nothing is data-active either (no href matches
+            // "/"), so the pill fill that carries wayfinding everywhere
+            // else is absent exactly where a first-time visitor lands.
+            //
+            // Costs 5% width, measured in Chromium against the same row
+            // the 1000px breakpoint was set from: 897px at 12px, 943px at
+            // 13px. The breakpoint moves with it - see .nav-links-row.
+            style={{ fontSize: 13, letterSpacing: "0.04em", textDecoration: "none", gap: 6 }}
           >
             {link.icon}
             {link.label}
