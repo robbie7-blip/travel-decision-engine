@@ -211,7 +211,13 @@ export function CompareView() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))",
+                // min(), and this is the worst of the six: 420px is a
+                // floor, so on a 390px phone (container 342px) the two
+                // trust panels were laid out 420px wide and pushed the
+                // page 54px wider than the screen - measured on a replica
+                // of this grid rather than on a generated trip. See
+                // app/pricing/page.tsx for the reasoning.
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(420px, 100%), 1fr))",
                 gap: 16,
                 marginBottom: 32,
                 border: "1px solid var(--line)",
@@ -249,7 +255,12 @@ export function CompareView() {
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 32 }}>
+          {/* The same 420px floor as the panel grid above, and this one
+              renders from the first moment the page has jobs - including
+              while both columns are still loading - so on a phone the
+              compare page overflowed sideways for its whole life, not just
+              once results arrived. min() as above. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(420px, 100%), 1fr))", gap: 32 }}>
             {columns.map(({ jobId, col, statusMessage, refiningMessage }, i) => (
               <div key={i} style={{ minWidth: 0 }}>
                 {!col.result && !col.loadError && (

@@ -178,7 +178,25 @@ export default function PricingPage() {
       <div style={{ padding: "40px clamp(32px, 8%, 180px) 64px" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
         <div style={{ maxWidth: 1200 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
+          {/* min(300px, 100%), not a bare 300px, and this is the reference
+              copy of a fix applied to five other grids in this codebase.
+
+              minmax(300px, 1fr) is a FLOOR, not a preference: auto-fit
+              drops to one column but that column is still at least 300px
+              wide, whatever the container is. This section keeps 32px of
+              padding on each side, so on a 320px screen the container is
+              256px and the plan cards were laid out 300px wide anyway -
+              44px past their box, 12px past the screen, which gave the
+              whole page a horizontal scrollbar. Measured at 320: 12px of
+              overflow before, none after. At 360 the same cards spilled
+              4px into the right padding, so the card edge sat closer to
+              the screen edge than the left one did.
+
+              min(300px, 100%) resolves to 300px whenever there is room for
+              it and to the container's width when there is not, so the
+              floor never exceeds the box. Nothing changes at or above
+              364px, where 300px fits. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 20 }}>
             <div style={{ background: "var(--bg-panel)", border: "1px solid var(--line)", borderRadius: 10, padding: 26, boxShadow: "var(--shadow-panel)" }}>
               <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}>
                 {t.account.freePlanName}

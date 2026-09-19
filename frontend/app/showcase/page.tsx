@@ -210,7 +210,10 @@ export default async function ShowcasePage({
             <p style={{ color: "var(--ink-dim)", fontSize: 14 }}>{t.showcase.emptyState}</p>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+          {/* min(), so the track floor can never be wider than its own
+              container on a narrow phone - see app/pricing/page.tsx for the
+              measurement this comes from. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 16 }}>
             {cards.map((card) => (
               <Link
                 key={card.jobId}

@@ -188,7 +188,10 @@ export function CompareStatsView() {
           <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 24px", color: "var(--brand-teal)" }}>
             {t.compareStats.heading}
           </h1>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+          {/* min(), so the track floor can never be wider than its own
+              container on a narrow phone - see app/pricing/page.tsx for the
+              measurement this comes from. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 16 }}>
             <StatsCard label={t.compareStats.yourStats} fetched={statsA} t={t} />
             {tokenB && <StatsCard label={t.compareStats.friendStats} fetched={statsB} t={t} />}
           </div>
