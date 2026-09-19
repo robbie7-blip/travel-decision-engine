@@ -1953,7 +1953,20 @@ p {
    becoming the whole first screen. */
 @media (max-width: 860px) {
   .hero-split {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr), not 1fr - and the difference is a real defect.
+    
+       A bare `1fr` is `minmax(auto, 1fr)`, so the column can never be
+       narrower than its own min-content width. The hero's left column
+       contains the confidence legend, a .scroll-row-mobile whose pills are
+       explicitly flex-shrink: 0 - so its min-content width is the full
+       557px of pills, and the column grew to 339px inside a 311px
+       container. Measured at a 375px viewport: the hero text broke 28px
+       out of its box, leaving a 4px gutter on the right against 32px on
+       the left. It reads as text running off the edge of the screen.
+    
+       The desktop rule above already uses minmax(0, ...) for exactly this
+       reason; the mobile override dropped the guard. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 22px;
   }
 
