@@ -31,20 +31,11 @@ export function AccountControl({ language, t }: { language: Language; t: Diction
   return (
     <Link
       href={`/account${langSuffix}`}
-      className="font-ui account-control"
+      // The box comes from .header-chip, shared with the other three
+      // controls in this row; .account-control adds only the colour that
+      // marks this as the one action among them.
+      className="font-ui header-chip account-control"
       data-signed-in={signedIn}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        border: "1px solid var(--line)",
-        borderRadius: 999,
-        padding: "6px 12px",
-        fontSize: 11,
-        letterSpacing: "0.04em",
-        textDecoration: "none",
-        whiteSpace: "nowrap",
-      }}
     >
       {signedIn && <span className="account-control-dot" aria-hidden />}
       {signedIn ? t.account.headerAccountLink : t.account.headerSignIn}

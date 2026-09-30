@@ -167,23 +167,13 @@ export function SiteHeader({
             <div className="header-account-group">
               {extraControls && <div className="header-extra-control">{extraControls}</div>}
               <AccountControl language={language} t={t} />
-              <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
+              <div className="font-ui lang-toggle header-chip header-chip--segmented">
                 {(Object.keys(LANGUAGE_NAMES) as Language[]).map((lang) => (
                   <button
                     key={lang}
                     type="button"
                     onClick={() => onLanguageChange(lang)}
                     data-active={language === lang}
-                    style={{
-                      border: "none",
-                      padding: "6px 12px",
-                      fontSize: 11,
-                      letterSpacing: "0.04em",
-                      cursor: "pointer",
-                      background: "transparent",
-                      color: "var(--ink-dim)",
-                      transition: "all 0.2s ease",
-                    }}
                   >
                     {lang.toUpperCase()}
                   </button>

@@ -541,7 +541,115 @@ button {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 12px;
+  /* 8, not 12. Measured on a real iPhone at 390px: the four controls came
+     to 293px and the gaps to 36, which is 329 in a 326px box. Flex then
+     shrank them, and the Menu button - the one without nowrap - broke its
+     label onto a second line. See .header-chip for the rest of that fix. */
+  gap: 8px;
+}
+
+/* ONE CONTROL, FOUR TIMES.
+   ========================
+
+   The currency switch, Sign in, the language switch and the Menu button
+   sit in a row, and they were four different controls:
+
+     currency   6px 10px padding, 11px text, a native <select> - so iOS
+                drew its own up/down stepper glyph inside it
+     Sign in    6px 12px padding, 11px text, teal
+     language   6px 12px padding, 11px text, --ink-dim, segmented
+     Menu       6px 14px padding, 12px text, --ink-soft, AND no nowrap
+
+   Three paddings, two type sizes, three text colours, one native widget
+   among three custom ones. Side by side with Booking.com's header - where
+   every control is the same height, the same shape and the same colour,
+   and only the ACTIVE one is picked out - ours read as four things that
+   happened to end up next to each other.
+
+   So the box is defined once here and the four controls carry only what
+   actually differs between them: the language switch's active segment,
+   and Sign in's colour. Everything else - height, radius, border, type,
+   padding, nowrap - comes from this class. The components no longer set
+   any of it inline, which is what let them drift apart in the first
+   place.
+
+   line-height 1 with the height coming from min-height, not padding, so
+   the touch-target rule can raise all four together on a phone without
+   any of them changing shape. */
+.header-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  /* The brand tint, on all four rather than on three of them. The currency
+     select was given this border once because a flat grey one "felt out of
+     place next to the brighter controls beside it" - which was true, and
+     the answer was to tint every chip, not to leave the Menu button as the
+     one grey box in the row. */
+  border: 1px solid color-mix(in srgb, var(--color-blue) 28%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  /* The Menu button was the only one of the four missing this, which is
+     why "Menu ☰" wrapped to two lines on a phone the moment flex squeezed
+     the row by three pixels. */
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+/* The language switch is two buttons that together read as one chip.
+   The border belongs to the SEGMENTS, not to a box around them, and that
+   is a touch-target decision rather than a cosmetic one: box-sizing is
+   border-box, so a 44px wrapper with a 1px border leaves 42px of content
+   for the buttons inside it - and 42px is what a finger actually gets.
+   The old code solved that by making this pill 46px while the three chips
+   beside it were 44, which is the misalignment that started all this.
+   Bordering each segment instead keeps the pill exactly 44 like its
+   neighbours AND makes each half a real 44px target. */
+.header-chip--segmented {
+  padding: 0;
+  border: none;
+  /* The base chip's 6px gap is for a dot beside a label (see Sign in when
+     signed in). Between two halves of one pill it is a slot of background
+     showing through the middle of the control - visible in a rendering at
+     390px, invisible in the numbers. */
+  gap: 0;
+}
+
+.header-chip--segmented > a,
+.header-chip--segmented > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--color-blue) 28%, transparent);
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  letter-spacing: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* One shared edge between them rather than two stacked borders, so the
+   pair reads as a single pill and not as two chips touching. */
+.header-chip--segmented > :first-child {
+  border-radius: 999px 0 0 999px;
+  border-right: none;
+}
+
+.header-chip--segmented > :last-child {
+  border-radius: 0 999px 999px 0;
 }
 
 /* One exception, and the number is measured rather than chosen.
@@ -579,19 +687,12 @@ button {
   align-items: center;
 }
 
-/* Hidden on desktop - only meaningful once the rule above turns it on
-   under the mobile breakpoint.
-
-   align-items matters here even though the button looks like plain text:
-   the mobile rule turns it into an inline-flex, and the touch-target
-   block below gives it min-height 44px on a finger device. A flex box
-   taller than its content, with no alignment set, leaves "Menu ☰" sitting
-   at the top of the pill rather than in the middle of it - which is
-   exactly how it rendered on a phone. */
+/* Hidden on desktop, where the full nav is inline and there is nothing to
+   toggle. Everything about how it LOOKS now comes from .header-chip, which
+   it carries alongside this class; all this does is decide whether it is
+   in the layout at all. */
 .nav-menu-toggle {
   display: none;
-  align-items: center;
-  justify-content: center;
 }
 
 /* Hero subhead's forced break between its two sentences (see page.tsx) -
@@ -878,64 +979,89 @@ a {
    <button> version (SiteHeader) and the server-rendered <a> version
    (destinations/showcase pages, which switch language via a ?lang= URL
    param instead of client state). */
+/* The one thing in this row that is allowed to look different, and the
+   reason is that it is the only one carrying STATE: which language you are
+   reading. Booking's header does the same and only the same - every tab
+   identical, the active one picked out. */
 .lang-toggle button[data-active="true"],
 .lang-toggle a[data-active="true"] {
-  background: var(--color-blue) !important;
-  color: white !important;
+  background: var(--color-blue);
+  /* Its own border too, now that the segments carry them: a filled segment
+     inside a paler outline reads as a button that missed its box. */
+  border-color: var(--color-blue);
+  color: white;
 }
 
 .lang-toggle button[data-active="false"]:hover,
 .lang-toggle a[data-active="false"]:hover {
-  background: color-mix(in srgb, var(--color-blue) 10%, transparent) !important;
-  color: var(--color-blue) !important;
+  background: color-mix(in srgb, var(--color-blue) 10%, transparent);
+  color: var(--color-blue);
 }
 
-.lang-toggle {
-  border-color: color-mix(in srgb, var(--color-blue) 25%, transparent) !important;
-}
-
-/* Currency <select> - flat gray border felt out of place next to the
-   brighter nav/lang controls beside it.
-   
-   And then the fill: it was the ONLY control in the header painted
-   --bg-panel (white) while the language toggle and the account pill sit
-   transparent on the cream. One white box in a row of tinted chips, which
-   is what "the currency looks awfully basic" was pointing at. Transparent
-   now, so all three read as the same family. */
+/* The currency chip is a <select>, and that is the whole of what is left
+   to say about it. appearance: none is the fix for the thing most visible
+   in a photo of this header on an iPhone: iOS draws its own up/down
+   stepper glyph inside a native select, so one control in a row of four
+   carried a piece of system UI that the other three did not. The chevron
+   below is ours, drawn on the wrapper, and it matches the ink of the row
+   rather than the ink of the operating system. */
 .currency-select {
-  background: transparent !important;
-  border-color: color-mix(in srgb, var(--color-blue) 30%, transparent) !important;
-  color: var(--ink-soft) !important;
-  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 26px;
 }
 
-.currency-select:hover {
-  border-color: var(--color-blue) !important;
-  color: var(--color-blue) !important;
+.currency-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-soft);
 }
 
-/* Global "Sign in" / "Account" header pill (AccountControl.tsx) - teal
-   while signed out (same brand/primary color as the rest of the header
-   controls), green once signed in (the "feasible/success" color, reused
-   here for "this is in a good state" rather than introducing a 7th hue). */
+.currency-chip-caret {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  /* -70% rather than -50%: the rotated square's visual centre sits below
+     its box's centre, because the corner that points down is the part the
+     eye reads as the mark. */
+  transform: translateY(-70%) rotate(45deg);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.currency-select:hover,
+.header-chip:hover {
+  border-color: var(--color-blue);
+  color: var(--color-blue);
+}
+
+/* Sign in keeps the teal, and it is the only chip that differs in colour.
+   It is the one control in the row that DOES something rather than
+   changing how the page reads, and a row of four identical grey chips
+   makes the only action in the header invisible. Green once signed in -
+   the "this is in a good state" colour used everywhere else - rather than
+   a seventh hue invented for the header. */
 .account-control {
   color: var(--color-blue);
-  border-color: color-mix(in srgb, var(--color-blue) 30%, transparent) !important;
-  transition: all 0.2s ease;
 }
 
 .account-control:hover {
-  border-color: var(--color-blue) !important;
   background: color-mix(in srgb, var(--color-blue) 10%, transparent);
 }
 
 .account-control[data-signed-in="true"] {
   color: var(--accent-green);
-  border-color: color-mix(in srgb, var(--accent-green) 35%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent-green) 35%, transparent);
 }
 
 .account-control[data-signed-in="true"]:hover {
-  border-color: var(--accent-green) !important;
+  border-color: var(--accent-green);
+  color: var(--accent-green);
   background: color-mix(in srgb, var(--accent-green) 12%, transparent);
 }
 
@@ -1119,37 +1245,27 @@ p {
 }
 
 @media (pointer: coarse) {
-  .nav-link,
-  .currency-select {
+  /* All four header controls, in one line, because they are now one
+     control. This used to be three rules with two different numbers: 44px
+     for the currency, 46px for Sign in and Menu, and a separate 44px for
+     the language segments - because the language pill's border sat outside
+     the height its buttons claimed, so it measured 46 while the others
+     measured 44, and the row looked a pixel out of line.
+
+     box-sizing is border-box everywhere in this file, so now that the
+     border belongs to the chip rather than to whatever was inside it, one
+     number does all four and they are exactly the same height. */
+  .header-chip,
+  .nav-link {
     min-height: 44px;
   }
 
-  /* 46px, not 44px, and these two are listed only here.
-     The language pill is the one control in this group whose 1px border
-     sits OUTSIDE the 44px its buttons claim, so it measures 46px - and it
-     sits in a row with these two. At 44px they were a pixel short at the
-     top and bottom of it, which on a 3x phone is three visible pixels on
-     each edge and reads as the language switch being misaligned. Matching
-     them keeps every target at 44px or more; shrinking the pill's buttons
-     instead would have cost 2px of touch target to save 2px of height.
-     Kept out of the 44px rule above so each selector's height is stated
-     once rather than declared and then contradicted three lines later. */
-  .account-control,
-  .nav-menu-toggle {
-    min-height: 46px;
-  }
-
+  /* The segments stretch to the chip's height (align-self: stretch, in the
+     base rule), so they need width here and nothing else - a two-letter
+     label is too narrow to hit even in a tall box. */
   .lang-toggle a,
   .lang-toggle button {
-    min-height: 44px;
     min-width: 44px;
-    /* justify-content does nothing on a block-level button - the same
-       no-op that left the Menu label sitting high in its own pill. The
-       text was already centred by the button's own centring, but a rule
-       that looks like it aligns something should actually align it. */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
   }
 
   /* NO FIELD UNDER 16px, ANYWHERE, ON A TOUCH DEVICE.

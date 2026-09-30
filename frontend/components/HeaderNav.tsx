@@ -40,21 +40,17 @@ export function HeaderNavToggle({ t }: { t: Dictionary }) {
     <button
       type="button"
       onClick={toggle}
-      className="nav-menu-toggle font-ui"
+      className="nav-menu-toggle header-chip font-ui"
       aria-expanded={open}
       aria-controls={NAV_LINKS_ID}
-      style={{
-        border: "1px solid var(--line)",
-        borderRadius: 999,
-        padding: "6px 14px",
-        fontSize: 12,
-        letterSpacing: "0.04em",
-        background: "transparent",
-        color: "var(--ink-soft)",
-        cursor: "pointer",
-      }}
     >
-      {open ? t.navMenuClose : t.navMenuOpen} {open ? "✕" : "☰"}
+      {/* The word, without the glyph beside it. "Menu ☰" said menu twice
+          and cost 22px doing it - and those 22px were what pushed this row
+          three pixels past the width of a 390px phone, where flex shrank
+          this button and its label wrapped onto a second line. The pill
+          already reads as a button; aria-expanded tells a screen reader
+          what it does. */}
+      {open ? t.navMenuClose : t.navMenuOpen}
     </button>
   );
 }

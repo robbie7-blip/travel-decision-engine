@@ -81,11 +81,11 @@ export default async function TermsPage({
               </Link>
               <div className="header-account-group">
               <AccountControl language={language} t={t} />
-              <div className="font-ui lang-toggle" style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 999, overflow: "hidden" }}>
-                <Link href="/terms" data-active={language === "en"} style={{ padding: "6px 12px", fontSize: 11, letterSpacing: "0.04em", textDecoration: "none", background: "transparent", color: "var(--ink-dim)" }}>
+              <div className="font-ui lang-toggle header-chip header-chip--segmented">
+                <Link href="/terms" data-active={language === "en"}>
                   EN
                 </Link>
-                <Link href="/terms?lang=bg" data-active={language === "bg"} style={{ padding: "6px 12px", fontSize: 11, letterSpacing: "0.04em", textDecoration: "none", background: "transparent", color: "var(--ink-dim)" }}>
+                <Link href="/terms?lang=bg" data-active={language === "bg"}>
                   BG
                 </Link>
               </div>
