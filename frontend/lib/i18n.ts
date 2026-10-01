@@ -26,9 +26,17 @@ export interface Dictionary {
   // CurrencySwitcher.tsx) - the currency codes themselves (EUR, USD...)
   // are intentionally left untranslated (ISO codes, not prose).
   currencyLabel: string;
+  // First item in the nav (components/NavMenu.tsx), and the reason it
+  // exists: every page could reach every OTHER page from that row, and
+  // none of them could reach the homepage from it. Four pages - /account,
+  // /pricing, /account/visited and /compare-stats - carry a context link
+  // that points somewhere other than home, so on those the wordmark was
+  // the only way back, which is the convention this was asked to stop
+  // relying on.
+  navHome: string;
   // Mobile-only nav toggle (see .nav-menu-toggle in globals.css) - collapses
-  // the 6 header links behind a single "Menu" button instead of letting
-  // them wrap onto 2-3 rows.
+  // the header links behind a single "Menu" button instead of letting them
+  // wrap onto 2-3 rows.
   navMenuOpen: string;
   navMenuClose: string;
   // Two sentences, rendered on separate lines (see page.tsx) - same reason
@@ -629,6 +637,7 @@ const en: Dictionary = {
   howItWorks: "How it works",
   browseDestinations: "Destination guides",
   currencyLabel: "Currency",
+  navHome: "Plan a trip",
   navMenuOpen: "Menu",
   navMenuClose: "Close",
   headlineLine1: "It doesn’t list options.",
@@ -1174,6 +1183,7 @@ const bg: Dictionary = {
   howItWorks: "Как работи",
   browseDestinations: "Пътеводители",
   currencyLabel: "Валута",
+  navHome: "Ново пътуване",
   navMenuOpen: "Меню",
   navMenuClose: "Затвори",
   headlineLine1: "Без опции.",

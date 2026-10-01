@@ -459,6 +459,31 @@ button {
    than the 600 that shipped - so it was reading a weight difference this
    harness cannot actually resolve.)
 
+   EVERY NUMBER ABOVE IS NOW HISTORY, and this is what the row actually
+   measures today. The 931px predates the per-item icons, and a Home item
+   has since been added, so the row holds eight links at 1162px:
+
+     119 Plan a trip   138 Why decide?        178 Destination guides
+     148 Real examples 128 Ask a Local        145 Decide for me
+     183 Places you've been                    97 Pricing
+
+   The header keeps 8% of the viewport as padding on each side, so the row
+   needs a ~1390px window to sit on one line, and between 1040 and 1390 it
+   WRAPS ONTO TWO - six links, then an orphaned pair. That is a real dead
+   zone and it covers the two commonest laptop widths, 1280 and 1366.
+
+   1040 stays anyway, deliberately. The alternative is collapsing to the
+   hamburger at 1390, which hides the whole nav on those same laptops -
+   and a nav visible on two lines beats a nav behind a button, which is
+   the judgement row 2 exists to express in the first place. Worth knowing
+   that this zone is not new: at seven links the row was 1039px and needed
+   ~1237px, so it already wrapped between 1040 and 1237. Home widened it
+   by about 150px rather than creating it.
+
+   If it ever needs to fit on one line at 1280, the width is in the
+   labels - "Places you've been" and "Destination guides" are 361px of the
+   1162 between them - not in this number.
+
    (Before the two-row split, this was 700px,
    which - fighting logo+account+language for the same row - left a dead
    zone between ~700 and ~1550px where the combined row was forced to

@@ -13,9 +13,11 @@ import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
 // One small monoline glyph per nav item - the plain-text pills read as flat
-// and generic on the pages where nothing is "active" yet (the homepage:
-// none of the hrefs match "/", so every link sits at the same visual
-// weight with nothing to distinguish it). All six share one stroke width
+// and generic on the pages where nothing is "active" yet. (That used to
+// include the homepage, because no href matched "/" and so every link sat
+// at the same visual weight with nothing to distinguish it. The Home item
+// below fixed that as a side effect of fixing the navigation.) All share
+// one stroke width
 // and use currentColor rather than their own fixed hue, so each icon rides
 // the exact same color transitions .nav-link already had (--ink-soft at
 // rest, --color-blue on hover, white on the active teal fill) instead of
@@ -24,6 +26,16 @@ const ICON_PROPS = { viewBox: "0 0 24 24", "aria-hidden": true, style: { width: 
 const STROKE = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
 const NAV_ICONS: Record<string, ReactNode> = {
+  // A roof and a doorway, on the same 24x24 grid and the same 1.8 stroke
+  // as the rest. Deliberately the plain house rather than anything
+  // cleverer about travel: this is the one icon in the row whose job is to
+  // be recognised without being read.
+  home: (
+    <svg {...ICON_PROPS}>
+      <path {...STROKE} d="M4 10.2 12 4l8 6.2V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" />
+      <path {...STROKE} d="M9.8 20v-5.2h4.4V20" />
+    </svg>
+  ),
   whyDecide: (
     <svg {...ICON_PROPS}>
       <path {...STROKE} d="M9 18h6M10 21h4M8 10a4 4 0 1 1 8 0c0 2-1.5 2.8-2 4.5-.1.5-.3.5-.5.5h-3c-.2 0-.4 0-.5-.5C9.5 12.8 8 12 8 10Z" />
@@ -87,6 +99,14 @@ export function NavMenu({
   const langSuffix = language === "bg" ? "?lang=bg" : "";
 
   const links = [
+    // First, and the only one that is not a destination within the site:
+    // it is the way back to the thing the site is for. Eleven pages carry
+    // a context link home in their header; the other four - /account,
+    // /pricing, /account/visited, /compare-stats - spend that slot on a
+    // cross-link and had nothing but the wordmark. Putting it in the nav
+    // covers all fifteen in one place, on desktop and inside the Menu
+    // alike, rather than four more hand-written links.
+    { href: `/${langSuffix}`, label: t.navHome, icon: NAV_ICONS.home },
     { href: `/why-decide${langSuffix}`, label: t.whyDecide.navLink, icon: NAV_ICONS.whyDecide },
     { href: `/destinations${langSuffix}`, label: t.browseDestinations, icon: NAV_ICONS.destinations },
     { href: `/showcase${langSuffix}`, label: t.showcase.navLabel, icon: NAV_ICONS.showcase },
@@ -122,10 +142,11 @@ export function NavMenu({
             // 13px in the FULL ink, not 12px in --ink-soft. Reported off
             // the live site: "these titles are not stressed on and visible
             // enough". They were the quietest thing in the header - a row
-            // of small grey labels under a display-size wordmark - and on
-            // the homepage nothing is data-active either (no href matches
-            // "/"), so the pill fill that carries wayfinding everywhere
-            // else is absent exactly where a first-time visitor lands.
+            // of small grey labels under a display-size wordmark - and at
+            // the time nothing was data-active on the homepage either, so
+            // the pill fill that carries wayfinding everywhere else was
+            // absent exactly where a first-time visitor lands. (Home sits
+            // in this row now, so the homepage does light one up.)
             //
             // Costs 5% width, measured in Chromium against the same row
             // the 1000px breakpoint was set from: 897px at 12px, 943px at
