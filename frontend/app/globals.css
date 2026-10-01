@@ -630,6 +630,16 @@ button {
   transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
 
+/* The house beside the wordmark (HomeChip.tsx). Square, because the glyph
+   needs no caption and a pill shape around a single 17px mark reads as a
+   button with its label missing. min-width rather than width so the
+   touch-target rule can square it up to 44 on a phone without a second
+   number here. */
+.home-chip {
+  padding: 0;
+  min-width: 36px;
+}
+
 /* The language switch is two buttons that together read as one chip.
    The border belongs to the SEGMENTS, not to a box around them, and that
    is a touch-target decision rather than a cosmetic one: box-sizing is
@@ -1287,9 +1297,12 @@ p {
 
   /* The segments stretch to the chip's height (align-self: stretch, in the
      base rule), so they need width here and nothing else - a two-letter
-     label is too narrow to hit even in a tall box. */
+     label is too narrow to hit even in a tall box. The house is the same
+     case: one glyph, no label, so height alone would leave it a 36px-wide
+     target. */
   .lang-toggle a,
-  .lang-toggle button {
+  .lang-toggle button,
+  .home-chip {
     min-width: 44px;
   }
 

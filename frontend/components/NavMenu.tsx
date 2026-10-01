@@ -9,6 +9,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { HouseGlyph } from "./HouseGlyph";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
@@ -26,16 +27,10 @@ const ICON_PROPS = { viewBox: "0 0 24 24", "aria-hidden": true, style: { width: 
 const STROKE = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
 const NAV_ICONS: Record<string, ReactNode> = {
-  // A roof and a doorway, on the same 24x24 grid and the same 1.8 stroke
-  // as the rest. Deliberately the plain house rather than anything
-  // cleverer about travel: this is the one icon in the row whose job is to
-  // be recognised without being read.
-  home: (
-    <svg {...ICON_PROPS}>
-      <path {...STROKE} d="M4 10.2 12 4l8 6.2V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" />
-      <path {...STROKE} d="M9.8 20v-5.2h4.4V20" />
-    </svg>
-  ),
+  // Imported rather than drawn here: the same house is also the chip
+  // beside the wordmark (HomeChip.tsx), and a glyph in two files is a
+  // glyph that will eventually differ in two files.
+  home: <HouseGlyph size={15} />,
   whyDecide: (
     <svg {...ICON_PROPS}>
       <path {...STROKE} d="M9 18h6M10 21h4M8 10a4 4 0 1 1 8 0c0 2-1.5 2.8-2 4.5-.1.5-.3.5-.5.5h-3c-.2 0-.4 0-.5-.5C9.5 12.8 8 12 8 10Z" />

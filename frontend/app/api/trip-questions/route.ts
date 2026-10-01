@@ -46,6 +46,21 @@ import type { Language } from "@/lib/types";
 
 export const runtime = "nodejs";
 
+// The only route in this app that sets this, because it is the only one
+// that streams model output straight to the browser for as long as the
+// model keeps writing. Everything else either answers in milliseconds or
+// hands the work to the Railway worker and returns a job id.
+//
+// Vercel's default for a Node function is on the order of ten or fifteen
+// seconds. MAX_TOKENS below is 3000, which at Sonnet's output rate is
+// roughly thirty seconds of streaming, so without this the longest
+// answers would be cut off by the platform rather than by the ceiling -
+// and a connection dropped mid-word says nothing to the traveler, while
+// the ceiling at least appends a line explaining itself. 60 is the cap on
+// every Vercel plan including Hobby, so this is portable; if the plan
+// allows less, the build says so rather than failing at runtime.
+export const maxDuration = 60;
+
 const MODEL = "claude-sonnet-5";
 // 500 was too tight for the questions people actually ask. A traveler
 // asked "Sharm El-Sheikh or Hurghada for a family weekend in January?" -
@@ -57,7 +72,21 @@ const MODEL = "claude-sonnet-5";
 // actually writes, and the system prompt still asks for a few sentences.
 // Raising it costs nothing on the short answers and stops truncating the
 // legitimately longer ones.
-const MAX_TOKENS = 1500;
+//
+// AND 1500 WAS STILL TOO TIGHT, reported from a phone: "Switzerland and
+// Liechtenstein Christmas markets, or Barcelona and Andorra, in December"
+// - two itineraries to weigh against each other, each with several towns -
+// stopped at "Barcelona in December is mild and pleasant for walking" and
+// then admitted it had been cut off. The suffix did its job; the answer
+// was still half an answer.
+//
+// 3000, not more, and the reason is the clock rather than the money.
+// maxDuration below caps how long this function may stream for, and at
+// Sonnet's output rate 3000 tokens is roughly 30 seconds of it. A ceiling
+// the time budget cannot cover would trade a truncation that explains
+// itself for the platform cutting the connection mid-word, which is
+// strictly worse. The two numbers only make sense together.
+const MAX_TOKENS = 3000;
 
 // Pro-only: gives a signed-in Pro traveler's questions the same
 // web_search tool the itinerary engine uses (see worker/src/index.ts's
