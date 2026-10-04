@@ -57,10 +57,6 @@ export default async function WhyDecidePage({
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <HeaderNavProvider>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
-            {/* Wordmark and house as one unit: this row is
-                justify-content: space-between with two children, so a third
-                would be distributed to the middle instead of sitting here. */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Link href={`/${langSuffix}`} className="header-logo" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
@@ -68,8 +64,6 @@ export default async function WhyDecidePage({
                 decide
               </span>
             </Link>
-            <HomeChip language={language} t={t} />
-            </div>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               {/* The way back to the trip form, in words.
                   
@@ -109,6 +103,7 @@ export default async function WhyDecidePage({
                   rule in globals.css for what the box is for;
                   check:header-group is what keeps every hand-rolled copy
                   of this header honest about it. */}
+              <HomeChip language={language} t={t} />
               <HeaderNavToggle t={t} />
               </div>
             </div>

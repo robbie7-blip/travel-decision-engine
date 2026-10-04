@@ -101,12 +101,6 @@ export function SiteHeader({
             paddingBottom: large ? 20 : 14,
           }}
         >
-          {/* Wordmark and house as one unit on row 1's left, because this
-              row is justify-content: space-between with exactly two
-              children - logo and the control group. A third child here
-              would be distributed to the middle of the row instead of
-              sitting next to the logo. */}
-          <div style={{ display: "flex", alignItems: "center", gap: large ? 16 : 10 }}>
           <Link href={`/${langSuffix}`} className="header-logo" style={{ display: "flex", alignItems: "center", gap: large ? 22 : 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" width={large ? 84 : 40} height={large ? 84 : 40} style={{ flexShrink: 0 }} />
@@ -140,11 +134,6 @@ export function SiteHeader({
               )}
             </div>
           </Link>
-          {/* Not on the homepage - "large" is the homepage's own hero
-              lockup, and a button back to the page you are standing on is
-              noise. Every other page gets it. */}
-          {!large && <HomeChip language={language} t={t} />}
-          </div>
 
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
             {contextLink && (
@@ -191,6 +180,10 @@ export function SiteHeader({
                   </button>
                 ))}
               </div>
+              {/* Not on the homepage - "large" is the homepage's own hero
+                  lockup, and a button back to the page you are standing on
+                  is noise. */}
+              {!large && <HomeChip language={language} t={t} />}
               <HeaderNavToggle t={t} />
             </div>
           </div>

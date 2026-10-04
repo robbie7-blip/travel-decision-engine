@@ -57,6 +57,11 @@ const MUST_BE_DIRECT_CHILDREN = [
   // Only where it appears at all: it is the currency switcher's wrapper, and
   // most pages do not render one.
   { find: "header-extra-control", label: "the currency switcher's wrapper (.header-extra-control)", optional: true },
+  // Optional for one page only - the homepage, which needs no button back
+  // to itself. Everywhere else it is the way home, and it belongs in this
+  // box rather than next to the wordmark: it was tried there and the
+  // logo lockup is not ours to add to.
+  { find: "<HomeChip", label: "the house / way home (HomeChip)", optional: true },
 ];
 
 /** Comments blanked out, with every index and line break left where it was.

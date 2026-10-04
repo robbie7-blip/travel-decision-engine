@@ -630,11 +630,11 @@ button {
   transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
 
-/* The house beside the wordmark (HomeChip.tsx). Square, because the glyph
-   needs no caption and a pill shape around a single 17px mark reads as a
-   button with its label missing. min-width rather than width so the
-   touch-target rule can square it up to 44 on a phone without a second
-   number here. */
+/* The house in the control group, beside Menu (HomeChip.tsx). Square,
+   because the glyph needs no caption and a pill around a single 17px mark
+   reads as a button with its label missing. min-width rather than width so
+   the touch-target rule can square it up to 44 on a phone without a
+   second number here. */
 .home-chip {
   padding: 0;
   min-width: 36px;
@@ -710,6 +710,30 @@ button {
   }
 
   .header-account-group .header-extra-control {
+    flex-basis: 100%;
+  }
+}
+
+/* The same break, one chip earlier in the queue.
+   Two pages carry FIVE controls: a trip and a comparison both show the
+   currency, because prices are on screen there, and every page but the
+   homepage now also carries the house. Five measure 330px plus 32px of
+   gaps - 362 in the 326px a 390px phone has - so the currency goes to its
+   own line here too, for exactly the reason it does below 345px: it is
+   the least load-bearing of the five, and the other four come to 286px,
+   which fits.
+   425px is where it stops being necessary: 362 of controls plus the
+   header's 32px of padding each side needs 426px of viewport, so above
+   that the five sit on one line and this rule is off.
+   :has() is the test for "this group has a fifth child". Where it is
+   unsupported the rule simply does not apply and the row squeezes, which
+   is what it did before any of this - a worse layout, not a broken one. */
+@media (max-width: 425px) {
+  .header-account-group:has(> :nth-child(5)) {
+    flex-wrap: wrap;
+  }
+
+  .header-account-group:has(> :nth-child(5)) .header-extra-control {
     flex-basis: 100%;
   }
 }
