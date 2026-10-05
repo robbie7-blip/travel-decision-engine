@@ -1484,3 +1484,24 @@ jobs:
           # them is behind a runtime check, not a build-time one; if this
           # step ever starts needing a secret, that's the bug.
           NEXT_TELEMETRY_DISABLED: "1"
+      # No control under 44px on a phone. Runs last and only here, because
+      # it is the only check in this file that needs the built app: it
+      # serves the real pages and measures them in a headless browser,
+      # which is the only way to answer a question whose answer comes from
+      # font size, padding, flex context and inline styles together.
+      #
+      # IT WAS REMOVED ONCE, for hanging this job for six hours a run - the
+      # GitHub limit - on four runs out of five, which took CI red for
+      # sixteen days and blocked Railway with it. The measuring was never
+      # the problem: it finished, printed the right answer, and then the
+      # process would not exit, because `next start` was a grandchild that
+      # outlived the signal sent to its launcher and held the pipes open.
+      # Fixed by spawning the server into its own process group, killing
+      # the group, and exiting explicitly. It now runs in about 20 seconds.
+      #
+      # timeout-minutes is the backstop, so a fourth mistake of this kind
+      # costs ten minutes rather than a working day.
+      - run: npm run check:touch-targets
+        timeout-minutes: 10
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

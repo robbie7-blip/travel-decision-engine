@@ -27,21 +27,27 @@
 // see that a button inside .trip-form-grid is already covered by an
 // ancestor rule, so it reports every one of them and proves nothing.
 //
-// IT IS NOT IN CI, and that is a retreat rather than a design. It was,
-// from 2026-09-19, and it hung GitHub's runner for SIX HOURS a run - the
-// job limit - on four runs out of five, taking the frontend job red for
-// sixteen days and blocking Railway, which waits for the check suite. Two
-// unbounded waits in here were found and fixed (see measure() and
-// waitForServer) and it still would not reliably terminate, so it was
-// pulled back out. checkCiScripts.mjs records that as its reason.
+// It runs after `npm run build` in CI (see .github/workflows/checks.yml),
+// where the runner already has Chrome, and it drives the real pages rather
+// than a fixture so that a control added to a page is covered by being on
+// that page at all.
 //
-// Run it by hand before shipping anything that changes a control's size:
+// IT WAS PULLED OUT OF CI ONCE, on 2026-10-05, for hanging the job for six
+// hours a run - GitHub's limit - on four runs out of five, which took CI
+// red for sixteen days and stopped Railway deploying with it. Three
+// separate unbounded things were found and fixed before the real one was:
+// spawnSync draining a pipe Chromium's children still held, a fetch with
+// no timeout in a loop that counted attempts rather than seconds, and a
+// whole-run deadline that could not fire because it was only tested
+// between iterations.
 //
-//     npm run build && npm run check:touch-targets
-//
-// It drives the real pages rather than a fixture, so a control added to a
-// page is covered by being on that page at all - which is the property
-// worth keeping even without a gate enforcing it.
+// NONE OF THOSE WAS THE CAUSE. The measuring always finished. The script
+// printed the correct answer and then would not EXIT: `next start` is a
+// grandchild of this process via npx, it outlived the signal sent to its
+// launcher, and it held the inherited stdout and stderr pipes open, so the
+// event loop never drained. Correct output, immortal process, six-hour
+// job. See cleanup(), which now kills the whole process group, and the
+// explicit process.exit at the end. It takes about 20 seconds.
 //
 // HOW THE MEASUREMENT WORKS, and why it is not just a narrow window.
 // Headless Chromium enforces a 500px MINIMUM layout viewport and crops
@@ -362,6 +368,20 @@ const probePath = join(PUBLIC, "__touch-probe.html");
 const cssPath = join(PUBLIC, "__touch-coarse.css");
 let server = null;
 
+/** THIS IS THE FUNCTION THAT HUNG CI FOR SIX HOURS A RUN.
+ *
+ * Not the browser, not the measuring - both of those finished. The script
+ * printed its result and then refused to exit, because `server` is the
+ * npx process and `next start` is its CHILD. SIGTERM to npx did not reach
+ * the server, the server kept the stdout and stderr pipes it inherited
+ * open, node's event loop therefore never drained, and the process lived
+ * until GitHub killed the job. A run of this locally produced the correct
+ * answer at four minutes and was still alive at fifteen.
+ *
+ * So: the server is spawned detached, into its own process group, and the
+ * whole group is signalled - negative pid is the group. SIGKILL follows
+ * SIGTERM because next does not always honour the polite one, and the
+ * pipes are unref'd so a survivor cannot hold the loop open regardless. */
 function cleanup() {
   for (const path of [probePath, cssPath]) {
     try {
@@ -370,7 +390,25 @@ function cleanup() {
       /* best effort - a leftover probe is served but harmless */
     }
   }
-  if (server && !server.killed) server.kill("SIGTERM");
+  if (!server || server.killed) return;
+  for (const signal of ["SIGTERM", "SIGKILL"]) {
+    try {
+      process.kill(-server.pid, signal);
+    } catch {
+      try {
+        server.kill(signal);
+      } catch {
+        /* already gone */
+      }
+    }
+  }
+  try {
+    server.stdout?.destroy();
+    server.stderr?.destroy();
+    server.unref();
+  } catch {
+    /* already gone */
+  }
 }
 
 process.on("exit", cleanup);
@@ -391,6 +429,10 @@ server = spawn("npx", ["next", "start", "-p", String(port)], {
   cwd: FRONTEND,
   stdio: ["ignore", "pipe", "pipe"],
   env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+  // Its own process group, so cleanup() can signal the whole tree. npx is
+  // only a launcher; the server that holds the pipes is its child, and a
+  // signal to npx alone left that child alive - see cleanup().
+  detached: true,
 });
 let serverLog = "";
 server.stdout.on("data", (chunk) => {
@@ -612,3 +654,9 @@ console.log(
   `Every touch target is ${MIN}px or more ` +
     `(${totalMeasured} controls across ${pages.length} pages at ${WIDTHS.join("/")}px).`
 );
+
+// Explicit, and not belt-and-braces: falling off the end of the file means
+// waiting for the event loop to drain, and a single surviving grandchild
+// holding an inherited pipe is enough to stop that forever. The failure
+// path above already exits; so does this one now.
+process.exit(0);
