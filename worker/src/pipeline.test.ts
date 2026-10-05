@@ -42,7 +42,12 @@ const CALL_MS = 400; // stands in for one model round-trip
 // assertion teeth.
 const FRAME_CALL_MS = CALL_MS * 2;
 
-function briefFor(destinations: string[], startDate: string, endDate: string): TripBriefInput {
+function briefFor(
+  destinations: string[],
+  startDate: string,
+  endDate: string,
+  constrained = false
+): TripBriefInput {
   return {
     destinations,
     origin: "Sofia",
@@ -54,7 +59,7 @@ function briefFor(destinations: string[], startDate: string, endDate: string): T
     pace: "relaxed",
     interests: ["food"],
     must_see: [],
-    dietary_constraints: [],
+    dietary_constraints: constrained ? ["no shellfish"] : [],
     mobility_constraints: [],
     hard_no: [],
     language: "en",
@@ -78,6 +83,22 @@ interface Scenario {
   dates: string[];
   /** Which city each day is in, same length as dates. */
   cityByDay: string[];
+  /** Whether the traveler stated anything they cannot do.
+   *
+   * This exists because the two scenarios above declare NONE, and
+   * screenStatedConstraints returns without a model call when there is
+   * nothing stated - so the stage-count assertion below, whose whole job
+   * is catching "a stage silently became two", could not see the
+   * constraint screen at all. Every brief a real traveler fills in has
+   * something in at least one of these fields. */
+  constrained?: boolean;
+  /** Sequential model stages this shape is allowed to pay for.
+   *
+   * Per scenario rather than one global number, so loosening it for the
+   * constrained shape cannot quietly loosen it for the clean one. A clean
+   * brief is still pinned at four; see the note on the constrained
+   * scenario in main() for what the fifth one is and what it costs. */
+  maxStages?: number;
 }
 
 function frameJson(scenario: Scenario): string {
@@ -260,7 +281,12 @@ async function run(scenario: Scenario) {
   const job: Job = {
     id,
     status: "pending",
-    brief: briefFor(scenario.destinations, scenario.dates[0], scenario.dates[scenario.dates.length - 1]),
+    brief: briefFor(
+      scenario.destinations,
+      scenario.dates[0],
+      scenario.dates[scenario.dates.length - 1],
+      scenario.constrained === true
+    ),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -411,14 +437,15 @@ async function run(scenario: Scenario) {
     if (!stageStarts.has(stage) || at < stageStarts.get(stage)!) stageStarts.set(stage, at);
   }
   const observedStages = Math.round(totalMs / CALL_MS);
+  const maxStages = scenario.maxStages ?? 4;
   check(
-    `critical path is 4 model stages, not ${records.length}`,
-    observedStages <= 4,
+    `critical path is ${maxStages} model stages, not ${records.length}`,
+    observedStages <= maxStages,
     `${totalMs}ms / ${CALL_MS}ms = ~${observedStages} sequential stages`
   );
   check(
     "the stage count does not depend on trip length",
-    observedStages <= 4,
+    observedStages <= maxStages,
     `${scenario.dates.length}-day trip took ~${observedStages} stages`
   );
 
@@ -458,6 +485,39 @@ async function main() {
     destinations: cities,
     dates: long,
     cityByDay: long.map((_, i) => cities[Math.min(Math.floor(i / 4), cities.length - 1)]),
+  });
+
+  // The same short trip, with something stated on the form.
+  //
+  // Every brief a real traveler submits has at least one of these fields
+  // filled in, and screenStatedConstraints only makes its call when one
+  // does - so without this scenario the stage-count guard was measuring a
+  // shape the product rarely generates, and the constraint screen was
+  // invisible to the one assertion written to catch an extra stage.
+  await run({
+    label: "SHORT TRIP WITH A STATED CONSTRAINT - the shape every real brief has",
+    destinations: ["Chisinau"],
+    dates: short,
+    cityByDay: short.map(() => "Chisinau"),
+    constrained: true,
+    // FIVE, and the fifth one is a measured cost, not an allowance.
+    //
+    // screenStatedConstraints is awaited on its own between verification
+    // and the repairs, so a brief with anything stated on it pays one
+    // extra sequential round-trip - on every real generation, against a
+    // 30s target the product is already missing. Pinned here so the cost
+    // is a number in a test rather than a claim in a commit message, and
+    // so a SIXTH stage still fails loudly.
+    //
+    // It does not have to stay five. The screen reads the itinerary,
+    // which exists before verification runs, so it could overlap that
+    // stage instead of following it and give the whole round-trip back.
+    // The catch is that verification REMOVES items, so a violation found
+    // against pre-verification state can point at a line that no longer
+    // exists - solvable by matching on item identity, which
+    // repairDuplicateVenues already does. Not done here: this file is the
+    // measurement, not the fix.
+    maxStages: 5,
   });
 
   console.log(`\n${failures === 0 ? "ALL PASSED" : `${failures} FAILURE(S)`}\n`);
