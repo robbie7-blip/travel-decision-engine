@@ -162,9 +162,16 @@ section("a night the plan deliberately left bed-free stays bed-free");
 // The warn branch above the fill already respected needs_lodging; the fill
 // did not, so one stray lodging line on a trip with a bed already booked
 // got cloned onto every remaining night.
+//
+// AND THEN THE PROMISE GOT STRONGER. "Not cloned" left the stray line
+// itself on the trip - one hotel the traveler did not ask for instead of
+// five - which is how a Rome trip that named its own hotel came back
+// recommending another. A brief that says accommodation is arranged now
+// gets NO lodging line at all: the stray one is removed, not merely not
+// multiplied. This assertion moved from 1 to 0 deliberately.
 {
   const filled = checkBudgetIntegrity(tripWithBedsOn([1]), brief({ needs_lodging: false }), undefined);
-  check("a stray line is not cloned when lodging is already arranged", bedsOf(filled).length === 1, String(bedsOf(filled).length));
+  check("a stray line is REMOVED when lodging is already arranged", bedsOf(filled).length === 0, String(bedsOf(filled).length));
 }
 
 section("a cloned arrival night reads as an arrival");

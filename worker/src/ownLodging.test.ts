@@ -120,11 +120,25 @@ function wholeItineraryJson(): string {
   });
 }
 
-function dayJson(day: number, date: string): string {
+function dayJson(day: number, date: string, withLodging = false): string {
   return JSON.stringify({
     day,
     date,
     items: [
+      ...(withLodging
+        ? [
+            {
+              time: "21:00",
+              type: "lodging",
+              title: "Night at Hotel Invented",
+              venue_name: "Hotel Invented",
+              location: "Termini",
+              cost_estimate_eur: 150,
+              reasoning: "r",
+              source_confidence: "inferred",
+            },
+          ]
+        : []),
       {
         time: "09:00",
         type: "activity",
@@ -153,7 +167,7 @@ interface Seen {
   tools: string[];
 }
 
-function makeClient(seen: Seen, disobedient = false, forceFallback = false): Anthropic {
+function makeClient(seen: Seen, disobedient = false, forceFallback = false, emitLodging = false): Anthropic {
   let dayIndex = 0;
   const dates = ["2027-03-18", "2027-03-19", "2027-03-20"];
   return {
@@ -182,7 +196,7 @@ function makeClient(seen: Seen, disobedient = false, forceFallback = false): Ant
             return disobedient ? disobedientPlanJson() : planJson();
           case "day": {
             const i = dayIndex++;
-            return dayJson(i + 1, dates[i] ?? dates[dates.length - 1]);
+            return dayJson(i + 1, dates[i] ?? dates[dates.length - 1], emitLodging);
           }
           case "lodging-rate":
             return JSON.stringify({ cost_estimate_eur: 180, source_url: "https://example.com/rate" });
@@ -239,10 +253,10 @@ function makeRedis(store: Map<string, string>): Redis {
   } as unknown as Redis;
 }
 
-async function run(label: string, needsLodging: boolean, seedCache = false, disobedient = false, forceFallback = false) {
+async function run(label: string, needsLodging: boolean, seedCache = false, disobedient = false, forceFallback = false, emitLodging = false) {
   section(label);
   const store = new Map<string, string>();
-  const id = `own-lodging-${needsLodging ? "needs" : "has"}-${seedCache ? "cached" : "cold"}${disobedient ? "-disobedient" : ""}`;
+  const id = `own-lodging-${needsLodging ? "needs" : "has"}-${seedCache ? "cached" : "cold"}${disobedient ? "-disobedient" : ""}${forceFallback ? "-fallback" : ""}${emitLodging ? "-invented" : ""}`;
   const job: Job = {
     id,
     status: "pending",
@@ -267,7 +281,7 @@ async function run(label: string, needsLodging: boolean, seedCache = false, diso
   }
 
   const seen: Seen = { kinds: [], systems: [], prompts: [], tools: [] };
-  await processJob(redis, makeClient(seen, disobedient, forceFallback), id);
+  await processJob(redis, makeClient(seen, disobedient, forceFallback, emitLodging), id);
   const finished: Job = JSON.parse(store.get(jobKey(id))!);
 
   check("the job completed", finished.status === "done", finished.status);
@@ -388,6 +402,34 @@ async function main() {
       "and is not told that lodging prices were already verified",
       !seen.systems.some((p) => p.includes("already been verified")),
       "the no-search text claimed cached lodging figures on a trip with none"
+    );
+  }
+
+  {
+    // The last door, and the only one the other three cannot cover: the
+    // model invents a hotel with nothing in its context suggesting one.
+    // Not being fed hotels is not the same as a hotel being unable to get
+    // through, and until the strip existed an invented one shipped.
+    const { finished } = await run(
+      "needs_lodging: false, and the model invents a hotel anyway",
+      false,
+      false,
+      false,
+      false,
+      true
+    );
+    const lodgingItems = (finished.result?.days ?? []).flatMap((d) =>
+      (d.items ?? []).filter((i) => i.type === "lodging")
+    );
+    check(
+      "an invented lodging item is stripped from the itinerary",
+      lodgingItems.length === 0,
+      JSON.stringify(lodgingItems).slice(0, 200)
+    );
+    check(
+      "and its name appears nowhere in the result",
+      !JSON.stringify(finished.result ?? {}).includes("Hotel Invented"),
+      "an invented hotel survived into the trip"
     );
   }
 

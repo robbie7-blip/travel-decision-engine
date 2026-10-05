@@ -171,6 +171,36 @@ export function checkBudgetIntegrity(
   if (plannedLodgingNights !== undefined) nights = Math.min(nights, plannedLodgingNights);
 
   const days = itinerary.days ?? [];
+
+  // A traveler who has their own bed gets no lodging line, full stop.
+  //
+  // Three upstream fixes stop hotels being FED to the model on such a
+  // brief: the live lookup is skipped, the cache is not read, and the
+  // search tool is not attached. None of them stops a model inventing one
+  // anyway, and until this existed an invented one shipped - the brief
+  // said "do NOT include any accommodation line items", the itinerary
+  // included one, and nothing in the pipeline disagreed.
+  //
+  // Removed rather than flagged. A warning would be the right call if this
+  // were a judgement about quality; it is not. The traveler stated a fact
+  // about their trip, and a line item contradicting it is wrong on its
+  // face - there is nothing for a human to weigh.
+  if (!brief.needs_lodging) {
+    let stripped = 0;
+    for (const day of days) {
+      const before = day.items.length;
+      day.items = day.items.filter((item) => item.type !== "lodging");
+      stripped += before - day.items.length;
+    }
+    if (stripped > 0) {
+      console.warn(
+        `[checkBudgetIntegrity] removed ${stripped} lodging item(s) from a trip whose brief says ` +
+          `accommodation is already arranged - the model produced them despite being told not to`
+      );
+    }
+    return itinerary;
+  }
+
   const lodgingItems = days.flatMap((day) => day.items.filter((item) => item.type === "lodging"));
 
   if (brief.needs_lodging && nights > 0 && lodgingItems.length === 0) {

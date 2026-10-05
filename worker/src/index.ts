@@ -1288,9 +1288,9 @@ async function generateDay(
   return parsed;
 }
 
-const VENUE_REPAIR_SYSTEM = `You are fixing ONE line of a travel itinerary. It currently names a venue that is \
-already used elsewhere in the same trip, so the traveler would see the same place twice. Replace it with a \
-DIFFERENT real, specific, named venue that fits the same slot just as well.
+const VENUE_REPAIR_SYSTEM = `You are fixing ONE line of a travel itinerary. The reason it has to change is \
+given below - it may be a venue used twice in the same trip, or one the traveler cannot eat at. Replace it \
+with a DIFFERENT real, specific, named venue that fits the same slot just as well.
 
 The replacement must be a real business you actually believe exists in that city, appropriate to the slot (a \
 breakfast spot for breakfast, not a dinner restaurant), and must not be any of the venues already used.
@@ -1331,14 +1331,32 @@ async function repairDuplicateVenues(
   onUsage?: (usage: ModelUsage, model?: string) => void,
   /** Collects every item whose venue changed, so the caller can send just
    * those back through Places rather than re-verifying the whole trip. */
-  repaired?: ItineraryItem[]
+  repaired?: ItineraryItem[],
+  /** Items that must change for a reason other than being a duplicate -
+   * currently the dietary screen's findings. Each carries its own reason,
+   * which goes into the prompt, because "replace this" without "because"
+   * invites a replacement with the same problem. */
+  alsoRepair?: { item: ItineraryItem; day: ItineraryDay; reason: string }[]
 ): Promise<void> {
-  const dupes = duplicateVenueItems(itinerary.days ?? []);
-  if (dupes.length === 0) return;
-  console.log(`[worker] repairing ${dupes.length} duplicate venue(s)`);
+  const dupes = duplicateVenueItems(itinerary.days ?? []).map((d) => ({
+    ...d,
+    reason: "it is already used elsewhere in this trip, so the traveler would see the same place twice",
+  }));
+  // A dietary conflict and a duplicate are the same repair with a
+  // different cause, so they share one stage and one concurrency budget.
+  // Deduped by item identity: a venue that is BOTH used twice and
+  // unsuitable must not be asked for twice, which would race two
+  // replacements onto the same line.
+  const seenTargets = new Set(dupes.map((d) => d.item));
+  const targets = [...dupes, ...(alsoRepair ?? []).filter((t) => !seenTargets.has(t.item))];
+  if (targets.length === 0) return;
+  console.log(
+    `[worker] repairing ${targets.length} venue(s): ${dupes.length} duplicate, ` +
+      `${targets.length - dupes.length} unsuitable`
+  );
 
   await Promise.all(
-    dupes.map(async ({ item, day }) => {
+    targets.map(async ({ item, day, reason }) => {
       try {
         const response = await client.messages.create({
           model: MODEL,
@@ -1352,8 +1370,9 @@ async function repairDuplicateVenues(
                 `Where: ${item.location || brief.destinations[0]}\n` +
                 `Date: ${day.date}\n` +
                 `Slot: ${item.time} (${item.type})\n` +
-                `Current title (duplicate): ${item.title}\n` +
+                `Current title: ${item.title}\n` +
                 `Venue to replace: ${item.venue_name}\n` +
+                `Why it must change: ${reason}\n` +
                 // The constraints this call used to be told nothing about.
                 //
                 // duplicateVenueItems treats meals and activities alike
@@ -1598,6 +1617,116 @@ export async function generatePhase1Half<T>(
   // Unreachable: the loop either returns, throws, or escalates into its last
   // iteration, which cannot `continue`.
   throw new ModelOutputError(`The ${label} could not be produced.`);
+}
+
+/** Does the itinerary actually respect what the traveler said they cannot eat?
+ *
+ * The dietary field was collected, put in every prompt, and never checked.
+ * That is the gap this closes, and the reason it needs a model rather than
+ * a lookup table: "severe shellfish allergy" against "Trattoria del Mare"
+ * is a question about what a restaurant serves, and a cuisine-keyword list
+ * gets it wrong in both directions - it misses the seafood place with a
+ * neutral name and flags the steakhouse that does a fine vegetarian menu.
+ *
+ * ONLY CLEAR VIOLATIONS. The instruction is deliberately narrow, because
+ * the failure mode of a screen like this is flagging everything: almost
+ * any kitchen "might" cross-contaminate, and a screen that says so
+ * replaces every meal in the trip with another one that says so. What is
+ * wanted is the restaurant whose entire menu is the thing they cannot eat.
+ *
+ * Runs only when the traveler stated a constraint, so trips without one
+ * pay nothing - no call, no latency. */
+const DIETARY_SCREEN_SYSTEM = `You are checking a travel itinerary's restaurants against what the traveler \
+cannot eat.
+
+You will be given the traveler's stated dietary constraints and a numbered list of venues from their trip. \
+Return the numbers of the venues that CLEARLY cannot feed this traveler - a place whose menu is built around \
+the thing they must avoid, such as a seafood restaurant for a shellfish allergy, a steakhouse for a \
+vegetarian, or a place that is famously only one thing they cannot have.
+
+Do NOT flag a venue because it merely might have the ingredient on the menu, might cross-contaminate, or has \
+not confirmed it caters to the constraint. Nearly every restaurant would qualify under that reading, and a \
+list that long is the same as no list. Flag the ones where the traveler would arrive and have nothing to eat.
+
+If none clearly fail, return an empty list.
+
+Respond with ONLY this JSON, no other text: {"unsuitable": [<numbers>]}`;
+
+/** The venues the screen says this traveler cannot eat at.
+ *
+ * Returns targets for the venue repair rather than editing anything, for
+ * the same reason the missing-meal repair buffers its fills: verification
+ * rewrites day.items concurrently, and two stages mutating that array at
+ * once is a real race. */
+async function screenDietaryConflicts(
+  client: Anthropic,
+  brief: TripBriefInput,
+  itinerary: Itinerary,
+  onUsage?: (usage: ModelUsage, model?: string) => void
+): Promise<{ item: ItineraryItem; day: ItineraryDay; reason: string }[]> {
+  if (brief.dietary_constraints.length === 0) return [];
+  const candidates: { item: ItineraryItem; day: ItineraryDay }[] = [];
+  for (const day of itinerary.days ?? []) {
+    for (const item of day.items) {
+      if (item.type !== "meal") continue;
+      if (typeof item.venue_name !== "string" || !item.venue_name.trim()) continue;
+      candidates.push({ item, day });
+    }
+  }
+  if (candidates.length === 0) return [];
+
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: REPAIR_MAX_TOKENS,
+      system: DIETARY_SCREEN_SYSTEM,
+      output_config: { effort: EXTRACT_EFFORT },
+      messages: [
+        {
+          role: "user",
+          content:
+            `Dietary constraints: ${brief.dietary_constraints.join(", ")}\n` +
+            `Venues:\n` +
+            candidates
+              .map((c, i) => `${i + 1}. ${c.item.venue_name} - ${c.item.title} (${c.item.location || ""})`)
+              .join("\n"),
+        },
+      ],
+    });
+    onUsage?.(response.usage, response.model);
+    if (response.stop_reason === "max_tokens") {
+      console.error(`[worker] dietary screen hit the ${REPAIR_MAX_TOKENS}-token cap before emitting JSON`);
+      return [];
+    }
+    const parsed = JSON.parse(extractJson(lastTextOf(response))) as { unsuitable?: unknown };
+    const numbers = Array.isArray(parsed.unsuitable) ? parsed.unsuitable : [];
+    const out: { item: ItineraryItem; day: ItineraryDay; reason: string }[] = [];
+    for (const n of numbers) {
+      // 1-based, from a model. Anything that is not an in-range integer is
+      // dropped rather than trusted into an array index.
+      const idx = typeof n === "number" && Number.isInteger(n) ? n - 1 : -1;
+      const hit = idx >= 0 && idx < candidates.length ? candidates[idx] : null;
+      if (!hit) continue;
+      out.push({
+        ...hit,
+        reason:
+          `the traveler's dietary constraints (${brief.dietary_constraints.join(", ")}) mean they could not ` +
+          `eat here - the replacement must be somewhere they can`,
+      });
+    }
+    if (out.length > 0) {
+      console.warn(
+        `[worker] dietary screen flagged ${out.length} venue(s) the traveler cannot eat at: ` +
+          out.map((o) => o.item.venue_name).join(", ")
+      );
+    }
+    return out;
+  } catch (e) {
+    // Never fatal. A screen that cannot run must not take the trip with
+    // it; the constraint is still in every prompt that wrote the trip.
+    console.error("[worker] dietary screen failed, leaving venues as written:", e);
+    return [];
+  }
 }
 
 const MEAL_REPAIR_SYSTEM = `You are filling ONE missing meal in a travel itinerary. The day was planned to \
@@ -2989,7 +3118,17 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // skipped it. On a clean generation both are empty and this stage is
     // skipped entirely - which is the point. It only costs a round-trip
     // when there is genuinely something wrong.
+    // Asked BEFORE the second-pass decision, not inside it: a trip can be
+    // free of duplicates and missing meals and still send a vegetarian to a
+    // steakhouse, and that trip used to skip this stage entirely. Costs
+    // nothing on a brief with no dietary constraints - the screen returns
+    // immediately without a call.
+    const dietaryConflicts = await timed("dietary", () =>
+      screenDietaryConflicts(client, job.brief, itinerary, onUsage)
+    );
+
     const needsSecondPass =
+      dietaryConflicts.length > 0 ||
       duplicateVenueItems(itinerary.days ?? []).length > 0 ||
       (planDays.length > 0 &&
         (itinerary.days ?? []).some((day) => {
@@ -3000,7 +3139,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     if (needsSecondPass) {
       await timed("repairs", () =>
         Promise.all([
-          repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage, repaired),
+          repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage, repaired, dietaryConflicts),
           planDays.length > 0
             ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage).then((f) =>
                 applyMealFills(f, repaired)

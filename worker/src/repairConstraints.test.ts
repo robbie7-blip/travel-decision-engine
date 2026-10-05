@@ -123,10 +123,12 @@ function dayJson(day: number, date: string): string {
 interface Seen {
   venueRepairPrompts: string[];
   mealRepairPrompts: string[];
+  dietaryScreenPrompts: string[];
 }
 
 function makeClient(seen: Seen): Anthropic {
   let dayIndex = 0;
+  let repairIndex = 0;
   const dates = ["2027-03-18", "2027-03-19"];
   return {
     messages: fakeMessages(async (params: { system?: unknown; messages?: unknown }) => {
@@ -139,9 +141,26 @@ function makeClient(seen: Seen): Anthropic {
           const i = dayIndex++;
           return dayJson(i + 1, dates[i] ?? dates[dates.length - 1]);
         }
+        if (sys.includes("checking a travel itinerary's restaurants")) {
+          seen.dietaryScreenPrompts.push(user);
+          // Flag the first venue in the list: the trip's duplicate
+          // restaurant, which is exactly what a shellfish allergy would
+          // trip over at a place called "Trattoria del Mare".
+          return JSON.stringify({ unsuitable: [1] });
+        }
         if (sys.includes("fixing ONE line")) {
           seen.venueRepairPrompts.push(user);
-          return JSON.stringify({ title: "Lunch at Altra Trattoria", venue_name: "Altra Trattoria", reasoning: "r" });
+          // Distinct per call. The repair refuses a replacement whose name
+          // is already claimed - correctly, since that would re-create the
+          // duplicate - and strips the item instead, so a stub that always
+          // answers the same thing tests the strip path rather than the
+          // replacement one.
+          repairIndex += 1;
+          return JSON.stringify({
+            title: `Lunch at Altra Trattoria ${repairIndex}`,
+            venue_name: `Altra Trattoria ${repairIndex}`,
+            reasoning: "r",
+          });
         }
         if (sys.includes("filling ONE missing meal")) {
           seen.mealRepairPrompts.push(user);
@@ -213,7 +232,7 @@ async function main() {
   };
   store.set(jobKey(id), JSON.stringify(job));
 
-  const seen: Seen = { venueRepairPrompts: [], mealRepairPrompts: [] };
+  const seen: Seen = { venueRepairPrompts: [], mealRepairPrompts: [], dietaryScreenPrompts: [] };
   await processJob(makeRedis(store), makeClient(seen), id);
   const finished: Job = JSON.parse(store.get(jobKey(id))!);
   check("the job completed", finished.status === "done", finished.status);
@@ -251,6 +270,29 @@ async function main() {
       `a "must not violate" constraint never reached the ${label}`
     );
   }
+
+  section("a venue the traveler cannot eat at is replaced, not just asked about");
+
+  check(
+    "the dietary screen ran",
+    seen.dietaryScreenPrompts.length === 1,
+    `${seen.dietaryScreenPrompts.length} screen call(s)`
+  );
+  check(
+    "the screen is given the stated constraint",
+    seen.dietaryScreenPrompts.some((p) => p.includes(ALLERGY)),
+    "the screen was called without the allergy"
+  );
+  check(
+    "a flagged venue is sent for replacement with the reason",
+    seen.venueRepairPrompts.some((p) => p.includes("could not")),
+    "a flagged venue never reached the repair, or reached it without a reason"
+  );
+  check(
+    "and the flagged venue is gone from the trip",
+    !JSON.stringify(finished.result ?? {}).includes("Trattoria Doppia"),
+    "a venue the screen flagged survived into the itinerary"
+  );
 
   finish();
 }
