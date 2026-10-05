@@ -34,10 +34,10 @@
 
 import type Redis from "ioredis";
 import type Anthropic from "@anthropic-ai/sdk";
-import { processJob } from "./index";
+import { dropRemovedItems, processJob } from "./index";
 import { jobKey, type Job } from "./jobs";
 import { check, fakeMessages, finish, section } from "./testutil";
-import type { TripBriefInput } from "./types";
+import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "./types";
 
 const CITY = "Rome";
 const ALLERGY = "severe shellfish allergy";
@@ -415,6 +415,82 @@ async function main() {
       "and it is the constraint the screen is given",
       seen2.dietaryScreenPrompts.some((p) => p.includes("on foot")),
       seen2.dietaryScreenPrompts[0] ?? "(no screen call)"
+    );
+  }
+
+  section("a flag against a line verification deleted never reaches the traveler");
+  {
+    // The risk the overlap creates, and the only reason it is safe.
+    //
+    // The screen now runs CONCURRENTLY with verification instead of after
+    // it, which is what took a full round-trip off every real generation
+    // (see the constrained scenario in pipeline.test.ts). The cost is that
+    // it reads the itinerary as it was BEFORE verification, and
+    // verification removes venues Places could not confirm. A flag
+    // naming one of those would otherwise drive a repair on a line that
+    // no longer exists, or print a defect about a venue the traveler
+    // cannot see.
+    //
+    // Resolved by identity rather than by position: verification filters
+    // day.items without rebuilding the items in it, so a survivor is the
+    // same object.
+    const kept: ItineraryItem = {
+      time: "13:00", type: "meal", title: "Lunch at Kept", venue_name: "Kept",
+      location: "Centro", cost_estimate_eur: 20, reasoning: "r", source_confidence: "inferred",
+    };
+    const removed: ItineraryItem = {
+      time: "20:00", type: "meal", title: "Dinner at Removed", venue_name: "Removed",
+      location: "Centro", cost_estimate_eur: 30, reasoning: "r", source_confidence: "inferred",
+    };
+    const day: ItineraryDay = { day: 1, date: "2027-03-18", items: [kept], feasibility_flag: null };
+    const afterVerification = { days: [day] } as unknown as Itinerary;
+
+    const filtered = dropRemovedItems(
+      {
+        repairable: [
+          { item: kept, day, reason: "r" },
+          { item: removed, day, reason: "r" },
+        ],
+        surfaced: [
+          { item: kept, day: 1, detail: "kept detail" },
+          { item: removed, day: 1, detail: "removed detail" },
+        ],
+      },
+      afterVerification
+    );
+    check(
+      "the surviving item is still sent for repair",
+      filtered.repairable.length === 1 && filtered.repairable[0].item === kept,
+      `${filtered.repairable.length} repairable`
+    );
+    check(
+      "the deleted one is dropped",
+      !filtered.repairable.some((r) => r.item === removed),
+      "a repair was queued against an item the trip no longer contains"
+    );
+    check(
+      "and the surviving surfaced flag is kept",
+      filtered.surfaced.length === 1 && filtered.surfaced[0].detail === "kept detail",
+      filtered.surfaced.map((x) => x.detail).join("; ")
+    );
+    check(
+      "while the deleted one does not become a defect on the report",
+      !filtered.surfaced.some((x) => x.detail === "removed detail"),
+      "the traveler would be told about a line that is not in their trip"
+    );
+    // Identity, not title or venue name. Two different lines can read the
+    // same - the duplicate-venue repair exists precisely because a trip
+    // can name one venue twice - so matching on text would keep a flag
+    // against a deleted item whenever its twin survived.
+    const twin: ItineraryItem = { ...kept };
+    const twinFiltered = dropRemovedItems(
+      { repairable: [{ item: twin, day, reason: "r" }], surfaced: [] },
+      afterVerification
+    );
+    check(
+      "a deleted item whose twin survived is still dropped",
+      twinFiltered.repairable.length === 0,
+      "matched on text rather than identity - a deleted line was kept because another line reads the same"
     );
   }
 

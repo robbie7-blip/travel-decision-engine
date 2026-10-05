@@ -500,24 +500,22 @@ async function main() {
     dates: short,
     cityByDay: short.map(() => "Chisinau"),
     constrained: true,
-    // FIVE, and the fifth one is a measured cost, not an allowance.
+    // FOUR, the same as a brief with nothing stated on it - which is the
+    // whole point of this scenario existing.
     //
-    // screenStatedConstraints is awaited on its own between verification
-    // and the repairs, so a brief with anything stated on it pays one
-    // extra sequential round-trip - on every real generation, against a
-    // 30s target the product is already missing. Pinned here so the cost
-    // is a number in a test rather than a claim in a commit message, and
-    // so a SIXTH stage still fails loudly.
+    // It was five. screenStatedConstraints used to be awaited on its own
+    // between verification and the repairs, so any brief with a
+    // constraint on it - every real brief - paid an extra sequential
+    // round-trip: measured here at 2008ms against the clean path's
+    // 1614ms. It now starts before verification and is awaited after, so
+    // it hides behind the longest stage it could, and this shape measures
+    // 1606ms. The round-trip is gone, not moved.
     //
-    // It does not have to stay five. The screen reads the itinerary,
-    // which exists before verification runs, so it could overlap that
-    // stage instead of following it and give the whole round-trip back.
-    // The catch is that verification REMOVES items, so a violation found
-    // against pre-verification state can point at a line that no longer
-    // exists - solvable by matching on item identity, which
-    // repairDuplicateVenues already does. Not done here: this file is the
-    // measurement, not the fix.
-    maxStages: 5,
+    // Kept pinned at four rather than deleted. The reason the cost was
+    // invisible for as long as it was is that no scenario here stated a
+    // constraint, so the guard could not see the one stage that only
+    // appears when one is stated.
+    maxStages: 4,
   });
 
   console.log(`\n${failures === 0 ? "ALL PASSED" : `${failures} FAILURE(S)`}\n`);

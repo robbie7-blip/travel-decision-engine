@@ -1682,7 +1682,7 @@ async function screenStatedConstraints(
    * where the problem is not which venue was chosen. Surfaced on the trip
    * page instead, because a violation nobody can see is worse than one
    * that is merely unfixed. */
-  surfaced: { day: number; detail: string }[];
+  surfaced: { item: ItineraryItem; day: number; detail: string }[];
 }> {
   // Transport preference is a stated constraint like any other, and it
   // was the last field on the form with nothing checking it: a traveler
@@ -1748,7 +1748,7 @@ async function screenStatedConstraints(
     const parsed = JSON.parse(extractJson(lastTextOf(response))) as { violations?: unknown };
     const rows = Array.isArray(parsed.violations) ? parsed.violations : [];
     const repairable: { item: ItineraryItem; day: ItineraryDay; reason: string }[] = [];
-    const surfaced: { day: number; detail: string }[] = [];
+    const surfaced: { item: ItineraryItem; day: number; detail: string }[] = [];
     for (const row of rows) {
       if (!row || typeof row !== "object") continue;
       const r = row as { item?: unknown; constraint?: unknown };
@@ -1772,6 +1772,11 @@ async function screenStatedConstraints(
         });
       } else {
         surfaced.push({
+          // The item itself, not just its title. This screen now runs
+          // CONCURRENTLY with verification, which removes venues it could
+          // not confirm - so a flag has to be checkable against the trip
+          // that actually shipped. See dropRemovedItems.
+          item: hit.item,
           day: hit.day.day,
           detail: `"${hit.item.title}" conflicts with a stated constraint: ${constraint}`,
         });
@@ -1790,6 +1795,47 @@ async function screenStatedConstraints(
     console.error("[worker] constraint screen failed, leaving the itinerary as written:", e);
     return { repairable: [], surfaced: [] };
   }
+}
+
+/** The screen's findings, minus anything no longer in the trip.
+ *
+ * screenStatedConstraints runs CONCURRENTLY with verification rather than
+ * after it, because it is a full model round-trip and verification is the
+ * longest stage it could hide behind - measured at one extra sequential
+ * stage on the critical path (see the stage-count assertion in
+ * pipeline.test.ts) for every brief with anything stated on it, which is
+ * every real brief.
+ *
+ * The cost of overlapping is that the screen reads the itinerary as it
+ * was BEFORE verification, and verification removes venues Places could
+ * not confirm. So a flag can name a line that no longer exists by the
+ * time the repairs run. Resolved by IDENTITY, not by index: the screen
+ * already resolves each violation to the item object it came from, and
+ * verification filters day.items without rebuilding the items in it, so
+ * an item that survived is the same object. The same approach
+ * repairDuplicateVenues already relies on.
+ *
+ * Dropping rather than remapping is the right answer here: an item
+ * verification deleted is not a violation the traveler can still be
+ * shown, and not one a venue swap could fix. */
+export function dropRemovedItems(
+  screen: { repairable: { item: ItineraryItem; day: ItineraryDay; reason: string }[]; surfaced: { item: ItineraryItem; day: number; detail: string }[] },
+  itinerary: Itinerary
+): typeof screen {
+  const present = new Set<ItineraryItem>();
+  for (const day of itinerary.days ?? []) {
+    for (const item of day.items) present.add(item);
+  }
+  const repairable = screen.repairable.filter((r) => present.has(r.item));
+  const surfaced = screen.surfaced.filter((s) => present.has(s.item));
+  const dropped =
+    screen.repairable.length - repairable.length + (screen.surfaced.length - surfaced.length);
+  if (dropped > 0) {
+    console.warn(
+      `[worker] ${dropped} constraint flag(s) dropped - verification removed those items after the screen read them`
+    );
+  }
+  return { repairable, surfaced };
 }
 
 const MEAL_REPAIR_SYSTEM = `You are filling ONE missing meal in a travel itinerary. The day was planned to \
@@ -3088,6 +3134,32 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
 
     itinerary = attachFlightSearchLinks(itinerary, job.brief);
 
+    // STARTED HERE, awaited after verification - the screen is a full
+    // model round-trip and verification is the longest stage it can hide
+    // behind. Run in sequence it was a fifth stage on the critical path
+    // for every brief with anything stated on it, which is every real
+    // brief; run here it costs whatever is left over after verification
+    // finishes, usually nothing.
+    //
+    // Safe to read the itinerary now because the screen only ever
+    // REPORTS: it returns flags against item objects and mutates nothing.
+    // Verification removes items it could not confirm, so the flags are
+    // filtered against the finished trip before anything acts on them -
+    // see dropRemovedItems.
+    //
+    // The tradeoff, stated plainly: the screen no longer sees meals that
+    // applyMealFills adds further down, where before it did. Those are
+    // written by a call that is itself given the dietary, mobility and
+    // hard limits (asserted in repairConstraints.test.ts), so they are
+    // constraint-aware at the point they are written - this gives up a
+    // second net over a small number of items to take a whole round-trip
+    // off every generation.
+    //
+    // No await and no rejection path: screenStatedConstraints catches its
+    // own failures and resolves to empty flags, so a screen that breaks
+    // cannot become an unhandled rejection while the verify stage runs.
+    const constraintScreenStarted = screenStatedConstraints(client, job.brief, itinerary, onUsage);
+
     // claimedVenues is accumulated per day now, as each one lands and
     // before it is verified - see its declaration. This loop is what is
     // left for the paths that produce no per-day callbacks at all: a
@@ -3181,13 +3253,19 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // skipped it. On a clean generation both are empty and this stage is
     // skipped entirely - which is the point. It only costs a round-trip
     // when there is genuinely something wrong.
-    // Asked BEFORE the second-pass decision, not inside it: a trip can be
+    // Read BEFORE the second-pass decision, not inside it: a trip can be
     // free of duplicates and missing meals and still send a vegetarian to a
     // steakhouse, and that trip used to skip this stage entirely. Costs
     // nothing on a brief with no dietary constraints - the screen returns
     // immediately without a call.
-    const constraintScreen = await timed("constraints", () =>
-      screenStatedConstraints(client, job.brief, itinerary, onUsage)
+    //
+    // This await is what the "constraints" timing now measures: the call
+    // started before verification, so what is recorded is the part that
+    // did NOT overlap. On a normal generation that is close to zero, and
+    // when it is not, the number says so honestly.
+    const constraintScreen = dropRemovedItems(
+      await timed("constraints", () => constraintScreenStarted),
+      itinerary
     );
 
     const needsSecondPass =
