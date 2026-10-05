@@ -1295,6 +1295,10 @@ DIFFERENT real, specific, named venue that fits the same slot just as well.
 The replacement must be a real business you actually believe exists in that city, appropriate to the slot (a \
 breakfast spot for breakfast, not a dinner restaurant), and must not be any of the venues already used.
 
+The traveler's dietary constraints, mobility constraints and hard limits are given below and are not \
+preferences. This slot may be a MEAL: a replacement restaurant that cannot feed them is a wrong answer \
+however good the place is otherwise.
+
 Respond with ONLY this JSON, no other text:
 {"title": "<the item's new title, naming the new venue, in the same language as the original title>", "venue_name": "<the new venue's exact proper name>", "reasoning": "<one short sentence, <=15 words, why this place>"}
 
@@ -1350,6 +1354,21 @@ async function repairDuplicateVenues(
                 `Slot: ${item.time} (${item.type})\n` +
                 `Current title (duplicate): ${item.title}\n` +
                 `Venue to replace: ${item.venue_name}\n` +
+                // The constraints this call used to be told nothing about.
+                //
+                // duplicateVenueItems treats meals and activities alike
+                // (isNamedVenueSlot), so this stage REPLACES RESTAURANTS -
+                // and it was choosing them with no idea the traveler had
+                // declared an allergy. The missing-meal repair beside it
+                // has always passed dietary constraints; this one, which
+                // swaps a restaurant for a different restaurant, did not.
+                //
+                // Mobility and hard_no for the same reason one step along:
+                // this also replaces activities, which is exactly where
+                // "no stairs" and "must not violate" have to hold.
+                `Dietary constraints: ${brief.dietary_constraints.join(", ") || "none"}\n` +
+                `Mobility constraints: ${brief.mobility_constraints.join(", ") || "none"}\n` +
+                `Must not violate: ${brief.hard_no.join(", ") || "nothing stated"}\n` +
                 `Language: write the title in ${LANGUAGE_LABEL[brief.language]}, whatever language the city speaks.\n` +
                 `Already used in this trip, do NOT reuse any of these: ${[...claimed].join("; ")}`,
             },
@@ -1587,6 +1606,10 @@ include this meal and the write-up left it out, so the traveler currently has a 
 Name a real, specific restaurant/cafe/bakery in that city, appropriate to the meal and to the rest of the day, \
 and not one of the venues already used anywhere in the trip.
 
+The traveler's dietary constraints, mobility constraints and hard limits are given below and are not \
+preferences: a venue that cannot feed them, or that they cannot get into, is a wrong answer however good the \
+place is otherwise.
+
 Respond with ONLY this JSON, no other text:
 {"time": "<clock time or time-of-day phrase, in the same language as the day's other items>", "title": "<the item's title, naming the venue, in that same language>", "venue_name": "<the venue's exact proper name>", "location": "<neighborhood, city>", "cost_estimate_eur": <number, per person, EUR>, "reasoning": "<one short sentence, <=15 words, why this place>"}
 
@@ -1680,6 +1703,11 @@ async function repairMissingMeals(
                 }\n` +
                 `Party: ${brief.party_size} (${brief.party_composition})\n` +
                 `Dietary constraints: ${brief.dietary_constraints.join(", ") || "none"}\n` +
+                // Dietary was always here; these two were not, and a
+                // restaurant up two flights of stairs is the same kind of
+                // miss as one with nothing a vegetarian can eat.
+                `Mobility constraints: ${brief.mobility_constraints.join(", ") || "none"}\n` +
+                `Must not violate: ${brief.hard_no.join(", ") || "nothing stated"}\n` +
                 `Language: write time, title and reasoning in ${LANGUAGE_LABEL[brief.language]}, whatever language the city speaks.\n` +
                 `Already used in this trip, do NOT reuse any of these: ${[...taken].join("; ")}`,
             },

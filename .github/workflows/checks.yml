@@ -552,6 +552,12 @@ jobs:
       # the results to the day calls. A prohibition in the instructions and
       # a dataset in the context point opposite ways.
       - run: npm run test:own-lodging
+      # Every stage that WRITES a venue must know the traveler's
+      # constraints. The duplicate-venue repair replaces restaurants
+      # (isNamedVenueSlot is meal OR activity) and was passed none of them,
+      # so an allergy declared on the form reached the model that wrote the
+      # itinerary and not the one that rewrote part of it.
+      - run: npm run test:repair-constraints
       # Reasoning effort, which is now set per stage rather than globally -
       # because the measured calls are not alike: the plan took 68.8s to
       # produce ~400 tokens of JSON while the frame took 31.6s to produce
