@@ -1168,6 +1168,18 @@ jobs:
       # pair instead of drifting apart. Reverting the validator makes 26 of
       # 51 red.
       - run: npm run test:trip-qa-context
+      # Ask a Local looking a named place up in Google Places. A traveler
+      # asked it to compare two guesthouses by name and was told "I can't
+      # actually browse the internet... I only work from what's given to me
+      # in our conversation" - while the Places key was configured on the
+      # deployment the whole time. The suite's real job is the difference
+      # between "we could not check" and "it does not exist": a quota error
+      # must never reach someone about to book as "not found".
+      - run: npm run test:place-lookup
+      # And the loop that serves those lookups, which had a hang in it:
+      # once the round cap was spent it refused, the model asked again, and
+      # the request ran until the function was killed.
+      - run: npm run test:tool-rounds
       # The destinations field's suggestions.
       #
       # "Make the destination a dropdown too" could not be a <select>: the

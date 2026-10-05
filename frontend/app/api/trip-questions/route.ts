@@ -29,6 +29,8 @@ import { contextBlock, readTripQAContext } from "@/lib/tripQAContext";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
 import { estimateCostUsd } from "@/lib/costBudget";
 import { getUserRecord, resolvePlan } from "@/lib/account";
+import { describePlace, lookUpPlace } from "@/lib/placeLookup";
+import { applyToolStep, nextToolStep, type ToolRoundState } from "@/lib/toolRounds";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import {
   MAX_TRIP_QA_HISTORY,
@@ -132,6 +134,77 @@ Where the honest answer is "this varies by property" (minibars especially - some
 charge for everything else), say so and tell them the reliable way to check: the printed price card, the room \
 compendium, or a quick call to reception. Costing someone an unexpected charge because you guessed is the one \
 outcome worth being careful about.`;
+
+// The place-lookup tool, available on BOTH plans.
+//
+// This is what a traveler means by "research it by name". It is not web
+// search and does not touch that Pro gate: it asks Google Places one
+// question about one named business - is it real, how is it rated, where
+// is it, roughly what does it cost, is it still open - which is the same
+// source the itinerary engine has verified venues with all along.
+//
+// Added because of a real answer. Asked to compare two guesthouses by
+// name, the free path replied "I can't actually browse the internet or
+// look up live listings... I only work from what's given to me in our
+// conversation". True of that path, and still the wrong answer: the
+// capability was configured on this deployment and the question could
+// not reach it.
+const PLACE_LOOKUP_TOOL = {
+  name: "look_up_place" as const,
+  description:
+    "Look up a specific named business or landmark in Google Places - a hotel, guesthouse, restaurant, " +
+    "bar, museum or shop. Returns whether it exists, its rating and review count, address, price level, " +
+    "whether it is still operating, and its opening hours. Use this whenever the traveler names a " +
+    "specific place and the answer depends on what that place is actually like - comparing two hotels, " +
+    "checking somewhere is real before they book, confirming a restaurant is still open. Do not use it " +
+    "for cities, neighbourhoods or regions, which are not businesses.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      query: {
+        type: "string" as const,
+        description:
+          "The place name plus where it is, as you would type it into Google Maps - for example " +
+          "\"Hotel Artemide Rome\" or \"Chilling Jacuzzi Suite Guesthouse Rome\". Always include the " +
+          "city, since names repeat across the world.",
+      },
+    },
+    required: ["query"],
+  },
+};
+
+/** How many look_up_place calls are answered in one round.
+ *
+ * Comparing two or three candidates is the case this exists for, and the
+ * model asks for them in a single round. The cap is what stops a question
+ * about "the best restaurants here" turning into fifteen billed lookups
+ * and a reply the traveler waited half a minute for. */
+const MAX_PLACE_LOOKUPS_PER_ROUND = 4;
+
+/** How many times the model may come back for more lookups.
+ *
+ * Two, because this route is synchronous (no job queue) and every round
+ * is another model round-trip inside the same function invocation - see
+ * maxDuration at the top of this file. One round covers "look these two
+ * up and answer"; the second covers "that name did not match, try the
+ * other spelling", which is a real case. A third would mostly buy
+ * latency. */
+const MAX_TOOL_ROUNDS = 2;
+
+const PLACE_LOOKUP_ADDENDUM = `\n\nYou have a look_up_place tool. Use it whenever the traveler names a \
+specific business and the answer depends on what that place is really like - comparing two hotels, checking \
+somewhere exists before they book, confirming a place is still open. Look up each named place rather than \
+reasoning about the name.
+
+Answer from what the lookup returns, and say where it came from in passing ("Google has it at 4.2 from 300 \
+reviews"). A rating with a handful of reviews is weak evidence and worth saying so. If a lookup finds nothing, \
+that often means a small or newly listed property rather than a fake one - say which you think it is and what \
+would settle it. If a lookup could not be completed, say you could not check, never that the place was not \
+found.
+
+NEVER describe your own tools, your training data or what you can and cannot access. A traveler does not want \
+to hear what kind of software you are. If something genuinely cannot be settled, answer with what you do know \
+and name the single thing that would settle it.`;
 
 const WEB_SEARCH_MAX_USES = 2;
 const WEB_SEARCH_ADDENDUM = `\n\nYou also have a web_search tool available for this question - use it when a \
@@ -472,6 +545,7 @@ export async function POST(request: NextRequest) {
         type: "text" as const,
         text:
           (isPaid ? SYSTEM_PROMPT + WEB_SEARCH_ADDENDUM : SYSTEM_PROMPT) +
+          PLACE_LOOKUP_ADDENDUM +
           (carriesImages ? PHOTO_ADDENDUM : ""),
       },
       // The voice rides with the trip context rather than in the block
@@ -483,53 +557,161 @@ export async function POST(request: NextRequest) {
         text: contextBlock(readTripQAContext(body.context), language) + voiceInstruction(voice),
       },
     ],
-    ...(isPaid
-      ? { tools: [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES }] }
-      : {}),
-    messages: trimmedMessages.map((m, i) => ({ role: m.role, content: toContent(m, i) })),
+    // The place lookup is on both plans; web search stays Pro. Two
+    // different things that both answer "check this for me", and only one
+    // of them is what the pricing page sells.
+    tools: [
+      PLACE_LOOKUP_TOOL,
+      ...(isPaid
+        ? [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES }]
+        : []),
+    ],
   };
+
+  const conversation: Anthropic.MessageParam[] = trimmedMessages.map((m, i) => ({
+    role: m.role,
+    content: toContent(m, i),
+  }));
+
+  /** Runs the model's look_up_place calls and builds the tool_result
+   * blocks that answer them.
+   *
+   * EVERY tool_use block gets a result, including ones this route does
+   * not recognise: the API rejects a continuation whose previous
+   * assistant turn has an unanswered tool call, so a stray name would
+   * otherwise turn a good answer into a failed request. */
+  async function answerToolCalls(
+    content: Anthropic.ContentBlock[]
+  ): Promise<Anthropic.ToolResultBlockParam[]> {
+    const calls = content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+    const placesKey = process.env.GOOGLE_PLACES_API_KEY;
+    let spent = 0;
+    const results: Anthropic.ToolResultBlockParam[] = [];
+    for (const call of calls) {
+      if (call.name !== PLACE_LOOKUP_TOOL.name) {
+        results.push({ type: "tool_result", tool_use_id: call.id, content: "Unknown tool." });
+        continue;
+      }
+      const query = typeof (call.input as { query?: unknown })?.query === "string"
+        ? ((call.input as { query: string }).query)
+        : "";
+      if (!placesKey) {
+        // Same silent degradation as every other Places-derived signal in
+        // the product - the answer is still worth giving without it.
+        results.push({
+          type: "tool_result",
+          tool_use_id: call.id,
+          content: `Lookup for "${query}" could not be completed (not configured). This says nothing about whether the place exists - do not tell the traveler it was not found.`,
+        });
+        continue;
+      }
+      if (spent >= MAX_PLACE_LOOKUPS_PER_ROUND) {
+        results.push({
+          type: "tool_result",
+          tool_use_id: call.id,
+          content: `Not looked up - too many places requested at once. Answer with the ones you did get back.`,
+        });
+        continue;
+      }
+      spent += 1;
+      results.push({
+        type: "tool_result",
+        tool_use_id: call.id,
+        content: describePlace(query, await lookUpPlace(placesKey, query)),
+      });
+    }
+    return results;
+  }
 
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       let sentAnyText = false;
 
+      // Rounds, not one call: the model may answer a named-place question
+      // by asking for look_up_place first, which means a reply, the
+      // lookups, and then the real answer. Text already streamed in an
+      // earlier round stays on the page and the next round continues it,
+      // which is what the traveler sees as one answer arriving.
+      /** Where the lookup loop is up to. The decision that reads it lives
+       * in lib/toolRounds.ts, which is where it can be tested - driving a
+       * Next route handler is not something this app can do in a suite
+       * (same reason as lib/refineSource.ts). */
+      let roundState: ToolRoundState = {
+        stopReason: null,
+        toolRounds: 0,
+        refusedFurtherLookups: false,
+        maxRounds: MAX_TOOL_ROUNDS,
+      };
+
       for (let attempt = 1; attempt <= MAX_MODEL_ATTEMPTS; attempt++) {
         try {
-          const stream = client.messages.stream(modelParams);
-          stream.on("text", (delta) => {
-            sentAnyText = true;
-            // The prompt tells the model not to write em dashes and it does
-            // anyway, often enough that it's the loudest "an AI wrote this"
-            // signal in the answer. Swapped per delta rather than on the
-            // finished reply because this response streams; the dash is a
-            // single code point, so it can't be split across two deltas and
-            // the surrounding spaces are already whatever the model sent.
-            controller.enqueue(encoder.encode(delta.replace(/[—–]/g, "-")));
-          });
+          while (true) {
+            const stream = client.messages.stream({ ...modelParams, messages: conversation });
+            stream.on("text", (delta) => {
+              sentAnyText = true;
+              // The prompt tells the model not to write em dashes and it does
+              // anyway, often enough that it's the loudest "an AI wrote this"
+              // signal in the answer. Swapped per delta rather than on the
+              // finished reply because this response streams; the dash is a
+              // single code point, so it can't be split across two deltas and
+              // the surrounding spaces are already whatever the model sent.
+              controller.enqueue(encoder.encode(delta.replace(/[—–]/g, "-")));
+            });
 
-          const finalMessage = await stream.finalMessage();
-          // Billed whether or not any text actually streamed, same principle
-          // as the worker's onUsage in callModel - record it right away.
-          await recordSpend(redis, estimateCostUsd(finalMessage.usage));
+            const finalMessage = await stream.finalMessage();
+            // Billed whether or not any text actually streamed, same principle
+            // as the worker's onUsage in callModel - record it right away.
+            // Inside the round loop, so a tool round is billed too rather
+            // than only the round that happens to finish the answer.
+            await recordSpend(redis, estimateCostUsd(finalMessage.usage));
 
-          // A truncated answer used to be indistinguishable from a finished
-          // one: stop_reason was never read, so the traveler got a sentence
-          // that stopped mid-word and no log line existed to say why.
-          if (finalMessage.stop_reason === "max_tokens") {
-            console.warn(
-              `[trip-questions] answer hit the ${MAX_TOKENS}-token ceiling and was truncated`
-            );
-            if (sentAnyText) controller.enqueue(encoder.encode(TRUNCATED_SUFFIX[language]));
+            roundState = { ...roundState, stopReason: finalMessage.stop_reason };
+            const step = nextToolStep(roundState);
+            if (step.action !== "finish") {
+              conversation.push({ role: "assistant", content: finalMessage.content });
+              if (step.action === "lookups") {
+                conversation.push({ role: "user", content: await answerToolCalls(finalMessage.content) });
+              } else {
+                // Out of rounds with the model still asking. It is told so
+                // in the transcript and given one more turn to answer from
+                // what it has, which beats closing the stream on a traveler
+                // who has seen no reply. nextToolStep allows this once -
+                // see toolRounds.ts for why refusing on a loop is a hang.
+                conversation.push({
+                  role: "user",
+                  content: (await answerToolCalls(finalMessage.content)).map((r) => ({
+                    ...r,
+                    content: "No more lookups available for this question. Answer with what you have.",
+                  })),
+                });
+                console.warn(`[trip-questions] hit the ${MAX_TOOL_ROUNDS}-round lookup ceiling`);
+              }
+              roundState = applyToolStep(roundState, step);
+              continue;
+            }
+            if (finalMessage.stop_reason === "tool_use") {
+              console.warn("[trip-questions] model kept asking for lookups after being refused - answering without");
+            }
+
+            // A truncated answer used to be indistinguishable from a finished
+            // one: stop_reason was never read, so the traveler got a sentence
+            // that stopped mid-word and no log line existed to say why.
+            if (finalMessage.stop_reason === "max_tokens") {
+              console.warn(
+                `[trip-questions] answer hit the ${MAX_TOKENS}-token ceiling and was truncated`
+              );
+              if (sentAnyText) controller.enqueue(encoder.encode(TRUNCATED_SUFFIX[language]));
+            }
+
+            if (!sentAnyText) {
+              // A well-formed response with no text content is rare but not
+              // impossible - same fallback as a hard failure, since an empty
+              // reply is just as unhelpful to the traveler either way.
+              controller.enqueue(encoder.encode(FALLBACK_REPLY[language]));
+            }
+            controller.close();
+            return;
           }
-
-          if (!sentAnyText) {
-            // A well-formed response with no text content is rare but not
-            // impossible - same fallback as a hard failure, since an empty
-            // reply is just as unhelpful to the traveler either way.
-            controller.enqueue(encoder.encode(FALLBACK_REPLY[language]));
-          }
-          controller.close();
-          return;
         } catch (e) {
           console.error(`[trip-questions] model attempt ${attempt} failed:`, e);
           // No point spending a second call on a credential that cannot
