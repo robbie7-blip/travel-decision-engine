@@ -310,6 +310,30 @@ yourself - never write a raw local-currency figure anywhere in the output.
 Output ONLY the final JSON matching the schema. Do not write any other text before, between, or after - no \
 commentary.`;
 
+/** The third case, and it exists because the other two both lie about it.
+ *
+ * SEARCH_INSTRUCTIONS says "use the tool ONLY for lodging price research",
+ * which on a trip with its own hotel is an invitation to research
+ * something the brief has forbidden. NO_SEARCH_INSTRUCTIONS says "every
+ * destination's lodging price has already been verified - reuse those
+ * exact figures", which is false when there are no figures and no lodging.
+ *
+ * A model handed either one, next to "do NOT include any accommodation
+ * line items", is being asked to reconcile a contradiction we wrote. */
+const NO_LODGING_INSTRUCTIONS = `No web_search tool is available for this generation, and none is needed: \
+the traveler has already arranged their own accommodation, so there is no lodging to price. Do not produce \
+accommodation line items, and exclude accommodation from the budget entirely.
+
+Do not search for meals, activities, or transport either - a separate, much faster automated step verifies named \
+meal/activity venues (real business, open/closed status, rating, price tier) right after you finish. Still name a \
+real, specific venue per the NAME SPECIFIC VENUES rule, give your best hedged price estimate, and set \
+source_confidence to "inferred" and source_urls to an empty array for those.
+
+CURRENCY: estimate any price in EUR yourself - never write a raw local-currency figure anywhere in the output.
+
+Output ONLY the final JSON matching the schema. Do not write any other text before, between, or after - no \
+commentary.`;
+
 class ModelOutputError extends Error {}
 
 /** The last text block of a model response, as a string, whatever came
@@ -768,12 +792,16 @@ async function callModel(
       { type: "text", text: SYSTEM_PROMPT },
       {
         type: "text",
-        text: skipSearch ? NO_SEARCH_INSTRUCTIONS : SEARCH_INSTRUCTIONS,
+        text: !brief.needs_lodging
+          ? NO_LODGING_INSTRUCTIONS
+          : skipSearch
+            ? NO_SEARCH_INSTRUCTIONS
+            : SEARCH_INSTRUCTIONS,
         cache_control: { type: "ephemeral" },
       },
     ],
     output_config: { effort: EFFORT },
-    ...(skipSearch
+    ...(skipSearch || !brief.needs_lodging
       ? {}
       : {
           tools: [
@@ -2655,10 +2683,26 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     } else {
       // Both reads go together - same keys, and the pipeline needs the
       // structured entries as much as the prompt needs the formatted ones.
-      const [cachedLodgingFacts, cachedLodgingEntries] = await Promise.all([
-        loadCachedLodgingFacts(redis, job.brief.destinations),
-        loadCachedLodgingEntries(redis, job.brief.destinations),
-      ]);
+      //
+      // AND NEITHER IS READ AT ALL when the traveler already has a bed.
+      // This is the third door onto the same bug, and the one that would
+      // have reopened it: gating the live lookup stops a SEARCH, but a city
+      // someone else's trip already cached costs nothing to read, and the
+      // formatted facts go straight into the prompt text. The frame and the
+      // single-call prompt would then carry
+      //
+      //   "Rome: verified EUR 190/night at Hotel X, checked 3h ago"
+      //
+      // a few lines from "do NOT include any accommodation line items".
+      // Rome is a popular destination; the cache entry is written by any
+      // other traveler's Rome trip, so this would have come back on its own
+      // without a single line of code changing.
+      const [cachedLodgingFacts, cachedLodgingEntries] = job.brief.needs_lodging
+        ? await Promise.all([
+            loadCachedLodgingFacts(redis, job.brief.destinations),
+            loadCachedLodgingEntries(redis, job.brief.destinations),
+          ])
+        : [{} as Record<string, string>, new Map<string, CachedLodgingFact>()];
 
       // Anything already cached is free and phase 1 gets it immediately.
       // Anything missing needs live searches, and those used to run BEFORE

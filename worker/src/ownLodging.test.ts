@@ -108,6 +108,18 @@ function planJson(): string {
   });
 }
 
+/** What the SINGLE-CALL path returns: the frame's fields and the days in
+ * one object. Used only in the forced-fallback scenario, where phase 1 is
+ * made unusable on purpose. */
+function wholeItineraryJson(): string {
+  const base = JSON.parse(frameJson());
+  const dates = ["2027-03-18", "2027-03-19", "2027-03-20"];
+  return JSON.stringify({
+    ...base,
+    days: dates.map((date, i) => JSON.parse(dayJson(i + 1, date))),
+  });
+}
+
 function dayJson(day: number, date: string): string {
   return JSON.stringify({
     day,
@@ -136,16 +148,20 @@ interface Seen {
   kinds: string[];
   systems: string[];
   prompts: string[];
+  /** Serialized `tools` per call, so the test can assert on what the model
+   * was HANDED, not only what it was told. */
+  tools: string[];
 }
 
-function makeClient(seen: Seen, disobedient = false): Anthropic {
+function makeClient(seen: Seen, disobedient = false, forceFallback = false): Anthropic {
   let dayIndex = 0;
   const dates = ["2027-03-18", "2027-03-19", "2027-03-20"];
   return {
-    messages: fakeMessages(async (params: { system?: unknown; messages?: unknown }) => {
+    messages: fakeMessages(async (params: { system?: unknown; messages?: unknown; tools?: unknown }) => {
       const sys = JSON.stringify(params.system ?? "");
       seen.systems.push(sys);
       seen.prompts.push(JSON.stringify(params.messages ?? ""));
+      seen.tools.push(JSON.stringify((params as { tools?: unknown }).tools ?? ""));
       const kind = sys.includes("STAGE 1A")
         ? "frame"
         : sys.includes("STAGE 1B")
@@ -161,7 +177,7 @@ function makeClient(seen: Seen, disobedient = false): Anthropic {
       const text = ((): string => {
         switch (kind) {
           case "frame":
-            return frameJson();
+            return forceFallback ? "not json at all" : frameJson();
           case "plan":
             return disobedient ? disobedientPlanJson() : planJson();
           case "day": {
@@ -175,7 +191,9 @@ function makeClient(seen: Seen, disobedient = false): Anthropic {
             // itinerary on a needs_lodging: false brief, that is the defect.
             return JSON.stringify({ name: "Hotel Somewhere Else", area: "Termini" });
           default:
-            return "{}";
+            // The single-call fallback lands here: it carries no STAGE
+            // marker, because it is the whole itinerary in one request.
+            return forceFallback ? wholeItineraryJson() : "{}";
         }
       })();
       // The real client returns a Message, and the pipeline reads
@@ -221,7 +239,7 @@ function makeRedis(store: Map<string, string>): Redis {
   } as unknown as Redis;
 }
 
-async function run(label: string, needsLodging: boolean, seedCache = false, disobedient = false) {
+async function run(label: string, needsLodging: boolean, seedCache = false, disobedient = false, forceFallback = false) {
   section(label);
   const store = new Map<string, string>();
   const id = `own-lodging-${needsLodging ? "needs" : "has"}-${seedCache ? "cached" : "cold"}${disobedient ? "-disobedient" : ""}`;
@@ -248,8 +266,8 @@ async function run(label: string, needsLodging: boolean, seedCache = false, diso
     });
   }
 
-  const seen: Seen = { kinds: [], systems: [], prompts: [] };
-  await processJob(redis, makeClient(seen, disobedient), id);
+  const seen: Seen = { kinds: [], systems: [], prompts: [], tools: [] };
+  await processJob(redis, makeClient(seen, disobedient, forceFallback), id);
   const finished: Job = JSON.parse(store.get(jobKey(id))!);
 
   check("the job completed", finished.status === "done", finished.status);
@@ -320,7 +338,7 @@ async function main() {
     // with the city already cached. Nothing here needs a lookup, so the
     // lookup gate cannot help: only the brief check on the accommodation
     // itself stops a cached hotel being handed to the day calls.
-    const { finished } = await run(
+    const { finished, seen } = await run(
       "needs_lodging: false, cached city, and a plan that asks for lodging anyway",
       false,
       true,
@@ -336,8 +354,40 @@ async function main() {
     );
     check(
       "and the cached hotel never reaches the itinerary",
-      !JSON.stringify(finished.result ?? {}).includes("Hotel Somewhere Else"),
+      !JSON.stringify(finished.result ?? {}).includes(CACHED_HOTEL),
       "a cached hotel reached a trip that did not need one"
+    );
+    // The assertion that matters most, and the one the first version of
+    // this suite was missing: not just "it stayed out of the output" but
+    // "the model was never shown it". Checking the output alone passes
+    // whenever the model happens to behave, which is exactly the kind of
+    // test that lets this bug back in.
+    check(
+      "and the model was never SHOWN the cached hotel",
+      !seen.prompts.some((p) => p.includes(CACHED_HOTEL)) &&
+        !seen.systems.some((p) => p.includes(CACHED_HOTEL)),
+      "a cached hotel was injected into the prompt of a trip that needs no lodging"
+    );
+  }
+
+  {
+    // The single-call fallback, which the two-phase path drops to when
+    // phase 1 fails. It is the ONLY generation call that can carry a
+    // web_search tool, and that tool exists for exactly one purpose:
+    // pricing lodging. On a trip that needs none it is latency and an
+    // invitation, so it must not be attached - and the instruction block
+    // beside it must not claim cached figures that do not exist.
+    const { seen } = await run("needs_lodging: false, forced down the single-call path", false, false, false, true);
+    const searchy = seen.tools.filter((t) => t.includes("web_search"));
+    check(
+      "the fallback call attaches no web_search tool",
+      searchy.length === 0,
+      `${searchy.length} call(s) carried a search tool`
+    );
+    check(
+      "and is not told that lodging prices were already verified",
+      !seen.systems.some((p) => p.includes("already been verified")),
+      "the no-search text claimed cached lodging figures on a trip with none"
     );
   }
 
