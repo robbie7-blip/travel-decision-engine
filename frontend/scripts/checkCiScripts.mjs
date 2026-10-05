@@ -61,6 +61,30 @@ const NOT_IN_CI = {
   // Long-running or interactive, not a check.
   dev: "development server",
   start: "production server",
+  // The one entry here that is an admission rather than a category, so it
+  // says what happened.
+  //
+  // check:touch-targets drives the real pages in a headless browser, and
+  // in CI it did not finish. Four runs out of five sat on that one step
+  // for SIX HOURS - GitHub's job limit - and were cancelled, which took
+  // the whole frontend job red from 2026-09-19 to 2026-10-05 and, because
+  // Railway waits for the check suite, stopped the worker deploying too.
+  // One guard I added cost sixteen days of CI.
+  //
+  // Two separate unbounded waits were found and fixed in it: spawnSync
+  // draining a stdout pipe that Chromium's children still held, and a
+  // fetch with no timeout in a loop that counted attempts rather than
+  // seconds. It still did not terminate reliably afterwards, and a check
+  // that cannot be made to stop does not belong in front of every push -
+  // least of all during a launch, where the cost of CI being red is paid
+  // by deploys that do not happen.
+  //
+  // So it is a tool you run, not a gate: `npm run check:touch-targets`
+  // before shipping anything that touches a control's size. That is a
+  // weaker promise than a CI step and this comment is the price of
+  // admitting it. checkPrint.mjs keeps its browser work manual for a
+  // related reason, stated there.
+  "check:touch-targets": "drives a headless browser; hung CI for six hours a run until it was removed",
 };
 
 const problems = [];

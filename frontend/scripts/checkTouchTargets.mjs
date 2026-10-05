@@ -27,10 +27,21 @@
 // see that a button inside .trip-form-grid is already covered by an
 // ancestor rule, so it reports every one of them and proves nothing.
 //
-// It runs after `npm run build` in CI (see .github/workflows/checks.yml),
-// where the runner already has Chrome, and it drives the real pages rather
-// than a fixture so that a control added to a page is covered by being on
-// that page at all.
+// IT IS NOT IN CI, and that is a retreat rather than a design. It was,
+// from 2026-09-19, and it hung GitHub's runner for SIX HOURS a run - the
+// job limit - on four runs out of five, taking the frontend job red for
+// sixteen days and blocking Railway, which waits for the check suite. Two
+// unbounded waits in here were found and fixed (see measure() and
+// waitForServer) and it still would not reliably terminate, so it was
+// pulled back out. checkCiScripts.mjs records that as its reason.
+//
+// Run it by hand before shipping anything that changes a control's size:
+//
+//     npm run build && npm run check:touch-targets
+//
+// It drives the real pages rather than a fixture, so a control added to a
+// page is covered by being on that page at all - which is the property
+// worth keeping even without a gate enforcing it.
 //
 // HOW THE MEASUREMENT WORKS, and why it is not just a narrow window.
 // Headless Chromium enforces a 500px MINIMUM layout viewport and crops
@@ -47,7 +58,7 @@
 // had already fixed them to 44x44.
 
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -60,11 +71,27 @@ const PUBLIC = join(FRONTEND, "public");
  * opinion about what the bar is. */
 const MIN = 44;
 
-/** Measured at 390 - iPhone 12/13/14/15, the most common phone width in
- * the wild - and at 360, the most common Android one. Not at 320: the
- * header is allowed to reflow below 346px (see .header-account-group) and
- * a second reflow is a different check, not this one. */
-const WIDTHS = [390, 360];
+/** 390 - iPhone 12/13/14/15, the most common phone width in the wild.
+ *
+ * It measured 360 as well, the commonest Android width, and that is now
+ * gone: it doubled the number of browser launches for a second reading
+ * that has never once disagreed with the first. Every control here is
+ * sized by a min-height that does not consult the viewport, so a width
+ * that finds nothing at 390 finds nothing at 360. Halving the launches is
+ * worth more than a duplicate answer in a check that has to survive a CI
+ * runner.
+ *
+ * Not at 320 either: the header is allowed to reflow below 346px (see
+ * .header-account-group), and a reflow is a different question. */
+const WIDTHS = [390];
+
+/** A whole-run ceiling, separate from the per-launch one.
+ *
+ * Thirty launches that each take just under their own timeout is still
+ * three quarters of an hour, and "slow enough to look broken" is a
+ * failure this check has already inflicted on CI once. Past this it stops
+ * and says so, which is a result; hanging is not. */
+const MAX_TOTAL_MS = 8 * 60 * 1000;
 
 /** The pages this drives, and what it deliberately leaves out.
  *
@@ -373,13 +400,34 @@ server.stderr.on("data", (chunk) => {
   serverLog += chunk;
 });
 
+// The server exiting is a result, not something to wait out. Without this
+// a dead `next start` left the loop below polling a port nobody holds.
+let serverExited = false;
+server.on("exit", (code, signal) => {
+  serverExited = true;
+  serverLog += `\n[next start exited: code ${code}, signal ${signal}]`;
+});
+
+/** Polls until the server answers, and is bounded in three ways because
+ * this one function hung a ten-minute run with no output at all.
+ *
+ * fetch() has NO DEFAULT TIMEOUT. A request to a port nothing is
+ * listening on usually fails at once, but "usually" is not "always" - the
+ * run that exposed this sat in ep_poll with no children, no listening
+ * port, and no way to tell anyone - so every call now carries its own
+ * deadline, the loop carries a wall-clock one rather than counting
+ * attempts, and a server that has exited ends it immediately. */
 async function waitForServer() {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    if (serverExited) return false;
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/__touch-probe.html`);
+      const res = await fetch(`http://127.0.0.1:${port}/__touch-probe.html`, {
+        signal: AbortSignal.timeout(2000),
+      });
       if (res.ok) return true;
     } catch {
-      /* not up yet */
+      /* not up yet, or this attempt timed out */
     }
     await new Promise((done) => setTimeout(done, 500));
   }
@@ -397,29 +445,75 @@ if (!(await waitForServer())) {
   ]);
 }
 
-/** One page at one width, measured. */
+/** One page at one width, measured.
+ *
+ * THE DOM COMES BACK THROUGH A FILE, NOT A PIPE, and that is the whole
+ * reason this function looks the way it does.
+ *
+ * It used to be spawnSync with stdout piped and `timeout: 90_000`, which
+ * reads as bounded and is not. Node's timeout kills the process it
+ * started; Chromium's zygote and renderer children inherit the stdout
+ * pipe, and spawnSync goes on draining that pipe until every holder of
+ * the far end exits. So the timeout fires, the browser dies, and the call
+ * keeps waiting on grandchildren.
+ *
+ * It hung GitHub Actions for SIX HOURS a run - the job limit - on four of
+ * five runs, which is how this guard went from catching a real defect to
+ * being the reason CI was red for two weeks and Railway would not deploy.
+ * Locally it merely looked slow, because here the children did eventually
+ * exit, so nothing said the mechanism was wrong.
+ *
+ * Writing to a real file descriptor removes the pipe, and with it the
+ * thing spawnSync can block on. --no-zygote stops the extra process being
+ * forked at all, and --disable-dev-shm-usage is the standard fix for a CI
+ * runner's small /dev/shm, where Chromium otherwise dies in ways that look
+ * like a hang. */
 function measure(page, width) {
   const url = `http://127.0.0.1:${port}/__touch-probe.html?p=${encodeURIComponent(page)}&w=${width}`;
-  const run = spawnSync(
-    chrome,
-    [
-      "--headless=new",
-      "--no-sandbox",
-      "--disable-gpu",
-      "--hide-scrollbars",
-      "--window-size=1400,3200",
-      // Fast-forwards the probe's own timers so --dump-dom sees the result
-      // rather than "PENDING".
-      "--virtual-time-budget=14000",
-      "--dump-dom",
-      url,
-    ],
-    { encoding: "utf8", timeout: 90_000, maxBuffer: 64 * 1024 * 1024 }
-  );
-  if (run.status !== 0 && !run.stdout) {
-    return { error: `chrome exited ${run.status}: ${(run.stderr || "").slice(0, 300)}` };
+  const dumpPath = join(PUBLIC, `__touch-dump-${process.pid}.html`);
+  let fd;
+  let run;
+  try {
+    fd = openSync(dumpPath, "w");
+    run = spawnSync(
+      chrome,
+      [
+        "--headless=new",
+        "--no-sandbox",
+        "--no-zygote",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--hide-scrollbars",
+        "--window-size=1400,3200",
+        // Fast-forwards the probe's own timers so --dump-dom sees the result
+        // rather than "PENDING".
+        "--virtual-time-budget=14000",
+        "--dump-dom",
+        url,
+      ],
+      // No pipes at all: stdout is the file, stderr is discarded.
+      { stdio: ["ignore", fd, "ignore"], timeout: 90_000 }
+    );
+  } catch (err) {
+    return { error: `could not run chrome: ${err.message}` };
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
-  const match = /<pre id="out">([\s\S]*?)<\/pre>/.exec(run.stdout || "");
+
+  let dom = "";
+  try {
+    dom = readFileSync(dumpPath, "utf8");
+  } catch {
+    /* nothing written */
+  } finally {
+    rmSync(dumpPath, { force: true });
+  }
+
+  if (!dom) {
+    const why = run?.error ? run.error.message : `chrome exited ${run?.status}`;
+    return { error: `chrome wrote no DOM (${why})` };
+  }
+  const match = /<pre id="out">([\s\S]*?)<\/pre>/.exec(dom);
   if (!match) return { error: "the probe's output element was not in the dumped DOM" };
   const payload = match[1].trim();
   if (payload === "PENDING") return { error: "the probe never finished (the page may not have loaded)" };
@@ -433,8 +527,36 @@ function measure(page, width) {
 const problems = [];
 let totalMeasured = 0;
 
+const startedAt = Date.now();
+
+/** The only bound that holds WHEREVER it is stuck.
+ *
+ * A deadline tested between iterations cannot help when one await never
+ * returns, which is exactly how this script hung: ten minutes inside a
+ * single fetch, never reaching the check at the top of the loop. A timer
+ * fires regardless of what the main flow is doing, so this is the one
+ * that turns "hangs forever" into "fails in eight minutes and says why".
+ * Cleared on the way out, or the process would sit waiting for it. */
+const watchdog = setTimeout(() => {
+  console.error(
+    `check:touch-targets gave up after ${Math.round(MAX_TOTAL_MS / 60000)} minutes.\n\n` +
+      `  It was still running when the whole-run ceiling expired, which means\n` +
+      `  something in the browser or the server is wedged rather than slow.\n` +
+      `  Nothing is wrong with the pages - this says the check could not ask.\n`
+  );
+  cleanup();
+  process.exit(1);
+}, MAX_TOTAL_MS);
+
 for (const page of pages) {
   for (const width of WIDTHS) {
+    if (Date.now() - startedAt > MAX_TOTAL_MS) {
+      problems.push(
+        `gave up after ${Math.round((Date.now() - startedAt) / 1000)}s with ${page} @${width} ` +
+          `still to measure - something is wrong with the browser, not with the pages`
+      );
+      break;
+    }
     const result = measure(page, width);
     if (result.error) {
       problems.push(`${page} @${width}: ${result.error}`);
@@ -469,6 +591,7 @@ for (const page of pages) {
   }
 }
 
+clearTimeout(watchdog);
 cleanup();
 
 if (problems.length > 0) {

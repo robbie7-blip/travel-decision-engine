@@ -1484,21 +1484,3 @@ jobs:
           # them is behind a runtime check, not a build-time one; if this
           # step ever starts needing a secret, that's the bug.
           NEXT_TELEMETRY_DISABLED: "1"
-      # No control under 44px on a phone. This one runs LAST and only here,
-      # because it is the only check in this file that needs the built app:
-      # it serves the real pages and measures them in Chromium at 390 and
-      # 360px, which is the only way to answer a question whose answer comes
-      # from font size, padding, flex context and inline styles together.
-      #
-      # Nine controls had shipped under 44px across seven pages, including
-      # the header link back to the trip form on every page and the 197
-      # country pills that are how you record a country on /account/visited.
-      # None of them looked wrong; a 15px link is legible, it is just not
-      # hittable, which is invisible on a laptop.
-      #
-      # ubuntu-latest ships Google Chrome, so there is nothing to download.
-      # If that ever stops being true the check FAILS rather than skipping -
-      # set CHROME_PATH here instead of letting it go quiet.
-      - run: npm run check:touch-targets
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
