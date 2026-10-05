@@ -708,6 +708,23 @@ export function ItineraryResult({
                         return leg (still deserves a real link even with no price to
                         second-guess), and a grounded, live-checked fare (the real number is
                         shown above, but the link is still worth keeping for a second look). */}
+                    {/* The ground-transport counterpart to the flight link below: a
+                        real route the traveler can open, on a line that has no venue
+                        to look up. Rendered unconditionally where it exists, because
+                        the trust score counts it - a link that raised the number
+                        without appearing on the page would be the score claiming a
+                        verification the reader cannot perform. */}
+                    {safeHref(item.directions_url ?? "") && (
+                      <a
+                        href={safeHref(item.directions_url ?? "") ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-ui"
+                        style={{ fontSize: 11, color: "var(--grounded)", textDecoration: "underline", marginTop: 4, display: "inline-block" }}
+                      >
+                        {t.result.getDirections} ↗
+                      </a>
+                    )}
                     {safeHref(item.flight_search_url ?? "") && (item.cost_estimate_eur === 0 || item.source_confidence === "grounded") && (
                       <a
                         href={safeHref(item.flight_search_url ?? "") ?? undefined}

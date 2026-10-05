@@ -11,7 +11,7 @@
     "test:brief-shape": "WORKER_NO_AUTOSTART=1 tsx src/briefShape.test.ts",
     "test:verify-overlap": "WORKER_NO_AUTOSTART=1 tsx src/verifyOverlap.test.ts",
     "test:quality": "WORKER_NO_AUTOSTART=1 tsx src/quality.test.ts",
-    "test": "npm run test:pipeline && npm run test:quality && npm run test:hours && npm run test:itinerary && npm run test:edges && npm run test:timing && npm run test:generation && npm run test:shape && npm run test:money && npm run test:model-json && npm run test:model-caps && npm run test:race-fallback && npm run test:concurrency && npm run test:venues && npm run test:accommodation-cache && npm run test:accommodation-pricing && npm run test:failure-log && npm run test:brief-shape && npm run test:verify-overlap && npm run test:travel && npm run test:timing-audit && npm run test:call-budget && npm run test:plan-repair && npm run test:own-lodging && npm run test:repair-constraints && npm run test:effort && npm run test:facts && npm run test:cost && npm run test:flight-pricing",
+    "test": "npm run test:pipeline && npm run test:quality && npm run test:hours && npm run test:itinerary && npm run test:edges && npm run test:timing && npm run test:generation && npm run test:shape && npm run test:money && npm run test:model-json && npm run test:model-caps && npm run test:race-fallback && npm run test:concurrency && npm run test:venues && npm run test:accommodation-cache && npm run test:accommodation-pricing && npm run test:failure-log && npm run test:brief-shape && npm run test:verify-overlap && npm run test:travel && npm run test:timing-audit && npm run test:call-budget && npm run test:plan-repair && npm run test:own-lodging && npm run test:repair-constraints && npm run test:effort && npm run test:facts && npm run test:cost && npm run test:flight-pricing && npm run test:directions",
     "test:hours": "WORKER_NO_AUTOSTART=1 tsx src/openingHours.test.ts",
     "test:itinerary": "WORKER_NO_AUTOSTART=1 tsx src/itinerary.test.ts",
     "test:edges": "WORKER_NO_AUTOSTART=1 tsx src/edgecases.test.ts",
@@ -35,7 +35,8 @@
     "test:effort": "tsx src/engine/effort.test.ts",
     "test:facts": "tsx src/engine/facts.test.ts",
     "test:cost": "tsx src/costBudget.test.ts",
-    "test:flight-pricing": "tsx src/flightPricing.test.ts"
+    "test:flight-pricing": "tsx src/flightPricing.test.ts",
+    "test:directions": "tsx src/directionsLinks.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

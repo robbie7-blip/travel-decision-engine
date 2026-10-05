@@ -70,6 +70,7 @@ import {
   NONSTREAMING_MAX_TOKENS,
 } from "./engine/callBudget";
 import { capEffort, readEffort, type Effort } from "./engine/effort";
+import { attachDirectionsLinks } from "./engine/directionsLinks";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -3317,6 +3318,13 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       if (!day || !Array.isArray(day.items)) continue;
       day.items.sort((a, b) => timeOrder(a.time) - timeOrder(b.time));
     }
+
+    // AFTER the sort, because this one reads each leg's neighbours to work
+    // out where the route runs from and to, and before the sort the items
+    // are in whatever order the model emitted them. After the repairs and
+    // Places verification too, so a leg is routed between the venues that
+    // actually shipped rather than ones since replaced or removed.
+    itinerary = attachDirectionsLinks(itinerary, job.brief);
 
     itinerary = deriveConfidenceTiers(itinerary);
 

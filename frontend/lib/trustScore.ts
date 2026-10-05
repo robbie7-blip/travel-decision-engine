@@ -53,7 +53,14 @@ export function computeTrustScore(itinerary: Itinerary): TrustScore {
       // items marked unverified while carrying a link the traveler can
       // click and confirm in one tap.
       const flightGrounded = item.flight_search_url != null;
-      if (searchGrounded || placesGrounded || flightGrounded) groundedCount++;
+      // And a ground leg's directions link, for exactly the reason the
+      // flight link is counted: a real, checkable URL built from the route
+      // rather than guessed. A metro ride has no business for Places to
+      // confirm, so without this every one of them counted against the
+      // score no matter how easily the traveler could check it - the same
+      // under-count the flight link above was added to fix.
+      const routeGrounded = item.directions_url != null;
+      if (searchGrounded || placesGrounded || flightGrounded || routeGrounded) groundedCount++;
     }
   }
   const percent = totalCount === 0 ? 100 : Math.round((groundedCount / totalCount) * 100);

@@ -207,6 +207,15 @@ export interface ItineraryItem {
   // (Google Flights runs its own fresh search when opened), but a real,
   // always-present place to check today's actual price.
   flight_search_url?: string;
+  // Populated by attachDirectionsLinks (worker/src/engine/directionsLinks.ts)
+  // for ground transport - the metro ride, the taxi, the walk between two
+  // areas. Exactly what flight_search_url is for a flight: a real,
+  // deterministically built link the traveler can open to check the leg,
+  // rather than a sentence asserting it. These items can carry no Places
+  // match (there is no business to look up), so until this existed every
+  // one of them was counted as unverified however checkable it was - the
+  // same gap flight_search_url was added to close for flights.
+  directions_url?: string;
   // Set by applyFlightPricing when the provider has price history for this
   // route - see FarePriceContext.
   fare_price_context?: FarePriceContext;

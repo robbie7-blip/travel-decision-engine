@@ -264,6 +264,7 @@ export interface Dictionary {
     // (see ItineraryResult.tsx) - the model's own guessed fare has turned
     // out badly wrong often enough that it's no longer shown as a number.
     checkFlightPrices: string;
+    getDirections: string;
     // Where a live-checked fare sits against that route's own historical
     // price range (see FarePriceContext) - a statement about observed
     // prices, deliberately never a prediction about future ones.
@@ -787,6 +788,7 @@ const en: Dictionary = {
     closedPermanently: "Permanently closed (Google)",
     viewOnGoogleMaps: "View on Google Maps",
     checkFlightPrices: "Check flight prices",
+    getDirections: "Directions",
     farePrice: {
       low: "Good price for this route",
       typical: "Normal price for this route",
@@ -1334,6 +1336,7 @@ const bg: Dictionary = {
     closedPermanently: "Трайно затворено (Google)",
     viewOnGoogleMaps: "Виж в Google Maps",
     checkFlightPrices: "Провери цени на полети",
+    getDirections: "Упътване",
     farePrice: {
       low: "Добра цена за този маршрут",
       typical: "Нормална цена за този маршрут",

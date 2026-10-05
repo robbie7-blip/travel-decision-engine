@@ -512,6 +512,13 @@ jobs:
       # defect by design. Reverting makes 12 cases here red, the first
       # reporting [240,150].
       - run: npm run test:flight-pricing
+      # Ground transport legs - the metro, the taxi, the walk between two
+      # areas. These carry no Places match (there is no business to look
+      # up), so every one of them was counted unverified however checkable
+      # it was, which was a visible slice of a real trip's 47% figure. The
+      # suite is mostly about the FALSE link: a route between the wrong two
+      # places is a verification claim the product has not earned.
+      - run: npm run test:directions
       - run: npm run test:call-budget
       # Which calls are allowed NOT to stream, and it is not a preference.
       # messages.create refuses a non-streaming request outright when
@@ -1354,6 +1361,11 @@ jobs:
       # private-path rule and the done-only rule makes 10 of 48 red.
       - run: npm run test:service-worker
       - run: npm run test:currency
+      # The "N% verified" figure on the front of every itinerary, which
+      # had no test at all. It is also duplicated with the worker's
+      # groundedRatio on purpose, and two drifting definitions of
+      # "verified" would be worse than none.
+      - run: npm run test:trust-score
       # Which bucket a request counts against - the single guard in front of
       # every public endpoint that costs money or sends mail. getClientIp
       # read x-forwarded-for and took the FIRST entry, which is the one part

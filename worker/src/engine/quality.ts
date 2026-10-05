@@ -1119,7 +1119,12 @@ export function groundedRatio(itinerary: Itinerary): {
       // this number is recorded per job and the traveler is shown the other
       // one, and two definitions of "verified" would be worse than none.
       const flightGrounded = item.flight_search_url != null;
-      if (searchGrounded || placesGrounded || flightGrounded) grounded++;
+      // A ground leg's directions link, on the same footing as the two
+      // above. See directionsLinks.ts: these items can carry no Places
+      // match because there is no business to look up, so every one of
+      // them scored zero however checkable it was.
+      const routeGrounded = item.directions_url != null;
+      if (searchGrounded || placesGrounded || flightGrounded || routeGrounded) grounded++;
     }
   }
   return {

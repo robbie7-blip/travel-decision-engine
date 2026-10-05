@@ -51,12 +51,13 @@
     "test:service-worker": "tsx lib/serviceWorker.test.ts",
     "test:recent-trips": "tsx lib/recentTrips.test.ts",
     "test:currency": "tsx lib/currency.test.ts",
+    "test:trust-score": "tsx lib/trustScore.test.ts",
     "test:validation": "tsx lib/validation.test.ts",
     "test:render-trip": "TSX_TSCONFIG_PATH=./tsconfig.render.json tsx lib/renderTrip.test.tsx",
     "test:render-trip-form": "TSX_TSCONFIG_PATH=./tsconfig.render.json tsx lib/renderTripForm.test.tsx",
     "test:result-format": "tsx lib/resultFormat.test.ts",
     "test:env-number": "tsx lib/envNumber.test.ts",
-    "test": "npm run test:linkify && npm run test:stats && npm run test:validation && npm run test:result-format && npm run test:env-number && npm run test:itinerary-links && npm run test:weather && npm run test:ics && npm run test:local-visited && npm run test:curated && npm run test:stats-share && npm run test:edge-rate-limit && npm run test:ratelimit && npm run test:site-url && npm run test:admin-auth && npm run test:admin-gate && npm run test:session && npm run test:airports && npm run test:country-points && npm run test:dart-globe && npm run test:flight-import && npm run test:spin && npm run test:city-options && npm run test:time-options && npm run test:trip-qa-context && npm run test:same-origin && npm run test:auth-verify-page && npm run test:subscription-event && npm run test:refine-source && npm run test:public-brief && npm run test:job-record && npm run test:worker-failure && npm run test:job-ttl && npm run test:service-worker && npm run test:recent-trips && npm run test:currency && npm run test:render-trip && npm run test:render-trip-form",
+    "test": "npm run test:linkify && npm run test:stats && npm run test:validation && npm run test:result-format && npm run test:env-number && npm run test:itinerary-links && npm run test:weather && npm run test:ics && npm run test:local-visited && npm run test:curated && npm run test:stats-share && npm run test:edge-rate-limit && npm run test:ratelimit && npm run test:site-url && npm run test:admin-auth && npm run test:admin-gate && npm run test:session && npm run test:airports && npm run test:country-points && npm run test:dart-globe && npm run test:flight-import && npm run test:spin && npm run test:city-options && npm run test:time-options && npm run test:trip-qa-context && npm run test:same-origin && npm run test:auth-verify-page && npm run test:subscription-event && npm run test:refine-source && npm run test:public-brief && npm run test:job-record && npm run test:worker-failure && npm run test:job-ttl && npm run test:service-worker && npm run test:recent-trips && npm run test:currency && npm run test:render-trip && npm run test:render-trip-form && npm run test:trust-score",
     "test:itinerary-links": "tsx lib/itineraryLinks.test.ts"
   },
   "dependencies": {
