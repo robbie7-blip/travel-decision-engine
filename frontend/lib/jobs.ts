@@ -134,7 +134,13 @@ export type QualityCheckId =
   // note above them in engine/quality.ts.
   | "decisions_justified"
   | "skips_explained"
-  | "minimum_covers_lodging";
+  | "minimum_covers_lodging"
+  // A thing the traveler said they cannot do or will not accept, which the
+  // itinerary does anyway and which swapping a venue would not fix - a
+  // night bus against "no overnight travel". The replaceable ones are
+  // repaired instead and never reach the report; this id exists for the
+  // rest, because a violation nobody can see is worse than an unfixed one.
+  | "stated_constraints";
 
 export interface QualityFinding {
   check: QualityCheckId;

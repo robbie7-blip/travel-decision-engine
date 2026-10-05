@@ -106,6 +106,15 @@ function dayJson(day: number, date: string): string {
         source_confidence: "inferred",
       },
       {
+        time: "07:00",
+        type: "transport",
+        title: "Overnight bus from the airport",
+        location: "Fiumicino",
+        cost_estimate_eur: 8,
+        reasoning: "r",
+        source_confidence: "inferred",
+      },
+      {
         time: "10:00",
         type: "activity",
         title: "Walk the centre",
@@ -141,12 +150,28 @@ function makeClient(seen: Seen): Anthropic {
           const i = dayIndex++;
           return dayJson(i + 1, dates[i] ?? dates[dates.length - 1]);
         }
-        if (sys.includes("checking a travel itinerary's restaurants")) {
+        if (sys.includes("things the traveler told us")) {
           seen.dietaryScreenPrompts.push(user);
-          // Flag the first venue in the list: the trip's duplicate
-          // restaurant, which is exactly what a shellfish allergy would
-          // trip over at a place called "Trattoria del Mare".
-          return JSON.stringify({ unsuitable: [1] });
+          // Found by reading the numbered list rather than assuming its
+          // order: items are sorted by time before this stage runs, so
+          // hardcoded indices silently point at the wrong rows - which is
+          // how the first version of this test "passed" while flagging a
+          // transport leg for a shellfish allergy.
+          const numberOf = (needle: string): number => {
+            // `user` is JSON.stringify of the messages, so its newlines are
+            // the two characters backslash-n, not real line breaks.
+            const line = user.split("\\n").find((l) => l.includes(needle)) ?? "";
+            return Number(line.trim().match(/(\d+)\./)?.[1] ?? 0);
+          };
+          const meal = numberOf("Trattoria Doppia");
+          const bus = numberOf("Overnight bus");
+          return JSON.stringify({
+            violations: [
+              // One the venue repair can fix, one it cannot.
+              { item: meal, constraint: ALLERGY },
+              { item: bus, constraint: HARD_NO },
+            ],
+          });
         }
         if (sys.includes("fixing ONE line")) {
           seen.venueRepairPrompts.push(user);
@@ -285,13 +310,32 @@ async function main() {
   );
   check(
     "a flagged venue is sent for replacement with the reason",
-    seen.venueRepairPrompts.some((p) => p.includes("could not")),
-    "a flagged venue never reached the repair, or reached it without a reason"
+    seen.venueRepairPrompts.some((p) => p.includes(ALLERGY)),
+    "a flagged venue never reached the repair, or reached it without the constraint it breaks"
   );
   check(
     "and the flagged venue is gone from the trip",
     !JSON.stringify(finished.result ?? {}).includes("Trattoria Doppia"),
     "a venue the screen flagged survived into the itinerary"
+  );
+
+  section("a violation a venue swap cannot fix is surfaced, not swallowed");
+
+  const stated = (finished.quality?.findings ?? []).filter((f) => f.check === "stated_constraints");
+  check(
+    "it becomes a finding on the trip's own quality report",
+    stated.length === 1,
+    `${stated.length} stated_constraints finding(s)`
+  );
+  check(
+    "recorded as a defect, so the gate does not report a pass",
+    stated[0]?.severity === "defect" && finished.quality?.passed === false,
+    `severity ${stated[0]?.severity}, passed ${finished.quality?.passed}`
+  );
+  check(
+    "and it names the constraint it breaks",
+    (stated[0]?.detail ?? "").includes(HARD_NO),
+    stated[0]?.detail ?? "(no detail)"
   );
 
   finish();

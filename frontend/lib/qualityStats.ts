@@ -44,6 +44,7 @@ export const QUALITY_CHECKS: { id: QualityCheckId; label: string }[] = [
   { id: "decisions_justified", label: "Decision with no reason or tradeoff" },
   { id: "skips_explained", label: "Skipped something without saying why" },
   { id: "minimum_covers_lodging", label: "Minimum estimate below its own beds" },
+  { id: "stated_constraints", label: "Breaks something the traveler said they cannot do" },
 ];
 
 export interface QualitySnapshot {

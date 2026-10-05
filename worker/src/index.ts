@@ -1636,21 +1636,31 @@ export async function generatePhase1Half<T>(
  *
  * Runs only when the traveler stated a constraint, so trips without one
  * pay nothing - no call, no latency. */
-const DIETARY_SCREEN_SYSTEM = `You are checking a travel itinerary's restaurants against what the traveler \
-cannot eat.
+const CONSTRAINT_SCREEN_SYSTEM = `You are checking a travel itinerary against things the traveler told us \
+they cannot do or will not accept.
 
-You will be given the traveler's stated dietary constraints and a numbered list of venues from their trip. \
-Return the numbers of the venues that CLEARLY cannot feed this traveler - a place whose menu is built around \
-the thing they must avoid, such as a seafood restaurant for a shellfish allergy, a steakhouse for a \
-vegetarian, or a place that is famously only one thing they cannot have.
+You will be given their stated constraints - any of dietary, mobility, and hard limits - and a numbered list \
+of the itinerary's items. Return the numbers of the items that CLEARLY violate one of those constraints, each \
+with the constraint it breaks.
 
-Do NOT flag a venue because it merely might have the ingredient on the menu, might cross-contaminate, or has \
-not confirmed it caters to the constraint. Nearly every restaurant would qualify under that reading, and a \
-list that long is the same as no list. Flag the ones where the traveler would arrive and have nothing to eat.
+What counts as clear:
+- dietary: a place whose menu is built around the thing they must avoid - a seafood restaurant for a shellfish \
+allergy, a steakhouse for a vegetarian. The test is whether they would arrive and have nothing to eat.
+- mobility: something well known to be physically demanding in the way they described - a steep climb, a \
+tower with stairs and no lift, a long walking tour - for someone who said they cannot do that. Judge the \
+ACTIVITY, which you know about, not a specific building's door width, which you do not.
+- hard limits: the item is the thing they said they did not want.
 
-If none clearly fail, return an empty list.
+What does NOT count, and matters more than the list above, because the failure mode here is flagging \
+everything:
+- "might have it on the menu", "might cross-contaminate", "has not confirmed they cater to this"
+- "might involve some walking", "might have a step somewhere", "accessibility is not stated"
+- anything you are guessing at. If you are unsure, do not flag it.
 
-Respond with ONLY this JSON, no other text: {"unsuitable": [<numbers>]}`;
+Nearly every item would qualify under the loose reading, and a list that long is the same as no list.
+
+Respond with ONLY this JSON, no other text:
+{"violations": [{"item": <number>, "constraint": "<the exact constraint text it breaks>"}]}`;
 
 /** The venues the screen says this traveler cannot eat at.
  *
@@ -1658,74 +1668,111 @@ Respond with ONLY this JSON, no other text: {"unsuitable": [<numbers>]}`;
  * the same reason the missing-meal repair buffers its fills: verification
  * rewrites day.items concurrently, and two stages mutating that array at
  * once is a real race. */
-async function screenDietaryConflicts(
+async function screenStatedConstraints(
   client: Anthropic,
   brief: TripBriefInput,
   itinerary: Itinerary,
   onUsage?: (usage: ModelUsage, model?: string) => void
-): Promise<{ item: ItineraryItem; day: ItineraryDay; reason: string }[]> {
-  if (brief.dietary_constraints.length === 0) return [];
+): Promise<{
+  /** Flagged items the venue repair can actually fix: a named meal or
+   * activity, where swapping the venue solves it. */
+  repairable: { item: ItineraryItem; day: ItineraryDay; reason: string }[];
+  /** Flagged items it cannot - a transport leg, an unnamed item, anything
+   * where the problem is not which venue was chosen. Surfaced on the trip
+   * page instead, because a violation nobody can see is worse than one
+   * that is merely unfixed. */
+  surfaced: { day: number; detail: string }[];
+}> {
+  const stated = [
+    ...brief.dietary_constraints,
+    ...brief.mobility_constraints,
+    ...brief.hard_no,
+  ].filter((c) => c.trim());
+  if (stated.length === 0) return { repairable: [], surfaced: [] };
+
   const candidates: { item: ItineraryItem; day: ItineraryDay }[] = [];
   for (const day of itinerary.days ?? []) {
-    for (const item of day.items) {
-      if (item.type !== "meal") continue;
-      if (typeof item.venue_name !== "string" || !item.venue_name.trim()) continue;
-      candidates.push({ item, day });
-    }
+    for (const item of day.items) candidates.push({ item, day });
   }
-  if (candidates.length === 0) return [];
+  if (candidates.length === 0) return { repairable: [], surfaced: [] };
 
   try {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: REPAIR_MAX_TOKENS,
-      system: DIETARY_SCREEN_SYSTEM,
+      system: CONSTRAINT_SCREEN_SYSTEM,
       output_config: { effort: EXTRACT_EFFORT },
       messages: [
         {
           role: "user",
           content:
-            `Dietary constraints: ${brief.dietary_constraints.join(", ")}\n` +
-            `Venues:\n` +
+            (brief.dietary_constraints.length
+              ? `Dietary constraints: ${brief.dietary_constraints.join(", ")}\n`
+              : "") +
+            (brief.mobility_constraints.length
+              ? `Mobility constraints: ${brief.mobility_constraints.join(", ")}\n`
+              : "") +
+            (brief.hard_no.length ? `Hard limits (must not violate): ${brief.hard_no.join(", ")}\n` : "") +
+            `\nItinerary items:\n` +
             candidates
-              .map((c, i) => `${i + 1}. ${c.item.venue_name} - ${c.item.title} (${c.item.location || ""})`)
+              .map(
+                (c, i) =>
+                  `${i + 1}. [day ${c.day.day}] ${c.item.time} (${c.item.type}) ${c.item.title}` +
+                  (c.item.venue_name ? ` - ${c.item.venue_name}` : "")
+              )
               .join("\n"),
         },
       ],
     });
     onUsage?.(response.usage, response.model);
     if (response.stop_reason === "max_tokens") {
-      console.error(`[worker] dietary screen hit the ${REPAIR_MAX_TOKENS}-token cap before emitting JSON`);
-      return [];
+      console.error(`[worker] constraint screen hit the ${REPAIR_MAX_TOKENS}-token cap before emitting JSON`);
+      return { repairable: [], surfaced: [] };
     }
-    const parsed = JSON.parse(extractJson(lastTextOf(response))) as { unsuitable?: unknown };
-    const numbers = Array.isArray(parsed.unsuitable) ? parsed.unsuitable : [];
-    const out: { item: ItineraryItem; day: ItineraryDay; reason: string }[] = [];
-    for (const n of numbers) {
+    const parsed = JSON.parse(extractJson(lastTextOf(response))) as { violations?: unknown };
+    const rows = Array.isArray(parsed.violations) ? parsed.violations : [];
+    const repairable: { item: ItineraryItem; day: ItineraryDay; reason: string }[] = [];
+    const surfaced: { day: number; detail: string }[] = [];
+    for (const row of rows) {
+      if (!row || typeof row !== "object") continue;
+      const r = row as { item?: unknown; constraint?: unknown };
       // 1-based, from a model. Anything that is not an in-range integer is
       // dropped rather than trusted into an array index.
-      const idx = typeof n === "number" && Number.isInteger(n) ? n - 1 : -1;
+      const idx = typeof r.item === "number" && Number.isInteger(r.item) ? r.item - 1 : -1;
       const hit = idx >= 0 && idx < candidates.length ? candidates[idx] : null;
       if (!hit) continue;
-      out.push({
-        ...hit,
-        reason:
-          `the traveler's dietary constraints (${brief.dietary_constraints.join(", ")}) mean they could not ` +
-          `eat here - the replacement must be somewhere they can`,
-      });
+      const constraint = typeof r.constraint === "string" && r.constraint.trim() ? r.constraint.trim() : stated.join(", ");
+      // Replaceable only when swapping the venue is the fix. A night bus
+      // that breaks "no overnight travel" is a real violation and a new
+      // restaurant name does not solve it.
+      const replaceable =
+        (hit.item.type === "meal" || hit.item.type === "activity") &&
+        typeof hit.item.venue_name === "string" &&
+        hit.item.venue_name.trim().length > 0;
+      if (replaceable) {
+        repairable.push({
+          ...hit,
+          reason: `the traveler stated: "${constraint}" - this venue breaks it, and the replacement must not`,
+        });
+      } else {
+        surfaced.push({
+          day: hit.day.day,
+          detail: `"${hit.item.title}" conflicts with a stated constraint: ${constraint}`,
+        });
+      }
     }
-    if (out.length > 0) {
+    if (repairable.length > 0 || surfaced.length > 0) {
       console.warn(
-        `[worker] dietary screen flagged ${out.length} venue(s) the traveler cannot eat at: ` +
-          out.map((o) => o.item.venue_name).join(", ")
+        `[worker] constraint screen flagged ${repairable.length} replaceable and ` +
+          `${surfaced.length} unreplaceable item(s)`
       );
     }
-    return out;
+    return { repairable, surfaced };
   } catch (e) {
     // Never fatal. A screen that cannot run must not take the trip with
-    // it; the constraint is still in every prompt that wrote the trip.
-    console.error("[worker] dietary screen failed, leaving venues as written:", e);
-    return [];
+    // it; the constraints are still in every prompt that wrote the trip.
+    console.error("[worker] constraint screen failed, leaving the itinerary as written:", e);
+    return { repairable: [], surfaced: [] };
   }
 }
 
@@ -3123,12 +3170,12 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // steakhouse, and that trip used to skip this stage entirely. Costs
     // nothing on a brief with no dietary constraints - the screen returns
     // immediately without a call.
-    const dietaryConflicts = await timed("dietary", () =>
-      screenDietaryConflicts(client, job.brief, itinerary, onUsage)
+    const constraintScreen = await timed("constraints", () =>
+      screenStatedConstraints(client, job.brief, itinerary, onUsage)
     );
 
     const needsSecondPass =
-      dietaryConflicts.length > 0 ||
+      constraintScreen.repairable.length > 0 ||
       duplicateVenueItems(itinerary.days ?? []).length > 0 ||
       (planDays.length > 0 &&
         (itinerary.days ?? []).some((day) => {
@@ -3139,7 +3186,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     if (needsSecondPass) {
       await timed("repairs", () =>
         Promise.all([
-          repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage, repaired, dietaryConflicts),
+          repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage, repaired, constraintScreen.repairable),
           planDays.length > 0
             ? repairMissingMeals(client, job.brief, planDays, itinerary, claimedVenues, onUsage).then((f) =>
                 applyMealFills(f, repaired)
@@ -3275,6 +3322,23 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // flaw is now RECORDED - on this job, and in the rolling quality
     // counters - instead of waiting to be noticed in a screenshot.
     const quality = assessQuality(itinerary, job.brief, planDays, planAccommodation);
+
+    // The constraint violations a venue swap could not fix, folded into the
+    // same report the trip page already renders. A defect, not a warning:
+    // the traveler stated this as something they cannot do, so an itinerary
+    // that does it anyway is broken for them whatever else is right about
+    // it - and the gate's own `passed` flag should say so.
+    for (const v of constraintScreen.surfaced) {
+      quality.findings.push({
+        check: "stated_constraints",
+        severity: "defect",
+        detail: v.detail,
+        day: v.day,
+      });
+      quality.defectCount += 1;
+    }
+    if (constraintScreen.surfaced.length > 0) quality.passed = false;
+
     job.quality = quality;
     console.log(`[worker] quality ${id}: ${summarizeQuality(quality)}`);
     void recordQualitySample(redis, quality);
