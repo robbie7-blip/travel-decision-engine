@@ -543,6 +543,15 @@ jobs:
       # three paid calls and the two-minute path. Reverting the repair makes
       # 20 cases here red; reverting the escalation makes 4.
       - run: npm run test:plan-repair
+      # A traveler who already has a bed must not be sold another one.
+      # Reported from a real Rome trip that named its hotel on the form and
+      # came back recommending a different one, with "accommodation lookup
+      # 17.9s" inside a 73.6s generation. The prompt was always right; the
+      # pipeline gated the live hotel search on the lodging CACHE and never
+      # on whether the trip needed lodging, so it searched anyway and handed
+      # the results to the day calls. A prohibition in the instructions and
+      # a dataset in the context point opposite ways.
+      - run: npm run test:own-lodging
       # Reasoning effort, which is now set per stage rather than globally -
       # because the measured calls are not alike: the plan took 68.8s to
       # produce ~400 tokens of JSON while the frame took 31.6s to produce

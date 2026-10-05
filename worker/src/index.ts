@@ -2001,7 +2001,14 @@ async function generateItineraryTwoPhase(
   // the lookup covered every city that needs a bed there is nothing left to
   // wait for. When it didn't, the frame's estimate is the only figure we
   // have and phase 2 genuinely cannot start without it.
-  let accommodation = accommodationFromLodging(plan, lodging, cachedLodging);
+  // Empty, and not merely unused, when the traveler has their own bed. The
+  // lookup is already skipped upstream for this case, but the CACHE is not
+  // - a city someone else's trip looked up is free to read and would be
+  // folded straight back in here, putting hotels in front of the day calls
+  // again on a brief that forbids them. Both doors, not one.
+  let accommodation = brief.needs_lodging
+    ? accommodationFromLodging(plan, lodging, cachedLodging)
+    : [];
   const waitedForFrame = accommodation === null;
   /** The frame's own per-night guess per city, which is what the trip's
    * budget minimum was calculated from. Filled from whichever half of the
@@ -2659,7 +2666,22 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       // 1 doesn't actually depend on. It now runs concurrently with phase 1
       // and is folded in before phase 2, which is the point at which the
       // itinerary genuinely needs it. Cache hits behave exactly as before.
-      const missing = job.brief.destinations.filter((d) => !(d in cachedLodgingFacts));
+      // NOT when the traveler already has a bed. This was gated on the
+      // cache alone, so a trip that supplied its own hotel still ran a live
+      // hotel search for every uncached city - 17.9 seconds of a 73.6
+      // second generation, reported from a real Rome trip, spent looking up
+      // something the brief had explicitly said was not needed.
+      //
+      // The cost was not only the clock. The prompt says "do NOT include
+      // any accommodation line items" and names where the traveler is
+      // staying; the lookup then handed the day calls a list of Rome
+      // hotels. A prohibition in the instructions and a dataset in the
+      // context point opposite ways, and the model is not wrong to believe
+      // the data - which is how that trip came back recommending a hotel
+      // other than the one its owner had booked.
+      const missing = job.brief.needs_lodging
+        ? job.brief.destinations.filter((d) => !(d in cachedLodgingFacts))
+        : [];
       const lodgingStartedAt = Date.now();
       const pendingLodging =
         missing.length > 0
