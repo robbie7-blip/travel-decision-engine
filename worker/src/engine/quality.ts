@@ -46,6 +46,7 @@ import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "../
 import type { QualityFinding, QualityReport } from "../jobs";
 export type { QualityCheckId, QualityFinding, QualityReport } from "../jobs";
 import {
+  PACE_ACTIVITY_BAND,
   requiredMeals,
   type MealSlot,
   type SkeletonAccommodation,
@@ -522,6 +523,10 @@ export function assessQuality(
   // --- days that aren't days -------------------------------------------
   const firstDay = Math.min(...days.map((d) => d.day));
   const lastDay = Math.max(...days.map((d) => d.day));
+  /** Activity counts for the days the pace is actually a claim about -
+   * collected here rather than recomputed below, so "which days count as
+   * full" is decided once and the two checks cannot disagree. */
+  const fullDayActivityCounts: number[] = [];
   for (const day of days) {
     const activities = day.items.filter((i) => i.type === "activity");
     // An arrival or departure day is exempt because the JOURNEY eats half
@@ -541,12 +546,74 @@ export function assessQuality(
     const usableHours = usableHoursFor(day, brief, firstDay, lastDay);
     const noRoom = usableHours !== null && usableHours < MIN_HOURS_FOR_ONE_ACTIVITY;
     const floor = noRoom ? 0 : isTravelDay ? MIN_ACTIVITIES_PER_TRAVEL_DAY : MIN_ACTIVITIES_PER_FULL_DAY;
+    if (!isTravelDay && !noRoom) fullDayActivityCounts.push(activities.length);
     if (activities.length < floor) {
       findings.push({
         check: "day_not_empty",
         severity: "defect",
         day: day.day,
         detail: `day ${day.day} has ${activities.length} thing(s) to do across ${day.items.length} item(s)`,
+      });
+    }
+  }
+
+  // --- the pace they asked for -----------------------------------------
+  //
+  // The last field on the form that nothing read. Pace reached every
+  // writing stage (it is in the trip block the frame, the plan and each
+  // day call all get), so this was never the accommodation bug - it is
+  // the quieter version: the word arrived, meant nothing specific to
+  // anyone, and no one would have noticed if it had been dropped on the
+  // way. PACE_ACTIVITY_BAND now gives it a meaning, the day prompt states
+  // it, and this reads the same numbers back off the finished trip.
+  //
+  // JUDGED PER TRIP, not per day, and that is the whole of what keeps it
+  // honest. One busy Tuesday on a relaxed trip is a good Tuesday, and a
+  // per-day version of this check would flag it and teach the owner to
+  // ignore the report. A trip whose full days AVERAGE outside the band
+  // asked for one thing and got another.
+  //
+  // A WARNING, deliberately, where a missing lunch is a defect. The band
+  // is a reading of three words a traveler picked off a form, not a
+  // contract they signed - and the honest severity for "this is probably
+  // not what you meant" is not the same as for "day 2 has no dinner".
+  // Warnings also leave `passed` alone, so nothing here can fail a
+  // generation the traveler would have been happy with.
+  //
+  // ONE-DIRECTIONAL per pace, like the budget minimum and the language
+  // check: only the side that contradicts the request is flagged. A
+  // relaxed trip is not warned for being extra calm, a packed one is not
+  // warned for being busier than its ceiling (checkFeasibility already
+  // owns genuine overpacking), and MODERATE is not checked at all -
+  // it is the middle, and the existing floor and overpacking flag already
+  // bracket it on both sides.
+  //
+  // And a full activity of slack past the band before anything is said.
+  // The band is what the day prompt ASKS for; this is the point at which
+  // the answer is a different trip from the one requested. A relaxed trip
+  // averaging four is at its target plus one and gets no finding; one
+  // averaging five was not planned relaxed at all.
+  if (fullDayActivityCounts.length > 0 && brief.pace !== "moderate") {
+    const band = PACE_ACTIVITY_BAND[brief.pace];
+    const total = fullDayActivityCounts.reduce((sum, n) => sum + n, 0);
+    const average = total / fullDayActivityCounts.length;
+    const rounded = Math.round(average * 10) / 10;
+    const dayWord = fullDayActivityCounts.length === 1 ? "its one full day" : `its ${fullDayActivityCounts.length} full days`;
+    if (brief.pace === "relaxed" && average > band.max + 1) {
+      findings.push({
+        check: "pace_matches",
+        severity: "warning",
+        detail:
+          `a relaxed trip, but ${dayWord} average ${rounded} things to do beyond the meals ` +
+          `(a relaxed day is ${band.min}-${band.max})`,
+      });
+    } else if (brief.pace === "packed" && average < band.min - 1) {
+      findings.push({
+        check: "pace_matches",
+        severity: "warning",
+        detail:
+          `a packed trip, but ${dayWord} average ${rounded} things to do beyond the meals ` +
+          `(a packed day is ${band.min}-${band.max})`,
       });
     }
   }
@@ -928,6 +995,86 @@ export function assessQuality(
         severity: "warning",
         day: day.day,
         detail: `day ${day.day} "${item.title}" starts ${left} min before closing`,
+      });
+    }
+  }
+
+  // --- language --------------------------------------------------------
+  //
+  // Did the trip come back in the language it was asked for? Nothing
+  // checked, and it is both the most visible failure the product has and
+  // the cheapest to detect: a Bulgarian traveler who receives an English
+  // itinerary does not need a subtle quality signal to notice.
+  //
+  // PROSE ONLY, and that is the whole care in this check. A Bulgarian
+  // itinerary is full of Latin text that is perfectly correct - venue
+  // names, hotel names, "Hotel Artemide", "Trastevere" - so counting
+  // letters across titles would flag a good trip. trip_summary and the
+  // per-item reasoning are the fields that are OURS to write, in their
+  // language, with no proper nouns forced into them.
+  //
+  // One-directional: this only fires for scripts that are unambiguous.
+  // There is no way to tell English prose from, say, Italian prose by
+  // character class, so a Latin-script target is not checked here at all
+  // rather than checked badly.
+  if (brief.language === "bg") {
+    const prose = [
+      typeof itinerary.trip_summary === "string" ? itinerary.trip_summary : "",
+      ...days.flatMap((day) =>
+        (day.items ?? []).map((item) => (typeof item.reasoning === "string" ? item.reasoning : ""))
+      ),
+    ]
+      .join(" ")
+      .trim();
+    // Counted by WORD, and the proper nouns are not counted at all.
+    //
+    // Counting letters was the obvious thing and it was wrong. Measured on
+    // a correct Bulgarian trip whose reasoning lines are terse - "Близо до
+    // Tegallalang Rice Terraces." - the letters came out 25% Cyrillic,
+    // under any floor worth setting, and the product would have told its
+    // traveler the trip came back in the wrong language. Three Latin words
+    // outweigh two Cyrillic ones when you weigh them by length, and the
+    // name of a place says nothing about the language of the sentence
+    // around it.
+    //
+    // So: the places named on the brief and every venue_name the itinerary
+    // carries are removed outright, and of what is left only the FUNCTION
+    // WORDS are weighed - a Latin word starting with a capital is skipped,
+    // because that is what a proper noun this check has never heard of
+    // looks like. What remains is "short walk from the hotel" against
+    // "близо до хотела", which is the actual question.
+    const names = [
+      ...days.flatMap((day) => (day.items ?? []).map((item) => item.venue_name)),
+      ...(brief.destinations ?? []),
+      brief.origin,
+      brief.accommodation_location,
+    ]
+      .filter((n): n is string => typeof n === "string" && n.trim().length > 1)
+      // Longest first, so "Hotel Real" is removed before "Real" can split it.
+      .sort((a, b) => b.length - a.length);
+    let measured = prose;
+    for (const name of names) {
+      measured = measured.split(name).join(" ");
+    }
+    let cyrillicWords = 0;
+    let latinWords = 0;
+    for (const word of measured.match(/\p{L}+/gu) ?? []) {
+      const first = word[0];
+      if (/\p{Script=Cyrillic}/u.test(first)) cyrillicWords += 1;
+      // Not /\p{Lu}/ - that is true of Cyrillic capitals too, and a
+      // Bulgarian sentence starts with one.
+      else if (/\p{Script=Latin}/u.test(first) && first === first.toLowerCase()) latinWords += 1;
+    }
+    const counted = cyrillicWords + latinWords;
+    // The floor is in words a refinement can plausibly return. Below it
+    // there is nothing to measure and silence is the right answer.
+    if (counted >= 15 && cyrillicWords / counted < 0.3) {
+      findings.push({
+        check: "language_requested",
+        severity: "defect",
+        detail:
+          `the trip was requested in Bulgarian and ${counted - cyrillicWords} of its ` +
+          `${counted} prose words are not - it came back in the wrong language`,
       });
     }
   }

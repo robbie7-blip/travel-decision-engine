@@ -45,6 +45,8 @@ export const QUALITY_CHECKS: { id: QualityCheckId; label: string }[] = [
   { id: "skips_explained", label: "Skipped something without saying why" },
   { id: "minimum_covers_lodging", label: "Minimum estimate below its own beds" },
   { id: "stated_constraints", label: "Breaks something the traveler said they cannot do" },
+  { id: "language_requested", label: "Came back in the wrong language" },
+  { id: "pace_matches", label: "Busier or quieter than the pace they asked for" },
 ];
 
 export interface QualitySnapshot {

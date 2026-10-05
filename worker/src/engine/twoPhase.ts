@@ -163,6 +163,49 @@ export function requiredMeals(day: SkeletonDay): MealSlot[] {
   return listed.length > 0 ? listed : [...ALL_MEALS];
 }
 
+/** What each pace means as a COUNT of real things to do on a full day,
+ * beyond the meals.
+ *
+ * The form collects a pace and every prompt was handed the word. Nothing
+ * ever said what the word means, so nothing could act on it or check it:
+ * the plan stage was told "relaxed means fewer, packed means more", the day
+ * stage "downtime that fits the stated pace", and the only hard number in
+ * the day rules - at least two real things in a full day - is the same
+ * floor for a packed trip as for a relaxed one, with no ceiling stated
+ * anywhere. Three labels with no agreed meaning between the form, the model
+ * and the acceptance gate.
+ *
+ * So the meaning lives HERE, once, and both the instruction (the day
+ * prompt's Pace line) and the verification (assessQuality's pace_matches)
+ * are built from it. The numbers are deliberately narrow for relaxed and
+ * generous for packed, and they stay inside the overpacking flag
+ * checkFeasibility already raises at six activities, so a trip that hits
+ * the packed target is never warned about hitting it. */
+export const PACE_ACTIVITY_BAND: Record<TripBriefInput["pace"], { min: number; max: number }> = {
+  relaxed: { min: 2, max: 3 },
+  moderate: { min: 3, max: 4 },
+  packed: { min: 4, max: 5 },
+};
+
+/** The day prompt's pace line, written from the band above so the
+ * instruction and the gate cannot drift apart. */
+const PACE_TARGET: Record<TripBriefInput["pace"], string> = {
+  relaxed:
+    `the brief asks for a RELAXED trip. On a full day that means ` +
+    `${PACE_ACTIVITY_BAND.relaxed.min}-${PACE_ACTIVITY_BAND.relaxed.max} real things to do beyond ` +
+    `the meals - no more. Use the room that leaves for written downtime and for letting the few ` +
+    `things they do take as long as they take. Do not quietly fill it with a fourth sight.`,
+  moderate:
+    `the brief asks for a MODERATE pace. On a full day that means ` +
+    `${PACE_ACTIVITY_BAND.moderate.min}-${PACE_ACTIVITY_BAND.moderate.max} real things to do beyond ` +
+    `the meals.`,
+  packed:
+    `the brief asks for a PACKED trip. On a full day that means ` +
+    `${PACE_ACTIVITY_BAND.packed.min}-${PACE_ACTIVITY_BAND.packed.max} real things to do beyond the ` +
+    `meals - they want to see as much as the day really holds. Keep every one of them possible: ` +
+    `the travel time between them still has to work.`,
+};
+
 /** Rules both halves of phase 1 must follow identically. Kept in one place
  * rather than copied into each prompt: the frame and the plan are read by
  * the traveler as one document, and two drifting copies of the tone and
@@ -505,6 +548,35 @@ export function buildDayPrompt(
       ", "
     )}. Any anchor already marked with one of those slots covers that meal; write the rest yourself.`,
   ];
+
+  // Pace, as a count this day can actually aim at.
+  //
+  // "Pace: relaxed" already reached this call inside the trip block, and
+  // that was the whole of it: the shared day rules ask for "downtime that
+  // fits the stated pace" and the plan stage for "relaxed means fewer,
+  // packed means more". Three labels with no agreed meaning between the
+  // form, the model and the gate - and the one hard number in the day
+  // rules, "a full day needs at least two real things in it", is the same
+  // floor for packed as for relaxed, with no ceiling stated anywhere. A
+  // field the traveler fills in that cannot change the output is worse
+  // than no field.
+  //
+  // Same fix as the meals: a vague instruction competing with other vague
+  // instructions becomes an explicit number. assessQuality reads the same
+  // bands (pace_matches), so the instruction and the check cannot drift
+  // apart.
+  // An arrival or departure day is exempt, and says so, because the
+  // journey eats half of it - the same exemption assessQuality applies.
+  // Told the full-day target without that, a departure morning reads as a
+  // day that came up short against an instruction it could not meet.
+  const dayNumbers = skeleton.days.map((d) => d.day);
+  const isTravelDay = day.day === Math.min(...dayNumbers) || day.day === Math.max(...dayNumbers);
+  lines.push(
+    `Pace: ${PACE_TARGET[brief.pace]}` +
+      (isTravelDay
+        ? ` This day carries the journey, so it holds less than a full day and that is correct.`
+        : "")
+  );
 
   if (day.transport_note) {
     lines.push(`Transport for this day (include it, follow it exactly): ${day.transport_note}`);

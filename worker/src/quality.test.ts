@@ -10,7 +10,7 @@
 //
 // Run: npm run test:quality
 
-import { assessQuality, normalizeLodgingPrices } from "./engine/quality";
+import { assessQuality, normalizeLodgingPrices, type QualityReport } from "./engine/quality";
 import type { SkeletonAccommodation, SkeletonDay } from "./engine/twoPhase";
 import { check, finish, heading, section } from "./testutil";
 import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "./types";
@@ -953,6 +953,256 @@ section("the frame's half, which nothing was scoring");
         budget_feasibility: { feasible: true, min_realistic_total_eur: 99_999, reasoning: "r" },
       })
     ).includes("minimum_covers_lodging")
+  );
+}
+
+section("the pace they asked for");
+{
+  // The last field on the form nothing read. Unlike the accommodation
+  // bug, pace DID reach every writing stage - it sits in the trip block
+  // the frame, the plan and every day call receive. It just meant nothing
+  // specific to any of them: the only hard number in the day rules was
+  // "at least two real things in a full day", identical for packed and
+  // relaxed, with no ceiling anywhere. So the field could not change the
+  // output and nothing read it back.
+  const paced = (pace: TripBriefInput["pace"], activitiesPerFullDay: number): QualityReport => {
+    const days = baseline();
+    // Days 1 and 3 are the arrival and departure and are exempt; day 2 is
+    // the only full day, so it alone decides the average.
+    const full = days[1];
+    const keep = full.items.filter((i) => i.type !== "activity");
+    full.items = [
+      ...keep,
+      ...Array.from({ length: activitiesPerFullDay }, (_, i) =>
+        item({ title: `Sight ${i}`, venue_name: `Museum ${i}`, time: `${10 + i}:00` })
+      ),
+    ];
+    return assessQuality(itinerary(days), { ...BRIEF, pace }, plan());
+  };
+  const firedPace = (pace: TripBriefInput["pace"], n: number): boolean =>
+    paced(pace, n).findings.some((f) => f.check === "pace_matches");
+
+  check("a relaxed trip with two things a day is right", !firedPace("relaxed", 2));
+  check("three is still right - that is the top of the band", !firedPace("relaxed", 3));
+  // A full activity of slack before anything is said. The band is what the
+  // prompt ASKS for; the finding is for when the answer is a different
+  // trip from the one requested.
+  check("four is the band plus one, and says nothing", !firedPace("relaxed", 4));
+  check("five on every full day of a relaxed trip is flagged", firedPace("relaxed", 5));
+
+  check("a packed trip with five things a day is right", !firedPace("packed", 5));
+  check("four is right too", !firedPace("packed", 4));
+  check("three is the band minus one, and says nothing", !firedPace("packed", 3));
+  check("two on every full day of a packed trip is flagged", firedPace("packed", 2));
+
+  // One-directional per pace, and silent in the middle. Flagging a
+  // relaxed trip for being extra calm, or a packed one for being busier
+  // than its ceiling, would be this file inventing a complaint the
+  // traveler never made - and genuine overpacking is checkFeasibility's
+  // job, which raises a flag the traveler can see on the day itself.
+  check("a relaxed trip is never flagged for being calmer still", !firedPace("relaxed", 2));
+  check("a packed trip is never flagged for being busier than its ceiling", !firedPace("packed", 7));
+  for (const n of [2, 3, 4, 5, 6, 7]) {
+    check(`moderate is not checked at all (${n} a day)`, !firedPace("moderate", n));
+  }
+
+  const report = paced("relaxed", 5);
+  const finding = report.findings.find((f) => f.check === "pace_matches");
+  check(
+    "a warning, not a defect - the band is a reading of one word off a form",
+    finding?.severity === "warning",
+    finding?.severity
+  );
+  check(
+    "so it never fails a generation the traveler would have been happy with",
+    report.passed === true,
+    report.findings.map((f) => `${f.check}/${f.severity}`).join(", ")
+  );
+  check(
+    "and it says what was asked for and what arrived",
+    (finding?.detail ?? "").includes("relaxed") && /\b5\b/.test(finding?.detail ?? ""),
+    finding?.detail ?? "(no detail)"
+  );
+  check(
+    "reported for the trip, not pinned on a day",
+    finding?.day === undefined,
+    `day ${finding?.day}`
+  );
+
+  // Per trip, which is the whole of what keeps this honest. One busy
+  // Tuesday on a relaxed trip is a good Tuesday, and a per-day version of
+  // this check would flag it and teach the owner to ignore the report.
+  {
+    const days = [goodDay(1, DATES[0]), goodDay(2, DATES[1]), goodDay(3, DATES[2], false)];
+    days[0].items.unshift(
+      item({ type: "transport", title: "Flight to Denpasar", venue_name: null, time: "06:00", is_flight: true, cost_estimate_eur: 700 }),
+      item({ type: "transport", title: "Car to Ubud", venue_name: null, time: "07:30", cost_estimate_eur: 25 })
+    );
+    // Four full days, so one of them can be busy without carrying the
+    // average: 6 + 2 + 2 + 2 averages 3.
+    days.splice(2, 0, goodDay(4, "2027-03-21"), goodDay(5, "2027-03-22"));
+    const fullDays = days.filter((d) => d.day !== 1 && d.day !== 3);
+    check("the fixture has several full days", fullDays.length >= 3, String(fullDays.length));
+    fullDays[0].items.push(
+      ...Array.from({ length: 4 }, (_, i) =>
+        item({ title: `Extra ${i}`, venue_name: `Gallery ${i}`, time: `${11 + i}:00` })
+      )
+    );
+    const fired = assessQuality(itinerary(days), { ...BRIEF, pace: "relaxed" }, plan()).findings.some(
+      (f) => f.check === "pace_matches"
+    );
+    check("one busy day among calm ones is not a pace failure", !fired);
+  }
+
+  // A trip with no full day in it has nothing to measure. An exemption
+  // that let the average be taken over zero days would divide by zero and
+  // report NaN things to do.
+  {
+    const days = [baseline()[0], baseline()[2]];
+    days[1].day = 2;
+    const report2 = assessQuality(itinerary(days), { ...BRIEF, pace: "packed" }, plan());
+    check(
+      "a two-day trip that is all arrival and departure is left alone",
+      !report2.findings.some((f) => f.check === "pace_matches"),
+      report2.findings.find((f) => f.check === "pace_matches")?.detail
+    );
+  }
+}
+
+section("the language the trip was asked for");
+{
+  // The form collects a language and the generation prompt asks for it.
+  // Nothing checked that the answer came back in it - the most visible
+  // failure the product can have, and the one a traveler needs no quality
+  // signal to notice.
+  //
+  // What this suite is really pinning down is the FALSE POSITIVE. A
+  // correct Bulgarian itinerary is full of Latin text that must not be
+  // flagged: "Hotel Real", "Temple Garden", every restaurant name. That is
+  // why the check reads trip_summary and reasoning - the fields we write -
+  // and not titles or venue names.
+  const BG: TripBriefInput = { ...BRIEF, language: "bg" };
+
+  /** The baseline trip with its prose replaced. Venue names, titles and
+   * everything else stay Latin, exactly as a real Bulgarian trip's would. */
+  const withProse = (summary: string, reasoning: string): Itinerary => ({
+    ...itinerary(baseline().map((d) => ({ ...d, items: d.items.map((i) => ({ ...i, reasoning })) }))),
+    trip_summary: summary,
+  });
+
+  const EN_SUMMARY =
+    "Three unhurried days based in Ubud, with the rice terraces on the first " +
+    "morning and nothing booked that cannot be moved.";
+  const BG_SUMMARY =
+    "Три спокойни дни с база в Убуд, с оризовите тераси в първата сутрин и " +
+    "нищо резервирано, което не може да се премести.";
+  const EN_REASON = "A short walk from the hotel and open early, so the morning is not spent waiting.";
+  const BG_REASON = "На няколко минути от хотела и отваря рано, така че сутринта не минава в чакане.";
+
+  const bgReport = assessQuality(withProse(EN_SUMMARY, EN_REASON), BG, plan());
+  const bgFired = bgReport.findings.filter((f) => f.check === "language_requested");
+  check("a Bulgarian trip written in English is caught", bgFired.length === 1, `${bgFired.length} finding(s)`);
+  check(
+    "as a defect, so the gate does not report a pass",
+    bgFired[0]?.severity === "defect" && bgReport.passed === false,
+    `severity ${bgFired[0]?.severity}, passed ${bgReport.passed}`
+  );
+  check(
+    "and it says what went wrong rather than printing a score",
+    (bgFired[0]?.detail ?? "").includes("wrong language"),
+    bgFired[0]?.detail ?? "(no detail)"
+  );
+
+  // Both halves of the prose are read. Asserted separately because each
+  // one alone is enough evidence, and a check that only looked at
+  // trip_summary would pass the first assertion above and still miss a
+  // trip whose summary was translated and whose 50 reasoning lines were
+  // not.
+  check(
+    "caught from the summary alone, when the items carry no prose",
+    assessQuality(withProse(EN_SUMMARY, ""), BG, plan()).findings.some((f) => f.check === "language_requested")
+  );
+  check(
+    "caught from the items' reasoning alone, when there is no summary",
+    assessQuality(withProse("", EN_REASON), BG, plan()).findings.some((f) => f.check === "language_requested")
+  );
+
+  // The reason this check exists in this shape.
+  check(
+    "a correct Bulgarian trip with Latin venue names is NOT flagged",
+    !assessQuality(withProse(BG_SUMMARY, BG_REASON), BG, plan()).findings.some(
+      (f) => f.check === "language_requested"
+    )
+  );
+  check(
+    "nor is Bulgarian prose that names its venues inline",
+    !assessQuality(
+      withProse(
+        `Три дни в Убуд: Tegallalang Rice Terraces, Pura Taman Saraswati и Hotel Real. ${BG_SUMMARY}`,
+        `Близо до Hotel Real и Cafe Lotus. ${BG_REASON}`
+      ),
+      BG,
+      plan()
+    ).findings.some((f) => f.check === "language_requested")
+  );
+
+  // The case that forced the check to strip proper nouns before counting.
+  // Measured at 25% Cyrillic with the names left in - under the floor, so
+  // a correct Bulgarian trip was being reported to its traveler as the
+  // wrong language. Terse reasoning is not a defect, and a venue's name is
+  // not evidence about the sentence around it.
+  check(
+    "terse Bulgarian reasoning dominated by a long Latin venue name is not flagged",
+    !assessQuality(
+      withProse("Три дни в Убуд.", "Близо до Tegallalang Rice Terraces."),
+      BG,
+      plan()
+    ).findings.some((f) => f.check === "language_requested")
+  );
+  // Same prose, still English: stripping the names must not have cost the
+  // check its teeth.
+  check(
+    "but the same shape in English still is",
+    assessQuality(
+      withProse("Three days in Ubud.", "A short walk from Tegallalang Rice Terraces."),
+      BG,
+      plan()
+    ).findings.some((f) => f.check === "language_requested")
+  );
+
+  // The failure mode that is likeliest in practice: the model answers the
+  // first instruction and drifts back to English over fifty reasoning
+  // fields. The traveler sees a Bulgarian opening paragraph above an
+  // English trip, which is worse than an honestly English one.
+  check(
+    "a trip that starts in Bulgarian and drifts into English is caught",
+    assessQuality(withProse(BG_SUMMARY, EN_REASON), BG, plan()).findings.some(
+      (f) => f.check === "language_requested"
+    )
+  );
+
+  // One-directional on purpose. There is no character class that tells
+  // English prose from Italian prose, so a Latin-script target is not
+  // checked at all rather than checked badly - including the case below,
+  // which really is wrong and which this check cannot see.
+  check(
+    "an English trip in English is not flagged",
+    !assessQuality(withProse(EN_SUMMARY, EN_REASON), BRIEF, plan()).findings.some(
+      (f) => f.check === "language_requested"
+    )
+  );
+  check(
+    "and an English trip in Bulgarian is knowingly not flagged either",
+    !assessQuality(withProse(BG_SUMMARY, BG_REASON), BRIEF, plan()).findings.some(
+      (f) => f.check === "language_requested"
+    )
+  );
+
+  // Below the floor there is nothing to measure. A refinement that returns
+  // a one-line summary must not be called a language failure.
+  check(
+    "too little prose to judge is left alone",
+    !assessQuality(withProse("Ubud.", ""), BG, plan()).findings.some((f) => f.check === "language_requested")
   );
 }
 

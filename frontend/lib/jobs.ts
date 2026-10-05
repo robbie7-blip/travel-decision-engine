@@ -140,7 +140,15 @@ export type QualityCheckId =
   // night bus against "no overnight travel". The replaceable ones are
   // repaired instead and never reach the report; this id exists for the
   // rest, because a violation nobody can see is worse than an unfixed one.
-  | "stated_constraints";
+  | "stated_constraints"
+  // The trip came back in a different language than the one asked for.
+  // Checked only for scripts that are unambiguous - there is no way to
+  // tell English prose from Italian by character class.
+  | "language_requested"
+  // The trip's full days average well outside what the requested pace
+  // means (see PACE_ACTIVITY_BAND). Per trip, not per day, and a warning:
+  // one busy day on a relaxed trip is a good day.
+  | "pace_matches";
 
 export interface QualityFinding {
   check: QualityCheckId;

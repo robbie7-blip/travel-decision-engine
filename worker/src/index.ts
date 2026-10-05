@@ -1683,10 +1683,22 @@ async function screenStatedConstraints(
    * that is merely unfixed. */
   surfaced: { day: number; detail: string }[];
 }> {
+  // Transport preference is a stated constraint like any other, and it
+  // was the last field on the form with nothing checking it: a traveler
+  // who picks taxis (often for safety, sometimes for mobility) and gets an
+  // itinerary routing them through the metro has been ignored just as
+  // plainly as one sent to a steakhouse. Phrased as the sentence it
+  // effectively is, so the screen reads it the same way as the rest.
+  const TRANSPORT_AS_CONSTRAINT: Record<NonNullable<TripBriefInput["transport_preference"]>, string> = {
+    public_transit: "get around by public transit, not by taxi or rideshare",
+    taxi_rideshare: "get around by taxi or rideshare, not by metro, bus or tram",
+    walking: "get around on foot wherever realistically possible, avoiding vehicles",
+  };
   const stated = [
     ...brief.dietary_constraints,
     ...brief.mobility_constraints,
     ...brief.hard_no,
+    ...(brief.transport_preference ? [TRANSPORT_AS_CONSTRAINT[brief.transport_preference]] : []),
   ].filter((c) => c.trim());
   if (stated.length === 0) return { repairable: [], surfaced: [] };
 
@@ -1713,6 +1725,9 @@ async function screenStatedConstraints(
               ? `Mobility constraints: ${brief.mobility_constraints.join(", ")}\n`
               : "") +
             (brief.hard_no.length ? `Hard limits (must not violate): ${brief.hard_no.join(", ")}\n` : "") +
+            (brief.transport_preference
+              ? `How they want to get around: ${TRANSPORT_AS_CONSTRAINT[brief.transport_preference]}\n`
+              : "") +
             `\nItinerary items:\n` +
             candidates
               .map(

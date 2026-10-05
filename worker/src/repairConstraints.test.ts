@@ -43,6 +43,7 @@ const CITY = "Rome";
 const ALLERGY = "severe shellfish allergy";
 const MOBILITY = "cannot manage stairs";
 const HARD_NO = "no venues requiring a reservation weeks ahead";
+const TRANSPORT: NonNullable<TripBriefInput["transport_preference"]> = "taxi_rideshare";
 
 function brief(): TripBriefInput {
   return {
@@ -63,6 +64,7 @@ function brief(): TripBriefInput {
     needs_lodging: false,
     needs_flight: false,
     accommodation_location: "Hotel Artemide",
+    transport_preference: TRANSPORT,
   };
 }
 
@@ -133,6 +135,7 @@ interface Seen {
   venueRepairPrompts: string[];
   mealRepairPrompts: string[];
   dietaryScreenPrompts: string[];
+  dayPrompts: string[];
 }
 
 function makeClient(seen: Seen): Anthropic {
@@ -147,6 +150,7 @@ function makeClient(seen: Seen): Anthropic {
         if (sys.includes("STAGE 1A")) return frameJson();
         if (sys.includes("STAGE 1B")) return planJson();
         if (sys.includes("STAGE 2")) {
+          seen.dayPrompts.push(user);
           const i = dayIndex++;
           return dayJson(i + 1, dates[i] ?? dates[dates.length - 1]);
         }
@@ -257,7 +261,12 @@ async function main() {
   };
   store.set(jobKey(id), JSON.stringify(job));
 
-  const seen: Seen = { venueRepairPrompts: [], mealRepairPrompts: [], dietaryScreenPrompts: [] };
+  const seen: Seen = {
+    venueRepairPrompts: [],
+    mealRepairPrompts: [],
+    dietaryScreenPrompts: [],
+    dayPrompts: [],
+  };
   await processJob(makeRedis(store), makeClient(seen), id);
   const finished: Job = JSON.parse(store.get(jobKey(id))!);
   check("the job completed", finished.status === "done", finished.status);
@@ -296,6 +305,37 @@ async function main() {
     );
   }
 
+  section("the stage that decides how full a day is knows the pace");
+
+  // Pace is the one brief field that was never MISSING from a prompt - it
+  // rides along in the trip block every stage receives. It just had no
+  // meaning: "Pace: relaxed" next to one hard number, "a full day needs at
+  // least two real things in it", which is the same floor for a packed
+  // trip. The field could not change the output, which is the same as not
+  // collecting it.
+  //
+  // Asserted on the prompt for the same reason as everything above: a stub
+  // model returns whatever it returns, so only the prompt can answer
+  // "was the day call actually told".
+  check(
+    "the day calls ran",
+    seen.dayPrompts.length === 2,
+    `${seen.dayPrompts.length} day call(s)`
+  );
+  check(
+    "each day call is told what the stated pace means as a number",
+    seen.dayPrompts.every((p) => p.includes("RELAXED") && p.includes("2-3 real things to do")),
+    "a day was written without being told what the traveler's pace means"
+  );
+  // This brief's two days are the arrival and the departure, so both are
+  // exempt - and the prompt says so rather than setting a full-day target
+  // a departure morning cannot meet.
+  check(
+    "and a travel day is told it legitimately holds less",
+    seen.dayPrompts.every((p) => p.includes("carries the journey")),
+    "an arrival/departure day was held to the full-day pace target"
+  );
+
   section("a venue the traveler cannot eat at is replaced, not just asked about");
 
   check(
@@ -318,6 +358,65 @@ async function main() {
     !JSON.stringify(finished.result ?? {}).includes("Trattoria Doppia"),
     "a venue the screen flagged survived into the itinerary"
   );
+
+  section("how they want to get around is a stated constraint too");
+
+  // The form offers a way to get around and the generation prompt passed
+  // it on; nothing read it back. A traveler who picks taxis - often for
+  // safety, sometimes because walking is the problem - and is routed
+  // through the metro has been ignored exactly as plainly as one sent to a
+  // steakhouse with a stated allergy.
+  //
+  // Folded into the screen that was already running rather than given a
+  // call of its own: it costs no extra model call and no generation time.
+  check(
+    "the screen is told how they want to get around",
+    seen.dietaryScreenPrompts.some((p) => p.includes("by taxi or rideshare")),
+    "a stated transport preference never reached the screen"
+  );
+
+  // The early return is the real risk here. `stated.length === 0` skips
+  // the screen entirely, so a traveler whose ONLY stated constraint is how
+  // they get around would have been screened for nothing at all - the
+  // field would reach the prompt, as it always did, and still be the one
+  // thing no one checked.
+  {
+    const store2 = new Map<string, string>();
+    const id2 = "transport-only";
+    store2.set(
+      jobKey(id2),
+      JSON.stringify({
+        id: id2,
+        status: "pending",
+        brief: {
+          ...brief(),
+          dietary_constraints: [],
+          mobility_constraints: [],
+          hard_no: [],
+          transport_preference: "walking",
+        },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      } satisfies Job)
+    );
+    const seen2: Seen = {
+      venueRepairPrompts: [],
+      mealRepairPrompts: [],
+      dietaryScreenPrompts: [],
+      dayPrompts: [],
+    };
+    await processJob(makeRedis(store2), makeClient(seen2), id2);
+    check(
+      "a transport preference alone is enough to run the screen",
+      seen2.dietaryScreenPrompts.length === 1,
+      `${seen2.dietaryScreenPrompts.length} screen call(s) for a brief whose only constraint is transport`
+    );
+    check(
+      "and it is the constraint the screen is given",
+      seen2.dietaryScreenPrompts.some((p) => p.includes("on foot")),
+      seen2.dietaryScreenPrompts[0] ?? "(no screen call)"
+    );
+  }
 
   section("a violation a venue swap cannot fix is surfaced, not swallowed");
 

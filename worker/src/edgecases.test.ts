@@ -69,6 +69,18 @@ function stubFor(shape: Shape) {
     sight: bg ? "Разходка до" : "Visit",
   };
 
+  // The item `reasoning` fields, in the trip's language.
+  //
+  // These were a bare "r" in every fixture, which the Bulgarian one then
+  // carried too - and once the gate learned to check the language it was
+  // asked for (language_requested), that fixture was a Bulgarian trip
+  // whose prose was 21 words of non-Bulgarian. The gate was right. The
+  // fixture was not: a correct Bulgarian generation writes its reasoning
+  // in Bulgarian, which is the shape this suite is supposed to assert
+  // passes cleanly. The English fixtures keep the placeholder, since
+  // there is nothing the check can read into Latin prose.
+  const reason = bg ? "На минути от хотела и отваря рано." : "r";
+
   const plan = () =>
     JSON.stringify({
       days: dates.map((date, i) => ({
@@ -113,11 +125,11 @@ function stubFor(shape: Shape) {
   const day = (n: number) => {
     const city = shape.cityForDay(n - 1, dates.length);
     const items: Record<string, unknown>[] = [
-      { time: "08:00", type: "meal", title: `${label.breakfast} Cafe ${n}`, venue_name: `Cafe ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 10, reasoning: "r", source_confidence: "inferred" },
-      { time: "10:30", type: "activity", title: `${label.sight} Sight ${n}`, venue_name: `Sight ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 15, reasoning: "r", source_confidence: "inferred" },
-      { time: "13:00", type: "meal", title: `${label.lunch} Trattoria ${n}`, venue_name: `Trattoria ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 25, reasoning: "r", source_confidence: "inferred" },
-      { time: "16:00", type: "activity", title: `${label.sight} Park ${n}`, venue_name: `Park ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 0, reasoning: "r", source_confidence: "inferred" },
-      { time: "20:00", type: "meal", title: `${label.dinner} Osteria ${n}`, venue_name: `Osteria ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 40, reasoning: "r", source_confidence: "inferred" },
+      { time: "08:00", type: "meal", title: `${label.breakfast} Cafe ${n}`, venue_name: `Cafe ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 10, reasoning: reason, source_confidence: "inferred" },
+      { time: "10:30", type: "activity", title: `${label.sight} Sight ${n}`, venue_name: `Sight ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 15, reasoning: reason, source_confidence: "inferred" },
+      { time: "13:00", type: "meal", title: `${label.lunch} Trattoria ${n}`, venue_name: `Trattoria ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 25, reasoning: reason, source_confidence: "inferred" },
+      { time: "16:00", type: "activity", title: `${label.sight} Park ${n}`, venue_name: `Park ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 0, reasoning: reason, source_confidence: "inferred" },
+      { time: "20:00", type: "meal", title: `${label.dinner} Osteria ${n}`, venue_name: `Osteria ${n}`, location: `Centre, ${city}`, cost_estimate_eur: 40, reasoning: reason, source_confidence: "inferred" },
     ];
     if (brief.needs_lodging && n < dates.length) {
       const idx = Math.max(0, cities.indexOf(city));
@@ -128,7 +140,7 @@ function stubFor(shape: Shape) {
         venue_name: `Hotel ${idx + 1}`,
         location: `Centre, ${city}`,
         cost_estimate_eur: 90 + idx * 10,
-        reasoning: "r",
+        reasoning: reason,
         source_confidence: "grounded",
         source_urls: ["https://example.com/rate"],
       });
@@ -142,7 +154,7 @@ function stubFor(shape: Shape) {
         is_flight: true,
         location: `${brief.origin} to ${city}`,
         cost_estimate_eur: 150,
-        reasoning: "r",
+        reasoning: reason,
         source_confidence: "inferred",
       });
       items.push({
@@ -152,7 +164,7 @@ function stubFor(shape: Shape) {
         venue_name: null,
         location: `Airport to ${city}`,
         cost_estimate_eur: 15,
-        reasoning: "r",
+        reasoning: reason,
         source_confidence: "inferred",
       });
     }
