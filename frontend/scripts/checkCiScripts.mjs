@@ -87,6 +87,40 @@ for (const [pkgDir, label] of [
   }
 }
 
+// And the other way a suite goes unrun: `npm test`.
+//
+// CI is the authority and the loop above proves it is complete, so nothing
+// here is unprotected on a push. But `npm test` is what a person runs
+// locally before committing, and it was an explicit chain of SOME of the
+// suites - 16 of the worker's 29, 6 of the frontend's 38. It printed a
+// wall of ALL ... PASSED and exited 0 while never loading two thirds of
+// the repo's tests, which is the dormant-guard failure wearing its most
+// convincing disguise: not a check that does not run, but a green result
+// that does not mean what it says.
+//
+// Found by the pace and language work, where `npm test` passed and a
+// suite-by-suite run then turned up a Bulgarian fixture the new check
+// correctly rejected.
+for (const [pkgDir, label] of [
+  ["worker", "worker"],
+  ["frontend", "frontend"],
+]) {
+  const pkg = JSON.parse(readFileSync(join(REPO, pkgDir, "package.json"), "utf8"));
+  const aggregate = pkg.scripts?.test ?? "";
+  // Parsed as whole script names, so "npm run test:hours" does not count
+  // as covering "test:hours-extended" - the same hole the CI parser above
+  // exists to close.
+  const inAggregate = new Set(
+    [...aggregate.matchAll(/npm run ([a-z][a-z0-9:-]*)/g)].map((m) => m[1])
+  );
+  for (const name of Object.keys(pkg.scripts ?? {})) {
+    if (!name.startsWith("test:")) continue;
+    if (!inAggregate.has(name)) {
+      problems.push(`${label}: "npm run ${name}" is not part of "npm test", so a local run skips it`);
+    }
+  }
+}
+
 // The reverse: a step referring to a script that no longer exists fails
 // the whole workflow on every push, which is loud rather than silent - but
 // naming it here turns a confusing CI failure into an obvious one.
@@ -108,11 +142,16 @@ if (problems.length > 0) {
   console.error("CI and package.json have drifted.\n");
   for (const problem of problems) console.error(`  ${problem}`);
   console.error(
-    `\nAdd the missing step to .github/workflows/checks.yml with a comment saying\n` +
-      `what it catches, or list it in NOT_IN_CI here with a reason. A guard that\n` +
-      `does not run is worse than one that does not exist.`
+    `\nFor a script missing from CI: add the step to .github/workflows/checks.yml\n` +
+      `with a comment saying what it catches, or list it in NOT_IN_CI here with a\n` +
+      `reason. For a suite missing from "npm test": add it to that package's test\n` +
+      `chain, so a local run before committing covers it too.\n\n` +
+      `A guard that does not run is worse than one that does not exist.`
   );
   process.exit(1);
 }
 
-console.log(`Every script runs in CI, or says why not (${RUN_IN_CI.size} steps).`);
+console.log(
+  `Every script runs in CI, or says why not (${RUN_IN_CI.size} steps), and every ` +
+    `test suite is part of "npm test".`
+);
