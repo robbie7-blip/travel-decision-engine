@@ -109,6 +109,11 @@ export function TripQA({ context, language, t }: TripQAProps) {
   const [showProUpsell, setShowProUpsell] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  /** Which answer was just copied, so the button can say so. Cleared on a
+   * timer, and by index rather than a boolean so copying one answer does
+   * not light up the button on every other one. */
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   /** Whether the traveler is reading the newest message rather than
    * scrolled back through the thread. */
   const stuckToBottom = useRef(true);
@@ -256,6 +261,41 @@ export function TripQA({ context, language, t }: TripQAProps) {
     // a part-rendered final line.
     stuckToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
   }
+
+  /** Copies a finished answer.
+   *
+   * navigator.clipboard is not available on an insecure origin and can be
+   * refused even on a secure one, so the failure path says nothing rather
+   * than claiming a copy that did not happen - a button that lies about
+   * having copied something is worse than one that does nothing visible. */
+  async function copyAnswer(index: number, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      window.setTimeout(() => setCopiedIndex((current) => (current === index ? null : current)), 1600);
+    } catch {
+      // Deliberately silent. There is nothing the traveler can do about
+      // it, and an error banner over a convenience is noise.
+    }
+  }
+
+  /** Grows the box to fit what has been typed, up to the max-height in
+   * .trip-qa-input, after which it scrolls itself.
+   *
+   * Height is reset to "auto" first because scrollHeight never shrinks
+   * below the height already set: without the reset the box grows as you
+   * type and then stays tall after you delete it all, or after sending. */
+  function resizeInput() {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
+  // After every change to the draft, including the ones this component
+  // makes itself: clearing it on send, and filling it from a starter
+  // question. A handler on the textarea alone would miss both.
+  useEffect(resizeInput, [draft]);
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -428,99 +468,108 @@ export function TripQA({ context, language, t }: TripQAProps) {
         {finishedAnswer}
       </span>
       {messages.length > 0 && (
-        <div
-          ref={threadRef}
-          onScroll={handleThreadScroll}
-          style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 420, overflowY: "auto" }}
-        >
+        <div ref={threadRef} onScroll={handleThreadScroll} className="qa-thread">
           {messages.map((m, i) => {
+            const isLast = i === messages.length - 1;
             // The assistant's message starts empty and fills in as chunks
-            // arrive - show a brief pulse instead of a blank bubble until
+            // arrive - show a brief pulse instead of a blank space until
             // the first word lands.
-            const isPendingAssistant = m.role === "assistant" && m.content === "" && sending && i === messages.length - 1;
+            const isPendingAssistant = m.role === "assistant" && m.content === "" && sending && isLast;
+            const isStreaming = m.role === "assistant" && sending && isLast;
+
+            // The traveler's own turn: a bubble, because it IS a message.
+            // Short, theirs, and findable again by shape alone when the
+            // thread has scrolled.
+            if (m.role === "user") {
+              return (
+                <div key={i} className="qa-turn qa-turn-user">
+                  <div className="qa-bubble qa-bubble-user">
+                    {m.images?.map((img, imgIndex) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={imgIndex}
+                        src={`data:${img.mediaType};base64,${img.data}`}
+                        alt={t.tripQA.photoAlt}
+                        style={{
+                          display: "block",
+                          maxWidth: "100%",
+                          borderRadius: 10,
+                          marginBottom: m.content ? 8 : 0,
+                        }}
+                      />
+                    ))}
+                    {/* The traveler's own words, verbatim. Linkifying these
+                        would apply the MODEL's conventions to a human's
+                        typing: "what does [[this]] mean on my ticket?" would
+                        lose its brackets and turn into a map search, and a
+                        booking URL they pasted would be relabelled so the
+                        message no longer shows what they sent. */}
+                    {m.content}
+                  </div>
+                </div>
+              );
+            }
+
             // The character's face beside their own answers, so a thread
             // with four possible speakers still reads as a conversation
             // with one of them.
-            const Avatar = m.role === "assistant" && voice ? VOICE_AVATARS[voice] : null;
-            const bubble = (
-              <div
-                key={i}
-                className={m.role === "user" ? "qa-bubble qa-bubble-user" : "qa-bubble"}
-                style={{
-                  alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                  maxWidth: Avatar ? "100%" : "85%",
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                  background: m.role === "user" ? "var(--accent-green)" : "var(--bg-panel-raised)",
-                  color: m.role === "user" ? "var(--bg-panel)" : "var(--ink)",
-                  border: m.role === "user" ? "none" : "1px solid var(--line)",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {m.images?.map((img, imgIndex) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={imgIndex}
-                    src={`data:${img.mediaType};base64,${img.data}`}
-                    alt={t.tripQA.photoAlt}
-                    style={{
-                      display: "block",
-                      maxWidth: "100%",
-                      borderRadius: 6,
-                      marginBottom: m.content ? 8 : 0,
-                    }}
-                  />
-                ))}
-                {isPendingAssistant ? (
-                  <span className="font-ui" style={{ color: "var(--ink-dim)" }}>
-                    {t.tripQA.thinking}
-                  </span>
-                ) : m.role === "user" ? (
-                  // The traveler's own words, verbatim. Linkifying these
-                  // would apply the MODEL's conventions to a human's
-                  // typing: "what does [[this]] mean on my ticket?" would
-                  // lose its brackets and turn into a map search, and a
-                  // booking URL they pasted would be relabelled so the
-                  // message no longer shows what they sent.
-                  m.content
-                ) : (
-                  // Segments, never innerHTML - see lib/linkify.ts. A place
-                  // the local names becomes a Maps search for it; a source
-                  // it cites becomes the page. Both are built here from a
-                  // validated URL rather than taken from the model.
-                  linkifyAnswer(m.content, {
-                    near: context?.destinations?.[0]?.trim(),
-                    // The last message is still arriving while sending, so
-                    // a URL at the very end of it may be half-delivered.
-                    streaming: sending && i === messages.length - 1,
-                  }).map((seg, segIndex) =>
-                    seg.kind === "text" ? (
-                      seg.text
-                    ) : (
-                      <a
-                        key={segIndex}
-                        href={seg.href}
-                        target="_blank"
-                        rel="noopener noreferrer nofollow"
-                        className="qa-link"
-                      >
-                        {seg.text}
-                      </a>
-                    )
-                  )
-                )}
-              </div>
-            );
-
-            if (!Avatar) return bubble;
+            const Avatar = voice ? VOICE_AVATARS[voice] : null;
             return (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, maxWidth: "92%" }}>
-                <span className="voice-bubble-avatar">
-                  <Avatar size={28} />
-                </span>
-                {bubble}
+              <div key={i} className="qa-turn">
+                {Avatar && (
+                  <span className="voice-bubble-avatar">
+                    <Avatar size={28} />
+                  </span>
+                )}
+                <div className="qa-answer">
+                  {isPendingAssistant ? (
+                    <span className="font-ui" style={{ color: "var(--ink-dim)" }}>
+                      {t.tripQA.thinking}
+                    </span>
+                  ) : (
+                    // Segments, never innerHTML - see lib/linkify.ts. A place
+                    // the local names becomes a Maps search for it; a source
+                    // it cites becomes the page. Both are built here from a
+                    // validated URL rather than taken from the model.
+                    linkifyAnswer(m.content, {
+                      near: context?.destinations?.[0]?.trim(),
+                      // The last message is still arriving while sending, so
+                      // a URL at the very end of it may be half-delivered.
+                      streaming: isStreaming,
+                    }).map((seg, segIndex) =>
+                      seg.kind === "text" ? (
+                        seg.text
+                      ) : (
+                        <a
+                          key={segIndex}
+                          href={seg.href}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="qa-link"
+                        >
+                          {seg.text}
+                        </a>
+                      )
+                    )
+                  )}
+                  {/* Where the next word will appear, rather than a spinner
+                      somewhere else on the page. aria-hidden because a
+                      screen reader is told about the finished answer once,
+                      by the live region above. */}
+                  {isStreaming && m.content !== "" && <span className="qa-caret" aria-hidden />}
+                  {!isStreaming && m.content !== "" && (
+                    <div className="qa-actions">
+                      <button
+                        type="button"
+                        onClick={() => void copyAnswer(i, m.content)}
+                        className="font-ui qa-action"
+                        aria-label={t.tripQA.copyAnswer}
+                      >
+                        {copiedIndex === i ? t.tripQA.copied : t.tripQA.copyAnswer}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -575,7 +624,8 @@ export function TripQA({ context, language, t }: TripQAProps) {
           </Link>
         </div>
       )}
-      <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+      {/* One box, not three controls in a row. See .qa-composer. */}
+      <div className="qa-composer">
         {/* capture="environment" makes this open the rear camera directly on
             a phone, which is the actual moment this feature is for - standing
             in front of the thing you're asking about. Desktop browsers ignore
@@ -594,23 +644,25 @@ export function TripQA({ context, language, t }: TripQAProps) {
           disabled={sending}
           aria-label={t.tripQA.addPhoto}
           title={t.tripQA.addPhoto}
-          // 43x39 on a phone, and this is the camera button - the control
-          // for the one moment this feature is for, standing in front of
-          // the thing you are asking about.
+          // The control for the one moment this feature is for: standing
+          // in front of the thing you are asking about.
           className="font-ui qa-photo"
           style={{
-            border: "1px solid var(--line)",
-            background: "var(--bg-panel)",
+            border: "none",
+            background: "transparent",
             color: "var(--ink-soft)",
-            borderRadius: 8,
-            padding: "10px 12px",
+            borderRadius: 999,
+            width: 36,
+            height: 36,
+            padding: 0,
             cursor: sending ? "default" : "pointer",
             flexShrink: 0,
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <svg viewBox="0 0 24 24" aria-hidden style={{ width: 17, height: 17 }}>
+          <svg viewBox="0 0 24 24" aria-hidden style={{ width: 18, height: 18 }}>
             <path
               fill="none"
               stroke="currentColor"
@@ -623,6 +675,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
           </svg>
         </button>
         <textarea
+          ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -632,31 +685,48 @@ export function TripQA({ context, language, t }: TripQAProps) {
           // the whole feature, so with a screen reader it announced as an
           // unnamed edit field.
           aria-label={t.tripQA.placeholder}
-          rows={2}
-          // A class, not inline styles, for two reasons that are the same
-          // reason: the size of this box has to change with the viewport.
-          // It was 13px, which is under the 16px iOS Safari demands before
-          // it will let you type without zooming the whole page in - and at
-          // 16px on a phone the placeholder needs a third line, which it
-          // was already clipping at 13. Both are in .trip-qa-input.
+          // One row to start. It grows to fit what is typed (resizeInput),
+          // so the box is the size of the question rather than the size of
+          // the longest question anyone might ask.
+          rows={1}
+          // A class, not inline styles, because the size of this box has to
+          // change with the viewport. It was 13px, which is under the 16px
+          // iOS Safari demands before it will let you type without zooming
+          // the whole page in. See .trip-qa-input.
           className="font-ui trip-qa-input"
         />
         <button
           type="button"
           onClick={send}
           disabled={sending || (!draft.trim() && !pendingImage)}
-          className="font-ui btn-primary"
-          style={{
-            padding: "10px 16px",
-            fontWeight: 700,
-            fontSize: 12,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            cursor: sending || (!draft.trim() && !pendingImage) ? "default" : "pointer",
-            flexShrink: 0,
-          }}
+          className="font-ui qa-send"
+          // The label is on the button rather than in it: the arrow says
+          // "send" to anyone looking, and says nothing at all to a screen
+          // reader.
+          aria-label={sending ? t.tripQA.sending : t.tripQA.send}
+          title={sending ? t.tripQA.sending : t.tripQA.send}
         >
-          {sending ? t.tripQA.sending : t.tripQA.send}
+          {sending ? (
+            // Three dots rather than a spinner, because the answer is
+            // already streaming in above and a spinner would suggest
+            // nothing is happening yet.
+            <svg viewBox="0 0 24 24" aria-hidden style={{ width: 18, height: 18 }}>
+              <circle cx="6" cy="12" r="1.6" fill="currentColor" />
+              <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+              <circle cx="18" cy="12" r="1.6" fill="currentColor" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" aria-hidden style={{ width: 18, height: 18 }}>
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 19V5M5 12l7-7 7 7"
+              />
+            </svg>
+          )}
         </button>
       </div>
       {error && (

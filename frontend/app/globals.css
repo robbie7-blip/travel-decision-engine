@@ -1954,6 +1954,182 @@ p {
   gap: 14px;
 }
 
+/* ============================================================
+   Ask a Local - the conversation
+   ============================================================ */
+
+/* The thread reads as a conversation, not as a list of boxes.
+ *
+ * It was two columns of bubbles with 10px between them in a 420px window,
+ * at 13px type. That is a comment thread. What a question and an answer
+ * actually want is the shape every assistant interface has converged on,
+ * and the reason is not fashion: the ANSWER is not a message, it is the
+ * page. It gets no bubble, no border and no 85% cap, because a border
+ * around prose is a frame around the thing you came to read. The
+ * traveler's own question stays a bubble, because that one IS a message:
+ * short, theirs, and worth being able to find again by shape alone. */
+.qa-thread {
+  display: flex;
+  flex-direction: column;
+  /* The single biggest change here. Turns need air between them or the
+     eye cannot tell where an answer stops and the next question starts. */
+  gap: 26px;
+  max-height: min(62vh, 560px);
+  overflow-y: auto;
+  /* So a scrollbar never sits on the last character of a line. */
+  padding-right: 4px;
+}
+
+.qa-turn {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.qa-turn-user {
+  justify-content: flex-end;
+}
+
+/* The answer itself. 15px and 1.72 rather than 13px and 1.5: this is the
+   only long-form prose on the page, and it gets read in a hotel lobby on
+   a phone. */
+.qa-answer {
+  flex: 1;
+  /* Without this a long unbroken URL in an answer stretches the flex item
+     past the thread and the whole column scrolls sideways. */
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.72;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.qa-bubble-user {
+  max-width: 78%;
+  padding: 10px 14px;
+  /* Rounder than the old 10px, with the corner nearest the sender squared
+     off, which is what makes a bubble read as coming FROM somewhere. */
+  border-radius: 16px 16px 4px 16px;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: var(--accent-green);
+  color: var(--bg-panel);
+}
+
+/* Shown while the answer is still arriving, at the end of the text. A
+   caret rather than a spinner: it says "still writing" in the place the
+   next word will appear, instead of somewhere else on the page. */
+.qa-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--ink-soft);
+  animation: qa-caret-blink 1s steps(2, start) infinite;
+}
+
+@keyframes qa-caret-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* Someone who cannot tolerate motion gets a caret that simply sits there,
+   which still says "the answer is not finished". */
+@media (prefers-reduced-motion: reduce) {
+  .qa-caret {
+    animation: none;
+  }
+}
+
+/* What you can do with an answer once it has arrived. Revealed on hover
+   or focus with a mouse, always visible on a touch screen, where there is
+   no hover to reveal anything with. */
+.qa-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.qa-turn:hover .qa-actions,
+.qa-turn:focus-within .qa-actions {
+  opacity: 1;
+}
+
+.qa-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: var(--ink-dim);
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.qa-action:hover {
+  color: var(--ink);
+  background: var(--bg-panel-raised);
+}
+
+/* One box holding the photo button, the text and send - the shape every
+   chat composer has. Three separate controls in a row each announce
+   themselves separately; one box with things in it reads as "here is
+   where you type". */
+.qa-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--bg-panel);
+}
+
+.qa-composer:focus-within {
+  border-color: var(--accent-green);
+}
+
+/* Round, inside the composer, and only coloured once there is something
+   to send. */
+.qa-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent-green);
+  color: var(--bg-panel);
+  cursor: pointer;
+}
+
+.qa-send:disabled {
+  background: var(--bg-panel-raised);
+  color: var(--ink-dim);
+  cursor: default;
+}
+
+@media (pointer: coarse) {
+  /* The same 44px floor as every other control. It matters more here:
+     buttons inside a rounded box look smaller than they are. */
+  .qa-send,
+  .qa-action {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 /* The Ask a Local box.
    =====================
 
@@ -1965,23 +2141,30 @@ p {
    what a class can do and an inline style cannot. */
 .trip-qa-input {
   flex: 1;
-  resize: vertical;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
+  /* No border, no background, no corner radius of its own: it sits INSIDE
+     .qa-composer now, and a bordered box within a bordered box is the
+     thing that made the old composer read as three separate widgets. The
+     focus ring moved with it, onto the composer. */
+  border: none;
+  background: transparent;
   color: var(--ink);
+  padding: 8px 6px;
   font-size: 16px;
-  line-height: 1.45;
+  line-height: 1.5;
+  /* Grown from JavaScript to fit what has been typed (see
+     TripQA.tsx), so a drag handle would fight the thing that is already
+     sizing it. */
+  resize: none;
+  overflow-y: auto;
+  /* Room for roughly six lines before it starts scrolling itself, which
+     is past the length of any question anyone types standing in a lobby. */
+  max-height: 160px;
 }
 
-@media (max-width: 560px) {
-  /* Three lines of placeholder plus the padding, so the invitation to ask
-     something is legible in full rather than cut off mid-word. It still
-     resizes by hand, and it still grows as you type. */
-  .trip-qa-input {
-    min-height: 88px;
-  }
+.trip-qa-input:focus {
+  /* The composer draws the focus ring for the whole control. Two would
+     be one too many. */
+  outline: none;
 }
 
 /* The "did you know" line during the wait. It was lost when TripBuilding

@@ -425,6 +425,8 @@ export interface Dictionary {
     send: string;
     sending: string;
     thinking: string; // shown while waiting for the first word of a reply
+    copyAnswer: string;
+    copied: string;
     genericError: string;
     tooLong: string;
     // Photo questions (Pro) - "what is this / is this included", asked from
@@ -944,6 +946,8 @@ const en: Dictionary = {
     send: "Ask",
     sending: "Asking...",
     thinking: "Thinking...",
+    copyAnswer: "Copy",
+    copied: "Copied",
     genericError: "Something went wrong answering that. Try again.",
     tooLong: "That message is a bit long - try trimming it.",
     addPhoto: "Add photo",
@@ -1485,6 +1489,8 @@ const bg: Dictionary = {
     send: "Питай",
     sending: "Изпращане...",
     thinking: "Мисля...",
+    copyAnswer: "Копирай",
+    copied: "Копирано",
     genericError: "Нещо се обърка при отговора. Опитайте отново.",
     tooLong: "Съобщението е малко дълго - опитайте да го съкратите.",
     addPhoto: "Добави снимка",
