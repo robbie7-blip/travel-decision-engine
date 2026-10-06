@@ -289,6 +289,14 @@ export function TripQA({ context, language, t }: TripQAProps) {
     const el = inputRef.current;
     if (!el) return;
     el.style.height = "auto";
+    // An EMPTY box stays one row, and this early return is the whole
+    // reason it does. scrollHeight on an empty textarea counts the
+    // placeholder's wrapped height, not the value's - measured at 112px
+    // for a one-row box at phone width, because the placeholder takes
+    // four lines there. Sizing to it grew the composer to fit text nobody
+    // had typed, and since the buttons sit at the bottom of the box, they
+    // ended up an inch below the first line of the placeholder.
+    if (el.value === "") return;
     el.style.height = `${el.scrollHeight}px`;
   }
 
@@ -662,16 +670,16 @@ export function TripQA({ context, language, t }: TripQAProps) {
             justifyContent: "center",
           }}
         >
-          <svg viewBox="0 0 24 24" aria-hidden style={{ width: 18, height: 18 }}>
+          <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
             <path
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.8"
+              strokeWidth="1.7"
               strokeLinecap="round"
               strokeLinejoin="round"
               d="M3 8.5h3.2l1.4-2h7.8l1.4 2H20a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"
             />
-            <circle cx="12" cy="13.5" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <circle cx="12" cy="13.5" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.7" />
           </svg>
         </button>
         <textarea
@@ -684,7 +692,12 @@ export function TripQA({ context, language, t }: TripQAProps) {
           // box, and it disappears the moment you start typing. This box is
           // the whole feature, so with a screen reader it announced as an
           // unnamed edit field.
-          aria-label={t.tripQA.placeholder}
+          //
+          // Its own string now, rather than the placeholder reused. The
+          // placeholder has to fit one line in a 163px box on a phone, and
+          // a label does not have to fit anything - so the short invitation
+          // is what you see and the full sentence is what is announced.
+          aria-label={t.tripQA.inputLabel}
           // One row to start. It grows to fit what is typed (resizeInput),
           // so the box is the size of the question rather than the size of
           // the longest question anyone might ask.

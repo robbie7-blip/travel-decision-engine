@@ -422,6 +422,9 @@ export interface Dictionary {
     pageSubheading: string;
     sectionHeading: string; // heading when embedded on a generated itinerary
     placeholder: string;
+    /** The accessible name for the ask box. Said in full, where the
+     * placeholder has to fit one line on a phone. */
+    inputLabel: string;
     send: string;
     sending: string;
     thinking: string; // shown while waiting for the first word of a reply
@@ -942,7 +945,8 @@ const en: Dictionary = {
     pageSubheading:
       "Packing, safety, local customs, whatever you're wondering about - ask anything, whether you planned the trip here or somewhere else.",
     sectionHeading: "Ask a local about this trip",
-    placeholder: "What should I pack? Is it safe at night? Ask anything...",
+    placeholder: "Ask anything...",
+    inputLabel: "Ask anything about your trip",
     send: "Ask",
     sending: "Asking...",
     thinking: "Thinking...",
@@ -1485,7 +1489,8 @@ const bg: Dictionary = {
     pageSubheading:
       "Багаж, безопасност, местни обичаи, каквото ви интересува - попитайте за всичко, независимо дали пътуването е планирано тук или другаде.",
     sectionHeading: "Питай местен за това пътуване",
-    placeholder: "Какво да си взема? Безопасно ли е вечер? Питайте каквото поискате...",
+    placeholder: "Попитайте каквото поискате...",
+    inputLabel: "Попитайте каквото поискате за пътуването си",
     send: "Питай",
     sending: "Изпращане...",
     thinking: "Мисля...",
