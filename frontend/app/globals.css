@@ -2087,14 +2087,67 @@ p {
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 20px;
+  /* Taller than the pills under it. With 8px it was the same height as a
+     starter suggestion and carried the same outline, so the eye had
+     nothing to rank: a list of equals rather than one thing with support
+     around it. */
+  padding: 11px 10px;
+  /* The strong line, not the ordinary one. This is the primary control on
+     the page and it was outlined exactly like the four starter pills under
+     it, which is the sort of thing that makes a layout read as a list of
+     equals rather than as one thing with support around it. */
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
   background: var(--bg-panel);
 }
 
 .qa-composer:focus-within {
   border-color: var(--accent-green);
+}
+
+/* One line standing in for the character picker, which is shut by
+   default. Reads as a status with a way in, not as a control demanding a
+   decision before you can type - the five cards it replaces were the
+   first thing on the page and the ask box was the last. */
+.qa-voice-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.qa-voice-summary:hover {
+  border-color: var(--line-strong);
+}
+
+/* The "Anyone" option has no portrait, so it gets the same placeholder the
+   full card uses, at the size of the line it sits on. */
+.qa-voice-summary-any {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+/* Pushed to the far end, where a "change this" affordance belongs. */
+.qa-voice-summary-change {
+  margin-left: auto;
+  color: var(--grounded);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Round, inside the composer, and only coloured once there is something
@@ -2126,6 +2179,11 @@ p {
   .qa-send,
   .qa-action {
     min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* A full-width row, so only the height needs a floor. */
+  .qa-voice-summary {
     min-height: 44px;
   }
 }

@@ -110,6 +110,13 @@ export function TripQA({ context, language, t }: TripQAProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  /** Whether the full character picker is showing.
+   *
+   * Shut by default, and that is the point: five cards, a greeting and a
+   * disclaimer were the first thing on the page and the ask box was the
+   * last. Most people never change this, so it collapses to one line
+   * naming who is answering, one tap from the full set. */
+  const [voicePickerOpen, setVoicePickerOpen] = useState(false);
   /** Which answer was just copied, so the button can say so. Cleared on a
    * timer, and by index rather than a boolean so copying one answer does
    * not light up the button on every other one. */
@@ -340,76 +347,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
   })();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Who you're asking. Only before the first question: mid
-          conversation a full picker would compete with the input, and
-          swapping character halfway through reads as the person you were
-          talking to being replaced. Once the thread starts, the chosen
-          character shrinks to the strip below instead. */}
-      {messages.length === 0 && (
-        <div>
-          <div
-            className="font-ui"
-            style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 10 }}
-          >
-            {t.tripQA.voiceHeading}
-          </div>
-          <div className="voice-grid">
-            {([null, ...LOCAL_VOICES] as (LocalVoice | null)[]).map((option) => {
-              const active = voice === option;
-              const Avatar = option ? VOICE_AVATARS[option] : null;
-              return (
-                <button
-                  key={option ?? "any"}
-                  type="button"
-                  onClick={() => setVoice(option)}
-                  aria-pressed={active}
-                  className="font-ui voice-card"
-                  data-active={active}
-                >
-                  {Avatar ? (
-                    <Avatar size={40} inverted={active} />
-                  ) : (
-                    <span className="voice-card-any" aria-hidden>
-                      ?
-                    </span>
-                  )}
-                  <span className="voice-card-text">
-                    <span className="voice-card-name">
-                      {option ? t.tripQA.voices[option].label : t.tripQA.voiceAnyone}
-                    </span>
-                    <span className="voice-card-blurb">
-                      {option ? t.tripQA.voices[option].blurb : t.tripQA.voiceAnyoneBlurb}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* The character says hello in their own voice. A local string,
-              not a model call, so trying all four costs nothing and the
-              greeting never enters the conversation history that gets sent
-              back to the model. */}
-          {voice && (
-            <div className="voice-greeting">
-              {(() => {
-                const Avatar = VOICE_AVATARS[voice];
-                return <Avatar size={34} />;
-              })()}
-              <span>{t.tripQA.voices[voice].greeting}</span>
-            </div>
-          )}
-
-          {/* Says plainly that this is a point of view, not a person. The
-              prompt refuses to invent a biography; this is the same
-              promise made where the traveler can see it. */}
-          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10 }}>
-            {t.tripQA.voiceNote}
-          </div>
-        </div>
-      )}
-
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Mid-conversation: who you are talking to stays visible, and can
           still be changed - clearing the thread, because a character
           switching mid-exchange would otherwise be answering for lines
@@ -432,34 +370,6 @@ export function TripQA({ context, language, t }: TripQAProps) {
           >
             {t.tripQA.voiceChange}
           </button>
-        </div>
-      )}
-      {messages.length === 0 && examples.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {examples.map((prompt) => (
-            <button
-              key={prompt}
-              type="button"
-              onClick={() => applyExample(prompt)}
-              // qa-example is only a touch-target hook: these pills were
-              // 266x29 on a phone, and .hover-card is shared with the full
-              // city cards, which must not be given a 44px floor they do
-              // not need.
-              className="font-ui hover-card qa-example"
-              style={{
-                border: "1px solid var(--line)",
-                background: "var(--bg-panel-raised)",
-                color: "var(--ink-soft)",
-                borderRadius: 999,
-                padding: "6px 14px",
-                fontSize: 12,
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              {prompt}
-            </button>
-          ))}
         </div>
       )}
       {/* The single announcement Ask a Local makes to a screen reader: the
@@ -747,6 +657,143 @@ export function TripQA({ context, language, t }: TripQAProps) {
           {error}
         </div>
       )}
+      {/* BELOW the composer, both of them, and that ordering is the whole
+          point of this layout.
+
+          The ask box is the feature. It was last on the page and the
+          smallest thing on it: a heading, five character cards, a
+          disclaimer and four starter pills all came first, so the one
+          control someone came here to use ranked bottom. Position is
+          the strongest emphasis there is, and it was pointing at the
+          scenery.
+
+          Nothing is conditional about the order. With an empty thread
+          the composer is simply the first thing rendered; once the
+          conversation starts the thread appears above it and it sits
+          at the bottom where a composer belongs. */}
+      {messages.length === 0 && examples.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {examples.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => applyExample(prompt)}
+              // qa-example is only a touch-target hook: these pills were
+              // 266x29 on a phone, and .hover-card is shared with the full
+              // city cards, which must not be given a 44px floor they do
+              // not need.
+              className="font-ui hover-card qa-example"
+              style={{
+                border: "1px solid var(--line)",
+                background: "var(--bg-panel-raised)",
+                color: "var(--ink-soft)",
+                borderRadius: 999,
+                padding: "6px 14px",
+                fontSize: 12,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Who you're asking. Only before the first question: mid
+          conversation a full picker would compete with the input, and
+          swapping character halfway through reads as the person you were
+          talking to being replaced. Once the thread starts, the chosen
+          character shrinks to the strip below instead. */}
+      {messages.length === 0 && (
+        <div>
+          {/* One line instead of a heading and five cards. It says who is
+              answering and opens the full set, which is all the default
+              state of this control needs to do. */}
+          <button
+            type="button"
+            onClick={() => setVoicePickerOpen((open) => !open)}
+            aria-expanded={voicePickerOpen}
+            className="font-ui qa-voice-summary"
+          >
+            {voice ? (
+              (() => {
+                const Avatar = VOICE_AVATARS[voice];
+                return <Avatar size={22} />;
+              })()
+            ) : (
+              <span className="qa-voice-summary-any" aria-hidden>
+                ?
+              </span>
+            )}
+            <span style={{ color: "var(--ink-dim)" }}>{t.tripQA.voiceAsking}</span>
+            <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+              {voice ? t.tripQA.voices[voice].label : t.tripQA.voiceAnyone}
+            </span>
+            <span className="qa-voice-summary-change">{t.tripQA.voiceChange}</span>
+          </button>
+          {voicePickerOpen && (
+            <>
+              <div className="voice-grid" style={{ marginTop: 10 }}>
+            {([null, ...LOCAL_VOICES] as (LocalVoice | null)[]).map((option) => {
+              const active = voice === option;
+              const Avatar = option ? VOICE_AVATARS[option] : null;
+              return (
+                <button
+                  key={option ?? "any"}
+                  type="button"
+                  onClick={() => setVoice(option)}
+                  aria-pressed={active}
+                  className="font-ui voice-card"
+                  data-active={active}
+                >
+                  {Avatar ? (
+                    <Avatar size={40} inverted={active} />
+                  ) : (
+                    <span className="voice-card-any" aria-hidden>
+                      ?
+                    </span>
+                  )}
+                  <span className="voice-card-text">
+                    <span className="voice-card-name">
+                      {option ? t.tripQA.voices[option].label : t.tripQA.voiceAnyone}
+                    </span>
+                    <span className="voice-card-blurb">
+                      {option ? t.tripQA.voices[option].blurb : t.tripQA.voiceAnyoneBlurb}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* The character says hello in their own voice. A local string,
+              not a model call, so trying all four costs nothing and the
+              greeting never enters the conversation history that gets sent
+              back to the model. */}
+          {voice && (
+            <div className="voice-greeting">
+              {(() => {
+                const Avatar = VOICE_AVATARS[voice];
+                return <Avatar size={34} />;
+              })()}
+              <span>{t.tripQA.voices[voice].greeting}</span>
+            </div>
+          )}
+
+          {/* Says plainly that this is a point of view, not a person. The
+              prompt refuses to invent a biography; this is the same
+              promise made where the traveler can see it. Inside the
+              expanded picker, because it is about the characters and
+              there is no reason to say it to someone who never opened
+              them. */}
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10 }}>
+            {t.tripQA.voiceNote}
+          </div>
+          </>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
