@@ -20,7 +20,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import * as THREE from "three";
 import { WORLD_COUNTRY_FEATURES, type CountryFeature } from "@/lib/worldGeo";
-import { dartFlightMs, revealedHit, type DartHit } from "@/lib/dartGlobe";
+import {
+  dartFlightFrame,
+  dartFlightMs,
+  dartFlightPath,
+  dartPointAt,
+  dartTangentAt,
+  dartThrowScale,
+  revealedHit,
+  type DartHit,
+} from "@/lib/dartGlobe";
 import { CANVAS_COLORS } from "@/lib/theme";
 
 interface DartGlobeCanvasProps {
@@ -56,54 +65,116 @@ const HIT_ALTITUDE = 0.9;
  * rather than a pin in the sea. */
 const POINT_HIT_ALTITUDE = 0.35;
 
-/** Where the dart starts, in globe radii above the surface.
+/** How big the dart is drawn at HIT_ALTITUDE, as a multiple of the profiles
+ * below - which are about 13 units long, an eighth of the globe's radius.
  *
- * High enough to be clearly off the globe when the camera starts moving,
- * low enough that it is already in frame rather than arriving from
- * somewhere the viewer never saw it. */
-const DART_START_ALTITUDE = 1.15;
+ * Scaled at throw time by dartThrowScale, because the camera finishes at
+ * 0.9 radii for a country with an outline and 0.35 for one without. At the
+ * close altitude the camera is 35 units above the ground, so a dart sized
+ * for the far one is longer than the gap it has to fall through. */
+const DART_SCALE = 2.7;
 
-/** The dart, in react-globe.gl's scene units, where the globe's radius is
- * 100. Eleven units long is about a tenth of the radius: big enough to
- * read as a dart on a phone, small enough not to look like a missile.
+/** The dart's silhouette as a profile revolved about its axis: radius and
+ * distance along the axis, nose first.
  *
- * Built nose along +Z, body trailing into -Z, because positioning is done
- * by getCoords and then lookAt(0,0,0) - which aims local +Z at the centre
- * of the globe. Build it along +Y like a cone's default and the dart flies
- * sideways. */
+ * Three pieces rather than one, because a dart is three materials and the
+ * joins are what make it read as a dart rather than a rocket: a steel
+ * needle, a weighted barrel that bulges in the middle where it is held,
+ * and a thin stem behind it carrying the flights. What was here before was
+ * a cone stuck on a cylinder with three boxes for fins, which was honest
+ * about being a placeholder.
+ *
+ * Built nose along +Z, body trailing into -Z, because the flight aims the
+ * nose by lookAt - which points local +Z at the target. A lathe revolves
+ * around +Y, hence the rotateX on each one; build it along +Y and the dart
+ * flies sideways. */
+const DART_NEEDLE: [number, number][] = [
+  [0, 6.5],
+  [0.16, 5.6],
+  [0.2, 4.6],
+  [0.24, 4],
+];
+const DART_BARREL: [number, number][] = [
+  [0.24, 4],
+  [0.8, 3.3],
+  [1.02, 2],
+  [1.05, 0.2],
+  [0.92, -1.2],
+  [0.55, -2],
+  [0.32, -2.4],
+];
+const DART_STEM: [number, number][] = [
+  [0.32, -2.4],
+  [0.3, -5.6],
+  [0.44, -5.9],
+  [0.3, -6.2],
+  [0, -6.3],
+];
+/** Grip rings on the barrel, where a hand would be. */
+const DART_GRIP_RINGS = [1.9, 0.9, -0.1];
+/** One flight, as a quadrilateral in the plane containing the axis:
+ * distance out from the stem against distance along it. Four of these in a
+ * cross, which is what a real dart carries. */
+const DART_FLIGHT: [number, number][] = [
+  [0.3, -3],
+  [1.6, -3.9],
+  [2.35, -5.5],
+  [0.3, -6],
+];
+
+function dartLathe(profile: [number, number][], color: string): THREE.Mesh {
+  const geometry = new THREE.LatheGeometry(
+    profile.map(([radius, along]) => new THREE.Vector2(radius, along)),
+    18
+  );
+  geometry.rotateX(Math.PI / 2);
+  return new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color, shininess: 40 }));
+}
+
+/** A flight, as two triangles.
+ *
+ * DoubleSide is not optional: a flight has no thickness, and a
+ * single-sided one disappears for half of every turn the dart makes about
+ * its own axis. */
+function dartVane(color: string): THREE.Mesh {
+  const geometry = new THREE.BufferGeometry();
+  const [a, b, c, d] = DART_FLIGHT;
+  const vertices: number[] = [];
+  for (const triangle of [
+    [a, b, c],
+    [a, c, d],
+  ]) {
+    for (const [out, along] of triangle) vertices.push(out, 0, along);
+  }
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.computeVertexNormals();
+  return new THREE.Mesh(
+    geometry,
+    new THREE.MeshPhongMaterial({ color, side: THREE.DoubleSide })
+  );
+}
+
 function makeDart(): THREE.Group {
   const dart = new THREE.Group();
+  dart.add(dartLathe(DART_NEEDLE, CANVAS_COLORS.inkDim));
+  dart.add(dartLathe(DART_BARREL, CANVAS_COLORS.accent1));
+  dart.add(dartLathe(DART_STEM, CANVAS_COLORS.inkDim));
 
-  const tip = new THREE.Mesh(
-    new THREE.ConeGeometry(1.3, 4.5, 14),
-    new THREE.MeshPhongMaterial({ color: CANVAS_COLORS.accent1 })
-  );
-  // A cone points along +Y, so rotating +90 degrees about X turns the nose
-  // to +Z, which is the direction lookAt will aim at the globe.
-  tip.rotation.x = Math.PI / 2;
-  tip.position.z = 3.2;
-  dart.add(tip);
-
-  const shaft = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.45, 0.45, 7, 10),
-    new THREE.MeshPhongMaterial({ color: CANVAS_COLORS.inkDim })
-  );
-  shaft.rotation.x = Math.PI / 2;
-  shaft.position.z = -2.5;
-  dart.add(shaft);
-
-  // Three flights at the tail, so the dart reads as a dart from any angle
-  // the camera happens to be at rather than only side-on.
-  for (let i = 0; i < 3; i++) {
-    const fin = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 2.4, 2.6),
-      new THREE.MeshPhongMaterial({ color: CANVAS_COLORS.accentGreen })
+  for (const along of DART_GRIP_RINGS) {
+    const geometry = new THREE.CylinderGeometry(1.1, 1.1, 0.2, 18);
+    geometry.rotateX(Math.PI / 2);
+    const ring = new THREE.Mesh(
+      geometry,
+      new THREE.MeshPhongMaterial({ color: CANVAS_COLORS.bgPanelRaised })
     );
-    fin.position.z = -5.4;
-    fin.rotation.z = (i * 2 * Math.PI) / 3;
-    fin.position.y = Math.cos((i * 2 * Math.PI) / 3) * 1.1;
-    fin.position.x = Math.sin((i * 2 * Math.PI) / 3) * 1.1;
-    dart.add(fin);
+    ring.position.z = along;
+    dart.add(ring);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const flight = dartVane(CANVAS_COLORS.accentGreen);
+    flight.rotation.z = (i * Math.PI) / 2;
+    dart.add(flight);
   }
 
   // Hidden until a throw. The object exists for the life of the component
@@ -157,11 +228,13 @@ export default function DartGlobeCanvas({ hit, throwId, reducedMotion, onArrived
   // Fly to the hit. Keyed on throwId as well as the hit itself so throwing
   // again and landing on the same country still moves the camera.
   //
-  // Two things move together: the camera swings to the landing point while
-  // the dart falls toward it, so they arrive at the same moment. The dart
-  // used to be simply PRESENT from the first frame - the camera moved and
-  // the pin was already stuck in the country before the viewer could see
-  // it happen, which is a camera move rather than a throw.
+  // The camera swings to the landing point first, and the dart is thrown
+  // into the second half of that window - see the long note on the throw
+  // in lib/dartGlobe.ts. The dart used to be simply PRESENT from the first
+  // frame, with the pin already stuck in the country before the viewer
+  // could see it happen; then it fell straight down the radius, which put
+  // it end-on to a camera looking straight at the same point and made it a
+  // dot for the whole flight.
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || size === 0 || !hit) return;
@@ -170,25 +243,35 @@ export default function DartGlobeCanvas({ hit, throwId, reducedMotion, onArrived
     globe.pointOfView({ lat: hit.lat, lng: hit.lng, altitude }, ms);
     setFlying(true);
 
+    // The arc, computed once per throw rather than per frame. The landing
+    // point comes from the globe's own getCoords so this and the library
+    // agree about where a latitude is.
+    const path = dartFlightPath(globe.getCoords(hit.lat, hit.lng, 0.01), altitude);
+    const scale = dartThrowScale(altitude, DART_SCALE);
+
     let frame = 0;
     const startedAt = performance.now();
     const step = (now: number) => {
-      // Clamped, because a backgrounded tab can hand back a timestamp well
-      // past the end and a negative altitude puts the dart inside the
-      // globe, where it is both invisible and wrong.
-      const t = Math.min(1, Math.max(0, (now - startedAt) / ms));
-      // Accelerating, not linear: a dart does not fall at a constant rate,
-      // and the camera is still settling for the first half of this.
-      const eased = t * t;
+      const t = (now - startedAt) / ms;
+      const { visible, eased, spin, quiver } = dartFlightFrame(t);
       const dart = dartRef.current;
       if (dart) {
-        dart.visible = true;
-        const alt = DART_START_ALTITUDE * (1 - eased);
-        const { x, y, z } = globe.getCoords(hit.lat, hit.lng, alt);
-        dart.position.set(x, y, z);
-        // Nose at the globe's centre, which is "straight down" anywhere on
-        // a sphere.
-        dart.lookAt(0, 0, 0);
+        dart.visible = visible;
+        if (visible) {
+          dart.scale.setScalar(scale);
+          const point = dartPointAt(path, eased);
+          const tangent = dartTangentAt(path, eased);
+          dart.position.set(point.x, point.y, point.z);
+          // Nose along the direction of TRAVEL, not at the globe's centre.
+          // That is what lands it at an angle, like a dart in a board,
+          // instead of standing it straight up out of the country.
+          dart.lookAt(point.x + tangent.x, point.y + tangent.y, point.z + tangent.z);
+          // About its own axis, which after lookAt is local +Z.
+          dart.rotateZ(spin);
+          // And the shudder on impact, about an axis across the dart, so
+          // the tail swings rather than the whole thing rolling.
+          if (quiver !== 0) dart.rotateX(quiver);
+        }
       }
       if (t < 1) frame = requestAnimationFrame(step);
     };

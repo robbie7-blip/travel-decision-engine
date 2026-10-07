@@ -22,7 +22,18 @@ import {
   DART_TARGETS,
   dartBackstopMs,
   dartCountryCodes,
+  dartFlightFrame,
   dartFlightMs,
+  dartFlightPath,
+  dartPointAt,
+  dartTangentAt,
+  dartThrowScale,
+  dartVecLength,
+  DART_LAND_ANGLE,
+  DART_LAND_AT,
+  DART_REFERENCE_ALTITUDE,
+  DART_THROW_AT,
+  GLOBE_RADIUS,
   revealedHit,
   hitFor,
   guidesForCountry,
@@ -314,6 +325,158 @@ function main() {
       dartFlightMs(false) >= 2000,
       `${dartFlightMs(false)}ms`
     );
+  }
+
+  section("the throw: when the dart is where");
+  {
+    // Nothing before the throw. The camera owns the first half of the
+    // window; a dart in the air during it is a dart thrown off-camera.
+    check("hidden at the start", !dartFlightFrame(0).visible);
+    check("still hidden just before the throw", !dartFlightFrame(DART_THROW_AT - 0.01).visible);
+    check("visible from the throw on", dartFlightFrame(DART_THROW_AT).visible);
+    check("starts at the beginning of its arc", dartFlightFrame(DART_THROW_AT).eased === 0);
+    check("not landed mid-flight", !dartFlightFrame(0.7).landed);
+    check("landed at the landing", dartFlightFrame(DART_LAND_AT).landed);
+    check("at the end of its arc when it lands", dartFlightFrame(DART_LAND_AT).eased === 1);
+    check("stays landed", dartFlightFrame(1).landed && dartFlightFrame(1).eased === 1);
+
+    // Clamped at both ends. A backgrounded tab hands back a timestamp well
+    // past the end, and an eased value over 1 would put the dart under the
+    // surface - invisible, and wrong.
+    check("clamps past the end", dartFlightFrame(4).eased === 1);
+    check("clamps before the start", !dartFlightFrame(-2).visible);
+
+    // Monotonic, so it never stutters backward.
+    let previous = -1;
+    let monotonic = true;
+    for (let t = DART_THROW_AT; t <= 1.0001; t += 0.01) {
+      const { eased } = dartFlightFrame(t);
+      if (eased < previous) monotonic = false;
+      previous = eased;
+    }
+    check("progress never goes backward", monotonic);
+
+    // Ease OUT, not in: most of the window is spent near the target, where
+    // the dart is big enough to see. The old animation used t*t and spent
+    // it all far away.
+    check(
+      "covers most of the arc in the first half of its flight",
+      dartFlightFrame(DART_THROW_AT + (DART_LAND_AT - DART_THROW_AT) / 2).eased > 0.6,
+      `${dartFlightFrame(DART_THROW_AT + (DART_LAND_AT - DART_THROW_AT) / 2).eased}`
+    );
+
+    check("spins while it flies", dartFlightFrame(0.7).spin > 0);
+    check("does not quiver before it lands", dartFlightFrame(0.7).quiver === 0);
+    check("quivers after it lands", Math.abs(dartFlightFrame(0.95).quiver) > 0.001);
+    // It has to be still before the result card appears over it.
+    check("is still by the end", Math.abs(dartFlightFrame(1).quiver) < 0.0001);
+  }
+
+  section("the throw: the arc");
+  {
+    const altitude = DART_REFERENCE_ALTITUDE;
+    // A landing point just above the surface, as the component gets it
+    // from the globe's own getCoords.
+    const end = { x: 0, y: 0, z: GLOBE_RADIUS * 1.01 };
+    const path = dartFlightPath(end, altitude);
+
+    const same = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) =>
+      a.x === b.x && a.y === b.y && a.z === b.z;
+    check("ends exactly where the dart is meant to stick", same(dartPointAt(path, 1), path.end));
+    check("starts at the start", same(dartPointAt(path, 0), path.start));
+    check("starts off the surface", dartVecLength(path.start) > GLOBE_RADIUS * 1.2);
+    check(
+      "and off to one side rather than straight overhead",
+      Math.hypot(path.start.x, path.start.y) > GLOBE_RADIUS * 0.2,
+      `${Math.hypot(path.start.x, path.start.y)}`
+    );
+
+    // The landing angle is the whole point of the control-point placement:
+    // a quadratic's tangent at its end is the vector from control to end,
+    // so this is what decides whether the dart stands up like a mast or
+    // lies in the country like a dart in a board.
+    const tangent = dartTangentAt(path, 1);
+    const length = dartVecLength(tangent);
+    const inward = -tangent.z / length;
+    const angle = Math.acos(Math.max(-1, Math.min(1, inward)));
+    check(
+      "lands at the angle it is supposed to",
+      Math.abs(angle - DART_LAND_ANGLE) < 0.02,
+      `${angle} vs ${DART_LAND_ANGLE}`
+    );
+
+    // The tangent must never be zero-length: the nose is aimed along it,
+    // and lookAt on a zero vector leaves the dart in whatever rotation it
+    // happened to have.
+    let shortest = Infinity;
+    for (let e = 0; e <= 1.0001; e += 0.02) {
+      shortest = Math.min(shortest, dartVecLength(dartTangentAt(path, e)));
+    }
+    check("the dart always has a direction to point in", shortest > 1, `${shortest}`);
+  }
+
+  section("the throw: the arc never passes through the globe");
+  {
+    // Not obvious by inspection, and the thing a nudge to the side angle
+    // or the control fraction would quietly break - a dart that dives
+    // through the planet and comes back out, on some countries only.
+    // Swept over the whole sphere and both landing altitudes, because the
+    // path is scaled by altitude and the tangent frame is swapped near
+    // the poles.
+    let worst = Infinity;
+    let worstAt = "";
+    let nan = 0;
+    for (const altitude of [0.9, 0.35]) {
+      for (let lat = -89; lat <= 89; lat += 7) {
+        for (let lng = -180; lng <= 180; lng += 15) {
+          const phi = ((90 - lat) * Math.PI) / 180;
+          const theta = ((90 - lng) * Math.PI) / 180;
+          const r = GLOBE_RADIUS * 1.01;
+          const end = {
+            x: r * Math.sin(phi) * Math.cos(theta),
+            y: r * Math.cos(phi),
+            z: r * Math.sin(phi) * Math.sin(theta),
+          };
+          const path = dartFlightPath(end, altitude);
+          for (let e = 0; e <= 1.0001; e += 0.02) {
+            const point = dartPointAt(path, e);
+            if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || !Number.isFinite(point.z)) {
+              nan += 1;
+              continue;
+            }
+            const distance = dartVecLength(point);
+            if (distance < worst) {
+              worst = distance;
+              worstAt = `lat ${lat} lng ${lng} alt ${altitude} at ${e.toFixed(2)}`;
+            }
+          }
+        }
+      }
+    }
+    check("no point on any path is a NaN", nan === 0, `${nan} NaN points`);
+    check(
+      "no path dips below the surface anywhere on the globe",
+      worst >= GLOBE_RADIUS,
+      `closest ${worst.toFixed(2)} at ${worstAt}`
+    );
+  }
+
+  section("the throw: the dart is sized for how close the camera gets");
+  {
+    // 0.9 radii for a country with an outline, 0.35 for Monaco and Tuvalu.
+    // One size cannot serve both: at the close altitude the camera is 35
+    // units above the ground and a dart drawn for the far one is longer
+    // than that.
+    check(
+      "unchanged at the reference altitude",
+      dartThrowScale(DART_REFERENCE_ALTITUDE, 2.7) === 2.7
+    );
+    check("smaller when the camera comes closer", dartThrowScale(0.35, 2.7) < 2.7);
+    check(
+      "in proportion, so it looks the same size on screen",
+      Math.abs(dartThrowScale(0.35, 2.7) / 2.7 - 0.35 / 0.9) < 1e-9
+    );
+    check("zero altitude would draw nothing", dartThrowScale(0, 2.7) === 0);
   }
 
   finish();

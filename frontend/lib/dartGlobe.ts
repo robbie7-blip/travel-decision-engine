@@ -325,3 +325,247 @@ export function dartCountryCodes(): string[] {
 
 /** Re-exported so a caller does not need both modules to name a hit. */
 export { SPIN_POOL };
+
+// ---------------------------------------------------------------------------
+// The throw itself.
+//
+// WHAT WAS WRONG WITH THE OLD ONE, measured rather than guessed. The dart
+// fell straight down the radius to the landing point while the camera
+// looked at that same point from directly above it - so the viewer saw the
+// dart end-on, from behind, for the whole flight. Rendered frame by frame
+// against a stand-in globe at the real altitudes, the dart was INVISIBLE
+// for the first 70% of the flight and a four-pixel dot for the rest. Every
+// complaint about the throw being "quick" was really this: there was
+// almost nothing on screen to see.
+//
+// So the dart now comes in on an arc from off to one side, and the
+// geometry below is what makes that work:
+//
+//   - It is seen side-on for most of its flight, which is the only angle
+//     at which a dart reads as a dart.
+//   - It lands at an angle and stays there, like a dart in a board, rather
+//     than sticking straight out at the lens.
+//   - It flies in the LAST HALF of the window. The camera spends the first
+//     half swinging round to the hit, and nothing near the landing point is
+//     on screen until it gets there - a dart thrown before that is thrown
+//     off-camera. Two beats, "look there" then "throw", instead of one
+//     beat with the interesting half invisible.
+//   - Every distance scales with how close the camera finishes, because it
+//     finishes at 0.9 radii for a country with an outline and 0.35 for one
+//     without (Monaco, Tuvalu). A dart sized for the first is three times
+//     too big for the second.
+//
+// Kept here, as plain {x,y,z} arithmetic with no three.js, so it can be
+// tested. The sweep in dartGlobe.test.ts checks the path never passes
+// through the globe at any latitude - which is not obvious by inspection
+// and is exactly what a nudge to DART_SIDE_ANGLE would break.
+
+/** A point in react-globe.gl's scene, whose globe has radius 100. */
+export type DartVec3 = { x: number; y: number; z: number };
+
+/** react-globe.gl's fixed internal globe radius. Not configurable by the
+ * library's API; the dart's own dimensions in DartGlobeCanvas are written
+ * against it too. */
+export const GLOBE_RADIUS = 100;
+
+/** When the dart appears, as a fraction of the flight window.
+ *
+ * The camera is still swinging before this. Throwing earlier means
+ * throwing it where nobody is looking. */
+export const DART_THROW_AT = 0.45;
+
+/** When the tip reaches the surface. The rest of the window is the dart
+ * shuddering to a stop, which is the part that makes it land rather than
+ * simply arrive. */
+export const DART_LAND_AT = 0.93;
+
+/** The angle between the dart and straight-down at the moment it lands,
+ * in radians. 1.3 is about 75 degrees off vertical: enough to show its
+ * whole length to a camera looking straight down, while still reading as
+ * stuck in rather than laid on top. Compared against 0.95 and 1.45 by
+ * rendering the landing; 0.95 was too foreshortened and 1.45 looked like
+ * it had skidded. */
+export const DART_LAND_ANGLE = 1.3;
+
+/** Which way it comes from, as an angle in the landing point's own tangent
+ * plane: 0 is local north, positive turns east. Fixed rather than random,
+ * so the throw looks the same every time and reads as one gesture.
+ *
+ * Expressed in the TANGENT PLANE and not as a latitude/longitude offset,
+ * which is the version that had a bug in it: near a pole a latitude offset
+ * clamps away to nothing and a longitude offset collapses, leaving the
+ * start point directly above the target. The direction of travel then has
+ * no sideways component, and normalising it produces NaN - a dart that
+ * vanishes, in whichever country happens to be furthest north. */
+export const DART_SIDE_ANGLE = -0.5;
+
+/** The altitude the dart's proportions are quoted at, so everything else
+ * can scale from it. Matches HIT_ALTITUDE in DartGlobeCanvas. */
+export const DART_REFERENCE_ALTITUDE = 0.9;
+
+/** How far the dart starts above and to the side of the target, in globe
+ * radii at the reference altitude. Just outside the frame, so it flies in
+ * rather than appearing in the middle of it. */
+export const DART_START_UP = 0.55;
+export const DART_START_SIDE = 0.3;
+
+/** How much of the approach is straight. The control point sits this far
+ * back along the incoming direction, which is what sets the landing angle
+ * exactly: a quadratic's tangent at the end is the vector from its control
+ * point to its end. */
+export const DART_CONTROL_FRACTION = 0.55;
+
+/** Turns about its own axis during the flight. */
+export const DART_SPIN_TURNS = 1.5;
+
+/** The shudder after it lands: how far the tail swings, how fast, and how
+ * sharply that dies away. */
+export const DART_QUIVER_RADIANS = 0.08;
+export const DART_QUIVER_CYCLES = 3;
+
+function vec(x: number, y: number, z: number): DartVec3 {
+  return { x, y, z };
+}
+function add(a: DartVec3, b: DartVec3): DartVec3 {
+  return vec(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+function sub(a: DartVec3, b: DartVec3): DartVec3 {
+  return vec(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+function scale(a: DartVec3, s: number): DartVec3 {
+  return vec(a.x * s, a.y * s, a.z * s);
+}
+function dot(a: DartVec3, b: DartVec3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+function cross(a: DartVec3, b: DartVec3): DartVec3 {
+  return vec(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+}
+export function dartVecLength(a: DartVec3): number {
+  return Math.hypot(a.x, a.y, a.z);
+}
+function normalise(a: DartVec3): DartVec3 {
+  const length = dartVecLength(a);
+  if (length === 0) throw new Error("cannot normalise a zero vector");
+  return scale(a, 1 / length);
+}
+
+/** How big to draw the dart so it takes up the same part of the frame
+ * whatever altitude the camera finishes at.
+ *
+ * Apparent size goes as length over distance, and at the landing the
+ * camera is `altitude` radii above the surface - so length has to go with
+ * altitude. Without this the dart is right for Brazil and, for Monaco,
+ * longer than the gap between the camera and the ground. */
+export function dartThrowScale(altitude: number, baseScale: number): number {
+  return (baseScale * altitude) / DART_REFERENCE_ALTITUDE;
+}
+
+export type DartFlightPath = {
+  start: DartVec3;
+  control: DartVec3;
+  end: DartVec3;
+};
+
+/** The arc the dart travels, from the landing point outward.
+ *
+ * `end` is where the tip finishes - a point just above the surface, which
+ * the caller gets from the globe's own getCoords so the two agree about
+ * where a latitude is. `altitude` is where the camera finishes, which is
+ * what every distance here is scaled by. */
+export function dartFlightPath(end: DartVec3, altitude: number): DartFlightPath {
+  const outward = normalise(end);
+  // A tangent frame at the landing point. The reference vector is swapped
+  // near the poles because the cross product with something parallel is
+  // zero - the degenerate case the comment on DART_SIDE_ANGLE describes.
+  const reference = Math.abs(outward.y) > 0.9 ? vec(1, 0, 0) : vec(0, 1, 0);
+  const east = normalise(cross(reference, outward));
+  const north = normalise(cross(outward, east));
+  const side = normalise(
+    add(scale(north, Math.cos(DART_SIDE_ANGLE)), scale(east, Math.sin(DART_SIDE_ANGLE)))
+  );
+
+  const ratio = altitude / DART_REFERENCE_ALTITUDE;
+  const start = add(
+    scale(outward, GLOBE_RADIUS * (1 + DART_START_UP * ratio)),
+    scale(side, GLOBE_RADIUS * DART_START_SIDE * ratio)
+  );
+
+  // The incoming direction: mostly down, partly along the way it came, at
+  // exactly DART_LAND_ANGLE off vertical.
+  const chord = sub(end, start);
+  const alongSurface = normalise(sub(chord, scale(outward, dot(chord, outward))));
+  const incoming = normalise(
+    add(
+      scale(scale(outward, -1), Math.cos(DART_LAND_ANGLE)),
+      scale(alongSurface, Math.sin(DART_LAND_ANGLE))
+    )
+  );
+  const control = sub(
+    end,
+    scale(incoming, dartVecLength(chord) * DART_CONTROL_FRACTION)
+  );
+  return { start, control, end };
+}
+
+export function dartPointAt(path: DartFlightPath, eased: number): DartVec3 {
+  const k = 1 - eased;
+  return add(
+    add(scale(path.start, k * k), scale(path.control, 2 * k * eased)),
+    scale(path.end, eased * eased)
+  );
+}
+
+/** Where the dart is pointing: the curve's own derivative, so the nose
+ * follows the direction of travel instead of always aiming at the globe's
+ * centre. Exact, and never zero-length, which a difference between two
+ * sampled points would be at the end of the flight. */
+export function dartTangentAt(path: DartFlightPath, eased: number): DartVec3 {
+  return add(
+    scale(sub(path.control, path.start), 2 * (1 - eased)),
+    scale(sub(path.end, path.control), 2 * eased)
+  );
+}
+
+export type DartFlightFrame = {
+  /** False while the camera is still swinging, before the throw. */
+  visible: boolean;
+  /** Position along the arc, 0 at the throw and 1 at the surface. */
+  eased: number;
+  /** True once the tip is in. */
+  landed: boolean;
+  /** Radians about the dart's own axis. */
+  spin: number;
+  /** Radians the tail swings by, after landing. */
+  quiver: number;
+};
+
+/** The whole flight as a function of time, so nothing about the animation
+ * lives only inside a requestAnimationFrame callback where it cannot be
+ * tested. `t` is 0 to 1 across the window dartFlightMs returns. */
+export function dartFlightFrame(t: number): DartFlightFrame {
+  const clamped = Math.min(1, Math.max(0, t));
+  if (clamped < DART_THROW_AT) {
+    return { visible: false, eased: 0, landed: false, spin: 0, quiver: 0 };
+  }
+  const raw = Math.min(1, (clamped - DART_THROW_AT) / (DART_LAND_AT - DART_THROW_AT));
+  // Fast off the hand, easing into the board. The old animation used t*t,
+  // which accelerates - and so spent most of its time far away, where a
+  // dart is a dot, and crossed the part you can actually see in a blink.
+  const eased = 1 - Math.pow(1 - raw, 1.7);
+  const landed = clamped >= DART_LAND_AT;
+  const after = landed ? (clamped - DART_LAND_AT) / (1 - DART_LAND_AT) : 0;
+  return {
+    visible: true,
+    eased,
+    landed,
+    spin: eased * Math.PI * 2 * DART_SPIN_TURNS,
+    // Damped, and squared so it is unmistakably finished by the time the
+    // result card appears rather than still twitching under it.
+    quiver: landed
+      ? DART_QUIVER_RADIANS *
+        Math.sin(after * Math.PI * 2 * DART_QUIVER_CYCLES) *
+        (1 - after) ** 2
+      : 0,
+  };
+}
