@@ -42,6 +42,36 @@ import { COUNTRIES, getCountry } from "./countries";
 import { countryPoint } from "./countryPoints";
 import { SPIN_POOL, type SpinSlug } from "./spin";
 
+/** How long the dart is in the air, and how long the page waits before
+ * giving up on it.
+ *
+ * Here rather than beside the animation, because two components depend on
+ * the same number and they are in different files. DartGlobeCanvas flies
+ * the dart for this long; GlobeDart runs a backstop that reveals the
+ * result if the canvas never reports back - and that backstop MUST outlast
+ * the flight, or the result card appears while the dart is still falling.
+ *
+ * It did not, quite, by luck: a 1600ms flight against a hardcoded 4000ms
+ * backstop. Nothing said they were related, so the next person to make the
+ * throw more dramatic would have broken it with no test to catch them and
+ * no symptom other than the card arriving early.
+ */
+export function dartFlightMs(reducedMotion: boolean): number {
+  // Slow enough to watch, which is the whole point of animating it. At
+  // 1600 it was over before it read as a throw.
+  return reducedMotion ? 450 : 2400;
+}
+
+/** The flight, plus room for a slow device to finish rendering it.
+ *
+ * Derived rather than written down, so it cannot fall behind the flight.
+ * Scaled from the actual duration in play, so someone who asked for
+ * reduced motion is not left waiting four seconds for a backstop on a
+ * 450ms animation. */
+export function dartBackstopMs(reducedMotion: boolean): number {
+  return dartFlightMs(reducedMotion) + 1600;
+}
+
 export interface DartHit {
   /** ISO 3166-1 alpha-2 of the country the dart stuck in. */
   code: string;

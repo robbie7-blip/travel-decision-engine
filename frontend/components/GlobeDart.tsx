@@ -29,7 +29,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { SpinWheel } from "./SpinWheel";
-import { guidesForCountry, throwDart, type DartHit } from "@/lib/dartGlobe";
+import { dartBackstopMs, guidesForCountry, throwDart, type DartHit } from "@/lib/dartGlobe";
 import { getCountryName } from "@/lib/countries";
 import { spinCityName } from "@/lib/spin";
 import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
@@ -119,7 +119,7 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
     backstop.current = setTimeout(() => {
       setInFlight(false);
       setLanded(next);
-    }, 4000);
+    }, dartBackstopMs(reducedMotion));
   }
 
   const guides = useMemo(() => (landed ? guidesForCountry(landed.code) : []), [landed]);

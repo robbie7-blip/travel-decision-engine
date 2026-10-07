@@ -20,8 +20,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import * as THREE from "three";
 import { WORLD_COUNTRY_FEATURES, type CountryFeature } from "@/lib/worldGeo";
+import { dartFlightMs, type DartHit } from "@/lib/dartGlobe";
 import { CANVAS_COLORS } from "@/lib/theme";
-import type { DartHit } from "@/lib/dartGlobe";
 
 interface DartGlobeCanvasProps {
   /** Where the dart is stuck, or null before the first throw. */
@@ -44,8 +44,6 @@ interface DartGlobeCanvasProps {
  * occupied about half the canvas it was given, with the rest empty page.
  * 1.8 fills the frame at rest; 0.9 is close enough to read a country's
  * shape without losing the sense that it is a globe. */
-const FLIGHT_MS = 1600;
-const REDUCED_FLIGHT_MS = 450;
 const IDLE_ALTITUDE = 1.8;
 const HIT_ALTITUDE = 0.9;
 /** Closer, for the countries with no outline to light up.
@@ -167,7 +165,7 @@ export default function DartGlobeCanvas({ hit, throwId, reducedMotion, onArrived
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || size === 0 || !hit) return;
-    const ms = reducedMotion ? REDUCED_FLIGHT_MS : FLIGHT_MS;
+    const ms = dartFlightMs(reducedMotion);
     const altitude = hit.insideBorder ? HIT_ALTITUDE : POINT_HIT_ALTITUDE;
     globe.pointOfView({ lat: hit.lat, lng: hit.lng, altitude }, ms);
     setFlying(true);

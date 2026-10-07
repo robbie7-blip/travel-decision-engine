@@ -20,7 +20,9 @@ import {
   DART_POINT_ONLY,
   DART_SHAPES,
   DART_TARGETS,
+  dartBackstopMs,
   dartCountryCodes,
+  dartFlightMs,
   hitFor,
   guidesForCountry,
   isInsideCountry,
@@ -244,6 +246,58 @@ function main() {
       check("Paris is in France", isInsideCountry(2.35, 48.86, france));
       check("  and Rome is not", isInsideCountry(12.5, 41.9, france) === false);
     }
+  }
+
+  section("the throw's timing, which two components share");
+  {
+    // The invariant that had nothing holding it. The canvas flies the dart
+    // for dartFlightMs; GlobeDart reveals the result after dartBackstopMs
+    // if the canvas never reports back. If the backstop fires first, the
+    // result card appears while the dart is still in the air - and these
+    // numbers used to live in two different files, 1600 against a
+    // hardcoded 4000, with nothing saying they were related. Making the
+    // throw more dramatic was all it would have taken to break it.
+    for (const reduced of [false, true]) {
+      const flight = dartFlightMs(reduced);
+      const backstop = dartBackstopMs(reduced);
+      check(
+        `the backstop outlasts the flight (reducedMotion ${reduced})`,
+        backstop > flight,
+        `flight ${flight}ms, backstop ${backstop}ms`
+      );
+      // Not merely longer: long enough that a slow phone finishing the
+      // animation late still beats it, or the backstop wins the race on
+      // exactly the devices it exists to protect.
+      check(
+        `  with real margin, not a millisecond (reducedMotion ${reduced})`,
+        backstop - flight >= 1000,
+        `${backstop - flight}ms of margin`
+      );
+    }
+
+    check(
+      "reduced motion is genuinely shorter, not merely different",
+      dartFlightMs(true) < dartFlightMs(false),
+      `${dartFlightMs(true)}ms vs ${dartFlightMs(false)}ms`
+    );
+    // Shortened, never skipped. A zero-length flight is a teleport, which
+    // is the lesson the wheel already learned - see the note on
+    // reducedMotion in DartGlobeCanvas.
+    check("and is still an animation", dartFlightMs(true) >= 300, `${dartFlightMs(true)}ms`);
+    // Someone who asked for less motion should not wait longer for a
+    // failed render than someone who did not.
+    check(
+      "a reduced-motion backstop is not the full-motion one",
+      dartBackstopMs(true) < dartBackstopMs(false),
+      `${dartBackstopMs(true)}ms vs ${dartBackstopMs(false)}ms`
+    );
+    // Long enough to watch, which is why this was raised from 1600: the
+    // throw was over before it read as a throw.
+    check(
+      "the full flight is long enough to read as a throw",
+      dartFlightMs(false) >= 2000,
+      `${dartFlightMs(false)}ms`
+    );
   }
 
   finish();
