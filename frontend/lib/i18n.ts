@@ -407,14 +407,7 @@ export interface Dictionary {
     pageTitle: string;
     pageHeading: string;
     pageSubheading: string;
-    spin: string;
-    spinning: string;
-    again: string;
-    reshuffle: string;
-    youreGoing: string;
-    planIt: string;
     readGuide: string;
-    note: string;
     throwDart: string;
     throwing: string;
     throwAgain: string;
@@ -423,8 +416,6 @@ export interface Dictionary {
     planHere: string;
     globeUnavailable: string;
     dartNote: string;
-    wheelInstead: string;
-    globeInstead: string;
   };
   tripQA: {
     navLink: string; // homepage header link to /ask
@@ -929,25 +920,16 @@ const en: Dictionary = {
     navLink: "Decide for me",
     pageTitle: "Decide for me",
     pageHeading: "No idea where to go?",
-    pageSubheading: "Throw a dart at the globe and plan wherever it sticks. Any country in the world - or switch to the wheel for the cities we have a full guide for.",
-    spin: "Spin",
-    spinning: "Spinning...",
-    again: "Spin again",
-    reshuffle: "New cities",
-    youreGoing: "You're going to",
-    planIt: "Plan this trip",
+    pageSubheading: "Throw a dart at the globe and plan wherever it sticks. Any country in the world.",
     readGuide: "Read the guide first",
-    note: "Twelve of the twenty-four cities we have guides for, drawn at random. It lands where it stops - nothing here is decided in advance.",
     throwDart: "Throw the dart",
     throwing: "In the air...",
     throwAgain: "Throw again",
     landedIn: "The dart landed in",
     guidesHere: "We have guides here:",
     planHere: "Plan a trip here",
-    globeUnavailable: "This browser can't draw the globe, so here's the wheel instead - same idea.",
+    globeUnavailable: "This browser can't draw the globe, so there's nothing to watch - but the dart still lands somewhere real.",
     dartNote: "Every country in the world, each with an even chance. The dart sticks inside the country it names - the country is drawn first and the landing point comes from that country's own outline, so nothing is decided after the fact. For the 29 too small for our map to have an outline at all, from Monaco to Tuvalu, the dart lands on the capital instead.",
-    wheelInstead: "Rather spin a wheel?",
-    globeInstead: "Rather throw a dart at the globe?",
   },
   tripQA: {
     navLink: "Ask a Local",
@@ -1473,25 +1455,16 @@ const bg: Dictionary = {
     navLink: "Реши за мен",
     pageTitle: "Реши за мен",
     pageHeading: "Нямате идея къде да отидете?",
-    pageSubheading: "Хвърлете стрела по глобуса и планирайте там, където се забие. Всяка държава в света - или минете на колелото за градовете с пълен пътеводител.",
-    spin: "Завърти",
-    spinning: "Върти се...",
-    again: "Завърти пак",
-    reshuffle: "Нови градове",
-    youreGoing: "Отивате в",
-    planIt: "Планирай това пътуване",
+    pageSubheading: "Хвърлете стрела по глобуса и планирайте там, където се забие. Всяка държава в света.",
     readGuide: "Първо виж пътеводителя",
-    note: "Дванадесет от двадесет и четирите града с пътеводители, изтеглени на случаен принцип. Пада се там, където спре - нищо тук не е решено предварително.",
     throwDart: "Хвърли стрелата",
     throwing: "Във въздуха...",
     throwAgain: "Хвърли отново",
     landedIn: "Стрелата се заби в",
     guidesHere: "Тук имаме пътеводители:",
     planHere: "Планирай пътуване тук",
-    globeUnavailable: "Този браузър не може да покаже глобуса, затова е колелото - същата идея.",
+    globeUnavailable: "Този браузър не може да покаже глобуса, така че няма какво да се гледа - но стрелата пак попада на истинско място.",
     dartNote: "Всяка държава в света, с равен шанс. Стрелата се забива вътре в държавата, която назовава - първо се избира държавата, а точката на попадение идва от собствения ѝ контур, така че нищо не се решава след това. За 29-те твърде малки, за да има карта контур за тях - от Монако до Тувалу - стрелата попада върху столицата.",
-    wheelInstead: "Предпочиташ колело?",
-    globeInstead: "Предпочиташ стрела по глобуса?",
   },
   tripQA: {
     navLink: "Питай местен",

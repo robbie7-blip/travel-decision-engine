@@ -18,17 +18,22 @@
 // and for the same reason: for a product whose whole argument is that it
 // does not pretend, a rigged dart would be a strange place to start.
 //
-// THE WHEEL IS STILL HERE, as the fallback, and not only for taste. WebGL
-// genuinely fails - an old phone, a blocklisted driver, a browser with it
-// switched off - and without a fallback those visitors get an empty box
-// where a feature should be. So the canvas is only reached once WebGL has
-// actually been confirmed, and the wheel answers the same question for
-// everyone else.
+// THE WHEEL IS GONE. It was kept for a while as the alternative behind
+// this, then as the fallback where WebGL fails, and it is now neither: the
+// dart reached everywhere the wheel could and 144 countries it could not,
+// so the only thing the wheel still did was answer the same question in a
+// smaller way.
+//
+// WebGL genuinely fails though - an old phone, a blocklisted driver, a
+// browser with it switched off - and that cannot end in an empty box where
+// a feature should be. So the throw still works without the canvas: the
+// country is picked by the same throwDart and the same result card
+// appears, with no globe and nothing to watch. Removing the wheel removed
+// an alternative way to ask the question, not the answer.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { SpinWheel } from "./SpinWheel";
 import { dartBackstopMs, guidesForCountry, throwDart, type DartHit } from "@/lib/dartGlobe";
 import { getCountryName } from "@/lib/countries";
 import { spinCityName } from "@/lib/spin";
@@ -82,12 +87,6 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
   const webgl = useWebglSupport();
   const reducedMotion = usePrefersReducedMotion();
 
-  // Which way the traveller wants to be told. The globe leads when the
-  // browser can draw it, and the wheel stays one tap away rather than
-  // deleted - it answers the same question, it weighs nothing, and some
-  // people simply prefer it.
-  const [mode, setMode] = useState<"globe" | "wheel">("globe");
-
   const [hit, setHit] = useState<DartHit | null>(null);
   const [throwId, setThrowId] = useState(0);
   const [inFlight, setInFlight] = useState(false);
@@ -107,6 +106,16 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
     setLanded(null);
     setHit(next);
     setThrowId((n) => n + 1);
+
+    // With no canvas there is no flight and nothing to wait for, so the
+    // answer is the throw. Going through inFlight here would leave the
+    // button disabled until the backstop fired, waiting for a camera move
+    // that is never going to happen.
+    if (!webgl) {
+      setLanded(next);
+      return;
+    }
+
     setInFlight(true);
 
     // A backstop, because onArrived comes from the canvas and the canvas
@@ -127,58 +136,39 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
   const suffix = language === "bg" ? "?lang=bg" : "";
 
   // Still deciding whether the globe can be drawn. Nothing, rather than a
-  // flash of the wheel that is then replaced.
+  // flash of the no-globe version and an apology for it, replaced a frame
+  // later by the globe it said could not be drawn.
   if (webgl === null) {
     return <div className="spin" style={{ minHeight: 360 }} aria-hidden />;
   }
 
-  // No WebGL: the wheel, with the reason said out loud rather than a
-  // silently different page.
-  if (!webgl) {
-    return (
-      <div>
-        <p className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 16 }}>
-          {t.spin.globeUnavailable}
-        </p>
-        <SpinWheel t={t} language={language} />
-        <p className="font-ui spin-note">{t.spin.note}</p>
-      </div>
-    );
-  }
-
-  if (mode === "wheel") {
-    return (
-      <div>
-        <SpinWheel t={t} language={language} />
-        <button type="button" onClick={() => setMode("globe")} className="font-ui spin-switch">
-          {t.spin.globeInstead}
-        </button>
-        <p className="font-ui spin-note">{t.spin.note}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="spin">
-      <div className="spin-stage">
-        <DartGlobeCanvas
-          hit={hit}
-          throwId={throwId}
-          reducedMotion={reducedMotion}
-          onArrived={() => {
-            if (backstop.current) clearTimeout(backstop.current);
-            setInFlight(false);
-            setLanded(hit);
-          }}
-        />
-      </div>
+      {/* The globe, where the browser can draw one. Where it cannot, the
+          reason is said out loud rather than quietly serving a different
+          page - but the throw below is the same throw either way. */}
+      {webgl ? (
+        <div className="spin-stage">
+          <DartGlobeCanvas
+            hit={hit}
+            throwId={throwId}
+            reducedMotion={reducedMotion}
+            onArrived={() => {
+              if (backstop.current) clearTimeout(backstop.current);
+              setInFlight(false);
+              setLanded(hit);
+            }}
+          />
+        </div>
+      ) : (
+        <p className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
+          {t.spin.globeUnavailable}
+        </p>
+      )}
 
       <div className="spin-controls">
         <button type="button" onClick={throwIt} disabled={inFlight} className="font-ui btn-primary spin-button">
           {inFlight ? t.spin.throwing : landed ? t.spin.throwAgain : t.spin.throwDart}
-        </button>
-        <button type="button" onClick={() => setMode("wheel")} disabled={inFlight} className="font-ui spin-reshuffle">
-          {t.spin.wheelInstead}
         </button>
       </div>
 

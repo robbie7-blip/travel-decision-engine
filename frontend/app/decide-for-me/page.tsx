@@ -4,17 +4,20 @@
 // have one, and "browse 24 guides" is a research task rather than an
 // answer. This makes not knowing into the fun part.
 //
-// Two ways to be told, both honest about what they can reach. The dart at
-// the globe can land on any of the 168 countries we have a border for; the
-// wheel lands on one of the 24 cities with a curated guide and a real
-// photograph. Either way the result is an opening rather than a suggestion:
-// read the guide where there is one, or hand the place straight to the trip
-// form through ?dest=, which takes free text and is why the dart can reach
-// countries no guide covers.
+// One way to be told, honest about what it reaches: the dart can land on
+// any of the 168 countries we have a border for. There were two for a
+// while - a wheel of the 24 cities with a curated guide sat behind this -
+// and it is gone, because the dart reached everywhere it did and 144
+// countries it did not, so the only thing the second one still offered was
+// a choice nobody needed to make.
 //
-// Server component with the client globe (and the wheel behind it)
-// inside it, matching every other static page here: same two-row header,
-// same ?lang= switching.
+// The result is an opening rather than a suggestion: read the guide where
+// there is one, or hand the place straight to the trip form through
+// ?dest=, which takes free text and is why the dart can reach countries no
+// guide covers.
+//
+// Server component with the client globe inside it, matching every other
+// static page here: same two-row header, same ?lang= switching.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -129,10 +132,9 @@ export default async function SpinPage({
             </p>
           </div>
 
-          {/* Both ways in live inside this component: it leads with the
-              globe, keeps the wheel one tap away, and falls back to the
-              wheel outright where WebGL cannot draw. Each carries its own
-              "how this works" note, since the two make different claims. */}
+          {/* The throw lives inside this component, with or without a
+              globe to watch it on: WebGL genuinely fails on some devices,
+              and the dart still picks a real country there. */}
           <GlobeDart t={t} language={language} />
         </div>
       </div>

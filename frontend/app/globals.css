@@ -1467,7 +1467,6 @@ p {
   .btn-primary,
   .qa-example,
   .qa-photo,
-  .spin-reshuffle,
   /* Places you've been, and both were found by check:touch-targets rather
      than by looking: the eight view tabs at 33px, and the 197 pills in the
      country checklist at 29px - which is not a detail on that page, it is
@@ -1477,9 +1476,8 @@ p {
     min-height: 44px;
   }
 
-  /* Short labels like "New cities" are wide enough to read and too narrow
-     to hit, same as the footer's "Terms". */
-  .spin-reshuffle,
+  /* A camera glyph on its own is wide enough to read and too narrow to
+     hit, same as the footer's "Terms". */
   .qa-photo {
     min-width: 44px;
   }
@@ -2541,8 +2539,13 @@ p {
 }
 
 /* ============================================================
-   Spin the wheel
-   ============================================================ */
+   Decide for me: the globe and the dart
+   ============================================================
+
+   Named "Spin the wheel" until the wheel was removed. The .spin-* class
+   names are kept: the page is still /decide-for-me, these selectors are
+   still the ones it uses, and renaming a dozen of them across a
+   stylesheet and a component to match a feature's history buys nothing. */
 
 .spin {
   display: grid;
@@ -2554,52 +2557,6 @@ p {
 .spin-stage {
   position: relative;
   grid-row: span 2;
-}
-
-/* The element that actually turns. A <div>, not the <svg> inside it: CSS
-   transforms on an SVG root element are the least reliably implemented
-   corner of this layout, and nothing here needs to stand on that.
-
-   No transition and no animation declared. The spin is driven from
-   SpinWheel.tsx with the Web Animations API, because the blanket
-   `@media (prefers-reduced-motion: reduce) { * { transition: none
-   !important } }` further up this file turned a reduced-motion spin into a
-   teleport - the wheel jumped to its answer with no travel at all, which is
-   how it was reported as "not animated". A reduced spin is now a short
-   settle rather than nothing; see the constants in that file. */
-.spin-rotor {
-  display: block;
-  will-change: transform;
-}
-
-.spin-wheel {
-  display: block;
-  width: 100%;
-  height: auto;
-  filter: drop-shadow(0 6px 18px rgba(27, 58, 44, 0.22));
-}
-
-/* The marker the result is read against, at twelve o'clock. Drawn over the
-   wheel rather than on it, so it stays still while the wheel turns. */
-.spin-pointer {
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 13px solid transparent;
-  border-right: 13px solid transparent;
-  border-top: 22px solid var(--brand-coral);
-  z-index: 2;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
-}
-
-.spin-label {
-  font-family: var(--font-ui), sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
 }
 
 .spin-controls {
@@ -2616,21 +2573,6 @@ p {
   text-transform: uppercase;
 }
 
-.spin-reshuffle {
-  border: none;
-  background: transparent;
-  padding: 0;
-  font-size: 12px;
-  color: var(--ink-dim);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.spin-reshuffle:hover:not(:disabled) {
-  color: var(--brand-teal);
-}
-
-.spin-reshuffle:disabled,
 .spin-button:disabled {
   opacity: 0.6;
   cursor: default;
@@ -3031,21 +2973,6 @@ p {
   line-height: 1.5;
   margin-top: 28px;
   max-width: 620px;
-}
-
-.spin-switch {
-  border: none;
-  background: transparent;
-  padding: 0;
-  margin-top: 14px;
-  font-size: 12px;
-  color: var(--ink-dim);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.spin-switch:hover {
-  color: var(--brand-teal);
 }
 
 /* ============================================================
