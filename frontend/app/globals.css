@@ -813,11 +813,9 @@ button {
   background-color: var(--bg-panel-raised);
 }
 
-@keyframes decide-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* decide-spin is gone with the generation wait's ring. It was the last
+   caller: the two-tone spinner on LoadingScreen, replaced by the mark that
+   pulses so the product says "working on it" one way rather than two. */
 
 /* pulse-glow and .dot-verified are gone with the confidence dots. A small
    coloured circle quietly pulsing next to a line was the single most
