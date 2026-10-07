@@ -1180,6 +1180,16 @@ jobs:
       # once the round cap was spent it refused, the model asked again, and
       # the request ran until the function was killed.
       - run: npm run test:tool-rounds
+      # The normaliser behind the Ask a Local portraits. This one guards
+      # art that cannot be regenerated here at all: the drawings come from
+      # an image generator whose CDN this environment's network policy
+      # refuses, so scripts/makeVoiceAvatarArt.ts can never run in CI and
+      # the committed path data was carried in by checksum. That makes
+      # this suite the only thing between an edit to lib/vectorPath.ts and
+      # four silently broken portraits. It already earned its keep:
+      # asserting the simplifier was idempotent failed, which is how the
+      # rounding that unsettles it was found.
+      - run: npm run test:vector-path
       # The destinations field's suggestions.
       #
       # "Make the destination a dropdown too" could not be a <select>: the
