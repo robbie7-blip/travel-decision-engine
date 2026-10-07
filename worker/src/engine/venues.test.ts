@@ -212,6 +212,43 @@ async function main() {
     check("and costs no Places call", f.placesCalls === 0, String(f.placesCalls));
   }
 
+  section("survivors keep their identity, which the constraint screen relies on");
+
+  {
+    // The invariant behind the latency fix in "Hide the constraint screen
+    // behind verification". That screen now runs CONCURRENTLY with this
+    // stage and holds references to the item objects it flagged;
+    // dropRemovedItems then matches those references against the finished
+    // trip. If verification rebuilt its items rather than mutating them,
+    // every flag would match nothing, the screen would silently become a
+    // no-op, and a traveler's stated allergy would stop being enforced
+    // with every test still green.
+    //
+    // Nothing asserted it. checkVenues filters day.items in place and
+    // applyFlightPricing returns the same object on all three of its
+    // paths, so it holds - but it held by habit rather than by contract,
+    // and it is the kind of thing a refactor breaks without noticing.
+    const keep = meal({ title: "Lunch at Armando al Pantheon", venue_name: "Armando al Pantheon" });
+    const drop = meal({ title: "Dinner at Nowhere At All", venue_name: "Nowhere At All" });
+    const before = trip([keep, drop]);
+    const sameItinerary = before;
+    // The second venue finds nothing, so verification removes it; the
+    // first resolves and stays.
+    const f = stubFetch((body) =>
+      String(body).includes("Nowhere") ? { body: { places: [] } } : { body: { places: [place()] } }
+    );
+    const out = await checkVenues(before);
+    f.restore();
+
+    check("the unmatched venue is removed", !out.days[0].items.includes(drop));
+    check(
+      "the surviving item is the SAME OBJECT, not a copy",
+      out.days[0].items.includes(keep),
+      "verification rebuilt its items - dropRemovedItems would match nothing and the constraint screen would be inert"
+    );
+    check("and the itinerary itself is the same object", out === sameItinerary);
+  }
+
   section("bounded fan-out - the shared runWithLimit's other caller");
 
   {
