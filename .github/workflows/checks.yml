@@ -519,6 +519,20 @@ jobs:
       # suite is mostly about the FALSE link: a route between the wrong two
       # places is a verification claim the product has not earned.
       - run: npm run test:directions
+      # When to give up on a streamed model call. The worker armed ONE
+      # timer when a stream opened and never rearmed it, so a constant
+      # named STREAM_STALL_MS - documented as catching a stream that "goes
+      # quiet forever" - was really capping total duration, and aborted
+      # calls that were streaming perfectly happily. It surfaced on
+      # pushback, the call most exposed to it: a generation fans out into
+      # one parallel call per day, but a refinement regenerates the whole
+      # itinerary in one sequential stream, so a longer trip ran past 150
+      # seconds while healthy and the traveller got "aborted" on a question
+      # about a trip that had generated fine minutes earlier. Nothing could
+      # catch it while the policy was three lines inside a function that
+      # cannot be called without the SDK, which is why it is its own module
+      # with an injected clock now.
+      - run: npm run test:stream-watchdog
       - run: npm run test:call-budget
       # Which calls are allowed NOT to stream, and it is not a preference.
       # messages.create refuses a non-streaming request outright when

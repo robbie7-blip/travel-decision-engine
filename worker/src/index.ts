@@ -71,6 +71,7 @@ import {
 } from "./engine/callBudget";
 import { capEffort, readEffort, type Effort } from "./engine/effort";
 import { attachDirectionsLinks } from "./engine/directionsLinks";
+import { startStreamWatchdog } from "./engine/streamWatchdog";
 import { attachFlightSearchLinks } from "./engine/flightLinks";
 import { applyFlightPricing, fetchFarePricing } from "./engine/flightPricing";
 import { recordFareObservation } from "./fareHistory";
@@ -190,21 +191,54 @@ const REPAIR_MAX_TOKENS = 1500;
 // single-call fallback.
 const CALL_TIMEOUT_MS = 120_000;
 
-/** How long a STREAMED call may go without finishing before it is aborted.
+/** How long a STREAMED call may go WITH NO EVENTS AT ALL before it is
+ * abandoned.
+ *
+ * Idle time, which is what this constant was always named and documented
+ * for and is now actually measured: it is rearmed on every event (see
+ * engine/streamWatchdog.ts). It used to arm one timer when the stream
+ * opened and never rearm it, so it silently capped TOTAL duration instead
+ * and killed calls that were streaming perfectly happily. STREAM_TOTAL_MS
+ * below is the total cap, stated rather than accidental.
  *
  * Streaming removes the total-duration cap above, which is the fix; this is
  * what stops that becoming "no limit at all". A stream that opens and then
  * goes quiet forever would otherwise hang the job, and with it a worker slot
  * - and this worker runs four jobs at once.
  *
- * 150 seconds, chosen against two numbers rather than picked. Above: it must
- * stay clear of STALE_RUNNING_MS (4 minutes), after which the app tells the
- * traveler the job died, so a call allowed to run past that would "succeed"
- * into a page that has already given up. Below: the slowest call anyone has
- * measured here is the 68.8-second plan, so this is more than twice that -
- * far enough above the healthy case to be a backstop rather than a
- * guillotine, which is the mistake it replaces. */
+ * 150 seconds of silence. Below: the slowest call anyone has measured here
+ * is the 68.8-second plan, so this is more than twice that - far enough
+ * above the healthy case to be a backstop rather than a guillotine, which
+ * is the mistake it replaces. The upper constraint that used to be quoted
+ * here, staying clear of STALE_RUNNING_MS, belongs to STREAM_TOTAL_MS now:
+ * it is total elapsed time that has to finish before the page gives up, and
+ * silence between events was never the same quantity. */
 const STREAM_STALL_MS = readPositiveInt("STREAM_STALL_MS", 150_000);
+
+/** How long a streamed call may run IN TOTAL, however busy it has been.
+ *
+ * The outer bound the single timer above was accidentally providing. An
+ * idle deadline on its own can be held off indefinitely by a trickle of
+ * events, and something has to stop a call that is simply too big for the
+ * time it is allowed.
+ *
+ * Four minutes, set against the two numbers that actually constrain it.
+ * The page polls for five minutes (MAX_WAIT_MS in frontend/lib/api.ts)
+ * before telling the traveller it has given up, so a call allowed to run
+ * past that would finish into a page that has stopped listening. And
+ * STALE_RUNNING_MS declares a job dead after four minutes with no update
+ * to its record - which is why touchRunning exists below: without
+ * something refreshing the record, raising this cap would only move the
+ * failure from "aborted" to "the worker restarted". */
+const STREAM_TOTAL_MS = readPositiveInt("STREAM_TOTAL_MS", 4 * 60_000);
+
+/** How often a running job says it is still alive.
+ *
+ * Comfortably inside STALE_RUNNING_MS (four minutes) so several can be
+ * missed - a Redis blip, a slow round trip - before the job looks dead,
+ * and infrequent enough that it is nothing against a generation: at most a
+ * few writes per job. */
+const HEARTBEAT_MS = readPositiveInt("HEARTBEAT_MS", 45_000);
 
 // Full search is the entire point of moving generation into a worker with
 // no execution-time limit - but per-item restaurant/activity searches were
@@ -489,11 +523,41 @@ async function streamMessage(
   // timer is gone by then. Aborting through the stream cancels the HTTP
   // request rather than leaving it dangling, and surfaces as an
   // APIUserAbortError that describeModelError already reads.
-  const stall = setTimeout(() => stream.abort(), STREAM_STALL_MS);
+  //
+  // TWO deadlines, and this used to be one. `setTimeout(() => stream.abort(),
+  // STREAM_STALL_MS)` was armed once and never rearmed, so it capped TOTAL
+  // DURATION while being named and documented as a guard against a stream
+  // going quiet - and a stream delivering text steadily for the whole time
+  // was aborted anyway. It surfaced on pushback, the call most exposed to
+  // it: a fresh generation fans out into one parallel call per day, so no
+  // single call is long, but a refinement regenerates the whole itinerary
+  // in one sequential stream and a longer trip runs well past 150 seconds
+  // while perfectly healthy. The traveller got "aborted" on a question
+  // about a trip that had generated fine minutes earlier.
+  //
+  // See engine/streamWatchdog.ts, where the timer logic lives so that it
+  // can be tested with a fake clock - which is the other half of how this
+  // survived: the policy was three lines inside a function that cannot be
+  // called without the SDK.
+  const watchdog = startStreamWatchdog({
+    idleMs: STREAM_STALL_MS,
+    totalMs: STREAM_TOTAL_MS,
+    onGiveUp: (reason) => {
+      console.warn(
+        `[worker] abandoning a streamed call after ${Date.now() - startedAt}ms ` +
+          `(${reason === "idle" ? `nothing received for ${STREAM_STALL_MS}ms` : `total cap ${STREAM_TOTAL_MS}ms`})`
+      );
+      stream.abort();
+    },
+  });
+  // Every event, not just text: a long tool-use round trip produces
+  // streamEvents while producing no text at all, and treating that as
+  // silence is the same mistake in a smaller shape.
+  stream.on("streamEvent", () => watchdog.touch());
   try {
     return await stream.finalMessage();
   } finally {
-    clearTimeout(stall);
+    watchdog.stop();
     // Reported even on a failed call, deliberately. A call that timed out
     // after sixty seconds without a single event is the most informative
     // reading this produces, and it is exactly the one a success-only
@@ -2825,6 +2889,42 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       });
   };
 
+  /** Keeps a running job's record from being mistaken for a dead one.
+   *
+   * stallReason (lib/jobs.ts) calls a "running" job dead after
+   * STALE_RUNNING_MS with no update to its record, which exists because a
+   * worker that restarts mid-job leaves a record nobody will ever finish.
+   * The only thing refreshing that record was publishProgress, and it is
+   * driven by per-day callbacks - which a REFINEMENT never produces, and
+   * neither does the single-call fallback. So those two ran completely
+   * silently from the moment the worker picked them up, and a long one was
+   * declared dead at four minutes by a page watching a job that was fine.
+   *
+   * A heartbeat rather than a longer STALE_RUNNING_MS: the four minutes are
+   * right for what they are for, which is noticing that nothing is working
+   * on this job any more. The problem was never the length of the window,
+   * it was that a working job had no way to say so.
+   *
+   * Routed through the same chained queue as progress, and gated on the
+   * same jobFinished flag, for the reason written above publishProgress: a
+   * write launched while the status is still "running" carries a snapshot
+   * with no result, and nothing else stops it landing after the final
+   * one. */
+  const touchRunning = (): void => {
+    if (jobFinished) return;
+    job.updatedAt = Date.now();
+    progressWrites = progressWrites
+      .then(() => writeJob(redis, job))
+      .catch((e) => {
+        console.warn(`[worker] heartbeat write failed for ${id}:`, e);
+      });
+  };
+  const heartbeat = setInterval(touchRunning, HEARTBEAT_MS);
+  // unref so a pending heartbeat cannot hold the process open on shutdown.
+  // The worker is long-lived, but a timer that outlives the job it belongs
+  // to is the kind of thing that keeps a deploy hanging.
+  heartbeat.unref?.();
+
   let costUsd = 0;
   /** Per-model spend, so a stage running on a different model is billed at
    * that model's rate.
@@ -3569,6 +3669,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // new progress writes first, then anything already in flight is allowed
   // to land, then the finished job is published.
   jobFinished = true;
+  clearInterval(heartbeat);
   await progressWrites.catch(() => {});
   // publishJob, not writeJob: this is the write that has to land, and it
   // sits after the catch above, so a throw here escaped processJob and lost
