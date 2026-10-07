@@ -10,10 +10,17 @@
 // different scales. A suite cannot see any of that; a screenshot of this
 // page can.
 //
-// The three strips are the sizes TripQA.tsx actually asks for - 40 in the
-// picker, 44 by default, 22 in the summary chip - and the cards below
-// them are the selected and unselected states, because `inverted` is the
-// one prop whose effect is pure appearance.
+// The strips are the sizes TripQA.tsx actually asks for, read out of it
+// rather than guessed: 40 in the picker, 34 in the greeting, 28 in a chat
+// bubble, 26 in the strip above a thread. 96 is not one of them - it is
+// there to see the drawing itself.
+//
+// It said 40, 44 and 22 until the picker stopped being a dropdown, which
+// removed the 22px chip and left 44 as a default nothing passes. So two
+// of the three sizes being previewed were not sizes anything rendered at,
+// and the two that a traveller sees most - 26 and 28, once a conversation
+// has started - were not previewed at all. Checked when that was noticed:
+// both hold up.
 //
 // It needs the render tsconfig for the same reason lib/renderTrip.test.tsx
 // does: the main one sets jsx "preserve" for Next's bundler, which leaves
@@ -73,8 +80,10 @@ border-radius:12px;background:var(--bg-panel);color:var(--ink-soft)}
 .card[data-active=true] i{color:rgba(255,255,255,.85)}
 </style>
 ${strip(96)}
-${strip(44)}
-${strip(22)}
+${strip(40)}
+${strip(34)}
+${strip(28)}
+${strip(26)}
 <div class="cards">${card("neighbour", true)}${card("cook", false)}${card("night", true)}${card("family", false)}</div>`
 );
 console.log(`wrote ${OUT}`);
