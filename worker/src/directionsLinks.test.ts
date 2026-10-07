@@ -188,6 +188,88 @@ async function main() {
     );
   }
 
+  section("the airport transfers, which had no route at all");
+  {
+    // The two legs a traveler most wants directions for were the only ones
+    // without them: the arrival taxi is the first item of the trip so
+    // nothing precedes it, and the final transfer is the last so nothing
+    // follows. Both now borrow the airport the brief names.
+    const b = brief({ arrival_airport: "Rome Ciampino (CIA)", departure_airport: "Rome Ciampino (CIA)" });
+    const arrivalUrl = linkFor(
+      [
+        leg({ time: "16:30", title: "Taxi from Ciampino to the hotel", location: "Ciampino" }),
+        item({ venue_name: "Hotel Artemide", location: "Via Nazionale, Rome", time: "17:30" }),
+      ],
+      b
+    );
+    check("the arrival transfer gets a route", Boolean(arrivalUrl), String(arrivalUrl));
+    check(
+      "starting at the airport the brief named",
+      (param(arrivalUrl, "origin") ?? "").includes("Ciampino"),
+      param(arrivalUrl, "origin") ?? "(none)"
+    );
+    check(
+      "and ending where they are actually going",
+      (param(arrivalUrl, "destination") ?? "").startsWith("Hotel Artemide"),
+      param(arrivalUrl, "destination") ?? "(none)"
+    );
+
+    const departureUrl = linkFor(
+      [
+        item({ venue_name: "Hotel Artemide", location: "Via Nazionale, Rome", time: "07:00" }),
+        leg({ time: "08:00", title: "Transfer to the airport", location: "Rome" }),
+      ],
+      b
+    );
+    check(
+      "the departure transfer ends at the airport",
+      (param(departureUrl, "destination") ?? "").includes("Ciampino"),
+      param(departureUrl, "destination") ?? "(none)"
+    );
+
+    // Still refused when the brief says nothing. An invented airport is
+    // the wrong-route failure this file is mostly about.
+    check(
+      "no airport on the brief means no link, as before",
+      linkFor(
+        [
+          leg({ time: "16:30", title: "Taxi in from somewhere" }),
+          item({ venue_name: "Hotel Artemide", location: "Rome", time: "17:30" }),
+        ],
+        brief()
+      ) === undefined
+    );
+    // A MIDDLE day's first leg is not an arrival, so it must not be handed
+    // the airport - that would route a morning metro ride from Ciampino.
+    const itinerary = attachDirectionsLinks(
+      {
+        budget_feasibility: { feasible: true, min_realistic_total_eur: 600, reasoning: "r" },
+        trip_summary: "s",
+        key_decisions: [],
+        things_to_skip: [],
+        days: [
+          { day: 1, date: "2027-03-18", items: [item({ venue_name: "A", location: "Rome" })], feasibility_flag: null },
+          {
+            day: 2,
+            date: "2027-03-19",
+            items: [
+              leg({ time: "09:00", title: "Metro across town" }),
+              item({ venue_name: "Pantheon", location: "Centro, Rome", time: "10:00" }),
+            ],
+            feasibility_flag: null,
+          },
+          { day: 3, date: "2027-03-20", items: [item({ venue_name: "C", location: "Rome" })], feasibility_flag: null },
+        ],
+      },
+      b
+    );
+    check(
+      "a middle day's opening leg is left alone",
+      itinerary.days[1].items[0].directions_url === undefined,
+      itinerary.days[1].items[0].directions_url ?? "(none)"
+    );
+  }
+
   section("a flight is not a drive");
   {
     const itinerary = attachDirectionsLinks(

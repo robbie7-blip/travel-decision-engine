@@ -228,6 +228,57 @@ function main() {
     );
   }
 
+  section("a travel time sits above the stop it gets you to");
+  {
+    // The Rome trip's bug, as markup. travelLegsFor chains consecutive
+    // PLACED stops and steps over anything Places could not locate, so the
+    // leg here runs from the basilica to the Colosseum and skips the lunch
+    // between them. Anchored to the row it left from, its "23 min" landed
+    // directly above that lunch - described as four hundred metres away -
+    // and read as the walk to it.
+    const html = render(
+      trip([
+        item({
+          time: "12:00",
+          type: "activity",
+          title: "St Peters Basilica",
+          google_lat: 41.9022,
+          google_lng: 12.4539,
+        }),
+        // No coordinates: Places could not confirm it, so no leg can end
+        // here and none should appear above it.
+        item({ time: "13:15", type: "meal", title: "Lunch at an unconfirmed place" }),
+        item({
+          time: "15:30",
+          type: "activity",
+          title: "Colosseum",
+          google_lat: 41.8902,
+          google_lng: 12.4922,
+        }),
+      ])
+    );
+    check("the page renders", html !== null);
+    const body = html ?? "";
+    const legAt = body.indexOf("↓");
+    const lunchAt = body.indexOf("Lunch at an unconfirmed place");
+    const colosseumAt = body.indexOf("Colosseum");
+    check("a leg is drawn at all", legAt !== -1, "no travel annotation rendered");
+    check(
+      "it is below the stop it cannot describe",
+      legAt > lunchAt,
+      "the travel time is above the unconfirmed lunch, where it reads as the journey to it"
+    );
+    check(
+      "and above the stop it does describe",
+      legAt < colosseumAt,
+      "the travel time is not above the stop it leads to"
+    );
+    // Exactly one: two placed stops make one leg, and the skipped stop
+    // must not produce a second.
+    check("exactly one leg for two placed stops", (body.match(/↓/g) ?? []).length === 1,
+      String((body.match(/↓/g) ?? []).length));
+  }
+
   finish();
 }
 

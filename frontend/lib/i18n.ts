@@ -290,6 +290,11 @@ export interface Dictionary {
     // actually means - shown when a visitor expands an item's evidence
     // rather than just taking the dot color on faith.
     tierExplainer: Record<ConfidenceTier, string>;
+    /** Shown instead of tierExplainer.fact_grounded when the check was a
+     * Google Places match rather than the curated facts base. Both are
+     * "checked", and saying the wrong one is a claim about where a fact
+     * came from. */
+    tierExplainerPlaces: string;
     evidenceShow: string;
     evidenceHide: string;
     sourcesDisagree: string;
@@ -829,6 +834,7 @@ const en: Dictionary = {
       conflicting: "Two live searches disagreed on this. Both figures are shown so you can judge for yourself - the higher one was used as the safer assumption.",
       inferred: "No reliable live search result was found for this. This is an honest, hedged estimate based on general knowledge, not a checked price.",
     },
+    tierExplainerPlaces: "Confirmed on Google as a real business at this address, open on the day you are going. The price is still an estimate.",
     evidenceShow: "How do we know this?",
     evidenceHide: "Hide",
     sourcesDisagree: "sources disagree",
@@ -1372,6 +1378,7 @@ const bg: Dictionary = {
       conflicting: "Две търсения на живо се разминаха по този въпрос. И двете цифри са показани, за да прецените сами - по-високата беше използвана като по-безопасно предположение.",
       inferred: "Не беше намерен надежден резултат от търсене на живо за това. Това е честна, хеджирана оценка, базирана на общи познания, не проверена цена.",
     },
+    tierExplainerPlaces: "Потвърдено в Google като истински бизнес на този адрес, отворен в деня, в който отивате. Цената все още е приблизителна.",
     evidenceShow: "Откъде знаем това?",
     evidenceHide: "Скрий",
     sourcesDisagree: "източниците се разминават",

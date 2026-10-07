@@ -239,7 +239,22 @@ export function deriveConfidenceTiers(itinerary: Itinerary): Itinerary {
       // something two files away.
       const urlCount = sourceUrlList(item.source_urls).length;
       if (item.source_confidence !== "grounded") {
-        item.confidence_tier = "inferred";
+        // A Places match is a check, and the badge used to deny it.
+        //
+        // The tier came from the model's own source_confidence alone, so a
+        // venue Places had confirmed as real, correctly located and open
+        // on the day still read "ESTIMATE" - while the headline above it
+        // counted that same item among the ones "backed by a live search
+        // or a checked fact", because computeTrustScore reads the Maps
+        // link directly. Seen on a real Rome trip: three of thirteen rows
+        // carried a rating, a review count, opening hours and a Maps link
+        // and were labelled an estimate, next to rows labelled checked.
+        //
+        // google_maps_url and not the rating: checkVenues only sets the
+        // link once the name AND the location matched, which is the real
+        // "this business exists and is where we said" signal - the same
+        // field, for the same reason, that computeTrustScore keys on.
+        item.confidence_tier = item.google_maps_url != null ? "fact_grounded" : "inferred";
       } else if (urlCount === 0) {
         // Grounded in the curated facts base, not a live search - most
         // non-lodging items. Distinct from "inferred": it's still checked

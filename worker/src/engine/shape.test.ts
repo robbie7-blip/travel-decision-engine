@@ -506,6 +506,37 @@ async function main() {
     check("  and the first pass did count it", afterFirst === 1, String(afterFirst));
   }
 
+  section("a Places match is a check, and the badge used to deny it");
+
+  {
+    // Three rows of a real Rome trip carried a rating, a review count,
+    // opening hours and a Google Maps link, and were labelled ESTIMATE -
+    // while the headline above them counted those same rows among the
+    // items "backed by a live search or a checked fact". The tier read the
+    // model's own source_confidence and nothing else; the trust score read
+    // the Maps link. Two answers about one row on one page.
+    const it = {
+      days: [
+        {
+          day: 1,
+          items: [
+            { title: "places confirmed", source_confidence: "inferred", google_maps_url: "https://maps.google.com/?cid=1" },
+            { title: "nothing behind it", source_confidence: "inferred" },
+            // The rating is NOT the signal. checkVenues only writes the
+            // link once the name AND the location matched, and a rating
+            // can survive a match that was then rejected on distance.
+            { title: "rating only", source_confidence: "inferred", google_rating: 4.5 },
+          ],
+        },
+      ],
+    } as unknown as Itinerary;
+    deriveConfidenceTiers(it);
+    const tiers = it.days[0].items.map((i) => i.confidence_tier);
+    check("a Places-confirmed venue is no longer an estimate", tiers[0] === "fact_grounded", String(tiers[0]));
+    check("one with nothing behind it still is", tiers[1] === "inferred", String(tiers[1]));
+    check("and a rating with no confirmed match still is", tiers[2] === "inferred", String(tiers[2]));
+  }
+
   section("citations, so the trust tier cannot be earned by a long URL");
 
   {

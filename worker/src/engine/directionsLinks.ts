@@ -98,14 +98,32 @@ function isGroundLeg(item: ItineraryItem): boolean {
 export function attachDirectionsLinks(itinerary: Itinerary, brief: TripBriefInput): Itinerary {
   const mode = brief.transport_preference ? TRAVEL_MODE[brief.transport_preference] : null;
 
-  for (const day of (itinerary.days ?? []) as ItineraryDay[]) {
+  const days = (itinerary.days ?? []) as ItineraryDay[];
+  const dayNumbers = days.map((d) => d.day);
+  const firstDay = dayNumbers.length ? Math.min(...dayNumbers) : null;
+  const lastDay = dayNumbers.length ? Math.max(...dayNumbers) : null;
+
+  for (const day of days) {
     const items = day.items ?? [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (!isGroundLeg(item)) continue;
 
-      const origin = nearestPlace(items, i, -1);
-      const destination = nearestPlace(items, i, 1);
+      // The airport stands in for the end nothing else can supply, and it
+      // is the transfer a traveler most wants a route for.
+      //
+      // A ground leg at the very start of the trip has no preceding stop
+      // and one at the very end has nothing after it, so both were left
+      // without a link - which on a real Rome trip meant the two airport
+      // transfers, the legs with luggage in an unfamiliar city, were the
+      // only ones with no directions. The brief names the airport, from
+      // the closed set in lib/airports.ts, so this is the trip's own
+      // stated fact rather than a guess at one; absent, nothing changes.
+      const arrival = day.day === firstDay ? brief.arrival_airport?.trim() : undefined;
+      const departure = day.day === lastDay ? brief.departure_airport?.trim() : undefined;
+
+      const origin = nearestPlace(items, i, -1) ?? (arrival || null);
+      const destination = nearestPlace(items, i, 1) ?? (departure || null);
       // No link rather than a wrong one. A leg with nothing named on one
       // side of it - the first item of the day, a transfer with no
       // written destination - cannot be turned into a route, and a link

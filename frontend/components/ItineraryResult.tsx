@@ -219,7 +219,16 @@ function ItemEvidence({ item, t }: { item: ItineraryItem; t: Dictionary }) {
         lineHeight: 1.5,
       }}
     >
-      <div>{t.result.tierExplainer[tier]}</div>
+      {/* Which KIND of check it was, when the tier alone cannot say.
+          fact_grounded is reached two ways now - decide's curated facts,
+          or a Google Places match (see deriveConfidenceTiers) - and the
+          curated-facts wording is a claim about where a fact came from, so
+          it must not be shown for the other one. */}
+      <div>
+        {tier === "fact_grounded" && item.google_maps_url
+          ? t.result.tierExplainerPlaces
+          : t.result.tierExplainer[tier]}
+      </div>
       {sourceLinks.length > 0 && (
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
           {sourceLinks.map((href, si) => (
@@ -318,15 +327,25 @@ export function ItineraryResult({
   const trustScore = computeTrustScore(result);
 
   // Every day's legs, computed once here rather than inside the day loop,
-  // which returns its JSX directly and has nowhere to put a local. Keyed
-  // `day:fromIndex` so a row can find the leg that starts at it in one
-  // lookup. Days with fewer than two coordinate-bearing stops contribute
-  // nothing, which is every day when there is no Places key - the same
-  // way DayMap renders nothing.
+  // which returns its JSX directly and has nowhere to put a local.
+  //
+  // Keyed by the row the leg ARRIVES at, and rendered above it. It used to
+  // be keyed by the row it left from and rendered below that, which is the
+  // same position whenever the two rows are adjacent and badly wrong when
+  // they are not - and they are often not, because travelLegsFor chains
+  // consecutive PLACED stops and steps over any item Places could not
+  // locate. Seen on a real Rome trip: "~23 min by transit, 4.5 km" sat
+  // directly above a lunch described as "Borgo Pio, near St. Peter's",
+  // four hundred metres from the basilica above it. The leg was the
+  // journey to the COLOSSEUM, two rows further down, and it read as the
+  // walk to lunch.
+  //
+  // Arriving-at is the honest anchor: a travel time belongs immediately
+  // above the thing it gets you to.
   const legsByRow = new Map<string, TravelLeg>();
   for (const day of result.days ?? []) {
     for (const leg of travelLegsFor(day.items)) {
-      legsByRow.set(`${day.day}:${leg.fromIndex}`, leg);
+      legsByRow.set(`${day.day}:${leg.toIndex}`, leg);
     }
   }
 
@@ -551,14 +570,14 @@ export function ItineraryResult({
             {(day.items ?? []).map((item, i) => {
               const key = itemKey(day.day, i, item);
               const expanded = expandedItems.has(key);
-              // The leg that STARTS at this row, so it renders underneath
-              // it and above the next stop. Keyed by fromIndex because
-              // legs skip over unplaced items - an unverified stop between
-              // two museums must not break the chain, or the day quietly
-              // loses the leg that matters most.
+              // The leg that ARRIVES at this row, rendered above it. See
+              // legsByRow: legs step over stops Places could not locate,
+              // so anchoring them to the row they leave from put them
+              // above the wrong item.
               const leg = legsByRow.get(`${day.day}:${i}`);
               return (
                 <Fragment key={key}>
+                {leg && <TravelLegRow leg={leg} t={t} />}
                 <div
                   className="hover-card"
                   style={{
@@ -758,7 +777,7 @@ export function ItineraryResult({
                     <ItemFeedback jobId={jobId} day={day.day} item={item} t={t} />
                   </div>
                 </div>
-                {leg && <TravelLegRow leg={leg} t={t} />}
+
                 </Fragment>
               );
             })}

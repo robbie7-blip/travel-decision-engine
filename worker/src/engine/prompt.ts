@@ -205,7 +205,7 @@ Schema:
         {
           "time": "morning|afternoon|evening or HH:MM",
           "type": "transport|lodging|activity|meal",
-          "title": "...",
+          "title": "what this item IS, naming the venue plainly - 'Lunch at Pizza del Teatro', 'Colosseum and Roman Forum'. Do NOT compare it to another place, do not sell it, and do not append where it is: 'Lunch at Pizzarium's rival: Pizza del Teatro near St. Peter's' names a restaurant the traveler is not going to, in a title, and the area already has its own field. One venue, said once",
           "is_flight": true or false - only true for type=transport items that are an actual flight leg, see LANGUAGE-INDEPENDENT FIELDS above,
           "venue_name": "exact proper name of the specific business this item names, or null - see LANGUAGE-INDEPENDENT FIELDS above",
           "location": "neighborhood/area AND the destination city, e.g. 'Kato Paphos, Paphos' not just 'Kato Paphos' - always name the actual city, never just a neighborhood, landmark, or venue name alone, so the venue can be looked up unambiguously",
