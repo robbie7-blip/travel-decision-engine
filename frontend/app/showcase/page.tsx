@@ -17,6 +17,7 @@ import { Stamp } from "@/components/ui";
 import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "@/components/HeaderNav";
 import { TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { SHARE_CARD } from "@/lib/shareCard";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
 export const runtime = "nodejs";
@@ -89,7 +90,7 @@ export async function generateMetadata({
   return {
     title,
     description: st.pageDescription,
-    openGraph: { title, description: st.pageDescription },
+    openGraph: { title, description: st.pageDescription, ...SHARE_CARD },
     twitter: { title, description: st.pageDescription },
   };
 }

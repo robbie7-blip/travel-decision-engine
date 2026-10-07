@@ -18,6 +18,7 @@
     "check:facts": "node scripts/checkFacts.mjs",
     "check:mirrors": "node scripts/checkMirrors.mjs",
     "check:print": "node scripts/checkPrint.mjs",
+    "check:share-card": "node scripts/checkShareCard.mjs",
     "check:ci": "node scripts/checkCiScripts.mjs",
     "test:linkify": "tsx lib/linkify.test.ts",
     "test:stats": "tsx lib/timingStats.test.ts",

@@ -13,6 +13,7 @@ import { HomeChip } from "@/components/HomeChip";
 import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "@/components/HeaderNav";
 import { TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { SHARE_CARD } from "@/lib/shareCard";
 
 function resolveLanguage(lang?: string): Language {
   return lang === "bg" ? "bg" : "en";
@@ -30,7 +31,7 @@ export async function generateMetadata({
   return {
     title,
     description,
-    openGraph: { title, description },
+    openGraph: { title, description, ...SHARE_CARD },
     twitter: { title, description },
   };
 }

@@ -754,6 +754,14 @@ jobs:
       # every other check in this file runs in seconds with no browser and
       # no key.
       - run: npm run check:print
+      # Every shareable page has a share image. Three routes generated one
+      # and the rest inherited nothing: a page that declares its own
+      # openGraph block replaces the inherited one wholesale, image
+      # included, and app/layout.tsx promises twitter:card
+      # "summary_large_image" for everything. So six pages - the homepage
+      # aside, the ones you link to when telling somebody about the
+      # product - advertised a 1200x630 card and shipped none, silently.
+      - run: npm run check:share-card
       # That every guard above actually runs here. Written after three of
       # them - test:hours, test:timing and check:stats-keys - sat in
       # package.json catching nothing because nobody added the step. A

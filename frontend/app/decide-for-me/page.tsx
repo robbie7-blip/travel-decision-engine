@@ -27,6 +27,7 @@ import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "@/components/H
 import { GlobeDart } from "@/components/GlobeDart";
 import { TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { SHARE_CARD } from "@/lib/shareCard";
 
 export const runtime = "nodejs";
 
@@ -45,7 +46,7 @@ export async function generateMetadata({
   return {
     title,
     description: t.pageSubheading,
-    openGraph: { title, description: t.pageSubheading },
+    openGraph: { title, description: t.pageSubheading, ...SHARE_CARD },
     twitter: { title, description: t.pageSubheading },
   };
 }

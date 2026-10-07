@@ -16,6 +16,7 @@ import { LegalSection } from "@/components/ui";
 import { TRANSLATIONS } from "@/lib/i18n";
 import { OPERATOR_NAME, CONTACT_EMAIL } from "@/lib/legal";
 import type { Language } from "@/lib/types";
+import { SHARE_CARD } from "@/lib/shareCard";
 
 const LAST_UPDATED = "10 August 2026";
 
@@ -26,7 +27,7 @@ function resolveLanguage(lang?: string): Language {
 export async function generateMetadata(): Promise<Metadata> {
   const title = "Privacy Policy - decide";
   const description = "What decide collects, why, and how it's used.";
-  return { title, description, openGraph: { title, description }, twitter: { title, description } };
+  return { title, description, openGraph: { title, description, ...SHARE_CARD }, twitter: { title, description } };
 }
 
 interface DataRow {
