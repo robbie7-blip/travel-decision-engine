@@ -56,10 +56,30 @@ import { SPIN_POOL, type SpinSlug } from "./spin";
  * throw more dramatic would have broken it with no test to catch them and
  * no symptom other than the card arriving early.
  */
+/** What the globe may show about the landing, given whether the dart is
+ * still in the air.
+ *
+ * Null during the flight. Three different things on the globe answer the
+ * question the throw is asking - the country's colour, the stuck pin, and
+ * the impact ring - and every one of them was originally written against
+ * the hit itself, which exists from the first frame of the throw. Fixing
+ * them one at a time went badly: the pin and the ring were gated when the
+ * dart animation went in, the country's colour was missed, and the result
+ * was a dart falling toward a country that had already turned green and
+ * announced the answer.
+ *
+ * So the rule is one function with one test rather than three call sites
+ * each remembering it. */
+export function revealedHit<T>(hit: T | null, flying: boolean): T | null {
+  return flying ? null : hit;
+}
+
 export function dartFlightMs(reducedMotion: boolean): number {
-  // Slow enough to watch, which is the whole point of animating it. At
-  // 1600 it was over before it read as a throw.
-  return reducedMotion ? 450 : 2400;
+  // Slow enough to watch, which is the whole point of animating it. 1600
+  // was over before it read as a throw; 2400 was still being called quick
+  // by the person watching it on a phone, which is the only measurement
+  // that counts for this.
+  return reducedMotion ? 450 : 3200;
 }
 
 /** The flight, plus room for a slow device to finish rendering it.

@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import * as THREE from "three";
 import { WORLD_COUNTRY_FEATURES, type CountryFeature } from "@/lib/worldGeo";
-import { dartFlightMs, type DartHit } from "@/lib/dartGlobe";
+import { dartFlightMs, revealedHit, type DartHit } from "@/lib/dartGlobe";
 import { CANVAS_COLORS } from "@/lib/theme";
 
 interface DartGlobeCanvasProps {
@@ -217,21 +217,30 @@ export default function DartGlobeCanvas({ hit, throwId, reducedMotion, onArrived
 
   const globeMaterial = useMemo(() => new THREE.MeshPhongMaterial({ color: CANVAS_COLORS.bgPanel }), []);
 
-  // The country the dart is in, lit up. Recomputed rather than stored so it
-  // cannot disagree with `hit`.
-  const hitCode = hit?.code ?? null;
+  // The country the dart is in, lit up ON LANDING.
+  //
+  // This was the giveaway. The pin and the ring were already made to wait
+  // for the dart, but the country itself lit up green on the first frame
+  // of the throw - so the answer was on screen, in the largest possible
+  // form, while the dart was still in the air. The whole throw was
+  // watching a dart fall toward a country that had already announced
+  // itself.
+  //
+  // Recomputed rather than stored so it cannot disagree with `hit`.
+  const revealed = revealedHit(hit, flying);
+  const hitCode = revealed?.code ?? null;
 
   // The stuck pin and the impact ring both wait for the landing. They used
   // to appear on the first frame of the throw, which told the viewer where
   // the dart had landed while it was still notionally in the air.
   const points = useMemo(
-    () => (hit && !flying ? [{ lat: hit.lat, lng: hit.lng }] : []),
-    [hit, flying]
+    () => (revealed ? [{ lat: revealed.lat, lng: revealed.lng }] : []),
+    [revealed]
   );
   // One ring, expanding, as the impact. Re-created per throw so it replays.
   const rings = useMemo(
-    () => (hit && !flying ? [{ lat: hit.lat, lng: hit.lng, id: throwId }] : []),
-    [hit, throwId, flying]
+    () => (revealed ? [{ lat: revealed.lat, lng: revealed.lng, id: throwId }] : []),
+    [revealed, throwId]
   );
   /** The dart layer's data: ONE item, constant for the life of the
    * component.

@@ -23,6 +23,7 @@ import {
   dartBackstopMs,
   dartCountryCodes,
   dartFlightMs,
+  revealedHit,
   hitFor,
   guidesForCountry,
   isInsideCountry,
@@ -246,6 +247,21 @@ function main() {
       check("Paris is in France", isInsideCountry(2.35, 48.86, france));
       check("  and Rome is not", isInsideCountry(12.5, 41.9, france) === false);
     }
+  }
+
+  section("nothing on the globe answers before the dart lands");
+  {
+    // Every reveal goes through this one function now. It exists because
+    // fixing them individually missed the biggest of the three: the pin
+    // and the ring waited for the landing while the COUNTRY lit up green
+    // on the first frame, so the throw was a dart falling toward an answer
+    // already on screen.
+    const landing = { code: "LS", lat: -29.6, lng: 28.2 };
+    check("in the air, the globe shows nothing", revealedHit(landing, true) === null);
+    check("landed, it shows the hit", revealedHit(landing, false) === landing);
+    // Before the first throw there is nothing to hide and nothing to show.
+    check("no hit at all stays nothing, flying", revealedHit(null, true) === null);
+    check("no hit at all stays nothing, landed", revealedHit(null, false) === null);
   }
 
   section("the throw's timing, which two components share");
