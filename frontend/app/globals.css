@@ -1636,6 +1636,21 @@ p {
 /* The "Anyone" card has no portrait, so it gets a placeholder the same
    size as one - otherwise its text starts at a different x than the four
    beside it and the row looks broken rather than deliberate. */
+/* "Anyone", which is a glyph where the other four are drawings - and
+   stays one, deliberately.
+   
+   Two generated replacements were tried against it at the sizes this
+   renders at. A drawn version of this same dashed circle went to mush
+   below about 34px, where a real dashed border stays crisp, and cost 5KB
+   of path data to look worse. Three overlapping heads looked better than
+   either and cost a quarter as much, but a group of people means "all of
+   them", and this option means "no particular one" - the blurb beside it
+   says "no particular angle". A fifth drawing would also make Anyone look
+   like a fifth character, which is the one thing it is not.
+   
+   What was actually wrong was narrower: the four avatars sit on a tinted
+   disc and this sat on nothing, so it read as a gap in the row rather
+   than a member of it. Hence the background, which is the whole fix. */
 .voice-card-any {
   display: flex;
   align-items: center;
@@ -1643,6 +1658,7 @@ p {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
+  background: var(--bg-panel-raised);
   border: 1px dashed var(--line-strong);
   border-radius: 999px;
   font-size: 16px;
@@ -1650,6 +1666,10 @@ p {
 }
 
 .voice-card[data-active="true"] .voice-card-any {
+  /* Matches INVERTED_DISC in LocalVoiceAvatar.tsx: on the selected card's
+     green, translucent white is the only tint that reads the same on this
+     and on the four beside it. */
+  background: rgba(255, 255, 255, 0.22);
   border-color: rgba(255, 255, 255, 0.6);
   color: #ffffff;
 }
