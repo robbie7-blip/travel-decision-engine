@@ -11,6 +11,7 @@ import { DayPhoto } from "./DayPhoto";
 import { TravelLegRow } from "./TravelLeg";
 import { OfflineReady } from "./OfflineReady";
 import { PrintColophon } from "./PrintColophon";
+import { ThinkingMark } from "./ThinkingMark";
 import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -834,9 +835,18 @@ export function ItineraryResult({
             {refining ? t.result.pushbackSubmitting : t.result.pushbackSubmit}
           </button>
         </div>
-        {refining && refiningLabel && (
-          <div className="font-ui" style={{ marginTop: 8, fontSize: 12, color: "var(--ink-dim)" }}>
-            {refiningLabel}
+        {/* Shown from the moment "ask" is pressed, not from the first poll.
+            refiningLabel comes from useJobStatusMessage and is undefined
+            until a status has been fetched, so gating the whole row on it
+            left a second and a half where nothing on the page had changed -
+            which is the complaint this indicator exists to answer. */}
+        {refining && (
+          <div
+            className="font-ui thinking-row"
+            style={{ marginTop: 10, fontSize: 12, color: "var(--ink-dim)" }}
+          >
+            <ThinkingMark size={20} />
+            <span>{refiningLabel ?? t.result.pushbackSubmitting}</span>
           </div>
         )}
         {refineError && (

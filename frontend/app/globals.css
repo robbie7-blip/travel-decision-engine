@@ -3047,3 +3047,113 @@ p {
 .spin-switch:hover {
   color: var(--brand-teal);
 }
+
+/* ============================================================
+   The thinking indicator (components/ThinkingMark.tsx)
+   ============================================================
+
+   Ask a Local and pushback both showed one grey word while you waited,
+   with nothing on the page moving. A trip generation has had a designed
+   wait for ages - a spinner, a rotating status line, a rotating fact about
+   the city - but the two flows where you have just typed a question had no
+   motion at all.
+
+   A pulse runs down each of the mark's three strokes in turn and the dot
+   lights as it arrives, which is the mark's own idea - three questions
+   converging on one answer - rather than a row of bouncing dots.
+
+   THE MARK IS ALWAYS DRAWN. The track paths carry it faintly and the pulse
+   paths are a second copy running over the top. The first version animated
+   the strokes themselves, so for most of the cycle the only thing on
+   screen was three disconnected fragments drifting around - rendered frame
+   by frame it read as a broken image rather than a logo thinking. Keeping
+   the mark legible for the whole cycle is the entire reason for using the
+   logo instead of dots.
+
+   THE STATIC STATE IS THE WHOLE MARK, deliberately. The blanket
+   prefers-reduced-motion rule above kills every animation in this
+   stylesheet, so whatever these elements look like with `animation: none`
+   is what a reader with that preference sees: here, the pulse paths fall
+   back to fully drawn strokes at full opacity over the faint tracks, which
+   is the finished mark. Written the other way round - a dash parked
+   partway along each stroke as the base state - it would freeze into a
+   fragment of a logo. The lesson from the wheel, where a blanket
+   transition:none turned a spin into a teleport and read as broken. */
+.thinking-mark {
+  display: block;
+  flex-shrink: 0;
+}
+
+.thinking-mark-track {
+  opacity: 0.26;
+}
+
+.thinking-mark-pulse {
+  /* The finished stroke. The keyframes override this while they run. */
+  stroke-dasharray: none;
+  animation: decide-think 1.5s ease-in-out infinite;
+}
+
+/* Left, right, then the middle - so the emphasis stroke lands last and the
+   dot lights on the beat after it. */
+.thinking-mark-pulse-1 {
+  animation-delay: 0s;
+}
+.thinking-mark-pulse-2 {
+  animation-delay: 0.12s;
+}
+.thinking-mark-pulse-3 {
+  animation-delay: 0.24s;
+}
+
+.thinking-mark-dot {
+  /* transform-box is what makes scale() pivot on the circle rather than on
+     the SVG's own origin, which would slide it off the mark instead of
+     growing it. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: decide-think-dot 1.5s ease-in-out infinite;
+  animation-delay: 0.24s;
+}
+
+@keyframes decide-think {
+  /* 18 of the roughly 64 units a stroke runs, so the pulse is a bright
+     length of the stroke rather than a dot sliding down a wire. 82 is the
+     dash plus the stroke, which is where it starts to be fully off the
+     top. */
+  0% {
+    stroke-dasharray: 18 64;
+    stroke-dashoffset: 82;
+  }
+  70%,
+  100% {
+    stroke-dasharray: 18 64;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes decide-think-dot {
+  0%,
+  55% {
+    opacity: 0.4;
+    transform: scale(0.84);
+  }
+  /* Lights as the pulse reaches it, then settles. */
+  70% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.84);
+  }
+}
+
+/* The indicator in its row, beside whatever text says what is happening.
+   The text is never replaced by the animation: it is what a screen reader
+   and a reduced-motion reader actually get. */
+.thinking-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

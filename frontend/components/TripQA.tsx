@@ -16,6 +16,7 @@ import {
 } from "@/lib/tripQA";
 import type { Language } from "@/lib/types";
 import { VOICE_AVATARS } from "./LocalVoiceAvatar";
+import { ThinkingMark } from "./ThinkingMark";
 
 /** The trip's start month, in the reading language, for the starter
  * questions. Returns "" on a missing or unparseable date, which leaves the
@@ -441,8 +442,12 @@ export function TripQA({ context, language, t }: TripQAProps) {
                 )}
                 <div className="qa-answer">
                   {isPendingAssistant ? (
-                    <span className="font-ui" style={{ color: "var(--ink-dim)" }}>
-                      {t.tripQA.thinking}
+                    /* The answer streams in token by token once it starts,
+                       so this covers the gap before the first one - which
+                       was a grey word and nothing else. */
+                    <span className="font-ui thinking-row" style={{ color: "var(--ink-dim)" }}>
+                      <ThinkingMark size={20} />
+                      <span>{t.tripQA.thinking}</span>
                     </span>
                   ) : (
                     // Segments, never innerHTML - see lib/linkify.ts. A place
