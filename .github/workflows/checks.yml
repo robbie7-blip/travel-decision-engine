@@ -1576,3 +1576,24 @@ jobs:
         timeout-minutes: 10
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+      # The dart still works where WebGL does not. Nothing else can reach
+      # that branch: GlobeDart decides whether to draw the globe by trying
+      # to make a WebGL context inside an effect, so server rendering never
+      # gets past the "still deciding" placeholder and the react-dom/server
+      # suites see neither real branch. It only exists at runtime, on a
+      # browser with no WebGL.
+      #
+      # It also became load-bearing recently. That branch used to render
+      # the wheel; the wheel is gone and it now renders the dart with no
+      # canvas - which needed its own fix, because onArrived never comes
+      # without a canvas and a throw that goes through inFlight leaves the
+      # button disabled forever, waiting for a camera move that is never
+      # going to happen. Reverting that fix turns this step red.
+      #
+      # Same timeout backstop as the check above, and for the same reason:
+      # this one also drives browsers that spawn their own children, and it
+      # hung on its first run until its pipes were destroyed too.
+      - run: npm run check:dart-fallback
+        timeout-minutes: 10
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

@@ -63,10 +63,12 @@
 // first of four and reported the gallery dots as 10x10 when a later block
 // had already fixed them to 44x44.
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { findChrome, startNextServer } from "./lib/devServer.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = resolve(HERE, "..");
@@ -158,27 +160,6 @@ function fail(lines) {
 }
 
 // ---------------------------------------------------------------- chromium
-
-/** A Chrome or Chromium binary, or nothing - in which case this script
- * FAILS rather than passing. A check that skips itself when a dependency
- * is missing is the dormant guard this repo already learned not to ship. */
-function findChrome() {
-  if (process.env.CHROME_PATH && existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH;
-  const pwRoot = process.env.PLAYWRIGHT_BROWSERS_PATH || "/opt/pw-browsers";
-  if (existsSync(pwRoot)) {
-    for (const entry of readdirSync(pwRoot).sort().reverse()) {
-      const candidate = join(pwRoot, entry, "chrome-linux", "chrome");
-      if (entry.startsWith("chromium-") && existsSync(candidate)) return candidate;
-    }
-  }
-  for (const name of ["google-chrome-stable", "google-chrome", "chromium", "chromium-browser"]) {
-    const found = spawnSync("which", [name], { encoding: "utf8" });
-    if (found.status === 0 && found.stdout.trim()) return found.stdout.trim();
-  }
-  const mac = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-  if (existsSync(mac)) return mac;
-  return null;
-}
 
 // ------------------------------------------------------------- coarse rules
 
@@ -366,22 +347,12 @@ if (unaccounted.length > 0) {
 
 const probePath = join(PUBLIC, "__touch-probe.html");
 const cssPath = join(PUBLIC, "__touch-coarse.css");
-let server = null;
+/** Set once the server is up. The lifetime of `next start` - detached into
+ * its own process group, signalled as a group, pipes destroyed - lives in
+ * scripts/lib/devServer.mjs, where the six-hour CI hang that shaped it is
+ * written down. */
+let stopServer = null;
 
-/** THIS IS THE FUNCTION THAT HUNG CI FOR SIX HOURS A RUN.
- *
- * Not the browser, not the measuring - both of those finished. The script
- * printed its result and then refused to exit, because `server` is the
- * npx process and `next start` is its CHILD. SIGTERM to npx did not reach
- * the server, the server kept the stdout and stderr pipes it inherited
- * open, node's event loop therefore never drained, and the process lived
- * until GitHub killed the job. A run of this locally produced the correct
- * answer at four minutes and was still alive at fifteen.
- *
- * So: the server is spawned detached, into its own process group, and the
- * whole group is signalled - negative pid is the group. SIGKILL follows
- * SIGTERM because next does not always honour the polite one, and the
- * pipes are unref'd so a survivor cannot hold the loop open regardless. */
 function cleanup() {
   for (const path of [probePath, cssPath]) {
     try {
@@ -390,25 +361,7 @@ function cleanup() {
       /* best effort - a leftover probe is served but harmless */
     }
   }
-  if (!server || server.killed) return;
-  for (const signal of ["SIGTERM", "SIGKILL"]) {
-    try {
-      process.kill(-server.pid, signal);
-    } catch {
-      try {
-        server.kill(signal);
-      } catch {
-        /* already gone */
-      }
-    }
-  }
-  try {
-    server.stdout?.destroy();
-    server.stderr?.destroy();
-    server.unref();
-  } catch {
-    /* already gone */
-  }
+  stopServer?.();
 }
 
 process.on("exit", cleanup);
@@ -424,66 +377,17 @@ mkdirSync(PUBLIC, { recursive: true });
 writeFileSync(cssPath, blocks.join("\n"));
 writeFileSync(probePath, PROBE_HTML);
 
-const port = 3100 + Math.floor(Math.random() * 800);
-server = spawn("npx", ["next", "start", "-p", String(port)], {
-  cwd: FRONTEND,
-  stdio: ["ignore", "pipe", "pipe"],
-  env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
-  // Its own process group, so cleanup() can signal the whole tree. npx is
-  // only a launcher; the server that holds the pipes is its child, and a
-  // signal to npx alone left that child alive - see cleanup().
-  detached: true,
-});
-let serverLog = "";
-server.stdout.on("data", (chunk) => {
-  serverLog += chunk;
-});
-server.stderr.on("data", (chunk) => {
-  serverLog += chunk;
-});
-
-// The server exiting is a result, not something to wait out. Without this
-// a dead `next start` left the loop below polling a port nobody holds.
-let serverExited = false;
-server.on("exit", (code, signal) => {
-  serverExited = true;
-  serverLog += `\n[next start exited: code ${code}, signal ${signal}]`;
-});
-
-/** Polls until the server answers, and is bounded in three ways because
- * this one function hung a ten-minute run with no output at all.
- *
- * fetch() has NO DEFAULT TIMEOUT. A request to a port nothing is
- * listening on usually fails at once, but "usually" is not "always" - the
- * run that exposed this sat in ep_poll with no children, no listening
- * port, and no way to tell anyone - so every call now carries its own
- * deadline, the loop carries a wall-clock one rather than counting
- * attempts, and a server that has exited ends it immediately. */
-async function waitForServer() {
-  const deadline = Date.now() + 45_000;
-  while (Date.now() < deadline) {
-    if (serverExited) return false;
-    try {
-      const res = await fetch(`http://127.0.0.1:${port}/__touch-probe.html`, {
-        signal: AbortSignal.timeout(2000),
-      });
-      if (res.ok) return true;
-    } catch {
-      /* not up yet, or this attempt timed out */
-    }
-    await new Promise((done) => setTimeout(done, 500));
-  }
-  return false;
-}
-
-if (!(await waitForServer())) {
+const started = await startNextServer({ cwd: FRONTEND, probePath: "/__touch-probe.html" });
+const port = started.port;
+stopServer = started.stop;
+if (!started.ok) {
   fail([
     `next start never answered on port ${port}, so nothing was measured.`,
     "",
     "Usually the port was already taken - a stray `next start` from an",
     "earlier run will do it. The server's own output follows.",
     "",
-    serverLog.trim() || "(the server printed nothing)",
+    started.log.trim() || "(the server printed nothing)",
   ]);
 }
 
