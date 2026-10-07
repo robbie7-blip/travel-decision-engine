@@ -187,10 +187,14 @@ export interface Dictionary {
     submitting: string;
     reassurance: string;
     notSurePrompt: string;
-    /** The other way out of an empty destination field: let the wheel
-     * choose. Sits beside notSurePrompt because browsing and spinning are
+    /** The other way out of an empty destination field: let the dart
+     * choose. Sits beside notSurePrompt because browsing and throwing are
      * answers to the same "I don't know where" - one for someone willing
-     * to read, one for someone who wants to be told. */
+     * to read, one for someone who wants to be told.
+     *
+     * Named for the dart, not the wheel. /spin opens on the globe and the
+     * wheel is the alternative behind it, so a link promising a wheel sent
+     * people to a dart. */
     spinPrompt: string;
   };
   result: {
@@ -389,8 +393,10 @@ export interface Dictionary {
   // named to fit the app's existing "opinionated local friend" voice
   // (see SYSTEM_PROMPT in worker/src/engine/prompt.ts) rather than a flat,
   // generic "Q&A" or "Ask a question" label.
-  /** "Spin the wheel" - a way in for someone who has no destination in
-   * mind yet, which is the state the trip form cannot help with. */
+  /** "Decide for me" - a way in for someone who has no destination in
+   * mind yet, which is the state the trip form cannot help with. The page
+   * opens on the dart and the globe; the wheel is the alternative behind
+   * it, so the strings below lead with the dart. */
   spin: {
     navLink: string;
     pageTitle: string;
@@ -757,7 +763,7 @@ const en: Dictionary = {
     submitting: "Deciding…",
     reassurance: "Takes about a minute - we check live prices as we plan, not guesses.",
     notSurePrompt: "Not sure where to go yet? Browse destination guides →",
-    spinPrompt: "Or spin the wheel and let it decide →",
+    spinPrompt: "Or throw a dart at the globe and let it decide →",
   },
   result: {
     budgetFeasible: "Budget: feasible",
@@ -1307,7 +1313,7 @@ const bg: Dictionary = {
     submitting: "Решаваме…",
     reassurance: "Отнема около минута - проверяваме актуални цени, докато планираме, не гадаем.",
     notSurePrompt: "Все още не сте сигурни къде? Разгледайте пътеводителите →",
-    spinPrompt: "Или завъртете колелото и оставете то да реши →",
+    spinPrompt: "Или хвърлете стрела по глобуса и го оставете да реши →",
   },
   result: {
     budgetFeasible: "Бюджет: постижим",

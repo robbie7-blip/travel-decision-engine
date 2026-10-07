@@ -1,4 +1,4 @@
-// "Spin the wheel" - a way in for the traveler the trip form cannot help:
+// "Decide for me" - a way in for the traveler the trip form cannot help:
 // the one who wants to go somewhere and has no idea where. The form asks
 // for a destination in its first field, which is a dead end if you do not
 // have one, and "browse 24 guides" is a research task rather than an
@@ -12,8 +12,9 @@
 // form through ?dest=, which takes free text and is why the dart can reach
 // countries no guide covers.
 //
-// Server component with a client wheel inside it, matching every other
-// static page here: same two-row header, same ?lang= switching.
+// Server component with the client globe (and the wheel behind it)
+// inside it, matching every other static page here: same two-row header,
+// same ?lang= switching.
 
 import type { Metadata } from "next";
 import Link from "next/link";
