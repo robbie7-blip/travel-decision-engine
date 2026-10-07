@@ -315,7 +315,7 @@ export default function Home() {
                   {t.form.notSurePrompt}
                 </Link>
                 <Link
-                  href={form.language === "bg" ? "/spin?lang=bg" : "/spin"}
+                  href={form.language === "bg" ? "/decide-for-me?lang=bg" : "/decide-for-me"}
                   className="font-ui inline-link"
                   style={{
                     fontSize: 12,

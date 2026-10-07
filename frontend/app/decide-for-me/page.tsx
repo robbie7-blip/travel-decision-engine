@@ -98,10 +98,10 @@ export default async function SpinPage({
               <div className="header-account-group">
               <AccountControl language={language} t={t} />
               <div className="font-ui lang-toggle header-chip header-chip--segmented">
-                <Link href="/spin" data-active={language === "en"}>
+                <Link href="/decide-for-me" data-active={language === "en"}>
                   EN
                 </Link>
-                <Link href="/spin?lang=bg" data-active={language === "bg"}>
+                <Link href="/decide-for-me?lang=bg" data-active={language === "bg"}>
                   BG
                 </Link>
               </div>

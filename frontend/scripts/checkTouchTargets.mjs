@@ -113,7 +113,7 @@ const PAGES = [
   "/account/visited",
   "/destinations",
   "/showcase",
-  "/spin",
+  "/decide-for-me",
   "/why-decide",
   "/terms",
   "/privacy",

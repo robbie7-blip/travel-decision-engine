@@ -106,7 +106,7 @@ export function NavMenu({
     { href: `/destinations${langSuffix}`, label: t.browseDestinations, icon: NAV_ICONS.destinations },
     { href: `/showcase${langSuffix}`, label: t.showcase.navLabel, icon: NAV_ICONS.showcase },
     { href: "/ask", label: t.tripQA.navLink, icon: NAV_ICONS.ask },
-    { href: `/spin${langSuffix}`, label: t.spin.navLink, icon: NAV_ICONS.spin },
+    { href: `/decide-for-me${langSuffix}`, label: t.spin.navLink, icon: NAV_ICONS.spin },
     { href: "/account/visited", label: t.visited.homeNavLink, icon: NAV_ICONS.visited },
     { href: "/pricing", label: t.account.navLink, icon: NAV_ICONS.pricing },
   ];
