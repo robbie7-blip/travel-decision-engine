@@ -1565,6 +1565,17 @@ p {
    a portrait, a name and a line in their own voice. auto-fit rather than a
    fixed column count so the five cards reflow to two columns on a phone
    and one line on a wide itinerary panel without a breakpoint. */
+/* The picker's heading. It replaced a clickable summary line that said
+   "Asking: Anyone" and opened the set - the cards are always visible now,
+   so what is left to say is what they are for. */
+.qa-voice-heading {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+}
+
 .voice-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -2103,51 +2114,6 @@ p {
   border-color: var(--accent-green);
 }
 
-/* One line standing in for the character picker, which is shut by
-   default. Reads as a status with a way in, not as a control demanding a
-   decision before you can type - the five cards it replaces were the
-   first thing on the page and the ask box was the last. */
-.qa-voice-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink-soft);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.qa-voice-summary:hover {
-  border-color: var(--line-strong);
-}
-
-/* The "Anyone" option has no portrait, so it gets the same placeholder the
-   full card uses, at the size of the line it sits on. */
-.qa-voice-summary-any {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 999px;
-  font-size: 11px;
-  color: var(--ink-dim);
-}
-
-/* Pushed to the far end, where a "change this" affordance belongs. */
-.qa-voice-summary-change {
-  margin-left: auto;
-  color: var(--grounded);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 /* Round, inside the composer, and only coloured once there is something
    to send. */
 .qa-send {
@@ -2177,11 +2143,6 @@ p {
   .qa-send,
   .qa-action {
     min-width: 44px;
-    min-height: 44px;
-  }
-
-  /* A full-width row, so only the height needs a floor. */
-  .qa-voice-summary {
     min-height: 44px;
   }
 }
@@ -2547,16 +2508,74 @@ p {
    still the ones it uses, and renaming a dozen of them across a
    stylesheet and a component to match a feature's history buys nothing. */
 
+/* The globe is the bigger half, and it is the point of the page.
+   It used to be the SMALLER one: a track capped at 420px inside a
+   1450px container, with the throw button in the 1fr beside it. The globe
+   read as an illustration next to a button rather than as the thing you
+   are about to throw a dart at, which is how it was reported.
+
+   align-items: center, and that is the other half of the same complaint.
+   The button sat at the top of a column much taller than itself, so it
+   lined up with nothing. */
 .spin {
   display: grid;
-  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
-  gap: clamp(24px, 5vw, 56px);
-  align-items: start;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 380px);
+  gap: clamp(24px, 5vw, 72px);
+  align-items: center;
 }
 
+/* Capped by the WINDOW'S HEIGHT as well as the column's width, which is
+   the thing that goes wrong when a square element is sized from one
+   dimension. Left on width alone the globe came out 753px on a 1450px
+   screen, so on an ordinary laptop - about 810px of viewport under the
+   browser's own furniture - it started at 271 and ended at 1024, and the
+   bottom third was below the fold. That is not a cosmetic problem on this
+   page: the dart lands somewhere on the globe, and some of those landings
+   would have happened off-screen.
+   
+   62vh, so the whole globe clears the heading above it with room to
+   breathe, and it still grows on a tall monitor. A smaller globe you can
+   see all of beats a bigger one you cannot. */
 .spin-stage {
   position: relative;
-  grid-row: span 2;
+  max-width: min(100%, 62vh);
+}
+
+/* The throw and its result, in two halves of the globe's own height.
+   The row boundary IS the globe's centre line: the button sits at the
+   bottom of the top half and the result starts at the top of the bottom
+   one, so the button meets the middle of the globe and the result grows
+   downward from there without moving it.
+   
+   Centring the two as ONE block does not do this, and that was the first
+   attempt: the block centres perfectly, but it is mostly the 260px
+   reserved for a result that has not arrived yet, so the button ends up
+   near the top of it - measured at 141px above the globe's centre, which
+   is the misalignment this is meant to fix rather than a smaller version
+   of it. */
+.spin-side {
+  align-self: stretch;
+  display: grid;
+  /* minmax(0, 1fr), not 1fr. A bare `1fr` is minmax(auto, 1fr), so a row
+     still grows past its share to fit its content - and the result card
+     for a country WITH a guide carries a photograph, which makes it tall
+     enough to do exactly that. The bottom half would stretch, the side
+     column would end up taller than the globe, and the button it took all
+     this to align would drift back off centre on precisely the results
+     that look best. A zero minimum lets the card overflow downward
+     instead, which costs nothing: it is the last thing in that column. */
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.spin-side .spin-controls {
+  align-self: end;
+}
+
+.spin-side .spin-result {
+  align-self: start;
+  /* Nothing to reserve any more: the halves hold the space open, so the
+     result has no height of its own to keep. */
+  min-height: 0;
 }
 
 .spin-controls {
@@ -2579,7 +2598,9 @@ p {
 }
 
 /* Reserves its own height so the layout does not jump when the result
-   lands - the one moment on this page where a shift would be felt. */
+   lands - the one moment on this page where a shift would be felt. With
+   the column centred, a shift would move the throw button too, which is
+   worse than the gap this leaves before the first throw. */
 .spin-result {
   min-height: 260px;
   margin-top: 22px;
@@ -2665,17 +2686,38 @@ p {
   color: var(--brand-teal);
 }
 
-@media (max-width: 860px) {
+@media (max-width: 980px) {
+  /* Stacked, globe first. 980 rather than 860: the second column is 380
+     wide, and below about this the globe is squeezed into the narrower
+     half of a split it is meant to dominate. */
   .spin {
     grid-template-columns: 1fr;
   }
 
+  /* width AND justify-self, not `margin: 0 auto`, which is what this was
+     and is why the stacked globe came out 260px - the 260 floor in
+     GlobeDart - rather than filling the column. Auto margins on a grid
+     item beat the default `justify-self: stretch`, so the item stops
+     filling its track and shrinks to its content. The old rule had the
+     same bug with a 420px cap, so the mobile globe has been half its
+     intended size for as long as there has been one. */
   .spin-stage {
-    grid-row: auto;
-    max-width: 420px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 520px;
+    justify-self: center;
   }
 
+  .spin-side {
+    align-items: center;
+    text-align: center;
+  }
+
+  .spin-controls {
+    justify-content: center;
+  }
+
+  /* Nothing to reserve once it is stacked: the result pushes the page
+     down rather than appearing beside something. */
   .spin-result {
     min-height: 0;
   }

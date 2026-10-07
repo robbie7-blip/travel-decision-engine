@@ -117,7 +117,6 @@ export function TripQA({ context, language, t }: TripQAProps) {
    * disclaimer were the first thing on the page and the ask box was the
    * last. Most people never change this, so it collapses to one line
    * naming who is answering, one tap from the full set. */
-  const [voicePickerOpen, setVoicePickerOpen] = useState(false);
   /** Which answer was just copied, so the button can say so. Cleared on a
    * timer, and by index rather than a boolean so copying one answer does
    * not light up the button on every other one. */
@@ -711,34 +710,15 @@ export function TripQA({ context, language, t }: TripQAProps) {
           character shrinks to the strip below instead. */}
       {messages.length === 0 && (
         <div>
-          {/* One line instead of a heading and five cards. It says who is
-              answering and opens the full set, which is all the default
-              state of this control needs to do. */}
-          <button
-            type="button"
-            onClick={() => setVoicePickerOpen((open) => !open)}
-            aria-expanded={voicePickerOpen}
-            className="font-ui qa-voice-summary"
-          >
-            {voice ? (
-              (() => {
-                const Avatar = VOICE_AVATARS[voice];
-                return <Avatar size={22} />;
-              })()
-            ) : (
-              <span className="qa-voice-summary-any" aria-hidden>
-                ?
-              </span>
-            )}
-            <span style={{ color: "var(--ink-dim)" }}>{t.tripQA.voiceAsking}</span>
-            <span style={{ fontWeight: 600, color: "var(--ink)" }}>
-              {voice ? t.tripQA.voices[voice].label : t.tripQA.voiceAnyone}
-            </span>
-            <span className="qa-voice-summary-change">{t.tripQA.voiceChange}</span>
-          </button>
-          {voicePickerOpen && (
-            <>
-              <div className="voice-grid" style={{ marginTop: 10 }}>
+          {/* The five choices, shown rather than hidden behind a "Change"
+              link. They were a dropdown for a while - one line reading
+              "Asking: Anyone" that opened the set - which kept the default
+              state small at two costs: the four characters were invisible
+              unless you thought to look for them, and a control whose
+              whole job is to be noticed was the one thing on the panel you
+              had to discover first. */}
+          <div className="font-ui qa-voice-heading">{t.tripQA.voiceHeading}</div>
+          <div className="voice-grid">
             {([null, ...LOCAL_VOICES] as (LocalVoice | null)[]).map((option) => {
               const active = voice === option;
               const Avatar = option ? VOICE_AVATARS[option] : null;
@@ -787,15 +767,12 @@ export function TripQA({ context, language, t }: TripQAProps) {
 
           {/* Says plainly that this is a point of view, not a person. The
               prompt refuses to invent a biography; this is the same
-              promise made where the traveler can see it. Inside the
-              expanded picker, because it is about the characters and
-              there is no reason to say it to someone who never opened
-              them. */}
+              promise made where the traveler can see it. Under the
+              characters, because it is about them - and now that they are
+              not behind a toggle, everyone who sees them sees it. */}
           <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10 }}>
             {t.tripQA.voiceNote}
           </div>
-          </>
-          )}
         </div>
       )}
 

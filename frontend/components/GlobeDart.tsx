@@ -166,6 +166,12 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
         </p>
       )}
 
+      {/* Everything that is not the globe, as ONE grid child.
+          The throw button and the result used to be two separate children
+          of the grid, which is why the button sat pinned to the top of a
+          column far taller than it: there was nothing to centre, only two
+          rows to fill. As one block it centres against the globe. */}
+      <div className="spin-side">
       <div className="spin-controls">
         <button type="button" onClick={throwIt} disabled={inFlight} className="font-ui btn-primary spin-button">
           {inFlight ? t.spin.throwing : landed ? t.spin.throwAgain : t.spin.throwDart}
@@ -247,8 +253,12 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
         )}
       </div>
 
+      </div>
+
       {/* Says how it works, because "it sticks where it lands" is a claim
-          and this product does not make claims it hides. */}
+          and this product does not make claims it hides. Full width under
+          both columns rather than inside one of them: it is about the
+          feature, not about the globe or the button. */}
       <p className="font-ui spin-note">{t.spin.dartNote}</p>
     </div>
   );

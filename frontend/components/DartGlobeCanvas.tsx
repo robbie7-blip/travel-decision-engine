@@ -196,7 +196,10 @@ export default function DartGlobeCanvas({ hit, throwId, reducedMotion, onArrived
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width;
-      if (width) setSize(Math.floor(Math.min(width, 520)));
+      // 820, not 520. The cap was written when the globe sat in a track
+      // capped at 420px, so it never bound; the globe is now the larger
+      // half of a 1450px container and 520 was what stopped it filling it.
+      if (width) setSize(Math.floor(Math.min(width, 820)));
     });
     observer.observe(el);
     return () => observer.disconnect();
