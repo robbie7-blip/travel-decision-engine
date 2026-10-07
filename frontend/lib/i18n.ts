@@ -409,7 +409,6 @@ export interface Dictionary {
     throwAgain: string;
     landedIn: string;
     guidesHere: string;
-    noGuideYet: string;
     planHere: string;
     globeUnavailable: string;
     dartNote: string;
@@ -932,7 +931,6 @@ const en: Dictionary = {
     throwAgain: "Throw again",
     landedIn: "The dart landed in",
     guidesHere: "We have guides here:",
-    noGuideYet: "No guide for this one yet - the planner still plans it in full.",
     planHere: "Plan a trip here",
     globeUnavailable: "This browser can't draw the globe, so here's the wheel instead - same idea.",
     dartNote: "Every country in the world, each with an even chance. The dart sticks inside the country it names - the country is drawn first and the landing point comes from that country's own outline, so nothing is decided after the fact. For the 29 too small for our map to have an outline at all, from Monaco to Tuvalu, the dart lands on the capital instead.",
@@ -1476,7 +1474,6 @@ const bg: Dictionary = {
     throwAgain: "Хвърли отново",
     landedIn: "Стрелата се заби в",
     guidesHere: "Тук имаме пътеводители:",
-    noGuideYet: "Още няма пътеводител за тази държава - планиращият я планира напълно.",
     planHere: "Планирай пътуване тук",
     globeUnavailable: "Този браузър не може да покаже глобуса, затова е колелото - същата идея.",
     dartNote: "Всяка държава в света, с равен шанс. Стрелата се забива вътре в държавата, която назовава - първо се избира държавата, а точката на попадение идва от собствения ѝ контур, така че нищо не се решава след това. За 29-те твърде малки, за да има карта контур за тях - от Монако до Тувалу - стрелата попада върху столицата.",

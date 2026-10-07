@@ -232,14 +232,17 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
                 </>
               ) : (
                 <>
-                  {/* Said plainly rather than hidden: we have no guide for
-                      this one, and the planner still plans it. The form
-                      takes free text, which is the whole reason the dart
-                      can reach the world in the first place. */}
-                  <div className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", margin: "2px 0 10px" }}>
-                    {t.spin.noGuideYet}
-                  </div>
-                  <div className="spin-result-actions">
+                  {/* No line about guides at all, deliberately.
+                      
+                      It used to say "No guide for this one yet", which
+                      answered a question nobody had asked and made the
+                      result read as a consolation prize: the dart landed
+                      on Lesotho and the first thing the page did was name
+                      something it lacked. Guides are worth mentioning
+                      where they exist, which is what the branch above
+                      does. Where they do not, the country and the way to
+                      plan it are the whole answer. */}
+                  <div className="spin-result-actions" style={{ marginTop: 10 }}>
                     <Link
                       href={`/?dest=${encodeURIComponent(getCountryName(landed.code, "en"))}`}
                       className="font-ui btn-primary spin-plan"
