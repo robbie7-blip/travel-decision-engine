@@ -163,7 +163,10 @@ recorder = await openRecorder({ chrome, args: SWIFTSHADER_ARGS });
 // 2x device scale factor would be sharper again, and costs four times the
 // pixels through a software renderer that is already the slowest thing
 // here - the measured difference at 720 wide did not pay for it.
-const page = await recorder.newPage({ width: 1180, height: 760, stepMs: STEP_MS });
+// Thirty seconds of patience per frame: one frame of this globe takes
+// about four to draw in software, and a stalled capture falls back to
+// repeating the frame before, which would quietly flatten the flight.
+const page = await recorder.newPage({ width: 1180, height: 760, stepMs: STEP_MS, shootTimeoutMs: 30_000 });
 
 // The WebGL probe runs in an effect, so the globe does not exist until the
 // page has hydrated.

@@ -291,9 +291,25 @@ async function card(path, frames) {
 
 /** A page, filmed frame by frame. */
 async function pageShot(shot) {
-  const page = await recorder.newPage({ width: WIDTH, height: HEIGHT, stepMs: STEP_MS });
+  // Said out loud, step by step, because this script has twice sat
+  // silent on a single stalled call and "which line is it on" was the
+  // whole question. The dart shot alone is nine minutes, so a run with
+  // no progress output is indistinguishable from a run that has died.
+  const step = (what) => process.stdout.write(`\r  ${shot.name}: ${what}`.padEnd(48));
+  // A WebGL frame here genuinely takes four seconds to draw, so its
+  // patience has to be far longer than a DOM page's - and a DOM page's
+  // has to be short, because every frame of a page that has stopped
+  // painting waits this long before being filled in with the one before.
+  const page = await recorder.newPage({
+    width: WIDTH,
+    height: HEIGHT,
+    stepMs: STEP_MS,
+    shootTimeoutMs: shot.webgl ? 30_000 : 1_500,
+  });
   try {
+    step("loading");
     await page.load(`${origin}${shot.path}`, shot.settleMs ?? 2500);
+    step("loaded");
 
     if (shot.webgl) {
       const canvases = await page.evaluate(`document.querySelectorAll("canvas").length`);
@@ -306,16 +322,22 @@ async function pageShot(shot) {
     }
 
     if (shot.prepare) {
+      step("preparing");
       const problem = await page.evaluate(shot.prepare);
       if (problem) throw new Error(`${shot.name}: ${problem}`);
     }
 
+    step("pausing the clock");
     await page.pauseClock();
     // Run the page on, unfilmed, to reach the moment worth filming.
-    if (shot.warmMs) await page.advance(shot.warmMs);
+    if (shot.warmMs) {
+      step(`warming ${shot.warmMs}ms`);
+      await page.advance(shot.warmMs);
+    }
 
     const frames = [];
     for (let i = 0; i < shot.frames; i++) {
+      if (i % 5 === 0) step(`frame ${i + 1}/${shot.frames}`);
       if (shot.scroll) {
         // Eased rather than linear: a scroll that starts and stops at
         // full speed reads as a jump cut at both ends.
@@ -340,6 +362,12 @@ async function pageShot(shot) {
       frames.push(await page.shoot());
       await page.advance();
     }
+    if (page.reusedFrames > 0) {
+      // Said out loud rather than hidden: a shot that is mostly repeats
+      // is a shot of something that was not moving, and that is worth
+      // knowing before it goes in the cut.
+      process.stdout.write(`\r  ${shot.name}: ${page.reusedFrames}/${shot.frames} frames unchanged`.padEnd(48));
+    }
     return frames;
   } finally {
     await page.close();
@@ -350,11 +378,29 @@ async function pageShot(shot) {
 
 recorder = await openRecorder({ chrome, args: SWIFTSHADER_ARGS });
 
+/** PROMO_ONLY=hero,form films just those shots.
+ *
+ * For working on one shot without sitting through the dart's nine
+ * minutes of software WebGL every time. The output is a real file, just
+ * not the real cut - so it prints what it left out rather than letting
+ * a four-second mp4 be mistaken for the finished thing. */
+const only = (process.env.PROMO_ONLY ?? "")
+  .split(",")
+  .map((name) => name.trim())
+  .filter(Boolean);
+const shots = only.length > 0 ? SHOTS.filter((shot) => only.includes(shot.name)) : SHOTS;
+if (only.length > 0) {
+  const missing = only.filter((name) => !SHOTS.some((shot) => shot.name === name));
+  if (missing.length > 0) fail([`No shot called ${missing.join(", ")}. They are: ${SHOTS.map((s) => s.name).join(", ")}`]);
+  console.log(`PROMO_ONLY: filming ${shots.map((s) => s.name).join(", ")} - this is NOT the full cut`);
+}
+
 const startedAt = Date.now();
-for (const shot of SHOTS) {
+for (const shot of shots) {
   const at = Date.now();
   const frames = shot.kind === "card" ? await card(shot.path, shot.frames) : await pageShot(shot);
   await emit(frames);
+  process.stdout.write("\r".padEnd(50) + "\r");
   console.log(
     `${shot.name.padEnd(7)} ${String(frames.length).padStart(3)} frames ` +
       `(${(frames.length / FPS).toFixed(1)}s) in ${((Date.now() - at) / 1000).toFixed(0)}s`

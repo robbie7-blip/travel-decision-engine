@@ -47,12 +47,36 @@ import { join } from "node:path";
  * fallback. */
 export const SWIFTSHADER_ARGS = ["--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader"];
 
-/** Hands requestAnimationFrame callbacks the clock the rest of the page
- * is using. See the note at the top - this is the shim without which a
- * recording silently loses anything timed off the callback argument. */
-const RAF_SHIM = `(() => {
+/** What every recorded page gets before it runs.
+ *
+ * ONE: requestAnimationFrame callbacks are handed the clock the rest of
+ * the page is using. See the note at the top - without this a recording
+ * silently loses anything timed off the callback argument.
+ *
+ * TWO: no text caret, anywhere. This one took three wrong theories to
+ * find. A shot that focuses a text input - which the form shot does,
+ * because a form being filled in is the point - hung
+ * Page.captureScreenshot for ever. Not the typing, not the scrolling,
+ * not a static page: those all capture in about 120ms. It is the caret.
+ * A focused input blinks, the blink wants frames, the clock is paused so
+ * no frame comes, and the capture waits for one that never will. The
+ * measurement was unambiguous: no focus 141ms, focus never returns,
+ * focus with the caret made transparent 165ms.
+ *
+ * Hiding it costs nothing a viewer would notice - letters appearing one
+ * at a time already reads as typing - and it removes the whole hazard
+ * rather than leaving each shot to remember it.
+ */
+const PAGE_SETUP = `(() => {
   const raf = window.requestAnimationFrame.bind(window);
   window.requestAnimationFrame = (callback) => raf(() => callback(performance.now()));
+
+  const hideCaret = () => {
+    const style = document.createElement("style");
+    style.textContent = "*, *::before, *::after { caret-color: transparent !important; }";
+    (document.head || document.documentElement).appendChild(style);
+  };
+  document.documentElement ? hideCaret() : document.addEventListener("DOMContentLoaded", hideCaret);
 })()`;
 
 /**
@@ -150,11 +174,35 @@ export async function openRecorder({ chrome, args = [] }) {
   });
 
   /** One sender for everything. `session` is omitted for the calls that
-   * set a session up and carried for everything after. */
+   * set a session up and carried for everything after.
+   *
+   * EVERY CALL CARRIES A DEADLINE, and that is not belt-and-braces. Two
+   * recordings have now hung indefinitely on a single call that never
+   * came back - once on a virtual-time budget the page could not spend,
+   * once somewhere in a shot that took a long time to narrow down
+   * because the failure looks identical from outside: a process at 0%
+   * CPU, no output, no error, indistinguishable from slow work. A call
+   * that stops and names itself turns that into one line of output. The
+   * limit is generous because one frame of software WebGL genuinely
+   * takes four seconds. */
+  const CALL_TIMEOUT_MS = 120_000;
   const call = (method, params = {}, session) =>
     new Promise((resolve, reject) => {
       const id = nextId++;
-      pending.set(id, { resolve, reject });
+      const deadline = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error(`${method} never came back (waited ${CALL_TIMEOUT_MS / 1000}s)`));
+      }, CALL_TIMEOUT_MS);
+      pending.set(id, {
+        resolve: (value) => {
+          clearTimeout(deadline);
+          resolve(value);
+        },
+        reject: (error) => {
+          clearTimeout(deadline);
+          reject(error);
+        },
+      });
       socket.send(JSON.stringify({ id, method, params, ...(session ? { sessionId: session } : {}) }));
     });
 
@@ -165,7 +213,7 @@ export async function openRecorder({ chrome, args = [] }) {
      * `stepMs` is one frame of animation: what `advance()` moves the page
      * by when called without an argument.
      */
-    async newPage({ width, height, deviceScaleFactor = 1, stepMs }) {
+    async newPage({ width, height, deviceScaleFactor = 1, stepMs, shootTimeoutMs = 4000 }) {
       const { targetId } = await call("Target.createTarget", { url: "about:blank" });
       const { sessionId } = await call("Target.attachToTarget", { targetId, flatten: true });
       const send = (method, params) => call(method, params, sessionId);
@@ -182,7 +230,7 @@ export async function openRecorder({ chrome, args = [] }) {
       await send("Runtime.enable", {});
       await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor, mobile: false });
       // Before any navigation, or the page it is meant to fix has already run.
-      await send("Page.addScriptToEvaluateOnNewDocument", { source: RAF_SHIM });
+      await send("Page.addScriptToEvaluateOnNewDocument", { source: PAGE_SETUP });
 
       /** Waits for the page to finish spending a virtual-time budget.
        *
@@ -201,6 +249,11 @@ export async function openRecorder({ chrome, args = [] }) {
        * network is doing, and this throws if the event still does not
        * come. A recorder that stops and says why beats one that waits.
        */
+      /** The last frame that really came back, and how often it stood in
+       * for one that did not. See `shoot`. */
+      let lastShot = null;
+      let reused = 0;
+
       const budgetExpired = () =>
         new Promise((resolve, reject) => {
           const deadline = setTimeout(() => {
@@ -261,14 +314,64 @@ export async function openRecorder({ chrome, args = [] }) {
          *
          * `clip` is in CSS pixels. Cropping here rather than afterwards
          * means the pixels outside it are never encoded, read back or
-         * thrown away. */
+         * thrown away.
+         *
+         * fromSurface: false IS LOAD-BEARING. The default asks the
+         * compositor for the window's surface, and with the clock paused
+         * that wait can never end: nothing on a still page asks for a
+         * new frame, so the capture sits there. It is intermittent, which
+         * made it miserable to pin down - one run stalled on the first
+         * frame of a shot, the next on the ninety-sixth - and from
+         * outside it looks exactly like slow work. Capturing from the
+         * renderer instead does not wait on the surface at all.
+         *
+         * Checked rather than assumed, because a renderer-side capture
+         * plausibly misses a WebGL canvas drawn in the GPU process: at
+         * 1920x1080 both modes return the same dimensions, the same byte
+         * count, and the same standard deviation over the globe
+         * (25.8/24.0/29.4 against 25.7/24.0/29.3). The globe is there.
+         */
         async shoot(clip) {
-          const shot = await send("Page.captureScreenshot", {
+          const capture = send("Page.captureScreenshot", {
             format: "jpeg",
             quality: 95,
+            fromSurface: false,
             ...(clip ? { clip: { ...clip, scale: 1 } } : {}),
-          });
-          return Buffer.from(shot.data, "base64");
+          }).then((shot) => Buffer.from(shot.data, "base64"));
+
+          const stalled = Symbol("stalled");
+          const raced = await Promise.race([
+            capture,
+            new Promise((resolve) => setTimeout(() => resolve(stalled), shootTimeoutMs)),
+          ]);
+
+          if (raced !== stalled) {
+            lastShot = raced;
+            return raced;
+          }
+
+          // A capture that never returns means the page has not painted,
+          // and a page that has not painted still looks exactly like the
+          // last frame of it. So that frame IS this frame.
+          //
+          // The first one cannot be waved through, though: with nothing
+          // to repeat, a stall there is a real failure and should say so.
+          capture.catch(() => {});
+          if (!lastShot) {
+            throw new Error(
+              `the first frame never came back (waited ${shootTimeoutMs / 1000}s), so there is ` +
+                `nothing to film and nothing to repeat`
+            );
+          }
+          reused++;
+          return lastShot;
+        },
+
+        /** How many frames were repeats of the one before, because the
+         * page had not painted. Worth printing: a shot that is mostly
+         * reused frames is a shot of something that was not moving. */
+        get reusedFrames() {
+          return reused;
         },
 
         async close() {
