@@ -16,9 +16,10 @@
 //
 // HOW IT RUNS. Builds nothing and installs nothing: `next start` on a
 // random port (scripts/lib/devServer.mjs, which carries the scars of
-// getting that right), Chromium over CDP, Page.startScreencast for the
-// frames, and sharp - already here as Next's image dependency - to crop
-// and encode. No Playwright, no ffmpeg.
+// getting that right), Chromium one frame at a time on a clock this
+// process owns (scripts/lib/recorder.mjs), and sharp - already here as
+// Next's image dependency - to crop and encode. No Playwright, no
+// ffmpeg.
 //
 //   npm run build && node scripts/makeDartClip.mjs
 //
@@ -28,17 +29,18 @@
 // THE GLOBE IS DRAWN IN SOFTWARE HERE. There is no GPU on a CI runner or
 // in a container, so this asks for SwiftShader by name, the same way
 // checkDartFallback.mjs does for its WebGL run. It renders the same
-// scene; it just renders it slowly, which is why frames are chosen by
-// their timestamps below instead of being assumed to arrive evenly.
+// scene; it just renders it slowly - which is the whole reason the clock
+// is driven rather than watched, because a recording made in real time
+// gets a frame a second and no amount of resampling turns that into an
+// animation.
 
 import { existsSync, mkdirSync } from "node:fs";
-import { spawn } from "node:child_process";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
 import { findChrome, startNextServer } from "./lib/devServer.mjs";
+import { openRecorder, SWIFTSHADER_ARGS } from "./lib/recorder.mjs";
 
 const sharp = createRequire(import.meta.url)("sharp");
 
@@ -120,160 +122,54 @@ if (!started.ok) {
   ]);
 }
 
-const browser = spawn(
-  chrome,
-  [
-    "--headless=new",
-    "--no-sandbox",
-    "--no-zygote",
-    "--disable-dev-shm-usage",
-    "--remote-debugging-port=0",
-    `--user-data-dir=${join(tmpdir(), `dart-clip-${process.pid}`)}`,
-    // Software WebGL by name. Without these the globe is simply absent
-    // and this script would happily film the no-canvas fallback.
-    "--enable-unsafe-swiftshader",
-    "--use-gl=angle",
-    "--use-angle=swiftshader",
-    "--hide-scrollbars",
-    "about:blank",
-  ],
-  { stdio: ["ignore", "pipe", "pipe"] }
-);
-
-let browserOut = "";
-const wsUrl = await new Promise((resolve) => {
-  const deadline = setTimeout(() => resolve(null), 30_000);
-  browser.stderr.on("data", (chunk) => {
-    browserOut += chunk;
-    const match = /ws:\/\/[^\s]+/.exec(browserOut);
-    if (match) {
-      clearTimeout(deadline);
-      resolve(match[0]);
-    }
-  });
-  browser.on("exit", () => {
-    clearTimeout(deadline);
-    resolve(null);
-  });
-});
-
-/** Kill the browser AND let go of its pipes.
- *
- * Killing alone is not enough - Chromium's children inherit the stderr
- * pipe the debugging endpoint is read from, and node's event loop stays
- * alive while anything holds the far end. checkDartFallback.mjs hung
- * forever on exactly this, after printing the right answer.
- */
-function stopBrowser() {
+let recorder = null;
+process.on("exit", () => {
   try {
-    browser.kill();
-    browser.stdout?.destroy();
-    browser.stderr?.destroy();
-    browser.unref();
+    recorder?.close();
   } catch {
     /* already gone */
   }
-}
-process.on("exit", stopBrowser);
-
-if (!wsUrl) {
-  fail(["The browser never reported a debugging endpoint. Its output:", "", browserOut.trim()]);
-}
-
-const socket = new WebSocket(wsUrl);
-await new Promise((resolve, reject) => {
-  socket.addEventListener("open", resolve, { once: true });
-  socket.addEventListener("error", reject, { once: true });
 });
 
-let nextId = 1;
-const pending = new Map();
-const listeners = new Set();
-socket.addEventListener("message", (event) => {
-  const message = JSON.parse(event.data);
-  if (message.id && pending.has(message.id)) {
-    const { resolve, reject } = pending.get(message.id);
-    pending.delete(message.id);
-    message.error ? reject(new Error(JSON.stringify(message.error))) : resolve(message.result);
-    return;
-  }
-  if (message.method) for (const listener of listeners) listener(message);
-});
-const send = (method, params = {}, sessionId) =>
-  new Promise((resolve, reject) => {
-    const id = nextId++;
-    pending.set(id, { resolve, reject });
-    socket.send(JSON.stringify({ id, method, params, sessionId }));
-  });
+/** THE CLOCK IS DRIVEN, NOT WATCHED.
+ *
+ * The first version of this recorded a screencast in real time and got
+ * eight frames in five and a half seconds. There is no GPU here, so the
+ * globe renders in software at something closer to one frame a second,
+ * and a recording of that is a slideshow no matter how it is resampled.
+ *
+ * So the page's clock is taken away from it: scripts/lib/recorder.mjs
+ * advances performance.now, timers and requestAnimationFrame by an exact
+ * budget and then stops, which means a frame can be captured at precisely
+ * 1/FPS of animation regardless of how long the render actually took. The
+ * flight that takes seven real seconds here lands at 3300ms of virtual
+ * time, which is what it does on a real machine. That file also carries
+ * the requestAnimationFrame shim without which this clip silently comes
+ * out with no dart in it - the whole subject missing, and nothing to
+ * suggest anything went wrong.
+ *
+ * The cost is wall clock: every step still renders in software, so this
+ * takes minutes. It is a one-off generator, and a correct clip slowly is
+ * worth more than a broken one quickly.
+ */
+const STEP_MS = Math.round(1000 / FPS);
+const REST_FRAMES = Math.round(REST_MS / STEP_MS);
+const HOLD_FRAMES = Math.round(HOLD_MS / STEP_MS);
+const MAX_FRAMES = REST_FRAMES + HOLD_FRAMES + Math.ceil(LAND_TIMEOUT_MS / STEP_MS);
 
-const { targetId } = await send("Target.createTarget", { url: "about:blank" });
-const { sessionId } = await send("Target.attachToTarget", { targetId, flatten: true });
-const evaluate = async (expression) => {
-  const result = await send(
-    "Runtime.evaluate",
-    { expression, awaitPromise: true, returnByValue: true },
-    sessionId
-  );
-  if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
-  return result.result.value;
-};
-
-await send("Page.enable", {}, sessionId);
-await send("Runtime.enable", {}, sessionId);
+recorder = await openRecorder({ chrome, args: SWIFTSHADER_ARGS });
 // Wide enough that the region cropped out of it is still bigger than the
 // clip, so the resize to WIDTH is a downsample rather than a stretch. A
 // 2x device scale factor would be sharper again, and costs four times the
 // pixels through a software renderer that is already the slowest thing
 // here - the measured difference at 720 wide did not pay for it.
-await send(
-  "Emulation.setDeviceMetricsOverride",
-  { width: 1180, height: 760, deviceScaleFactor: 1, mobile: false },
-  sessionId
-);
-/** Hand requestAnimationFrame callbacks the clock the rest of the page is
- * using.
- *
- * THE ONE THAT COST AN EVENING. Virtual time advances performance.now,
- * Date.now and timers, but NOT the timestamp Chromium passes to a
- * requestAnimationFrame callback - that keeps coming from the compositor,
- * which is not being advanced. Nothing errors. The camera still flies,
- * because globe.gl tweens on its own clock; the result card still appears,
- * because that is a setTimeout. Only the dart stands still, because
- * DartGlobeCanvas measures its flight as `now - startedAt` where `now` is
- * the callback's argument and `startedAt` is performance.now. Under
- * virtual time those are two different clocks, the elapsed fraction never
- * leaves zero, and the dart is held at not-yet-thrown for the whole
- * recording.
- *
- * The first clip looked plausible without it: a globe, a camera flight, a
- * country named. It was simply missing the dart, which is the entire
- * subject.
- *
- * So the shim is here rather than in the component. In a real browser
- * both clocks are the same timebase and there is nothing to fix; the
- * divergence is something this recorder introduces, so this recorder is
- * what should pay for it.
- */
-await send(
-  "Page.addScriptToEvaluateOnNewDocument",
-  {
-    source: `(() => {
-      const raf = window.requestAnimationFrame.bind(window);
-      window.requestAnimationFrame = (callback) => raf(() => callback(performance.now()));
-    })()`,
-  },
-  sessionId
-);
-await send("Page.navigate", { url: `http://127.0.0.1:${started.port}/decide-for-me` }, sessionId);
+const page = await recorder.newPage({ width: 1180, height: 760, stepMs: STEP_MS });
 
 // The WebGL probe runs in an effect, so the globe does not exist until the
 // page has hydrated.
-await evaluate(`new Promise((done) => {
-  const settle = () => setTimeout(() => done(true), 2500);
-  document.readyState === "complete" ? settle() : window.addEventListener("load", settle);
-})`);
+await page.load(`http://127.0.0.1:${started.port}/decide-for-me`, 2500);
 
-const hasCanvas = await evaluate(`document.querySelectorAll("canvas").length > 0`);
+const hasCanvas = await page.evaluate(`document.querySelectorAll("canvas").length > 0`);
 if (!hasCanvas) {
   fail([
     "The page rendered without a globe canvas, so this would have filmed the",
@@ -294,7 +190,7 @@ if (!hasCanvas) {
  * explanatory note below them is left out: it is there to be read, not
  * watched.
  */
-const region = await evaluate(`(() => {
+const region = await page.evaluate(`(() => {
   const stage = document.querySelector(".spin-stage");
   const side = document.querySelector(".spin-side");
   if (!stage || !side) return null;
@@ -311,83 +207,28 @@ if (!region) {
   fail([".spin-stage or .spin-side is not on the page, so there is nothing to crop to."]);
 }
 
-/** THE CLOCK IS DRIVEN, NOT WATCHED.
- *
- * The first version of this recorded a screencast in real time and got
- * eight frames in five and a half seconds. There is no GPU here, so the
- * globe renders in software at something closer to one frame a second,
- * and a recording of that is a slideshow no matter how it is resampled.
- *
- * So the page's clock is taken away from it. CDP virtual time advances
- * performance.now, Date.now, timers and requestAnimationFrame by an exact
- * budget and then stops, which means a frame can be captured at precisely
- * 1/FPS of animation regardless of how long the render actually took. The
- * flight that takes seven real seconds here lands at 3300ms of virtual
- * time, which is what it does on a real machine.
- *
- * The cost is wall clock: every step still renders in software, so this
- * takes minutes. It is a one-off generator, and a correct clip slowly is
- * worth more than a broken one quickly.
- */
-const STEP_MS = Math.round(1000 / FPS);
-const REST_FRAMES = Math.round(REST_MS / STEP_MS);
-const HOLD_FRAMES = Math.round(HOLD_MS / STEP_MS);
-const MAX_FRAMES = REST_FRAMES + HOLD_FRAMES + Math.ceil(LAND_TIMEOUT_MS / STEP_MS);
-
-const budgetExpired = () =>
-  new Promise((resolve) => {
-    const listener = (message) => {
-      if (message.method !== "Emulation.virtualTimeBudgetExpired") return;
-      listeners.delete(listener);
-      resolve();
-    };
-    listeners.add(listener);
-  });
-
-await send("Emulation.setVirtualTimePolicy", { policy: "pause" }, sessionId);
-
-/** Advance the page by one frame of animation, then stop it again. */
-async function advance() {
-  const expired = budgetExpired();
-  await send(
-    "Emulation.setVirtualTimePolicy",
-    { policy: "pauseIfNetworkFetchesPending", budget: STEP_MS },
-    sessionId
-  );
-  await expired;
-}
+await page.pauseClock();
 
 // Captured through clip rather than cropped afterwards: it is the same
 // rectangle either way, and the pixels outside it never have to be
 // encoded, read back or thrown away.
-async function shoot() {
-  const shot = await send(
-    "Page.captureScreenshot",
-    {
-      format: "jpeg",
-      quality: 95,
-      clip: { x: region.left, y: region.top, width: region.width, height: region.height, scale: 1 },
-    },
-    sessionId
-  );
-  return Buffer.from(shot.data, "base64");
-}
+const clip = { x: region.left, y: region.top, width: region.width, height: region.height };
 
 const shots = [];
 // The rest beat: the globe sitting still, so the loop opens on something
 // at rest rather than on a dart already in the air.
 for (let i = 0; i < REST_FRAMES; i++) {
-  shots.push(await shoot());
-  await advance();
+  shots.push(await page.shoot(clip));
+  await page.advance();
 }
 
-await evaluate(`document.querySelector(".spin-button").click()`);
+await page.evaluate(`document.querySelector(".spin-button").click()`);
 
 let landedFrame = null;
 for (let i = 0; i < MAX_FRAMES; i++) {
-  shots.push(await shoot());
-  await advance();
-  if (landedFrame === null && (await evaluate(`!!document.querySelector(".spin-result-card")`))) {
+  shots.push(await page.shoot(clip));
+  await page.advance();
+  if (landedFrame === null && (await page.evaluate(`!!document.querySelector(".spin-result-card")`))) {
     landedFrame = shots.length;
   }
   if (landedFrame !== null && shots.length - landedFrame >= HOLD_FRAMES) break;
@@ -403,10 +244,11 @@ if (landedFrame === null) {
   ]);
 }
 
-socket.close();
-stopBrowser();
+recorder.close();
+recorder = null;
 stopServer?.();
 stopServer = null;
+
 
 console.log(
   `captured ${shots.length} frames of ${STEP_MS}ms ` +
