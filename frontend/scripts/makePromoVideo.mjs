@@ -79,10 +79,20 @@ const CACHE_MODE = process.env.PROMO_CACHE ?? "";
  * and `dissolve` are applied after filming, so changing them re-cuts
  * from the same frames, which is the entire point of keeping them. */
 function captureKey(shot) {
-  const { name, motion, dissolve, ...capture } = shot;
-  void name;
-  void motion;
-  void dissolve;
+  // motion, dissolve and transition are applied after filming, so
+  // changing them re-cuts from the same frames rather than re-filming -
+  // which is the entire point of keeping them out. Leaving `transition`
+  // in cost eight minutes of redrawing a globe that had not changed.
+  //
+  // Sorted, because JSON.stringify follows insertion order: tidying the
+  // field order in a shot would otherwise invalidate its frames while
+  // changing nothing the camera sees.
+  const skip = new Set(["name", "motion", "dissolve", "transition"]);
+  const capture = Object.fromEntries(
+    Object.entries(shot)
+      .filter(([key]) => !skip.has(key))
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+  );
   return JSON.stringify(capture);
 }
 

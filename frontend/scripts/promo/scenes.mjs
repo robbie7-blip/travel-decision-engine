@@ -64,12 +64,12 @@ export function openingScene({ mark }) {
     html: `
       <style>
         ${STAGE_CSS}
-        .mark{width:96px;height:96px;margin-bottom:34px}
+        .mark{width:132px;height:132px;margin-bottom:38px}
         .mark svg{width:100%;height:100%;display:block}
-        h1{font-size:92px;line-height:1.08;letter-spacing:-0.02em;color:var(--ink,#1b1a17);
+        h1{font-size:106px;line-height:1.06;letter-spacing:-0.02em;color:var(--ink,#1b1a17);
           font-weight:600;font-style:italic}
-        .sub{margin-top:30px;font-size:27px;line-height:1.5;color:var(--ink-soft,#45423c);max-width:860px}
-        .rule{margin-top:42px;width:160px}
+        .sub{margin-top:34px;font-size:30px;line-height:1.5;color:var(--ink-soft,#45423c);max-width:900px}
+        .rule{margin-top:46px;width:210px}
       </style>
       <div class="stage">
         <div class="mark" id="mark">${mark}</div>
@@ -146,12 +146,12 @@ export function confidenceScene() {
     html: `
       <style>
         ${STAGE_CSS}
-        h2{font-size:62px;line-height:1.14;letter-spacing:-0.015em;color:var(--ink,#1b1a17);
+        h2{font-size:72px;line-height:1.12;letter-spacing:-0.015em;color:var(--ink,#1b1a17);
           font-weight:600;font-style:italic;max-width:980px}
-        .tiers{margin-top:54px;display:flex;flex-direction:column;gap:22px}
+        .tiers{margin-top:58px;display:flex;flex-direction:column;gap:27px}
         .tier{display:flex;align-items:center;gap:22px;will-change:transform,opacity}
-        .tier i{display:block;width:64px;height:7px;border-radius:4px;transform-origin:left center}
-        .tier span{font-size:26px;color:var(--ink-soft,#45423c);letter-spacing:0.01em}
+        .tier i{display:block;width:104px;height:9px;border-radius:5px;transform-origin:left center}
+        .tier span{font-size:31px;color:var(--ink-soft,#45423c);letter-spacing:0.01em}
       </style>
       <div class="stage">
         <h2 class="font-display">Every line carries its own confidence.</h2>
@@ -205,15 +205,15 @@ export function voicesScene({ avatars, accents }) {
     html: `
       <style>
         ${STAGE_CSS}
-        h2{font-size:58px;line-height:1.14;letter-spacing:-0.015em;color:var(--ink,#1b1a17);
+        h2{font-size:68px;line-height:1.12;letter-spacing:-0.015em;color:var(--ink,#1b1a17);
           font-weight:600;font-style:italic}
-        .row{margin-top:62px;display:flex;gap:40px}
-        .v{display:flex;flex-direction:column;align-items:center;gap:16px;width:216px;
+        .row{margin-top:66px;display:flex;gap:46px}
+        .v{display:flex;flex-direction:column;align-items:center;gap:18px;width:240px;
           will-change:transform,opacity}
-        .disc{width:168px;height:168px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-        .disc svg{width:150px;height:150px;display:block}
-        .v b{font-size:23px;color:var(--ink,#1b1a17);font-weight:600}
-        .v em{font-size:18px;font-style:normal;color:var(--ink-dim,#6b665d)}
+        .disc{width:200px;height:200px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+        .disc svg{width:180px;height:180px;display:block}
+        .v b{font-size:27px;color:var(--ink,#1b1a17);font-weight:600}
+        .v em{font-size:21px;font-style:normal;color:var(--ink-dim,#6b665d)}
       </style>
       <div class="stage">
         <h2 class="font-display">Ask someone who lives there.</h2>
@@ -262,12 +262,12 @@ export function endScene({ mark }) {
       <style>
         ${STAGE_CSS}
         .stage{align-items:center;text-align:center;padding:0 140px}
-        .mark{width:132px;height:132px;margin-bottom:26px}
+        .mark{width:152px;height:152px;margin-bottom:28px}
         .mark svg{width:100%;height:100%;display:block}
-        .word{font-size:96px;line-height:1;color:var(--brand-teal,#2c6a4c);font-weight:600}
+        .word{font-size:112px;line-height:1;color:var(--brand-teal,#2c6a4c);font-weight:600}
         .tag{margin-top:22px;font-size:26px;letter-spacing:0.16em;text-transform:uppercase;
           color:var(--ink-dim,#6b665d)}
-        .dom{margin-top:48px;font-size:34px;color:var(--ink,#1b1a17)}
+        .dom{margin-top:52px;font-size:38px;color:var(--ink,#1b1a17)}
       </style>
       <div class="stage">
         <div class="mark" id="mark">${mark}</div>
