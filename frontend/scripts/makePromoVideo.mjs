@@ -52,6 +52,23 @@ const OUT = join(OUT_DIR, "promo.mp4");
 
 const WIDTH = 1920;
 const HEIGHT = 1080;
+
+/** FILMED NARROW AND SCALED UP, which is the whole difference between
+ * the first cut and this one.
+ *
+ * The first cut was filmed at a 1920-wide CSS viewport, so every shot
+ * was a full desktop page and all the type came out tiny. /why-decide
+ * makes the best argument in the product - "Picks one. That's the entire
+ * point of the product." - and it was unreadable at video scale.
+ *
+ * So the page is given a 1280 viewport and a 1.5x device scale factor
+ * instead. The output is the same 1920x1080, but the site lays itself
+ * out for a narrower window and every word renders half again as large.
+ * It is the real responsive layout, not a crop or an upscale. */
+const VIEWPORT_WIDTH = 1280;
+const VIEWPORT_HEIGHT = 720;
+const DSF = WIDTH / VIEWPORT_WIDTH;
+
 const FPS = 25;
 const STEP_MS = Math.round(1000 / FPS);
 
@@ -90,7 +107,10 @@ const SHOTS = [
   {
     name: "form",
     path: "/",
-    frames: seconds(5.4),
+    // Was 5.4s, which was a fifth of the video spent holding on a grid
+    // of empty fields after the typing had finished. The typing is the
+    // interesting part; it does not need four seconds of aftermath.
+    frames: seconds(3.2),
     // Scroll to the form, then type a destination into it - the one
     // piece of this the viewer is being asked to do themselves.
     prepare: `(() => {
@@ -105,7 +125,7 @@ const SHOTS = [
     // Deliberately NOT submitted. Submitting fires a real generation,
     // which costs real money on someone's account, and a promo that
     // bills its owner every time it is re-cut is a bad promo.
-    type: { text: "Rome", startFrame: 14, framesPerChar: 5 },
+    type: { text: "Rome", startFrame: 8, framesPerChar: 4 },
   },
   {
     name: "why",
@@ -113,7 +133,9 @@ const SHOTS = [
     frames: seconds(4.8),
     // Up past "It's not a chatbot. It's a decision." into the comparison
     // beneath it, which makes the argument in the product's own words.
-    scroll: { from: 0, to: 700 },
+    // Re-measured for the narrower viewport: the page is 1483 tall here,
+    // and 620 puts the last comparison row on screen at the end.
+    scroll: { from: 40, to: 620 },
   },
   {
     name: "dart",
@@ -127,13 +149,15 @@ const SHOTS = [
     name: "ask",
     path: "/ask",
     frames: seconds(2.6),
-    scroll: { from: 0, to: 120 },
+    scroll: { from: 0, to: 150 },
   },
   {
     name: "guides",
     path: "/destinations",
     frames: seconds(2.8),
-    scroll: { from: 60, to: 520 },
+    // A slow pan down the grid of real cities, each with a real
+    // photograph and a real guide behind it.
+    scroll: { from: 180, to: 640 },
   },
   {
     name: "end",
@@ -296,15 +320,26 @@ async function pageShot(shot) {
   // whole question. The dart shot alone is nine minutes, so a run with
   // no progress output is indistinguishable from a run that has died.
   const step = (what) => process.stdout.write(`\r  ${shot.name}: ${what}`.padEnd(48));
-  // A WebGL frame here genuinely takes four seconds to draw, so its
-  // patience has to be far longer than a DOM page's - and a DOM page's
-  // has to be short, because every frame of a page that has stopped
-  // painting waits this long before being filled in with the one before.
+  /** How long to wait for a frame before repeating the previous one.
+   *
+   * THESE WERE ONCE 1.5s AND 30s AND IT RUINED A WHOLE CUT. Filming
+   * moved to a 1.5x device scale factor, which took a DOM capture from
+   * about 0.2s to about 1.1s, and 1.5s stopped being generous. Nearly
+   * every capture tripped the timeout, every shot fell back to
+   * repeating the frame before, and the result was 26 seconds of frozen
+   * stills - 78 of 80 frames in the form shot, 118 of 120 in the
+   * comparison. The scroll and the typing were simply not in it.
+   *
+   * So the fallback is a safety net and has to be priced like one: far
+   * above how long a frame actually takes, not just above it. The
+   * guard below is the other half - a shot that leans on the net is now
+   * a failure rather than a silently frozen shot. */
   const page = await recorder.newPage({
-    width: WIDTH,
-    height: HEIGHT,
+    width: VIEWPORT_WIDTH,
+    height: VIEWPORT_HEIGHT,
+    deviceScaleFactor: DSF,
     stepMs: STEP_MS,
-    shootTimeoutMs: shot.webgl ? 30_000 : 1_500,
+    shootTimeoutMs: shot.webgl ? 60_000 : 15_000,
   });
   try {
     step("loading");
@@ -367,6 +402,19 @@ async function pageShot(shot) {
       // is a shot of something that was not moving, and that is worth
       // knowing before it goes in the cut.
       process.stdout.write(`\r  ${shot.name}: ${page.reusedFrames}/${shot.frames} frames unchanged`.padEnd(48));
+    }
+    // AND REFUSED, past a point. A cut where most frames are repeats is
+    // a cut of stills, and it looks entirely plausible in a progress
+    // log - the frame counts and the duration all come out right. That
+    // is exactly how 26 seconds of frozen screenshots got filmed and
+    // encoded without one thing going wrong on the way.
+    const limit = Math.ceil(shot.frames * 0.2);
+    if (page.reusedFrames > limit) {
+      throw new Error(
+        `${shot.name}: ${page.reusedFrames} of ${shot.frames} frames were repeats of the one ` +
+          `before (more than the ${limit} allowed), so this shot is mostly a still. Either the ` +
+          `page really is not moving, or shootTimeoutMs is shorter than a frame now takes to capture.`
+      );
     }
     return frames;
   } finally {
