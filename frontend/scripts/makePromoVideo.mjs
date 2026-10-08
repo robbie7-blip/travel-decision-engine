@@ -83,11 +83,28 @@ const seconds = (s) => Math.round(s * FPS);
 
 /** The shots, in order.
  *
- * `warmMs` runs the page forward without filming it, which is how a shot
- * can start at an interesting moment instead of at whatever the page
- * looks like on arrival. The hero uses it to land inside the gallery's
- * own six-second rotation, so a photograph changes on camera rather than
- * the shot holding one still frame for three seconds.
+ * THE CLOCK IS ONLY TAKEN AWAY WHERE THE PAGE ITSELF MOVES, which is
+ * the dart and nothing else. Stepping a paused clock is the only way to
+ * film an animation the page is running - the throw takes four seconds a
+ * frame to draw in software, and real time would get one frame a second.
+ * But a paused clock is also what stops the compositor producing frames,
+ * and a capture with no frame to take waits for one: intermittently,
+ * unpredictably, for minutes. One run stalled 39 of 70 frames on the
+ * hero; the same shot then captured 24 frames at 180ms without
+ * complaint.
+ *
+ * In every other shot the only thing moving is a scroll or some typing
+ * that this script is doing itself. Those need no clock control at all:
+ * set the scroll, take the frame, set the next one. The page is never
+ * asked to animate, so nothing has to be stepped, and the compositor
+ * keeps painting normally. The spacing between captures in real time
+ * does not matter - what makes the motion smooth is the size of each
+ * scroll step, not the wall clock between them.
+ *
+ * Which also rules the hero's gallery fade out, deliberately. Filming a
+ * 900ms crossfade in real time at 180ms a frame would play it back five
+ * times too fast. The hero gets a slow drift down the page instead:
+ * motion this script owns, rather than motion it has to chase.
  */
 const SHOTS = [
   {
@@ -100,9 +117,10 @@ const SHOTS = [
     name: "hero",
     path: "/",
     frames: seconds(2.8),
-    // The gallery rotates every 6s with a 900ms fade. Arriving 1.2s
-    // before a switch puts the fade on camera.
-    warmMs: 4800,
+    // A slow drift down from the headline, rather than waiting on the
+    // gallery's own crossfade - see the note above on why the page's
+    // animations are not filmable outside the dart.
+    scroll: { from: 0, to: 150 },
   },
   {
     name: "form",
@@ -142,6 +160,8 @@ const SHOTS = [
     path: "/decide-for-me",
     frames: seconds(5.6),
     webgl: true,
+    // The one shot whose motion belongs to the page.
+    virtualClock: true,
     settleMs: 3000,
     click: { selector: ".spin-button", frame: 12 },
   },
@@ -362,12 +382,14 @@ async function pageShot(shot) {
       if (problem) throw new Error(`${shot.name}: ${problem}`);
     }
 
-    step("pausing the clock");
-    await page.pauseClock();
-    // Run the page on, unfilmed, to reach the moment worth filming.
-    if (shot.warmMs) {
-      step(`warming ${shot.warmMs}ms`);
-      await page.advance(shot.warmMs);
+    if (shot.virtualClock) {
+      step("pausing the clock");
+      await page.pauseClock();
+      // Run the page on, unfilmed, to reach the moment worth filming.
+      if (shot.warmMs) {
+        step(`warming ${shot.warmMs}ms`);
+        await page.advance(shot.warmMs);
+      }
     }
 
     const frames = [];
@@ -395,7 +417,10 @@ async function pageShot(shot) {
       }
 
       frames.push(await page.shoot());
-      await page.advance();
+      // Only a page being stepped needs stepping. A shot whose motion is
+      // this script's own scrolling has a running clock and a compositor
+      // that keeps painting, which is the entire point.
+      if (shot.virtualClock) await page.advance();
     }
     if (page.reusedFrames > 0) {
       // Said out loud rather than hidden: a shot that is mostly repeats

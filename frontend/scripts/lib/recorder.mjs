@@ -98,6 +98,34 @@ export async function openRecorder({ chrome, args = [] }) {
       "--remote-debugging-port=0",
       `--user-data-dir=${mkdtempSync(join(tmpdir(), "recorder-"))}`,
       "--hide-scrollbars",
+      // SEALED OFF FROM EVERYTHING BUT THE LOCAL SERVER.
+      //
+      // Chromium phones home on startup - component updates, field
+      // trials, safe browsing, domain reliability - and in a container
+      // whose egress policy denies all of it, those connections do not
+      // fail quickly; one run logged 98 rejected connections to
+      // dl.google.com and friends while it was filming.
+      //
+      // That was a theory about the capture stalls and it was WRONG:
+      // sealing the browser off changed nothing, and the stalls turned
+      // out to be the paused clock itself. These flags stay because a
+      // recording of a local site has no business reaching the network
+      // at all, not because they fix anything.
+      //
+      // Safe because the site needs nothing external: the built HTML
+      // references no outside host and next/font self-hosts every woff2
+      // under .next/static/media, so the type is unaffected.
+      "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1",
+      "--no-proxy-server",
+      "--disable-component-update",
+      "--disable-background-networking",
+      "--disable-client-side-phishing-detection",
+      "--disable-domain-reliability",
+      "--disable-sync",
+      "--safebrowsing-disable-auto-update",
+      "--metrics-recording-only",
+      "--no-first-run",
+      "--no-default-browser-check",
       ...args,
       "about:blank",
     ],
