@@ -42,6 +42,8 @@ import { createRequire } from "node:module";
 
 import { findChrome, startNextServer } from "./lib/devServer.mjs";
 import { openRecorder, SWIFTSHADER_ARGS } from "./lib/recorder.mjs";
+import { appStylesheet, htmlFontClasses, startSceneHost } from "./promo/host.mjs";
+import { confidenceScene, endScene, openingScene, voicesScene } from "./promo/scenes.mjs";
 
 const sharp = createRequire(import.meta.url)("sharp");
 
@@ -193,35 +195,27 @@ const seconds = (s) => Math.round(s * FPS);
  * motion this script owns, rather than motion it has to chase.
  */
 const SHOTS = [
-  {
-    name: "title",
-    kind: "card",
-    path: "/opengraph-image",
-    frames: seconds(2.6),
-    // Settles rather than pushes: the type arrives and comes to rest.
-    motion: { from: 1.045, to: 1.0 },
-  },
+  // AUTHORED, then FILMED, then authored again. The scenes carry the
+  // argument - which is type, and type wants designing - and the footage
+  // carries the proof. A reel of only footage is documentation; a reel of
+  // only motion graphics is a claim with nothing behind it.
+  { kind: "scene", name: "open", frames: seconds(5.2) },
   {
     name: "hero",
     path: "/",
-    frames: seconds(2.8),
-    // A slow drift down from the headline, rather than waiting on the
-    // gallery's own crossfade - see the note above on why the page's
-    // animations are not filmable outside the dart.
-    scroll: { from: 0, to: 150 },
-    motion: { from: 1.0, to: 1.04, anchor: "top" },
-    // A longer fade out of the title card than the cuts between pages.
-    dissolve: 10,
+    frames: seconds(2.4),
+    scroll: { from: 0, to: 110 },
+    motion: { from: 1.0, to: 1.035, anchor: "top" },
+    transition: "wipe",
+    dissolve: 9,
   },
   {
     name: "form",
+    // Deliberately NOT submitted: that fires a real generation and costs
+    // real money, and a promo that bills its owner every time it is
+    // re-cut is a bad promo.
     path: "/",
-    // Was 5.4s, which was a fifth of the video spent holding on a grid
-    // of empty fields after the typing had finished. The typing is the
-    // interesting part; it does not need four seconds of aftermath.
-    frames: seconds(3.2),
-    // Scroll to the form, then type a destination into it - the one
-    // piece of this the viewer is being asked to do themselves.
+    frames: seconds(3.0),
     prepare: `(() => {
       const form = document.querySelector(".trip-form-grid");
       if (!form) return "no .trip-form-grid on the page";
@@ -231,92 +225,75 @@ const SHOTS = [
       input.focus();
       return null;
     })()`,
-    // Deliberately NOT submitted. Submitting fires a real generation,
-    // which costs real money on someone's account, and a promo that
-    // bills its owner every time it is re-cut is a bad promo.
-    type: { text: "Rome", startFrame: 8, framesPerChar: 4 },
-    motion: { from: 1.0, to: 1.035, anchor: "top" },
+    type: { text: "Rome", startFrame: 6, framesPerChar: 4 },
+    motion: { from: 1.0, to: 1.03, anchor: "top" },
+    dissolve: 5,
   },
-  {
-    name: "why",
-    path: "/why-decide",
-    frames: seconds(4.8),
-    // Up past "It's not a chatbot. It's a decision." into the comparison
-    // beneath it, which makes the argument in the product's own words.
-    // Re-measured for the narrower viewport: the page is 1483 tall here,
-    // and 620 puts the last comparison row on screen at the end.
-    scroll: { from: 40, to: 620 },
-    motion: { from: 1.02, to: 1.0, anchor: "top" },
-  },
+  { kind: "scene", name: "confidence", frames: seconds(5.0), transition: "wipe", dissolve: 9 },
   {
     name: "dart",
     path: "/decide-for-me",
     frames: seconds(5.6),
     webgl: true,
-    // The one shot whose motion belongs to the page.
     virtualClock: true,
-    // WHERE THE DART LANDS, CHOSEN RATHER THAN ROLLED.
-    //
-    // throwDart takes its random source as a parameter defaulting to
-    // Math.random, so fixing the first number it draws fixes the country
-    // and nothing else - the point inside that country is still sampled
-    // the way it always is. No product code is touched, and the throw
-    // itself is the throw.
-    //
-    // Picking a take is what filming is, and the first two cuts made the
-    // case for picking: Tonga put the camera in open ocean, and Russia
-    // was asked about by name. Japan has a guide behind it, so the
-    // result card comes up with the Tokyo photograph, "Plan a trip here"
-    // and a link to the guide, instead of a country name on its own.
-    // Nineteen of the 197 countries have that, and a reel should show
-    // the product at its best rather than at its median.
-    landOn: { code: "JP", index: 85, of: 197 },
     settleMs: 3000,
     click: { selector: ".spin-button", frame: 12 },
-    // FRAMED BY MEASUREMENT, NOT BY EYE. At a 1280x720 viewport the
-    // stage runs 491-937 down the page and the result card 744-1131,
-    // while the window is 720 tall: at the top of the page the globe is
-    // half below the fold and the card is not on screen at all. The
-    // first Japan take was filmed that way - a lot of cream, a cut-off
-    // globe, and the payoff invisible.
-    //
-    // So the shot travels: it opens on the heading with the globe
-    // arriving, and ends framed on the globe beside the card, which for
-    // a country with a guide carries the photograph, the city and the
-    // link to it.
+    landOn: { code: "JP", index: 85, of: 197 },
+    // Travels from the heading down to the globe sitting beside the card:
+    // at a 1280x720 window the stage runs 491-937 down the page and the
+    // card 744-1131, so without this the payoff is off screen.
     scroll: { from: 0, to: 430 },
+    transition: "wipe",
+    dissolve: 9,
   },
-  {
-    name: "ask",
-    path: "/ask",
-    frames: seconds(2.6),
-    scroll: { from: 0, to: 150 },
-    motion: { from: 1.0, to: 1.04 },
-  },
+  { kind: "scene", name: "voices", frames: seconds(4.4), transition: "wipe", dissolve: 9 },
   {
     name: "guides",
     path: "/destinations",
     frames: seconds(2.8),
-    // A slow pan down the grid of real cities, each with a real
-    // photograph and a real guide behind it.
     scroll: { from: 180, to: 640 },
     motion: { from: 1.04, to: 1.0 },
+    transition: "wipe",
+    dissolve: 9,
   },
-  {
-    name: "end",
-    kind: "card",
-    path: "/opengraph-image",
-    frames: seconds(2.8),
-    motion: { from: 1.0, to: 1.035 },
-    // The longest dissolve in the cut, so the reel resolves onto the
-    // wordmark instead of cutting to it.
-    dissolve: 12,
-  },
+  { kind: "scene", name: "end", frames: seconds(3.4), transition: "wipe", dissolve: 10 },
 ];
+
 
 function fail(lines) {
   console.error(lines.join("\n"));
   process.exit(1);
+}
+
+/** The mark, as the app ships it. */
+function brandMark() {
+  return readFileSync(join(FRONTEND, "public", "logo-icon.svg"), "utf8");
+}
+
+/** The four portraits, out of the file the product renders them from.
+ *
+ * Parsed rather than imported because that file is TypeScript and this
+ * script runs under bare node - the same arrangement makeLaunchScreens
+ * uses to read its device table. Parsed, not copied: a second copy of
+ * path data is a second thing to keep in step, and these took a long
+ * enough afternoon the first time. */
+function voiceAvatars() {
+  const src = readFileSync(join(FRONTEND, "components", "voiceAvatarArt.ts"), "utf8");
+  const art = {};
+  for (const [, key, d] of src.matchAll(/^\s{2}(neighbour|cook|night|family):\s*\n?\s*"([^"]+)"/gm)) {
+    art[key] = d;
+  }
+  const missing = ["neighbour", "cook", "night", "family"].filter((k) => !art[k]);
+  if (missing.length > 0) {
+    fail([
+      `Could not read the ${missing.join(", ")} portrait out of components/voiceAvatarArt.ts.`,
+      "",
+      "The scene that shows the four voices is built from that file's own path",
+      "data. If its shape changed, fix the parse rather than pasting the paths",
+      "in here - two copies of this artwork is one too many.",
+    ]);
+  }
+  return art;
 }
 
 const chrome = findChrome();
@@ -433,6 +410,32 @@ async function writeFrame(frame) {
 /** The previous shot's last frame, so the next one can fade up from it. */
 let tail = null;
 
+/** A hard edge travelling across the frame, with the brand rule on it.
+ *
+ * Replaces the cross-dissolve wherever the two shots have nothing in
+ * common. A dissolve between a title and a web page is two unrelated
+ * images at half opacity each, which does not read as a transition - it
+ * reads as a fault, and in the contact sheets of earlier cuts that is
+ * exactly what it looked like. A wipe is a decision: one thing ends, the
+ * next begins, and the green bar makes the join deliberate.
+ */
+async function wipeFrame(outgoing, incoming, progress) {
+  const x = Math.max(1, Math.min(WIDTH - 1, Math.round(WIDTH * progress)));
+  const lead = await sharp(incoming).extract({ left: 0, top: 0, width: x, height: HEIGHT }).png().toBuffer();
+  const bar = await sharp({
+    create: { width: 7, height: HEIGHT, channels: 4, background: { r: 44, g: 106, b: 76, alpha: 1 } },
+  })
+    .png()
+    .toBuffer();
+  return sharp(outgoing)
+    .composite([
+      { input: lead, left: 0, top: 0 },
+      { input: bar, left: Math.min(x, WIDTH - 7), top: 0 },
+    ])
+    .png({ compressionLevel: 1 })
+    .toBuffer();
+}
+
 async function emit(frames, shot) {
   const dissolve = shot?.dissolve ?? DISSOLVE;
   for (let i = 0; i < frames.length; i++) {
@@ -443,10 +446,14 @@ async function emit(frames, shot) {
       { width: WIDTH, height: HEIGHT }
     );
     if (tail && i < dissolve) {
-      // The outgoing frame laid over the incoming one, thinning out.
-      const opacity = 1 - (i + 1) / (dissolve + 1);
-      const over = await sharp(tail).ensureAlpha(opacity).png().toBuffer();
-      frame = await sharp(frame).composite([{ input: over, blend: "over" }]).png({ compressionLevel: 1 }).toBuffer();
+      if (shot?.transition === "wipe") {
+        frame = await wipeFrame(tail, frame, (i + 1) / (dissolve + 1));
+      } else {
+        // The outgoing frame laid over the incoming one, thinning out.
+        const opacity = 1 - (i + 1) / (dissolve + 1);
+        const over = await sharp(tail).ensureAlpha(opacity).png().toBuffer();
+        frame = await sharp(frame).composite([{ input: over, blend: "over" }]).png({ compressionLevel: 1 }).toBuffer();
+      }
     }
     await writeFrame(frame);
   }
@@ -480,6 +487,52 @@ async function card(path, frames) {
     .jpeg({ quality: 95 })
     .toBuffer();
   return Array.from({ length: frames }, () => fitted);
+}
+
+/** An authored scene, filmed by seeking it.
+ *
+ * No clock is paused and no animation is stepped: the scene holds a
+ * single function, __seek(t), and draws itself from that number. So the
+ * recorder sets t, takes the frame, sets the next t - which makes the
+ * motion exactly as smooth as the frame rate, identical on every run,
+ * and immune to the stalls that come from filming a page whose clock has
+ * been taken away.
+ */
+async function sceneShot(shot) {
+  const step = (what) => process.stdout.write(`\r  ${shot.name}: ${what}`.padEnd(48));
+  const page = await recorder.newPage({
+    width: VIEWPORT_WIDTH,
+    height: VIEWPORT_HEIGHT,
+    deviceScaleFactor: DSF,
+    stepMs: STEP_MS,
+    shootTimeoutMs: 15_000,
+  });
+  try {
+    step("loading");
+    await page.load(`${sceneOrigin}/scene/${shot.name}`, 1200);
+    const ready = await page.evaluate(`typeof window.__seek === "function"`);
+    if (!ready) throw new Error(`${shot.name}: the scene did not define window.__seek`);
+    // Fonts have to be in before the first frame, or the opening frames
+    // are set in a fallback face and the rest are not.
+    await page.evaluate(`document.fonts ? document.fonts.ready.then(() => true) : true`);
+
+    const frames = [];
+    for (let i = 0; i < shot.frames; i++) {
+      if (i % 10 === 0) step(`frame ${i + 1}/${shot.frames}`);
+      const t = shot.frames < 2 ? 1 : i / (shot.frames - 1);
+      await page.evaluate(`window.__seek(${t})`);
+      frames.push(await page.shoot());
+    }
+    if (page.reusedFrames > 0) {
+      throw new Error(
+        `${shot.name}: ${page.reusedFrames} frames had to be repeated, which should never ` +
+          `happen in a scene - a seek-driven page repaints on every frame by definition`
+      );
+    }
+    return frames;
+  } finally {
+    await page.close();
+  }
 }
 
 /** A page, filmed frame by frame. */
@@ -629,6 +682,33 @@ async function pageShot(shot) {
 
 // ------------------------------------------------------------------- film
 
+// The scenes are served from their own origin, inside the app's real
+// stylesheet and the font classes next/font put on <html>.
+const stylesheet = appStylesheet(FRONTEND, origin);
+const htmlClass = await htmlFontClasses(origin);
+const mark = brandMark();
+const avatars = voiceAvatars();
+const sceneHost = await startSceneHost({
+  stylesheet,
+  htmlClass,
+  scenes: [
+    openingScene({ mark }),
+    confidenceScene(),
+    voicesScene({
+      avatars,
+      // The same four accents components/LocalVoiceAvatar.tsx assigns.
+      accents: {
+        neighbour: "var(--brand-teal)",
+        cook: "var(--brand-coral)",
+        night: "var(--brand-purple)",
+        family: "var(--brand-gold)",
+      },
+    }),
+    endScene({ mark }),
+  ],
+});
+const sceneOrigin = sceneHost.origin;
+
 recorder = await openRecorder({ chrome, args: SWIFTSHADER_ARGS });
 
 /** PROMO_ONLY=hero,form films just those shots.
@@ -652,7 +732,13 @@ const startedAt = Date.now();
 for (const shot of shots) {
   const at = Date.now();
   const reused = cachedFrames(shot);
-  const frames = reused ?? (shot.kind === "card" ? await card(shot.path, shot.frames) : await pageShot(shot));
+  const frames =
+    reused ??
+    (shot.kind === "card"
+      ? await card(shot.path, shot.frames)
+      : shot.kind === "scene"
+        ? await sceneShot(shot)
+        : await pageShot(shot));
   if (!reused) cacheFrames(shot, frames);
   await emit(frames, shot);
   process.stdout.write("\r".padEnd(50) + "\r");
@@ -665,6 +751,7 @@ for (const shot of shots) {
 
 recorder.close();
 recorder = null;
+await sceneHost.stop();
 stopServer?.();
 stopServer = null;
 
