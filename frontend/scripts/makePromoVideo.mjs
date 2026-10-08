@@ -161,7 +161,7 @@ async function applyMotion(frame, motion, t, size) {
   return sharp(frame)
     .extract({ left, top, width, height })
     .resize({ width: size.width, height: size.height, kernel: "lanczos3" })
-    .jpeg({ quality: 95 })
+    .png({ compressionLevel: 1 })
     .toBuffer();
 }
 
@@ -404,6 +404,14 @@ const ffmpegDone = new Promise((resolve) => ffmpeg.on("close", resolve));
 
 /** Write one frame, respecting backpressure.
  *
+ * Frames reach ffmpeg as whatever the last step produced - a camera JPEG
+ * where nothing was done to it, a PNG where the motion crop or a
+ * dissolve re-encoded it. image2pipe reads both. Lossless for the
+ * re-encoded ones on purpose: the first cut with motion came out at
+ * 8.4MB against 2.6MB without, because every frame had been through a
+ * second JPEG generation and x264 was spending its bitrate on the noise
+ * that added.
+ *
  * Without the drain wait, node buffers every frame ffmpeg has not read
  * yet, which for 700 frames of 1080p is the whole video in memory. */
 let written = 0;
@@ -430,7 +438,7 @@ async function emit(frames, shot) {
       // The outgoing frame laid over the incoming one, thinning out.
       const opacity = 1 - (i + 1) / (dissolve + 1);
       const over = await sharp(tail).ensureAlpha(opacity).png().toBuffer();
-      frame = await sharp(frame).composite([{ input: over, blend: "over" }]).jpeg({ quality: 95 }).toBuffer();
+      frame = await sharp(frame).composite([{ input: over, blend: "over" }]).png({ compressionLevel: 1 }).toBuffer();
     }
     await writeFrame(frame);
   }
