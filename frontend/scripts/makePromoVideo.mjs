@@ -415,9 +415,17 @@ const ffmpegDone = new Promise((resolve) => ffmpeg.on("close", resolve));
  * Without the drain wait, node buffers every frame ffmpeg has not read
  * yet, which for 700 frames of 1080p is the whole video in memory. */
 let written = 0;
-async function writeFrame(jpeg) {
+async function writeFrame(frame) {
+  // EVERY FRAME THE SAME FORMAT. Mixing them - a camera JPEG where
+  // nothing was done, a PNG where the motion crop re-encoded - gave a
+  // file that reported 680 frames and played for 20.68 seconds instead
+  // of 27.2. image2pipe had silently dropped about 163 of them, and the
+  // script's own output line said nothing was wrong, because from its
+  // side nothing was: it had handed over every frame. Uniform PNG, so
+  // the demuxer has one thing to parse.
+  const png = await sharp(frame).png({ compressionLevel: 1 }).toBuffer();
   written++;
-  if (!ffmpeg.stdin.write(jpeg)) {
+  if (!ffmpeg.stdin.write(png)) {
     await new Promise((done) => ffmpeg.stdin.once("drain", done));
   }
 }
@@ -664,6 +672,31 @@ ffmpeg.stdin.end();
 const code = await ffmpegDone;
 if (code !== 0) {
   fail([`ffmpeg exited ${code}. Its output:`, "", ffmpegLog.trim().split("\n").slice(-20).join("\n")]);
+}
+
+/** Did the file come out as long as the frames handed over?
+ *
+ * ASKED OF THE FILE, not of the loop that wrote it. The run that mixed
+ * image formats reported "680 frames at 25fps (27.2s)" and produced 20.68
+ * seconds of video, and every number the script had was correct - it
+ * really did hand over 680 frames. Only ffprobe knew. A cut that is
+ * quietly a third short is the third way this script has found to look
+ * right and be wrong, so now it asks. */
+const probed = spawnSync(
+  "ffprobe",
+  ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", OUT],
+  { encoding: "utf8" }
+);
+const duration = Number(probed.stdout.trim());
+const expected = written / FPS;
+if (!Number.isFinite(duration) || Math.abs(duration - expected) > 0.25) {
+  fail([
+    `${written} frames were written at ${FPS}fps, which is ${expected.toFixed(2)}s, but the file`,
+    `is ${Number.isFinite(duration) ? duration.toFixed(2) + "s" : "unreadable"}.`,
+    "",
+    "Frames went missing between here and the encoder. The known cause is",
+    "handing image2pipe more than one image format in the same stream.",
+  ]);
 }
 
 const size = statSync(OUT).size;
