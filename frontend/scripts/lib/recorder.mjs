@@ -316,26 +316,25 @@ export async function openRecorder({ chrome, args = [] }) {
          * means the pixels outside it are never encoded, read back or
          * thrown away.
          *
-         * fromSurface: false IS LOAD-BEARING. The default asks the
-         * compositor for the window's surface, and with the clock paused
-         * that wait can never end: nothing on a still page asks for a
-         * new frame, so the capture sits there. It is intermittent, which
-         * made it miserable to pin down - one run stalled on the first
-         * frame of a shot, the next on the ninety-sixth - and from
-         * outside it looks exactly like slow work. Capturing from the
-         * renderer instead does not wait on the surface at all.
+         * fromSurface: false WAS TRIED HERE AND TAKEN BACK OUT. The idea
+         * was sound - the default waits on the compositor's surface, and
+         * capturing from the renderer does not - but it silently ignores
+         * `clip` and returns the whole viewport. The dart clip came out
+         * 720x464 instead of 720x355, which is precisely the full
+         * 1180x760 viewport's aspect ratio: it had been filming the
+         * entire page and scaling it down, globe, button, explanatory
+         * paragraph and all. Nothing failed; the numbers in the output
+         * line were simply a different shape, which is the only reason it
+         * was noticed.
          *
-         * Checked rather than assumed, because a renderer-side capture
-         * plausibly misses a WebGL canvas drawn in the GPU process: at
-         * 1920x1080 both modes return the same dimensions, the same byte
-         * count, and the same standard deviation over the globe
-         * (25.8/24.0/29.4 against 25.7/24.0/29.3). The globe is there.
+         * It was not what fixed the stall anyway. The repeat-the-last-
+         * frame fallback below is, and it works whether the capture comes
+         * from the surface or the renderer.
          */
         async shoot(clip) {
           const capture = send("Page.captureScreenshot", {
             format: "jpeg",
             quality: 95,
-            fromSurface: false,
             ...(clip ? { clip: { ...clip, scale: 1 } } : {}),
           }).then((shot) => Buffer.from(shot.data, "base64"));
 
