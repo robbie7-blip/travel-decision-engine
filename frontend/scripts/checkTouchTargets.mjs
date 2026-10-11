@@ -122,6 +122,11 @@ const PAGES = [
   "/cookies",
   "/compare",
   "/compare-stats",
+  /* Not a page.tsx, so the route sweep below cannot find it: this is a
+     deliberately missing URL, served by app/not-found.tsx. Its links are
+     the only way off a dead end and were added at 17px high, so the one
+     page a lost visitor lands on wants measuring like any other. */
+  "/this-route-does-not-exist",
 ];
 
 const ROUTES_NOT_CHECKED = {

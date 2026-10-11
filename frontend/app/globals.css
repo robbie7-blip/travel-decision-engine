@@ -1422,7 +1422,14 @@ p {
      the site after the logo and it was the smallest. */
   .footer-links a,
   .inline-link,
-  .header-context-link {
+  .header-context-link,
+  /* The secondary way out of the two pages that are nothing BUT a way
+     out - the 404/error boundary and the empty Real examples page. Both
+     were added with a bare underlined link beside a filled button, which
+     measured 148x17 on a phone: fine print, next to a 44px target, as
+     the only alternative route off a dead end. */
+  .dead-end-link,
+  .showcase-empty-link {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
