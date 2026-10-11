@@ -12,6 +12,7 @@
     "check:header-group": "node scripts/checkHeaderGroup.mjs",
     "check:touch-targets": "node scripts/checkTouchTargets.mjs",
     "check:dart-fallback": "node scripts/checkDartFallback.mjs",
+    "check:a11y-names": "node scripts/checkAccessibleNames.mjs",
     "check:dashes": "node scripts/checkDashes.mjs",
     "check:covers": "node scripts/checkCoverPhotos.mjs",
     "check:stats-keys": "node scripts/checkStatsKeys.mjs",

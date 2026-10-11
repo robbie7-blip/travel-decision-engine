@@ -1597,3 +1597,13 @@ jobs:
         timeout-minutes: 10
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+
+      # Every control a screen reader can reach announces itself as
+      # something. Reads the accessibility tree out of a real browser
+      # rather than the DOM, because what is wrong is never in the markup
+      # - it is in what the markup computes to. Same timeout backstop as
+      # the two above: it drives a browser too.
+      - run: npm run check:a11y-names
+        timeout-minutes: 10
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

@@ -698,6 +698,12 @@ export default function VisitedPage() {
                   value={signInEmail}
                   onChange={(e) => setSignInEmail(e.target.value)}
                   placeholder={t.account.emailPlaceholder}
+                  // Same field as the one on /account, which carries this
+                  // same line and a note saying why: a placeholder is not
+                  // a label and is gone as soon as you type. This copy was
+                  // made from that one and lost it, so the only sign-in
+                  // field on this page announced itself as "edit text".
+                  aria-label={t.account.emailLabel}
                   style={{
                     flex: 1,
                     minWidth: 200,

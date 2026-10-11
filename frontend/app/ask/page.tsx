@@ -104,7 +104,12 @@ export default function AskPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 36 }}>
             {TOPIC_ICONS.map((icon, i) => (
               <div key={i}>
-                <svg viewBox="0 0 80 80" style={{ width: 44, height: 44, marginBottom: 10 }}>
+                {/* Decorative: the title directly beneath it says the
+                    same thing in words, so a reader that announced this
+                    as an image would only be repeating itself. Same
+                    treatment the icons in components/TripQA.tsx already
+                    carry. */}
+                <svg viewBox="0 0 80 80" aria-hidden style={{ width: 44, height: 44, marginBottom: 10 }}>
                   <circle cx="40" cy="40" r="35" fill={icon.tint} stroke={icon.stroke} strokeWidth="2" />
                   {icon.path}
                 </svg>
