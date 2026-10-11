@@ -494,6 +494,10 @@ export interface Dictionary {
     navLink: string; // homepage header link to /pricing
     headerSignIn: string; // short "Sign in" label for the global SiteHeader button
     headerAccountLink: string; // short "Account" label for the same header slot once signed in
+    /** Announced once while the account panel is a skeleton, so a screen
+     * reader hears what is being waited for rather than being walked
+     * through a dozen empty boxes. */
+    loadingAccount: string;
     pricingHeading: string;
     pricingSubheading: string;
     // 3 icon cards shown above the plan comparison - features every visitor
@@ -1046,6 +1050,7 @@ const en: Dictionary = {
     navLink: "Pricing",
     headerSignIn: "Sign in",
     headerAccountLink: "Account",
+    loadingAccount: "Loading your account",
     pricingHeading: "Plans",
     pricingSubheading:
       "Every visitor can try decide without an account. Sign in with an email to track your plan across visits, or subscribe for more generations a month.",
@@ -1590,6 +1595,7 @@ const bg: Dictionary = {
     navLink: "Цени",
     headerSignIn: "Вход",
     headerAccountLink: "Акаунт",
+    loadingAccount: "Акаунтът се зарежда",
     pricingHeading: "Планове",
     pricingSubheading:
       "Всеки посетител може да пробва decide без акаунт. Влезте с имейл, за да следите плана си между посещенията, или се абонирайте за повече генерации на месец.",

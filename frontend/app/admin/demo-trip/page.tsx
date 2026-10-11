@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { markAdminUi } from "@/lib/adminUi";
 import type { DemoTrip } from "@/lib/demoTrip";
+import { SkeletonGroup, SkeletonLine } from "@/components/Skeleton";
 
 type Status = "idle" | "loading" | "error";
 
@@ -85,7 +86,11 @@ export default function DemoTripAdminPage() {
 
       <div style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "14px 16px", marginBottom: 20 }}>
         <div style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 6 }}>CURRENT</div>
-        {current === undefined && <div style={{ fontSize: 14 }}>Loading…</div>}
+        {current === undefined && (
+          <SkeletonGroup label="Loading the current demo trip">
+            <SkeletonLine width="min(280px, 70%)" height={14} />
+          </SkeletonGroup>
+        )}
         {current === null && <div style={{ fontSize: 14, color: "var(--ink-dim)" }}>No demo trip set.</div>}
         {current && (
           <div style={{ fontSize: 14 }}>

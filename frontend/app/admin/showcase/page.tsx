@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { markAdminUi } from "@/lib/adminUi";
 import type { ShowcaseTrip } from "@/lib/showcase";
+import { SkeletonGroup, SkeletonLine } from "@/components/Skeleton";
 
 type Status = "idle" | "loading" | "error";
 
@@ -125,7 +126,15 @@ export default function ShowcaseAdminPage() {
       </div>
       {status === "error" && <div style={{ marginBottom: 16, color: "var(--infeasible)", fontSize: 13 }}>{error}</div>}
 
-      {trips === undefined && <div style={{ fontSize: 14 }}>Loading…</div>}
+      {trips === undefined && (
+        <SkeletonGroup label="Loading the showcase list">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <SkeletonLine height={14} />
+            <SkeletonLine width="78%" height={14} />
+            <SkeletonLine width="62%" height={14} />
+          </div>
+        </SkeletonGroup>
+      )}
       {trips && trips.length === 0 && <div style={{ fontSize: 14, color: "var(--ink-dim)" }}>No trips in the showcase yet.</div>}
 
       {trips?.map((trip) => (

@@ -3270,3 +3270,42 @@ p {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Loading placeholders (components/Skeleton.tsx).
+
+   A two-stop sweep across a flat base, moving left to right. The base is
+   --line so the shapes read as "something goes here" rather than as
+   content, and the highlight is barely lighter: a skeleton that pulses
+   hard competes with the page it is standing in for. */
+.skeleton {
+  background-color: var(--line);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--bg-panel) 62%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sweep 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: -120% 0;
+  }
+  to {
+    background-position: 220% 0;
+  }
+}
+
+/* The shapes stay, the movement goes. The shapes are what say how much
+   is coming and hold the room for it; the sweep only says it has not
+   frozen, and that is exactly the reassurance this reader did not ask
+   for. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background-image: none;
+  }
+}

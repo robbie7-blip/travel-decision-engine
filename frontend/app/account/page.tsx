@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { SkeletonCircle, SkeletonGroup, SkeletonLine } from "@/components/Skeleton";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -167,9 +168,29 @@ export default function AccountPage() {
 
           <div style={{ background: "var(--bg-panel)", border: "1px solid var(--line)", borderRadius: 8, padding: 24, boxShadow: "var(--shadow-panel)" }}>
             {account === null ? (
-              <div className="font-ui" style={{ fontSize: 13, color: "var(--ink-dim)" }}>
-                ...
-              </div>
+              /* Shaped like the signed-in panel below it - a 52px avatar,
+                 the email line, the plan badge, then the quota label and
+                 its 6px track - so the panel does not jump from one line
+                 of text to five when /api/account answers.
+
+                 It replaced the three characters "...", which said
+                 nothing about what was coming and reserved none of the
+                 room for it. */
+              <SkeletonGroup label={t.account.loadingAccount}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <SkeletonCircle size={52} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 0 }}>
+                      <SkeletonLine width="min(240px, 70%)" height={15} />
+                      <SkeletonLine width={92} height={20} radius={999} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <SkeletonLine width="min(180px, 55%)" height={12} />
+                    <SkeletonLine height={6} radius={999} />
+                  </div>
+                </div>
+              </SkeletonGroup>
             ) : account.signedIn ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
