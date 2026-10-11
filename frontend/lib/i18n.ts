@@ -350,7 +350,10 @@ export interface Dictionary {
     navLabel: string;
     pageTitle: string;
     pageDescription: string;
+    emptyHeading: string;
     emptyState: string;
+    emptyGuides: string;
+    emptyPlan: string;
     viewTrip: string;
     daysLabel: string; // "{count}" placeholder, e.g. "9 days"
   };
@@ -880,7 +883,14 @@ const en: Dictionary = {
     navLabel: "Real examples",
     pageTitle: "Real trips decide has already planned",
     pageDescription: "Full itineraries, not mockups - every confidence tag, budget stamp, and trust score exactly as generated.",
-    emptyState: "No examples here yet - check back soon.",
+    emptyHeading: "Nothing published here yet.",
+    // Says WHY it is empty rather than just that it is. Every card on
+    // this page is a real generated itinerary (see lib/showcase.ts), so
+    // an empty page is the honest state of a product that will not put
+    // up a mockup to look busier.
+    emptyState: "Every example here is a real itinerary that was actually generated, never a mockup - so this page stays empty until there is one to show.",
+    emptyGuides: "Browse destination guides",
+    emptyPlan: "Plan a trip of your own",
     viewTrip: "View full itinerary →",
     daysLabel: "{count} days",
   },
@@ -1428,7 +1438,10 @@ const bg: Dictionary = {
     navLabel: "Реални примери",
     pageTitle: "Реални пътувания, планирани от decide",
     pageDescription: "Пълни планове, не макети - всеки етикет за увереност, печат за бюджет и оценка на доверие точно както са генерирани.",
-    emptyState: "Все още няма примери тук - провери отново скоро.",
+    emptyHeading: "Тук още няма нищо публикувано.",
+    emptyState: "Всеки пример тук е истински маршрут, който наистина е бил генериран, никога макет - затова страницата остава празна, докато няма какво да се покаже.",
+    emptyGuides: "Разгледай пътеводителите",
+    emptyPlan: "Планирай свое пътуване",
     viewTrip: "Виж целия план →",
     daysLabel: "{count} дни",
   },

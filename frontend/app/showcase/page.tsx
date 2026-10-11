@@ -188,8 +188,31 @@ export default async function ShowcasePage({
             {t.showcase.pageDescription}
           </p>
 
+          {/* The empty state, which is the whole page until a trip is
+              curated - and was one line of 14px dim grey text, on a page
+              whose heading promises "Real trips decide has already
+              planned". A visitor who followed that nav item got a
+              headline, a subtitle and then nothing, with no indication
+              whether the feature was broken, coming soon, or theirs to
+              trigger.
+
+              It now says WHY it is empty - every card here is a real
+              generated itinerary, so an empty page is the honest state
+              of a product that will not put up a mockup to look busier -
+              and offers the two things that ARE here to look at. */}
           {cards.length === 0 && (
-            <p style={{ color: "var(--ink-dim)", fontSize: 14 }}>{t.showcase.emptyState}</p>
+            <div className="showcase-empty">
+              <h2 className="font-display showcase-empty-heading">{t.showcase.emptyHeading}</h2>
+              <p className="showcase-empty-text">{t.showcase.emptyState}</p>
+              <div className="showcase-empty-actions">
+                <Link href={`/destinations${langSuffix}`} className="font-ui btn-primary">
+                  {t.showcase.emptyGuides}
+                </Link>
+                <Link href={`/${langSuffix}`} className="font-ui showcase-empty-link">
+                  {t.showcase.emptyPlan}
+                </Link>
+              </div>
+            </div>
           )}
 
           {/* min(), so the track floor can never be wider than its own

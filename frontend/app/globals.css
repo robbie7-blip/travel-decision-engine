@@ -3221,3 +3221,45 @@ p {
     justify-content: center;
   }
 }
+
+/* The /showcase empty state (app/showcase/page.tsx).
+
+   A panel rather than a bare line, because when there is nothing curated
+   this IS the page - the heading promises real trips and the body has to
+   explain why there are none yet without sounding broken. */
+.showcase-empty {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-panel);
+  padding: clamp(24px, 4vw, 40px);
+  max-width: 620px;
+}
+
+.showcase-empty-heading {
+  font-size: clamp(20px, 2.6vw, 26px);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+
+.showcase-empty-text {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0 0 22px;
+}
+
+.showcase-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.showcase-empty-link {
+  font-size: 14px;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
