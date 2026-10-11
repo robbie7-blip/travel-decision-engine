@@ -10,7 +10,6 @@ import { VisitedPhotoWall } from "@/components/VisitedPhotoWall";
 import { deletePhotosForPlace, placeKeyFor } from "@/lib/visitedPhotos";
 import { VisitedTimeline } from "@/components/VisitedTimeline";
 import { VisitedChronology } from "@/components/VisitedChronology";
-import { VisitedZoomableMap } from "@/components/VisitedZoomableMap";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { COUNTRIES, countryFlagEmoji, CONTINENTS, getCountryName, getContinentName } from "@/lib/countries";
 import { computeVisitedStats } from "@/lib/visited";
@@ -37,6 +36,18 @@ const VisitedPinsPanel = dynamic(() => import("@/components/VisitedPinsPanel").t
   ssr: false,
   loading: () => <GlobeLoadingPlaceholder />,
 });
+
+/* The pan-and-zoom map, for the same reason and a bigger one.
+ *
+ * It is the only thing on this page that needs react-zoom-pan-pinch, it
+ * is one tab of eight, and the tab it is on is not the one this page
+ * opens on - yet the library arrived with every visit. This route was
+ * already the heaviest on the site at 223KB of first-load JavaScript,
+ * which is a lot to hand someone for a page of flags. */
+const VisitedZoomableMap = dynamic(
+  () => import("@/components/VisitedZoomableMap").then((m) => m.VisitedZoomableMap),
+  { ssr: false, loading: () => <GlobeLoadingPlaceholder /> }
+);
 
 function GlobeLoadingPlaceholder() {
   return (

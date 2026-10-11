@@ -34,7 +34,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { dartBackstopMs, guidesForCountry, throwDart, type DartHit } from "@/lib/dartGlobe";
+// TYPE ONLY, so none of lib/dartGlobe reaches the initial bundle.
+//
+// That module imports worldGeo, which is 140KB of country topology, and
+// it was arriving with the page: 60KB of this route's JavaScript was the
+// shape of every border on earth, loaded before anyone had decided to
+// throw anything. The canvas that DRAWS those borders was already
+// dynamic; the throw itself was not, so the data came anyway.
+//
+// Nothing in here needs it until the button is pressed - throwDart picks
+// the country, dartBackstopMs times the flight, and guidesForCountry
+// only runs once something has landed - so the module is fetched on the
+// click instead. See throwIt below.
+import type { DartHit } from "@/lib/dartGlobe";
 import { getCountryName } from "@/lib/countries";
 import { spinCityName } from "@/lib/spin";
 import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
@@ -87,6 +99,16 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
   const webgl = useWebglSupport();
   const reducedMotion = usePrefersReducedMotion();
 
+  /** lib/dartGlobe, once the first throw has asked for it. Held in a ref
+   * rather than state because nothing renders differently for having it -
+   * the render that needs it is the one after `landed` is set, by which
+   * point it is here. */
+  const dartLib = useRef<typeof import("@/lib/dartGlobe") | null>(null);
+  /** True from the click until the module has arrived. Without it a
+   * second click during that fetch starts a second throw, because
+   * `inFlight` is not set until the first one has its answer. */
+  const [arming, setArming] = useState(false);
+
   const [hit, setHit] = useState<DartHit | null>(null);
   const [throwId, setThrowId] = useState(0);
   const [inFlight, setInFlight] = useState(false);
@@ -99,8 +121,17 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
     if (backstop.current) clearTimeout(backstop.current);
   }, []);
 
-  function throwIt() {
-    if (inFlight) return;
+  async function throwIt() {
+    if (inFlight || arming) return;
+    if (!dartLib.current) {
+      setArming(true);
+      try {
+        dartLib.current = await import("@/lib/dartGlobe");
+      } finally {
+        setArming(false);
+      }
+    }
+    const { throwDart, dartBackstopMs } = dartLib.current;
     const next = throwDart();
     if (!next) return;
     setLanded(null);
@@ -131,7 +162,12 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
     }, dartBackstopMs(reducedMotion));
   }
 
-  const guides = useMemo(() => (landed ? guidesForCountry(landed.code) : []), [landed]);
+  // dartLib is always present by the time anything has landed: the throw
+  // that produced `landed` is what fetched it.
+  const guides = useMemo(
+    () => (landed && dartLib.current ? dartLib.current.guidesForCountry(landed.code) : []),
+    [landed]
+  );
   const countryName = landed ? getCountryName(landed.code, language) : "";
   const suffix = language === "bg" ? "?lang=bg" : "";
 
@@ -173,8 +209,13 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
           rows to fill. As one block it centres against the globe. */}
       <div className="spin-side">
       <div className="spin-controls">
-        <button type="button" onClick={throwIt} disabled={inFlight} className="font-ui btn-primary spin-button">
-          {inFlight ? t.spin.throwing : landed ? t.spin.throwAgain : t.spin.throwDart}
+        <button
+          type="button"
+          onClick={throwIt}
+          disabled={inFlight || arming}
+          className="font-ui btn-primary spin-button"
+        >
+          {inFlight || arming ? t.spin.throwing : landed ? t.spin.throwAgain : t.spin.throwDart}
         </button>
       </div>
 
