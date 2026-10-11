@@ -3144,3 +3144,80 @@ p {
   align-items: center;
   gap: 8px;
 }
+
+/* The 404 and the error boundary (components/DeadEndView.tsx).
+
+   Side by side on a wide screen, stacked and centred on a phone. The
+   illustration is given a max-width in ch-independent units and allowed
+   to shrink: it is decorative, so it should be the first thing to give
+   up space, not the words explaining what went wrong. */
+.dead-end {
+  display: flex;
+  align-items: center;
+  gap: clamp(28px, 5vw, 64px);
+  max-width: 980px;
+  width: 100%;
+}
+
+.dead-end-art {
+  width: clamp(180px, 34vw, 420px);
+  height: auto;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.dead-end-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.dead-end-heading {
+  font-size: clamp(30px, 4.6vw, 46px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 0 0 14px;
+}
+
+.dead-end-text {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0 0 24px;
+  max-width: 46ch;
+}
+
+.dead-end-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+/* --ink-soft rather than --ink-dim: these sit next to a filled primary
+   button, and the dimmer token does not clear 4.5:1 on parchment at this
+   size (scripts/checkContrast.mjs checks exactly this). */
+.dead-end-link {
+  font-size: 14px;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .dead-end {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .dead-end-text {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .dead-end-actions {
+    justify-content: center;
+  }
+}

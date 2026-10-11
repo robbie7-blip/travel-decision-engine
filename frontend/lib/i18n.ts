@@ -402,6 +402,19 @@ export interface Dictionary {
    * mind yet, which is the state the trip form cannot help with. The page
    * opens on the dart and the globe; the wheel is the alternative behind
    * it, so the strings below lead with the dart. */
+  notFound: {
+    heading: string;
+    body: string;
+    planTrip: string;
+    guides: string;
+    decideForMe: string;
+  };
+  errorPage: {
+    heading: string;
+    body: string;
+    retry: string;
+    planTrip: string;
+  };
   spin: {
     navLink: string;
     pageTitle: string;
@@ -915,6 +928,19 @@ const en: Dictionary = {
     totalCost: "Est. total cost",
     missingJobs: "This comparison link is missing one or both trips.",
     planAnother: "Plan a new comparison",
+  },
+  notFound: {
+    heading: "This page isn't on the map.",
+    body: "The link may be old, or the address may have a typo in it. Either way, there's nothing here - but there are 197 countries that do exist.",
+    planTrip: "Plan a trip",
+    guides: "Browse destination guides",
+    decideForMe: "Let it decide for me",
+  },
+  errorPage: {
+    heading: "Something broke on our side.",
+    body: "That's ours, not yours. Nothing you typed has been lost - try again, or go back to the trip form and start there.",
+    retry: "Try again",
+    planTrip: "Back to the trip form",
   },
   spin: {
     navLink: "Decide for me",
@@ -1450,6 +1476,19 @@ const bg: Dictionary = {
     totalCost: "Прибл. обща цена",
     missingJobs: "На тази връзка за сравнение липсва едно или и двете пътувания.",
     planAnother: "Планирай ново сравнение",
+  },
+  notFound: {
+    heading: "Тази страница не е на картата.",
+    body: "Връзката може да е стара или в адреса да има печатна грешка. Така или иначе, тук няма нищо - но има 197 държави, които съществуват.",
+    planTrip: "Планирай пътуване",
+    guides: "Разгледай пътеводителите",
+    decideForMe: "Нека реши вместо мен",
+  },
+  errorPage: {
+    heading: "Нещо се счупи при нас.",
+    body: "Вината е наша, не твоя. Нищо от въведеното не е загубено - опитай отново или се върни към формата за пътуване.",
+    retry: "Опитай отново",
+    planTrip: "Към формата за пътуване",
   },
   spin: {
     navLink: "Реши за мен",
