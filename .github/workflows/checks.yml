@@ -608,6 +608,35 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      # Next's own build cache, which this workflow was not keeping - the
+      # build printed "No build cache found. Please configure build caching
+      # for faster rebuilds" on every single run.
+      #
+      # WHAT IT IS ACTUALLY FOR HERE. Speed is the smaller half. The bigger
+      # half is that `next build` reaches the NETWORK: app/layout.tsx uses
+      # next/font/google for three families, so every cold build downloads
+      # 28 font files from Google before it can finish. That is a
+      # third-party dependency on every CI run and every deploy, and a
+      # build that fails in twelve seconds having passed tsc and all
+      # sixty-odd suites is exactly the shape a blip there would take. The
+      # fonts live in this cache, so a warm build does not ask for them.
+      #
+      # Keyed on the lockfile AND a hash of the source, as Next's own
+      # documentation specifies: the key changes when anything that could
+      # change the output changes, and restore-keys lets an unrelated edit
+      # still reuse most of the previous build rather than starting cold.
+      #
+      # THE TRADE-OFF, stated because it is real: CI no longer proves on
+      # every run that a build works from nothing. That is what the
+      # restore-keys miss covers (a lockfile change starts cold), and it is
+      # the same arrangement Vercel itself uses to deploy, so the cached
+      # path is the path production actually takes.
+      - uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.[jt]s', 'frontend/**/*.[jt]sx', 'frontend/**/*.css') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-
       - run: npm ci
       - run: npx tsc --noEmit
       # The linter - same config shape and same rationale as the worker's
