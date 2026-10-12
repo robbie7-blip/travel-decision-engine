@@ -40,6 +40,7 @@
 // Run: npm run test:public-brief
 
 import type { Job } from "./jobs";
+import type { TripFailureReason } from "./tripFailure";
 import type { Language, TripBriefInput } from "./types";
 
 /** Exactly the brief fields a trip page renders.
@@ -106,8 +107,24 @@ export function publicBrief(brief: unknown): PublicTripBrief {
  * `testMode` is gone because it is an internal flag about which
  * guardrails were bypassed for this job. Nothing renders it, and it
  * answers a question about the operator rather than about the trip. */
-export type PublicJob = Omit<Job, "brief" | "refinement" | "testMode"> & {
+export type PublicJob = Omit<Job, "brief" | "refinement" | "testMode" | "retriedAt"> & {
   brief: PublicTripBrief;
+  /** WHY a job is in the state it is in, when that state is a failure, as
+   * a code the page can branch on - see lib/tripFailure.ts. The sentence
+   * in `error` travels with it and is what gets read; this decides whether
+   * a Try again button is offered at all, which four different failures
+   * disagree about.
+   *
+   * Not sensitive: it says something about this deployment's health, which
+   * `error` already says in words. */
+  reason?: TripFailureReason;
+  /** Whether this trip has already been started again once.
+   *
+   * A boolean, not `retriedAt`: the page needs to know whether the Try
+   * again button would be refused, and nobody needs the timestamp. Same
+   * reasoning as the brief allowlist - publish the answer to the question
+   * being asked, not the field it came from. */
+  retried?: boolean;
 };
 
 /** Built by naming every field, not by deleting two from a spread.
@@ -130,5 +147,8 @@ export function publicJob(job: Job): PublicJob {
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     ttlSeconds: job.ttlSeconds,
+    // Only when it IS retried, so an ordinary response does not carry a
+    // field saying nothing happened.
+    ...(job.retriedAt !== undefined ? { retried: true } : {}),
   };
 }

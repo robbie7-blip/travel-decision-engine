@@ -116,8 +116,13 @@ export default function VisitedPage() {
 
     fetch("/api/visited")
       .then(async (r) => {
-        if (!r.ok) return; // 401 not signed in, 500 misconfigured - either way, stay in local-only mode
+        // Not-ok now means a real fault (a misconfigured server), not
+        // "signed out" - the route answers that with 200 and
+        // signedIn:false, the same way /api/account does, so an ordinary
+        // signed-out visit stops logging a 401 in the browser console.
+        if (!r.ok) return; // stay in local-only mode
         const data = await r.json();
+        if (data?.signedIn === false) return; // local-only, nothing to merge
         const serverEntries: VisitedEntry[] = data.entries ?? [];
         const serverByCode = Object.fromEntries(serverEntries.map((e) => [e.code, e]));
         const merged = { ...localByCode, ...serverByCode };

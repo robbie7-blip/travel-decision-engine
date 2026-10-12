@@ -44,7 +44,28 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export async function GET(request: NextRequest) {
   const email = requireEmail(request);
   if (!email) {
-    return NextResponse.json({ detail: "Sign in to track visited places." }, { status: 401 });
+    // 200, NOT 401, and the same shape /api/account answers with.
+    //
+    // Being signed out is the ordinary state of this endpoint: the tracker
+    // works entirely from localStorage and this route exists only for
+    // people who opted into syncing it (see the header above). So a
+    // signed-out visitor opening /account/visited is not an unauthorized
+    // request, it is the normal one - and answering 401 made every such
+    // visit log a red "Failed to load resource: 401" in the browser
+    // console. That is noise in the one place a real error would have to
+    // show up to be noticed.
+    //
+    // It also removes a conflation on the client, which checked `!r.ok`
+    // and treated 401 and 500 identically with the comment "either way,
+    // stay in local-only mode". A misconfigured server was therefore
+    // indistinguishable from being signed out. Now only a genuine fault
+    // is not-ok.
+    //
+    // POST keeps its 401: a WRITE from someone with no session really is
+    // unauthorized, and the page does not make one unless it knows it is
+    // signed in - so that status stays a backstop rather than a normal
+    // answer.
+    return NextResponse.json({ signedIn: false, entries: [], stats: computeVisitedStats([]) });
   }
 
   let redis;
@@ -55,7 +76,7 @@ export async function GET(request: NextRequest) {
   }
 
   const entries = await getVisitedEntries(redis, email);
-  return NextResponse.json({ entries, stats: computeVisitedStats(entries.map((e) => e.code)) });
+  return NextResponse.json({ signedIn: true, entries, stats: computeVisitedStats(entries.map((e) => e.code)) });
 }
 
 export async function POST(request: NextRequest) {

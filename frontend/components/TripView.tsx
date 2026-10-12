@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AddToShowcaseButton } from "./AddToShowcaseButton";
 import { JobTimings } from "./JobTimings";
@@ -10,12 +9,14 @@ import { ItineraryResult } from "./ItineraryResult";
 import { SiteHeader } from "./SiteHeader";
 import { useJobStatusMessage } from "./useJobStatusMessage";
 import { TripBuilding } from "./TripBuilding";
-import { ApiError, pollJob, refineItinerary } from "@/lib/api";
+import { TripFailed } from "./TripFailed";
+import { ApiError, pollJob, refineItinerary, retryTrip } from "@/lib/api";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
 import type { Job, JobTimings as Timings, QualityReport, JobProgress } from "@/lib/jobs";
 import type { Itinerary, Language } from "@/lib/types";
 import type { PublicTripBrief } from "@/lib/publicBrief";
+import { tripFailureReason, type TripFailureReason } from "@/lib/tripFailure";
 
 /** The page behind a shared/bookmarked /trip/[jobId] link. Loads a job cold
  * from its id - no client-side form state to fall back on - so everything
@@ -30,6 +31,22 @@ export function TripView({ jobId }: { jobId: string }) {
   // built rather than a spinner. See components/TripBuilding.tsx.
   const [progress, setProgress] = useState<JobProgress | undefined>(undefined);
   const [loadError, setLoadError] = useState("");
+  /** WHY the page has nothing to show, as a code rather than only a
+   * sentence - which is what lets the failure view offer the one action
+   * that can help instead of a link home for all of them. See
+   * lib/tripFailure.ts. */
+  const [failure, setFailure] = useState<TripFailureReason | null>(null);
+  /** Bumped to start the poll again from scratch, which is what "Check
+   * again" does. A state counter rather than location.reload(): a reload
+   * throws away the language, the currency and the scroll position to
+   * re-ask a question this effect can simply ask again. */
+  const [attempt, setAttempt] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
+  /** Whether this trip has already spent its one free retry, as reported
+   * by the job record - so the button is absent rather than offered and
+   * then refused. */
+  const [retried, setRetried] = useState(false);
   const [result, setResult] = useState<Itinerary | null>(null);
   const [currentJobId, setCurrentJobId] = useState(jobId);
   // The PUBLIC brief - the six fields the page renders. It used to be the
@@ -56,14 +73,16 @@ export function TripView({ jobId }: { jobId: string }) {
   useEffect(() => {
     let cancelled = false;
     setLoadError("");
+    setFailure(null);
     setJobStatus(null);
     setCurrentJobId(jobId);
 
-    pollJob(jobId, (status, brief, jobProgress) => {
+    pollJob(jobId, (status, brief, jobProgress, alreadyRetried) => {
       if (cancelled) return;
       setJobStatus(status);
       setLastBrief(brief);
       setProgress(jobProgress);
+      setRetried(Boolean(alreadyRetried));
     })
       // Destructured under their own names: `t` is the translations
       // object everywhere else in this file, and shadowing it with the
@@ -90,13 +109,56 @@ export function TripView({ jobId }: { jobId: string }) {
       .catch((e) => {
         if (cancelled) return;
         setLoadError(e instanceof ApiError ? e.message : t.trip.notFound);
+        // An error from anywhere else is not a diagnosis, so it gets the
+        // generic one rather than being guessed at.
+        setFailure(e instanceof ApiError ? tripFailureReason({ reason: e.reason }) : "failed");
       });
 
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId]);
+  }, [jobId, attempt]);
+
+  /** Looks again, without generating anything.
+   *
+   * For the two failures where the trip is probably still on its way: a
+   * wait that ran past the client's patience, and a request that never
+   * got through. Starting a second generation for either would be the
+   * mistake, so this re-runs the poll and nothing else. */
+  function recheck() {
+    setLoadError("");
+    setFailure(null);
+    setRetryError("");
+    setAttempt((n) => n + 1);
+  }
+
+  /** Starts the generation again, which COSTS one.
+   *
+   * Only reachable for the failures where it can actually work (see
+   * lib/tripFailure.ts), and the brief it regenerates from is read
+   * server-side out of the job record - what this page holds is the public
+   * brief, with the mobility, dietary, budget and origin fields stripped,
+   * so a retry assembled here would have silently planned a different
+   * trip. Navigates to the NEW job's page, which is where the progress
+   * for it will appear. */
+  async function retry() {
+    if (retrying) return;
+    setRetrying(true);
+    setRetryError("");
+    try {
+      const newJobId = await retryTrip(currentJobId);
+      // The dead link stops being offered as a bookmark the moment it is
+      // known to be dead - the new one is saved by the usual path once it
+      // finishes.
+      removeRecentTrip(currentJobId);
+      router.push(`/trip/${newJobId}`);
+    } catch (e) {
+      setRetryError(e instanceof ApiError ? e.message : t.trip.failed.failed.body);
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   function setLanguage(next: Language) {
     setLanguageState(next);
@@ -166,12 +228,17 @@ export function TripView({ jobId }: { jobId: string }) {
             />
           )}
           {loadError && (
-            <div className="font-ui" style={{ fontSize: 14, color: "var(--infeasible)" }}>
-              {loadError}{" "}
-              <Link href="/" style={{ color: "var(--infeasible)" }}>
-                {t.trip.planAnother} →
-              </Link>
-            </div>
+            <TripFailed
+              reason={failure ?? "failed"}
+              detail={loadError}
+              language={language}
+              t={t}
+              onRetry={retry}
+              onRecheck={recheck}
+              retrying={retrying}
+              retryError={retryError}
+              retried={retried}
+            />
           )}
           {result && (
             <>

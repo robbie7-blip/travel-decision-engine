@@ -8,6 +8,7 @@ import { jobKey, readJobRecord, stallReason, WORKER_HEARTBEAT_KEY, type Job, typ
 import { isWorkerHeartbeat } from "@/lib/health";
 import { touchJobTtl } from "@/lib/jobTtl";
 import { publicJob, type PublicJob } from "@/lib/publicBrief";
+import type { TripFailureReason } from "@/lib/tripFailure";
 
 export const runtime = "nodejs";
 
@@ -48,7 +49,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const raw = await redis.get<string | Job>(jobKey(id));
   if (raw == null) {
     return NextResponse.json(
-      { detail: "Job not found - it may have expired or the id is invalid." },
+      // `reason` as well as the sentence, so the page can offer the right
+      // thing to do rather than one line of red text for every failure -
+      // see lib/tripFailure.ts.
+      { detail: "Job not found - it may have expired or the id is invalid.", reason: "expired" satisfies TripFailureReason },
       { status: 404 }
     );
   }
@@ -67,6 +71,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         detail:
           "This trip's record could not be read - it may have been written by an older version. " +
           "Please generate it again.",
+        reason: "unreadable" satisfies TripFailureReason,
       },
       { status: 500 }
     );
@@ -135,6 +140,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       // honest version says what happened and what to do; overstating it
       // ("nothing was charged") is the kind of reassurance that turns into
       // a support conversation about a missing generation slot.
+      // The distinction the page could not previously see. Both of these
+      // are status "error" on a 200 response, and they want OPPOSITE
+      // advice: one is the only failure worth spending a generation
+      // retrying, the other is the one where a retry just buys another
+      // five minutes of spinner - which this file's comment above already
+      // says, and which the trip page now acts on.
+      reason: (stall === "worker_restarted" ? "interrupted" : "planner_down") satisfies TripFailureReason,
       error:
         stall === "worker_restarted"
           ? "This generation stopped unexpectedly - the server restarted while it was running. Please try again."

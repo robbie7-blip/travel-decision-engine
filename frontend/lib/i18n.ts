@@ -326,6 +326,34 @@ export interface Dictionary {
   trip: {
     planAnother: string;
     notFound: string;
+    /** The trip page when there is nothing to show.
+     *
+     * One entry per reason in TRIP_FAILURE_REASONS (lib/tripFailure.ts),
+     * because the four things that can go wrong want four different
+     * sentences and, more importantly, different ACTIONS: one of them is
+     * the only case where trying again is worth a generation, and another
+     * is the case where trying again just buys another five minutes of
+     * waiting. They used to share one line of red text. */
+    failed: {
+      expired: { heading: string; body: string };
+      interrupted: { heading: string; body: string };
+      plannerDown: { heading: string; body: string };
+      unreadable: { heading: string; body: string };
+      failed: { heading: string; body: string };
+      timedOut: { heading: string; body: string };
+      unreachable: { heading: string; body: string };
+      /** Starts the generation again. Costs a real model call, so the note
+       * beside it says so rather than letting someone discover it. */
+      retry: string;
+      retryNote: string;
+      retrying: string;
+      /** Looks again WITHOUT generating anything - for the cases where the
+       * trip is probably still coming. */
+      recheck: string;
+      planNew: string;
+      otherTrips: string;
+      alreadyRetried: string;
+    };
     loading: string;
     /** The live build during generation. "{places}", "{done}", "{total}". */
     buildingFor: string;
@@ -886,6 +914,43 @@ const en: Dictionary = {
   trip: {
     planAnother: "Plan your own trip",
     notFound: "This trip link has expired or doesn't exist.",
+    failed: {
+      expired: {
+        heading: "This trip link has expired",
+        body: "Trips are kept for thirty days after they are planned, and longer if you are signed in. This one is past that, so there is nothing left to open. Planning it again takes about a minute.",
+      },
+      interrupted: {
+        heading: "This trip stopped halfway",
+        body: "The server restarted while your itinerary was being written, so it never finished. Nothing is wrong with what you asked for - starting it again usually works first time.",
+      },
+      plannerDown: {
+        heading: "The planner isn't taking new trips",
+        body: "Nothing is picking trips up at the moment, so this one never started. Trying again now would only mean another wait, so it is worth coming back in a few minutes instead. We can see this and we are on it.",
+      },
+      unreadable: {
+        heading: "This trip was saved in an older format",
+        body: "Its record was written by a previous version of the planner and cannot be read any more. This will not fix itself, so the trip needs planning again.",
+      },
+      failed: {
+        heading: "This trip didn't finish",
+        body: "Something went wrong while your itinerary was being written. It is usually a one-off, so starting it again is worth a go.",
+      },
+      timedOut: {
+        heading: "This is taking longer than expected",
+        body: "Your trip may still be on its way - a busy queue can push a generation past the few minutes it normally takes. Checking again costs nothing.",
+      },
+      unreachable: {
+        heading: "We couldn't reach the planner",
+        body: "The request did not get through, which usually means the connection rather than your trip. Your itinerary may be sitting there finished. Check again once you have signal.",
+      },
+      retry: "Start it again",
+      retryNote: "Uses one generation from your allowance",
+      retrying: "Starting it again...",
+      recheck: "Check again",
+      planNew: "Plan a new trip",
+      otherTrips: "Your other trips",
+      alreadyRetried: "This trip has already been started again once, so planning a new one is the way forward.",
+    },
     loading: "Loading your trip…",
     buildingFor: "Building {places}",
     buildingProgress: "{done} of {total} days written",
@@ -1450,6 +1515,43 @@ const bg: Dictionary = {
   trip: {
     planAnother: "Планирайте свое пътуване",
     notFound: "Тази връзка е изтекла или не съществува.",
+    failed: {
+      expired: {
+        heading: "Връзката към това пътуване е изтекла",
+        body: "Пътуванията се пазят тридесет дни след планирането, а по-дълго, ако сте влезли в профила си. Това е извън този срок, така че няма какво да се отвори. Повторното планиране отнема около минута.",
+      },
+      interrupted: {
+        heading: "Това пътуване спря по средата",
+        body: "Сървърът се рестартира, докато маршрутът ви се пишеше, и той не беше завършен. Няма нищо нередно в заявката ви - повторният опит обикновено успява от първия път.",
+      },
+      plannerDown: {
+        heading: "Планиращият модул не поема нови пътувания",
+        body: "В момента никой не поема пътувания, така че това не е започнало. Нов опит сега би означавал само ново чакане, затова е по-добре да се върнете след няколко минути. Виждаме го и работим по въпроса.",
+      },
+      unreadable: {
+        heading: "Това пътуване е запазено в по-стар формат",
+        body: "Записът му е направен от предишна версия на планиращия модул и вече не може да бъде прочетен. Това няма да се оправи само, така че пътуването трябва да се планира отново.",
+      },
+      failed: {
+        heading: "Това пътуване не беше завършено",
+        body: "Нещо се обърка, докато маршрутът ви се пишеше. Обикновено е еднократно, така че си струва да опитате отново.",
+      },
+      timedOut: {
+        heading: "Това отнема повече време от обичайното",
+        body: "Пътуването ви може още да е на път - натоварена опашка може да удължи генерирането над обичайните няколко минути. Проверката не струва нищо.",
+      },
+      unreachable: {
+        heading: "Не успяхме да се свържем с планиращия модул",
+        body: "Заявката не премина, което обикновено е въпрос на връзка, а не на вашето пътуване. Маршрутът ви може да е вече готов. Проверете отново, когато имате сигнал.",
+      },
+      retry: "Започни отново",
+      retryNote: "Използва едно генериране от лимита ви",
+      retrying: "Започва отново...",
+      recheck: "Провери отново",
+      planNew: "Планирай ново пътуване",
+      otherTrips: "Вашите други пътувания",
+      alreadyRetried: "Това пътуване вече е стартирано отново веднъж, така че най-добре е да планирате ново.",
+    },
     loading: "Зареждане на пътуването…",
     buildingFor: "Изграждаме {places}",
     buildingProgress: "{done} от {total} дни са готови",

@@ -87,6 +87,20 @@ export interface Job {
    *
    * Absent means JOB_TTL_SECONDS. See ttlForJob. */
   ttlSeconds?: number;
+  /** When this job was started again after stalling, if it was.
+   *
+   * ONE retry per dropped generation, and this field is what enforces it.
+   * The original's quota slot is consumed at enqueue and never refunded,
+   * so charging a second slot for a crash on our side would be wrong -
+   * while a retry that cost nothing and could be tapped forever would be a
+   * way around the quota entirely (enqueue one trip, retry it for ever).
+   * So the record remembers, and lib/retrySource.ts refuses the second
+   * one.
+   *
+   * Written on the ORIGINAL job, not the new one: the new job is an
+   * ordinary generation and should behave like one, including being
+   * retryable itself if the server drops it too. */
+  retriedAt?: number;
 }
 
 export interface ProgressDay {

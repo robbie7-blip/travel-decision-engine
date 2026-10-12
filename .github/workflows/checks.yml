@@ -1094,6 +1094,31 @@ jobs:
       # longer whatever the caller supplied. Reverting the two guards makes
       # 21 of 50 red.
       - run: npm run test:refine-source
+      # Whether a stalled trip may be started again, and from WHAT. The
+      # trip page only holds a PublicTripBrief, which deliberately
+      # withholds mobility_constraints, dietary_constraints, hard_no, the
+      # budget, the origin and the named hotel - so a retry assembled on
+      # the client would have planned a DIFFERENT trip, with the wheelchair
+      # access and the coeliac diet quietly dropped, for exactly the
+      # travellers who most need them honoured, and it would have looked
+      # like it worked. The brief is read from the job record instead, and
+      # this asserts that it is the private one. Also the two limits that
+      # cost money if they are wrong: a job that is merely young must not
+      # be duplicated, and a dropped job may be retried once rather than
+      # forever (the original's quota slot is consumed at enqueue and never
+      # refunded, so a free unlimited retry would be a way around the quota
+      # entirely).
+      - run: npm run test:retry-source
+      # Which failures are worth spending a generation on. /api/job/[id]
+      # tells apart an expired link, a worker that restarted mid-run, a
+      # queue with nothing reading it, and a record from an older build -
+      # and all four used to reach the trip page as one string rendered as
+      # one line of red text with a link home. The two checks that matter
+      # are about money and time: a retry must NOT be offered for a dead
+      # queue (the route's own comment: it "just buys them another five
+      # minutes of spinner") nor for a client-side timeout, whose job is
+      # very likely still running and would be duplicated.
+      - run: npm run test:trip-failure
       # Who gets paid access, and which Stripe events may change it.
       #
       # The webhook is the only place that grants or revokes paid access and

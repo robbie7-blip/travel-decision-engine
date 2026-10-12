@@ -3,8 +3,27 @@ import type { Job, JobTimings, QualityReport, JobProgress } from "./jobs";
 import type { PublicJob, PublicTripBrief } from "./publicBrief";
 import type { FeedbackEntry } from "./feedback";
 import { getTestModeKey, TEST_MODE_HEADER } from "./testMode";
+import { tripFailureReason, type TripFailureReason } from "./tripFailure";
 
-export class ApiError extends Error {}
+/** A failure the UI can act on, not just print.
+ *
+ * `reason` was the missing half. Every failure of a trip page arrived here
+ * as a string, so the four quite different things that can go wrong - the
+ * link is old, the worker restarted, nothing is reading the queue, the
+ * record is from an older build - rendered identically and offered the
+ * same single action. They do not want the same action; one of them is the
+ * only case where trying again is worth a generation, and another is the
+ * case where trying again is actively bad advice. See lib/tripFailure.ts.
+ *
+ * Optional, because this error is thrown from paths that have no HTTP
+ * response behind them at all. */
+export class ApiError extends Error {
+  readonly reason?: TripFailureReason;
+  constructor(message: string, reason?: TripFailureReason) {
+    super(message);
+    this.reason = reason;
+  }
+}
 
 // 800ms, not 2s: this is dead time bolted onto the END of every generation
 // - the job can finish a full interval before the next poll notices, so a
@@ -20,13 +39,31 @@ const POLL_INTERVAL_MS = 400;
 const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes - generous now that generation runs in the worker, unconstrained by a serverless timeout
 
 async function readErrorDetail(response: Response, fallback: string): Promise<string> {
+  return (await readError(response, fallback)).detail;
+}
+
+/** The sentence AND the code behind a failed response.
+ *
+ * The route writes better sentences than a client-side lookup table could,
+ * so the sentence is still what gets read; the code is what decides which
+ * actions the page offers. A body that is not this route's own (a proxy's
+ * HTML error page, say) falls back to the status, which tripFailureReason
+ * knows how to read. */
+async function readError(
+  response: Response,
+  fallback: string
+): Promise<{ detail: string; reason: TripFailureReason }> {
+  let body: unknown = null;
   try {
-    const body = await response.json();
-    if (typeof body?.detail === "string") return body.detail;
+    body = await response.json();
   } catch {
-    // response body wasn't JSON - keep the fallback message
+    // Not JSON - keep the fallback message and judge by the status alone.
   }
-  return fallback;
+  const b = (body ?? {}) as { detail?: unknown; reason?: unknown };
+  return {
+    detail: typeof b.detail === "string" ? b.detail : fallback,
+    reason: tripFailureReason({ status: response.status, reason: b.reason }),
+  };
 }
 
 /** Polls GET /api/job/[id] until it's done. `onStatus` is called on every
@@ -48,7 +85,17 @@ async function readErrorDetail(response: Response, fallback: string): Promise<st
  * lib/publicBrief.ts. */
 export async function pollJob(
   jobId: string,
-  onStatus?: (status: Job["status"], brief: PublicTripBrief, progress?: JobProgress) => void
+  // `retried` rides along because the stall case throws: by the time the
+  // caller has an error it no longer has the response, and whether this
+  // trip has already spent its one free retry decides whether the failure
+  // view offers a Try again button at all. onStatus is called before the
+  // status checks, so it still sees it.
+  onStatus?: (
+    status: Job["status"],
+    brief: PublicTripBrief,
+    progress?: JobProgress,
+    retried?: boolean
+  ) => void
 ): Promise<{
   jobId: string;
   itinerary: Itinerary;
@@ -58,15 +105,25 @@ export async function pollJob(
 }> {
   const start = Date.now();
   for (;;) {
-    const jobResponse = await fetch(`/api/job/${jobId}`);
-    if (!jobResponse.ok) {
+    // A fetch that never completes is not a statement about the trip -
+    // it is a statement about the network - and it used to be reported
+    // with the same words as an expired link.
+    let jobResponse: Response;
+    try {
+      jobResponse = await fetch(`/api/job/${jobId}`);
+    } catch {
       throw new ApiError(
-        await readErrorDetail(jobResponse, `Could not check job status (status ${jobResponse.status}).`)
+        "We could not reach the planner. Check your connection and try again.",
+        "unreachable"
       );
+    }
+    if (!jobResponse.ok) {
+      const failure = await readError(jobResponse, `Could not check job status (status ${jobResponse.status}).`);
+      throw new ApiError(failure.detail, failure.reason);
     }
 
     const job = (await jobResponse.json()) as PublicJob;
-    onStatus?.(job.status, job.brief, job.progress);
+    onStatus?.(job.status, job.brief, job.progress, job.retried);
 
     if (job.status === "done") {
       if (!job.result) throw new ApiError("Job finished but returned no result.");
@@ -75,14 +132,40 @@ export async function pollJob(
       return { jobId, itinerary: job.result, brief: job.brief, timings: job.timings, quality: job.quality };
     }
     if (job.status === "error") {
-      throw new ApiError(job.error ?? "Generation failed.");
+      // The route distinguishes an interrupted generation from a queue
+      // nothing is reading, and sends the code along; "failed" is the
+      // fallback for a worker-recorded error with no code on it.
+      throw new ApiError(job.error ?? "Generation failed.", tripFailureReason({ reason: job.reason }));
     }
 
     if (Date.now() - start > MAX_WAIT_MS) {
-      throw new ApiError("This is taking much longer than expected - try again shortly.");
+      // Its own reason, because the job behind it is very likely still
+      // running: the thing to do is look again, not start a second one.
+      throw new ApiError("This is taking much longer than expected - try again shortly.", "timed_out");
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
+}
+
+/** Starts a dropped generation again, returning the NEW job's id.
+ *
+ * Takes only the id: the brief it regenerates from is read out of the job
+ * record server-side, because what this page holds is a PublicTripBrief
+ * with the mobility, dietary, budget and origin fields deliberately
+ * stripped - so a retry assembled here would have quietly generated a
+ * different trip. See app/api/job/[id]/retry and lib/publicBrief.ts.
+ *
+ * This COSTS a real generation. Only offered where trying again has a
+ * genuine chance of working (lib/tripFailure.ts's canRetry), and the
+ * button that calls it says what it spends. */
+export async function retryTrip(jobId: string): Promise<string> {
+  const response = await fetch(`/api/job/${jobId}/retry`, { method: "POST" });
+  if (!response.ok) {
+    const failure = await readError(response, `Could not start that trip again (status ${response.status}).`);
+    throw new ApiError(failure.detail, failure.reason);
+  }
+  const { jobId: retryJobId } = (await response.json()) as { jobId: string };
+  return retryJobId;
 }
 
 /** Enqueues a generation job and returns its id immediately, without

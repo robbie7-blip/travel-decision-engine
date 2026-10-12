@@ -253,6 +253,15 @@ button {
   padding: 14px 32px;
   font-weight: 700;
   font-size: 16px;
+  /* Because this class is worn by <a> as well as <button>.
+     
+     A button has no underline; an anchor has one from the browser's own
+     stylesheet, and nothing here was overriding it - so every primary
+     action that happens to be a link rendered as underlined text inside a
+     filled green button. On the 404 and the error boundary (DeadEndView)
+     and on the trip page's failure view, which is to say on all three
+     pages whose entire job is offering one obvious thing to do. */
+  text-decoration: none;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--color-blue) 40%, transparent);
   transition: all 0.3s ease;
   cursor: pointer;
@@ -1429,6 +1438,12 @@ p {
      measured 148x17 on a phone: fine print, next to a 44px target, as
      the only alternative route off a dead end. */
   .dead-end-link,
+  /* Another of their saved trips, offered on the trip page's failure view
+     when THIS link is the dead one. A pill of 13px text is 29px tall on
+     its own, and it is an <a>, so it needs the inline-flex here rather
+     than the bare min-height below - a min-height on an inline element
+     does nothing at all. */
+  .trip-failed-other,
   .showcase-empty-link {
     display: inline-flex;
     align-items: center;
@@ -3452,6 +3467,82 @@ p {
   color: var(--ink-soft);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* The trip page's own failure view (components/TripFailed.tsx), which
+   reuses the .dead-end furniture above and adds three things the 404 has
+   no use for. */
+
+/* The route's own sentence, under the explanation. Smaller and dimmer,
+   because it is the specific detail beneath the general one - a rate limit
+   or a spent budget - rather than a second attempt at the same sentence. */
+.trip-failed-detail {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+/* What the Try again button spends, under the button rather than on it.
+   A button with a price in its label is a button nobody reads. */
+.trip-failed-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.trip-failed-error {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--infeasible);
+}
+
+/* Their other saved trips. Shown only when THIS link is the problem (an
+   old one, or a record from a build that wrote a different shape) rather
+   than the service - in which case the rest of their bookmarks are very
+   likely fine, and saying so is the most useful thing on the page. */
+.trip-failed-others {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.trip-failed-others-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+}
+
+.trip-failed-others-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trip-failed-other {
+  border: 1px solid var(--line);
+  background: var(--bg-panel-raised);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.trip-failed-other:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+@media (max-width: 760px) {
+  .trip-failed-others-list {
+    justify-content: center;
+  }
+
+  .trip-failed-others {
+    text-align: center;
+  }
 }
 
 @media (max-width: 760px) {
