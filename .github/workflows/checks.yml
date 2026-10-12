@@ -1605,12 +1605,47 @@ jobs:
       - run: npm run test:itinerary-links
       # Catches what typecheck alone misses - a server component importing
       # something client-only, a bad route export, a failed page render.
-      - run: npm run build
+      # Tee'd, and the tail re-emitted as an annotation if it fails.
+      #
+      # WHY. `next build` went red once with nothing anybody could read.
+      # tsc and all 60-odd suites had passed in the same run; only this
+      # step failed, in twelve seconds, and a re-run of the identical
+      # commit was green. The cause is still unknown, because GitHub
+      # serves job logs from blob storage and the tooling available to the
+      # agent that was investigating can only reach api.github.com - so
+      # the one artifact that would have answered it was the one thing out
+      # of reach. All that came back was "Process completed with exit code
+      # 1".
+      #
+      # Annotations DO come back, through
+      # repos/{owner}/{repo}/check-runs/{id}/annotations. So the last
+      # chunk of the build output is re-emitted as one, which turns a
+      # future red build from a mystery into a message. `set -o pipefail`
+      # is load-bearing: without it the pipe through tee reports tee's
+      # exit code and a failed build goes GREEN, which would be far worse
+      # than the problem being fixed.
+      - name: Build
+        id: frontend_build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee /tmp/frontend-build.log
         env:
           # The build must not require real credentials. Anything that needs
           # them is behind a runtime check, not a build-time one; if this
           # step ever starts needing a secret, that's the bug.
           NEXT_TELEMETRY_DISABLED: "1"
+      # Only for THIS step's failure, not any earlier one - failure() alone
+      # is true for anything that went wrong before it, which would print a
+      # stale or missing log after a failed test suite and point the next
+      # person at the wrong thing.
+      - name: Say what the build printed
+        if: ${{ failure() && steps.frontend_build.outcome == 'failure' }}
+        run: |
+          # Annotation messages are capped, and the useful part of a build
+          # failure is the end. Percent first, or the escapes get escaped.
+          tail -c 3000 /tmp/frontend-build.log > /tmp/tail.log || echo "(no build log was written)" > /tmp/tail.log
+          BODY=$(sed -e 's/%/%25/g' -e 's/\r/%0D/g' /tmp/tail.log | awk '{printf "%s%%0A", $0}')
+          echo "::error title=next build failed - last 3000 bytes::${BODY}"
       # No control under 44px on a phone. Runs last and only here, because
       # it is the only check in this file that needs the built app: it
       # serves the real pages and measures them in a headless browser,
