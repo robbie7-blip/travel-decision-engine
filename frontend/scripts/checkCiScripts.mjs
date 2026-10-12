@@ -35,22 +35,72 @@ const workflow = readFileSync(join(REPO, ".github", "workflows", "checks.yml"), 
  * and `npm run test:hours-extended` would satisfy a search for
  * `test:hours`. Both leave a guard dormant while the check says it is
  * running - the precise failure being guarded against. */
-const RUN_IN_CI = new Set(
-  workflow
-    .split("\n")
-    // Any line that IS a run step, in either form YAML allows: the
-    // "- run:" shorthand, or a "run:" key under a "- name:" step. Matching
-    // only the shorthand meant rewriting a step into the named form - a
-    // routine, behaviour-preserving edit - dropped its script out of this
-    // set, and the guard then reported a script that runs on every push as
-    // dormant, with "list it in NOT_IN_CI" offered as the fix.
-    //
-    // Comments are excluded by requiring the line to START with the step
-    // punctuation, so a commented-out "# - run: npm run test:timing" still
-    // counts as not running, which is the whole point.
-    .filter((line) => /^\s*(?:-\s*)?run:/.test(line))
-    .flatMap((line) => [...line.matchAll(/npm run ([a-z][a-z0-9:-]*)/g)].map((m) => m[1]))
-);
+const RUN_IN_CI = new Set(runScriptsIn(workflow));
+
+/** Every `npm run <script>` the workflow actually executes.
+ *
+ * THREE SHAPES, because YAML allows three and all three are in use:
+ *
+ *   - run: npm run check:dashes              the shorthand
+ *   - name: Build                            a run: key under a named step
+ *     run: npm run build
+ *   - name: Build                            a BLOCK, where the commands
+ *     run: |                                 are on the following lines
+ *       set -o pipefail
+ *       npm run build 2>&1 | tee /tmp/build.log
+ *
+ * Each shape has already cost a false alarm. Matching only the shorthand
+ * meant rewriting a step into the named form - a routine,
+ * behaviour-preserving edit - dropped its script out of this set, and the
+ * guard reported something that runs on every push as dormant, offering
+ * "list it in NOT_IN_CI" as the fix. The block form then did the same
+ * thing again: `run: |` matches the key but the commands are on the lines
+ * BELOW it, so `npm run build` became invisible the moment the build step
+ * grew a `tee` for its log. That one went red in CI rather than locally,
+ * because the workflow had been edited without re-running the guard that
+ * reads it.
+ *
+ * Parsed rather than grepped for as substrings, which is the whole reason
+ * this function is more than one line: a commented-out
+ * `# - run: npm run test:timing` must still count as NOT running, and
+ * `npm run test:hours-extended` must not satisfy a search for
+ * `test:hours`. Both leave a guard dormant while this check says it is
+ * running, which is precisely the failure being guarded against. */
+function runScriptsIn(text) {
+  const lines = text.split("\n");
+  const found = [];
+  const scan = (line) => {
+    // A shell comment inside a block really does not run, same as a
+    // commented-out step.
+    if (/^\s*#/.test(line)) return;
+    for (const m of line.matchAll(/npm run ([a-z][a-z0-9:-]*)/g)) found.push(m[1]);
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Must START with the step punctuation, so a commented-out step is
+    // not mistaken for a live one.
+    const key = /^(\s*)(?:-\s*)?run:(.*)$/.exec(line);
+    if (!key) continue;
+    const [, indent, rest] = key;
+
+    // A block scalar: the commands are the indented lines that follow.
+    if (/^\s*[|>]/.test(rest)) {
+      for (let j = i + 1; j < lines.length; j++) {
+        const next = lines[j];
+        if (next.trim() === "") continue;
+        // The block ends at the first line indented no further than the
+        // key itself - the next step, or the next YAML key.
+        const lead = /^\s*/.exec(next)[0].length;
+        if (lead <= indent.length) break;
+        scan(next);
+      }
+      continue;
+    }
+    scan(line);
+  }
+  return found;
+}
 
 /** Scripts whose absence from CI is deliberate. Each needs a reason. */
 const NOT_IN_CI = {
