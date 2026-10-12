@@ -1472,6 +1472,13 @@ p {
   .btn-primary,
   .qa-example,
   .qa-photo,
+  /* The saved-conversations bar and its rows. A row is a line of text in a
+     list, which is 30px of its own, and the delete button beside it is an
+     icon. */
+  .ask-history-toggle,
+  .ask-history-new,
+  .ask-history-open,
+  .ask-history-delete,
   /* Places you've been, and both were found by check:touch-targets rather
      than by looking: the eight view tabs at 33px, and the 197 pills in the
      country checklist at 29px - which is not a detail on that page, it is
@@ -1483,7 +1490,9 @@ p {
 
   /* A camera glyph on its own is wide enough to read and too narrow to
      hit, same as the footer's "Terms". */
-  .qa-photo {
+  .qa-photo,
+  /* And a bin glyph, for the same reason. */
+  .ask-history-delete {
     min-width: 44px;
   }
 
@@ -2036,6 +2045,24 @@ p {
   line-height: 1.72;
   color: var(--ink);
   white-space: pre-wrap;
+  /* AND THIS, or min-width: 0 only moves the problem. Shrinking the box
+     does not shorten a word: a token with nowhere to break in it - an
+     email address, a booking reference, a long compound word - keeps its
+     full width and spills out of the box, and because .qa-thread sets
+     overflow-y the spill becomes a horizontal SCROLL rather than a bit of
+     text over the edge. Measured at 616px of content in a 276px thread on
+     a 390px phone: the answer was there, you just had to drag the
+     conversation sideways to read every line of it.
+
+     Bare URLs got away with it, which is why this went unnoticed: Chromium
+     already breaks those at the slashes. A plain long word has no such
+     break opportunity, so the break has to be allowed explicitly.
+
+     `anywhere`, not `break-word`: only `anywhere` counts towards the
+     element's min-content width, which is what a flex item's own sizing is
+     computed from. With `break-word` the text wraps but the box can still
+     ask to be wider than its parent. */
+  overflow-wrap: anywhere;
 }
 
 .qa-bubble-user {
@@ -2047,6 +2074,10 @@ p {
   font-size: 15px;
   line-height: 1.6;
   white-space: pre-wrap;
+  /* The traveler's own words are rendered verbatim on purpose (see
+     TripQA), so nothing shortens a reference number they pasted in from a
+     confirmation email. Same reason as .qa-answer above. */
+  overflow-wrap: anywhere;
   background: var(--accent-green);
   color: var(--bg-panel);
 }
@@ -2111,6 +2142,210 @@ p {
 .qa-action:hover {
   color: var(--ink);
   background: var(--bg-panel-raised);
+}
+
+/* Conversations you have had before (lib/askHistory.ts).
+ *
+ * A bar with a list under it, not a sidebar, and that is a phone decision:
+ * the panel this sits in is one column about 326px wide on a 390px phone,
+ * which a drawer taking a third of it would turn into a letterbox. Shut by
+ * default - the common case is asking something new, so the list announces
+ * how many conversations are in it and stays out of the way until asked
+ * for. */
+.ask-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ask-history-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ask-history-toggle,
+.ask-history-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel-raised);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ask-history-new {
+  margin-left: auto;
+}
+
+.ask-history-toggle:hover,
+.ask-history-new:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.ask-history-toggle:disabled,
+.ask-history-new:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.ask-history-caret {
+  width: 13px;
+  height: 13px;
+  transition: transform 140ms ease;
+}
+
+.ask-history-caret[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-history-caret {
+    transition: none;
+  }
+}
+
+/* How many are saved, on the control that opens them. */
+.ask-history-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.ask-history-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-panel-raised);
+  /* About six rows before it scrolls itself, which is the point at which
+     the list stops being a glance and starts being a search. */
+  max-height: 268px;
+  overflow-y: auto;
+}
+
+.ask-history-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0 6px 0 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ask-history-row:last-child {
+  border-bottom: none;
+}
+
+.ask-history-row:hover {
+  background: var(--bg-panel);
+}
+
+/* The conversation currently on screen. Marked, because the list is also
+   how you tell which one you are reading. */
+.ask-history-row[data-current="true"] .ask-history-title {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ask-history-open {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  /* A flex item will not shrink below its content without this, and the
+     content here is a whole question - so the row would push the delete
+     button off the side of a phone. */
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 10px 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ask-history-open:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* ONE LINE, clipped. A question can be a paragraph, and a list where every
+   row is three lines tall is not a list anyone scans - so the title is cut
+   with an ellipsis rather than wrapped. Clipping is also what keeps this
+   row off check:no-sideways: the text does not fit, and `hidden` means
+   there is nothing to drag. */
+.ask-history-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ask-history-when {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.ask-history-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  border: none;
+  background: transparent;
+  color: var(--ink-dim);
+  border-radius: 8px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.ask-history-delete:hover {
+  color: var(--infeasible);
+  background: var(--bg-panel);
+}
+
+.ask-history-empty {
+  margin: 0;
+  padding: 14px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.ask-history-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+/* On a question in a reopened conversation that had a photo attached. The
+   photo was never stored and never will be (lib/askHistory.ts); this says
+   so where the gap is, rather than letting the question read as though it
+   was asked about nothing. */
+.qa-photo-note {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.8;
 }
 
 /* One box holding the photo button, the text and send - the shape every
@@ -2198,6 +2433,12 @@ p {
      sizing it. */
   resize: none;
   overflow-y: auto;
+  /* A pasted booking URL is one word to a browser, and overflow-y above
+     makes this box horizontally scrollable as a side effect, so without
+     this the composer scrolls sideways while you are still typing the
+     question - and the send button is off to the right of what you can
+     see. Same reason as .qa-answer. */
+  overflow-wrap: anywhere;
   /* Room for roughly six lines before it starts scrolling itself, which
      is past the length of any question anyone types standing in a lobby. */
   max-height: 160px;

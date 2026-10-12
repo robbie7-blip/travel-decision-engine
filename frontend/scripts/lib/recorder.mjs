@@ -306,6 +306,19 @@ export async function openRecorder({ chrome, args = [] }) {
         send,
         evaluate,
 
+        /** Subscribe to a CDP event on this page.
+         *
+         * Needed by anything that stubs a response rather than waiting
+         * for a real one: Fetch.requestPaused has to be answered, and
+         * answering it means hearing it first. Returns an unsubscribe. */
+        on(method, handler) {
+          const listener = (message) => {
+            if (message.method === method && message.sessionId === sessionId) handler(message.params);
+          };
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+
         /** Load a URL and let it settle, in REAL time.
          *
          * Deliberately before the clock is paused: a page still fetching,

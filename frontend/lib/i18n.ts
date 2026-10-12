@@ -473,6 +473,21 @@ export interface Dictionary {
     /** Label before the chosen character's name, above the thread. */
     voiceAsking: string;
     voiceChange: string;
+    /** Saved conversations (lib/askHistory.ts). Kept in the browser, never
+     * on a server, and never with the photos - historyPhotoNote is where
+     * that is said out loud rather than only in a code comment. */
+    historyOpen: string;
+    historyHeading: string;
+    historyNew: string;
+    historyEmpty: string;
+    historyDelete: string;
+    /** Row label for a conversation that opened with a photo and no typed
+     * question, so there is nothing to use as a title. */
+    historyUntitled: string;
+    /** Under the list: where these live and what is not in them. */
+    historyNote: string;
+    /** In a reopened conversation, on a question that had a photo. */
+    historyPhotoNote: string;
     /** label is the character, blurb is what they know about, greeting is
      * the line they open with in their own voice. The greeting is a local
      * string, not a model call, so switching characters costs nothing. */
@@ -999,6 +1014,14 @@ const en: Dictionary = {
     voiceNote: "Characters, not real people. It is still decide answering, from the point of view you pick.",
     voiceAsking: "Asking:",
     voiceChange: "Change",
+    historyOpen: "Saved chats",
+    historyHeading: "Saved chats",
+    historyNew: "New chat",
+    historyEmpty: "Nothing saved yet. A conversation shows up here once the first answer arrives.",
+    historyDelete: "Delete",
+    historyUntitled: "Photo question",
+    historyNote: "Saved in this browser only, never on our servers. Photos are never saved.",
+    historyPhotoNote: "Photo attached. Photos are never saved.",
     voices: {
       neighbour: {
         label: "The neighbour",
@@ -1551,6 +1574,14 @@ const bg: Dictionary = {
     voiceNote: "Герои, не истински хора. Отговаря пак decide, от гледната точка, която изберете.",
     voiceAsking: "Питате:",
     voiceChange: "Смени",
+    historyOpen: "Запазени разговори",
+    historyHeading: "Запазени разговори",
+    historyNew: "Нов разговор",
+    historyEmpty: "Още няма запазено. Разговорът се появява тук щом дойде първият отговор.",
+    historyDelete: "Изтрий",
+    historyUntitled: "Въпрос със снимка",
+    historyNote: "Запазва се само в този браузър, никога на наши сървъри. Снимките не се запазват никога.",
+    historyPhotoNote: "Прикачена снимка. Снимките не се запазват.",
     voices: {
       neighbour: {
         label: "Съседът",

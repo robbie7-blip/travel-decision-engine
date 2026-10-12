@@ -886,6 +886,23 @@ jobs:
       # because losing every real bookmark over one corrupt entry would be
       # its own bug. Reverting makes 18 cases red.
       - run: npm run test:recent-trips
+      # Saved Ask a Local conversations, and the one thing that must never
+      # end up in them: A PHOTO. Ask a Local invites a traveler to
+      # photograph a minibar card, a menu, a prescription label, a passport
+      # page, and the promise it makes in return is that the photo goes to
+      # the model with the question and is gone. A history feature is
+      # exactly where that promise gets broken by accident - the live
+      # thread already holds the images, and "save the thread" is one
+      # JSON.stringify away from writing them to disk under the traveler's
+      # own hostname, where they would then sit until site data is cleared.
+      # SavedAskTurn has no field an image could go in, so the compiler
+      # stops the obvious version; this suite covers that toSavedTurns
+      # drops them rather than passing them through, and that an entry
+      # carrying one is refused on READ, which is what protects a browser
+      # that already has one. The rest is the recent-trips lesson again: a
+      # list that outlives deploys, versioned by nothing, rendered in a
+      # panel, so a half-entry is dropped instead of handed to React.
+      - run: npm run test:ask-history
       # The site's absolute base URL. siteUrl.ts's own header described it
       # as being for metadataBase, sitemap.ts and robots.ts; grep says it
       # also builds the MAGIC-LINK SIGN-IN URL that gets emailed, both
@@ -1604,6 +1621,29 @@ jobs:
       # - it is in what the markup computes to. Same timeout backstop as
       # the two above: it drives a browser too.
       - run: npm run check:a11y-names
+        timeout-minutes: 10
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      # Nothing on a phone is read by swiping left and right.
+      #
+      # Ask a Local answered a question about a hotel and the answer had a
+      # booking reference in it. A reference is one word with nowhere to
+      # break, so it kept its full width, pushed the answer past the
+      # thread, and - because .qa-thread sets overflow-y, which makes a box
+      # horizontally scrollable as a side effect - the conversation became
+      # a 616px canvas inside a 276px window on a 390px phone. Every line
+      # of the answer was there; you had to drag it sideways to read the
+      # end of each one.
+      #
+      # Nothing caught it, and a page sweep alone would not have: the CSS
+      # was right in the way that is easy to check (.qa-answer already had
+      # min-width: 0 and a comment saying why), and at load time the thread
+      # is empty. So this check also DRIVES the feature - it stubs the
+      # answer in the browser, so no key and no money, and sends text built
+      # to break a text column - and then measures. Same timeout backstop
+      # as the three above: it drives a browser too.
+      - run: npm run check:no-sideways
         timeout-minutes: 10
         env:
           NEXT_TELEMETRY_DISABLED: "1"

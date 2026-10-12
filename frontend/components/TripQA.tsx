@@ -5,6 +5,14 @@ import { linkifyAnswer } from "@/lib/linkify";
 import Link from "next/link";
 import type { Dictionary } from "@/lib/i18n";
 import {
+  deleteAskChat,
+  getAskChats,
+  newAskChatId,
+  saveAskChat,
+  toLiveMessages,
+  type SavedAskChat,
+} from "@/lib/askHistory";
+import {
   MAX_TRIP_QA_IMAGE_BYTES,
   MAX_TRIP_QA_MESSAGE_LENGTH,
   TRIP_QA_IMAGE_MAX_EDGE_PX,
@@ -73,6 +81,27 @@ async function fileToResizedImage(file: File): Promise<TripQAImage> {
   return { mediaType: "image/jpeg", data };
 }
 
+/** When a saved conversation was last added to, for the list. The time
+ * rather than the date for today's, because the useful thing about a
+ * conversation from this morning is that it was this morning. */
+function whenLabel(at: number, language: Language): string {
+  const locale = language === "bg" ? "bg-BG" : "en-GB";
+  const date = new Date(at);
+  const today = new Date();
+  const sameDay =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+  try {
+    return new Intl.DateTimeFormat(
+      locale,
+      sameDay ? { hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" }
+    ).format(date);
+  } catch {
+    return "";
+  }
+}
+
 interface TripQAProps {
   // Omitted (or partially filled) on /ask when no trip has been generated
   // here - the model falls back to whatever the traveler mentions in their
@@ -81,6 +110,16 @@ interface TripQAProps {
   context?: TripQAContext;
   language: Language;
   t: Dictionary;
+  /** Remember these conversations so they can be reopened later
+   * (lib/askHistory.ts).
+   *
+   * ON /ask ONLY, and off by default. The other place this component
+   * renders is inside a generated itinerary, where the thread is already
+   * about one specific trip and the page is already reachable from the
+   * recent-trips list. Saving there would put a conversation in a list
+   * that, reopened from /ask, would have lost the trip it was grounded in
+   * - the same answer read back without the thing it was about. */
+  saveHistory?: boolean;
 }
 
 /** General trip Q&A ("Ask a Local") - packing, safety, local customs - kept
@@ -94,7 +133,7 @@ interface TripQAProps {
  * chunk directly into the growing assistant message - the reply appears
  * word by word as it's generated, the same feel as ChatGPT/Gemini, rather
  * than a blank wait followed by the whole answer at once. */
-export function TripQA({ context, language, t }: TripQAProps) {
+export function TripQA({ context, language, t, saveHistory = false }: TripQAProps) {
   const [messages, setMessages] = useState<TripQAMessage[]>([]);
   // null is "Anyone", the plain assistant this feature had before. It is
   // the default on purpose: a picker that forces a choice before the first
@@ -124,6 +163,27 @@ export function TripQA({ context, language, t }: TripQAProps) {
   /** Whether the traveler is reading the newest message rather than
    * scrolled back through the thread. */
   const stuckToBottom = useRef(true);
+
+  /** The saved conversations, and which one is on screen.
+   *
+   * The id is a ref rather than state because send() reads it inside an
+   * async function that outlives the render it started in: by the time the
+   * stream finishes, a state value captured at the top would be the one
+   * from before the first chunk arrived. */
+  const [chats, setChats] = useState<SavedAskChat[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const chatId = useRef<string | null>(null);
+  /** Turns in a REOPENED conversation that had a photo attached. The photo
+   * itself is gone and never existed on disk (see lib/askHistory.ts), so
+   * the question is marked rather than left reading as though it was asked
+   * about nothing. */
+  const [photoNoteTurns, setPhotoNoteTurns] = useState<Set<number>>(new Set());
+
+  // Read once on mount rather than on every render: localStorage is
+  // synchronous, and this list is only changed from this component.
+  useEffect(() => {
+    if (saveHistory) setChats(getAskChats());
+  }, [saveHistory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -221,10 +281,34 @@ export function TripQA({ context, language, t }: TripQAProps) {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      // Accumulated here as well as pushed into state, because the save
+      // below needs the whole answer and `messages` inside this function
+      // is the array from before the first chunk landed.
+      let answer = "";
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        appendToAssistant(decoder.decode(value, { stream: true }));
+        const chunk = decoder.decode(value, { stream: true });
+        answer += chunk;
+        appendToAssistant(chunk);
+      }
+
+      // Saved when the answer is complete, not when it is asked: a
+      // conversation worth reopening is one that got an answer, and a
+      // half-streamed reply read back later would look like the model gave
+      // up mid-sentence.
+      if (saveHistory && answer.trim() !== "") {
+        if (!chatId.current) chatId.current = newAskChatId();
+        const stored = saveAskChat({
+          id: chatId.current,
+          voice,
+          messages: [...next, { role: "assistant", content: answer }],
+        });
+        // Re-read rather than splicing the returned chat into the list: a
+        // tight quota can shed older conversations on write (see
+        // askHistory.ts), and the list on screen should be the list that
+        // is actually there.
+        if (stored) setChats(getAskChats());
       }
     } catch (e) {
       // Drop the empty assistant placeholder rather than leaving a blank
@@ -331,6 +415,60 @@ export function TripQA({ context, language, t }: TripQAProps) {
     setDraft(prompt);
   }
 
+  /** Back to an empty thread.
+   *
+   * Also what the "Change" link in the voice strip does, and it has to be:
+   * that link already cleared the thread (a character cannot answer for
+   * lines somebody else said), and without releasing the conversation id
+   * the next exchange would be written over the top of the conversation
+   * that was just cleared. */
+  function resetThread() {
+    setMessages([]);
+    setVoice(null);
+    setDraft("");
+    setPendingImage(null);
+    setError("");
+    setPhotoNoteTurns(new Set());
+    chatId.current = null;
+    stuckToBottom.current = true;
+  }
+
+  function startNewChat() {
+    if (sending) return;
+    resetThread();
+    setHistoryOpen(false);
+  }
+
+  /** Reopens a saved conversation, in the voice that answered it. */
+  function openChat(chat: SavedAskChat) {
+    if (sending) return;
+    setMessages(toLiveMessages(chat.turns));
+    setVoice(chat.voice);
+    setDraft("");
+    setPendingImage(null);
+    setError("");
+    setPhotoNoteTurns(new Set(chat.turns.flatMap((turn, i) => (turn.hadPhoto ? [i] : []))));
+    chatId.current = chat.id;
+    setHistoryOpen(false);
+    // Reopened at the end, where the last answer is, rather than at the
+    // top of a conversation they have already read.
+    stuckToBottom.current = true;
+  }
+
+  function removeChat(chat: SavedAskChat) {
+    deleteAskChat(chat.id);
+    setChats(getAskChats());
+    // Deleting the conversation that is on screen leaves it on screen but
+    // unattached: carrying on from it would silently recreate the entry
+    // that was just deleted, which is the opposite of what the button
+    // promised.
+    //
+    // resetThread, not startNewChat: the list STAYS OPEN. Deleting a row
+    // from a list and having the list disappear underneath you reads as
+    // having deleted the list.
+    if (chatId.current === chat.id) resetThread();
+  }
+
   // On a trip page the starter questions name the trip's own city and
   // month; on /ask, where there is no trip, they stay the generic set.
   // Falls back to generic if the brief somehow has no destination, so an
@@ -348,6 +486,119 @@ export function TripQA({ context, language, t }: TripQAProps) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Conversations you have had before.
+
+          A bar rather than a sidebar, and that is a phone decision: this
+          panel is one column 326px wide on the device most of these
+          questions get asked from, and a drawer that eats a third of it
+          would leave the thread reading through a letterbox. Shut by
+          default, because the common case is asking something new - the
+          list is one tap away and says how many are in it, so it is
+          discoverable without being in the way. */}
+      {saveHistory && (chats.length > 0 || messages.length > 0) && (
+        <div className="ask-history">
+          <div className="ask-history-bar font-ui">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((open) => !open)}
+              className="ask-history-toggle"
+              aria-expanded={historyOpen}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden style={{ width: 15, height: 15 }}>
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 8v4l3 2M3.5 12a8.5 8.5 0 1 0 2.6-6.1M3.5 4.5V9H8"
+                />
+              </svg>
+              <span>{t.tripQA.historyHeading}</span>
+              {chats.length > 0 && <span className="ask-history-count">{chats.length}</span>}
+              {/* The label stays put and the caret turns. A control whose
+                  text changes between "Saved chats" and "Hide" moves the
+                  button under the thumb that is about to tap it again. */}
+              <svg viewBox="0 0 24 24" aria-hidden className="ask-history-caret" data-open={historyOpen}>
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 9l6 6 6-6"
+                />
+              </svg>
+            </button>
+            {messages.length > 0 && (
+              <button type="button" onClick={startNewChat} disabled={sending} className="ask-history-new">
+                <svg viewBox="0 0 24 24" aria-hidden style={{ width: 15, height: 15 }}>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    d="M12 5v14M5 12h14"
+                  />
+                </svg>
+                <span>{t.tripQA.historyNew}</span>
+              </button>
+            )}
+          </div>
+          {historyOpen && (
+            <>
+              <div className="ask-history-panel">
+                {chats.length === 0 ? (
+                  <p className="font-ui ask-history-empty">{t.tripQA.historyEmpty}</p>
+                ) : (
+                  chats.map((chat) => (
+                    <div key={chat.id} className="ask-history-row" data-current={chatId.current === chat.id}>
+                      <button
+                        type="button"
+                        onClick={() => openChat(chat)}
+                        disabled={sending}
+                        className="font-ui ask-history-open"
+                      >
+                        {/* One line, clipped. A question can be a
+                            paragraph, and a list where every row is three
+                            lines tall is not a list you can scan. */}
+                        <span className="ask-history-title">{chat.title || t.tripQA.historyUntitled}</span>
+                        <span className="ask-history-when">{whenLabel(chat.updatedAt, language)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeChat(chat)}
+                        className="ask-history-delete"
+                        // Named with the conversation in it, so the twenty
+                        // delete buttons in this list are not twenty
+                        // controls all called "Delete".
+                        aria-label={`${t.tripQA.historyDelete}: ${chat.title || t.tripQA.historyUntitled}`}
+                        title={t.tripQA.historyDelete}
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden style={{ width: 15, height: 15 }}>
+                          <path
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10.5 10.5v5M13.5 10.5v5"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              {/* Where these live and what is not in them. The photo
+                  promise is made in the interface, not only in a comment:
+                  a photo goes to the model with the question and is gone,
+                  so a history feature is exactly where someone would
+                  reasonably expect it to have been kept. */}
+              <p className="font-ui ask-history-note">{t.tripQA.historyNote}</p>
+            </>
+          )}
+        </div>
+      )}
       {/* Mid-conversation: who you are talking to stays visible, and can
           still be changed - clearing the thread, because a character
           switching mid-exchange would otherwise be answering for lines
@@ -360,14 +611,7 @@ export function TripQA({ context, language, t }: TripQAProps) {
           })()}
           <span style={{ color: "var(--ink-dim)" }}>{t.tripQA.voiceAsking}</span>
           <span style={{ fontWeight: 600 }}>{t.tripQA.voices[voice].label}</span>
-          <button
-            type="button"
-            onClick={() => {
-              setMessages([]);
-              setVoice(null);
-            }}
-            className="voice-strip-change"
-          >
+          <button type="button" onClick={startNewChat} className="voice-strip-change">
             {t.tripQA.voiceChange}
           </button>
         </div>
@@ -416,6 +660,14 @@ export function TripQA({ context, language, t }: TripQAProps) {
                         }}
                       />
                     ))}
+                    {/* A photo was attached to this question, back when it
+                        was asked. It was never stored (see
+                        lib/askHistory.ts), and saying so is better than a
+                        reopened thread that reads as though the question
+                        was asked about nothing. */}
+                    {photoNoteTurns.has(i) && (
+                      <span className="font-ui qa-photo-note">{t.tripQA.historyPhotoNote}</span>
+                    )}
                     {/* The traveler's own words, verbatim. Linkifying these
                         would apply the MODEL's conventions to a human's
                         typing: "what does [[this]] mean on my ticket?" would

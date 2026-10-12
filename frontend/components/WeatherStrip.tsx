@@ -135,7 +135,13 @@ export function WeatherStrip({
               {city.toUpperCase()}
             </div>
           )}
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+          {/* A week of weather is MEANT to be swiped - the days are cards
+              of a fixed width and there are more of them than fit on a
+              phone. data-sideways-ok says so where the next person to read
+              this will see it, and is what stops check:no-sideways from
+              reporting it as the bug it exists for (an answer that has to
+              be dragged left and right to read). */}
+          <div data-sideways-ok style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
             {days.map((day) => (
               <div
                 key={day.date}

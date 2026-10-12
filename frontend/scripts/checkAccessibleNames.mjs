@@ -72,6 +72,40 @@ const MUST_BE_NAMED = new Set([
   "image",
 ]);
 
+/** A saved Ask a Local conversation, planted before /ask is audited.
+ *
+ * The saved-chats bar (lib/askHistory.ts) renders only when there is
+ * something to show, so a freshly loaded /ask has none of the controls the
+ * feature added - and three of them are an icon button, a row whose label
+ * is the question, and a bin glyph, which is exactly the kind of control
+ * this check exists for. Planted rather than earned, because earning it
+ * means a model call.
+ *
+ * It has to satisfy the validation in askHistory.ts, or it is dropped on
+ * read and the bar never appears. */
+const SEEDED_ASK_CHATS = JSON.stringify([
+  {
+    id: "a11y-probe-1",
+    title: "Is the still water in this minibar free?",
+    voice: "neighbour",
+    updatedAt: 1760000000000,
+    turns: [
+      { role: "user", content: "Is the still water in this minibar free?", hadPhoto: true },
+      { role: "assistant", content: "The card says the still water is included and the sparkling is not." },
+    ],
+  },
+]);
+
+/** Pages that need something set up before they show everything they have,
+ * and what to do once the page is open. */
+const PREPARE = {
+  "/ask": {
+    seed: ["decide:askChats", SEEDED_ASK_CHATS],
+    // Open the saved-chats list, so its rows are in the tree.
+    click: ".ask-history-toggle",
+  },
+};
+
 function fail(lines) {
   console.error(lines.join("\n"));
   process.exit(1);
@@ -122,7 +156,29 @@ let checked = 0;
 for (const path of PAGES) {
   const page = await recorder.newPage({ width: 1280, height: 900, stepMs: 40, shootTimeoutMs: 20_000 });
   try {
-    await page.load(`${started.port ? `http://127.0.0.1:${started.port}` : ""}${path}`, 2200);
+    const url = `${started.port ? `http://127.0.0.1:${started.port}` : ""}${path}`;
+    await page.load(url, 2200);
+    const prepare = PREPARE[path];
+    if (prepare) {
+      if (prepare.seed) {
+        // Written, then the page is loaded again: the value has to be
+        // there before the component reads it on mount.
+        const [key, value] = prepare.seed;
+        await page.evaluate(
+          `(() => { try { window.localStorage.setItem(${JSON.stringify(key)}, ${JSON.stringify(value)}); return "ok"; } catch { return "refused"; } })()`
+        );
+        await page.load(url, 2200);
+      }
+      if (prepare.click) {
+        const clicked = await page.evaluate(
+          `(() => { const el = document.querySelector(${JSON.stringify(prepare.click)}); if (!el) return "missing"; el.click(); return "ok"; })()`
+        );
+        // Not tolerated quietly: if the control this check came to audit
+        // is not there, the audit passed by not looking.
+        if (clicked !== "ok") problems.push(`${path}: could not open ${prepare.click} to audit it (${clicked})`);
+        await page.evaluate(`new Promise((done) => setTimeout(() => done(1), 400))`);
+      }
+    }
     await page.send("Accessibility.enable", {});
     const { nodes } = await page.send("Accessibility.getFullAXTree", {});
 

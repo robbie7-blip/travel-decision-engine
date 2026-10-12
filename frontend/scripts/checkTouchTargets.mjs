@@ -195,6 +195,35 @@ function coarseRules(css) {
 
 // ------------------------------------------------------------------- probe
 
+/** A saved Ask a Local conversation, planted before the page loads.
+ *
+ * WHY THE PROBE HAS TO SEED ANYTHING. The saved-chats bar on /ask
+ * (lib/askHistory.ts) renders only when there is something to show -
+ * deliberately, because an empty list above the ask box would push the one
+ * control people came for further down the page. The consequence is that a
+ * sweep of a freshly loaded /ask measures every control on it EXCEPT the
+ * ones this feature added: a toggle, a row per conversation, and a bin
+ * button per row, all of which are text and icons in a list and all of
+ * which were under 44px before the rule in globals.css. So the list is put
+ * there first.
+ *
+ * Planted from the probe page, which shares the app's origin, so the
+ * iframe reads it. It has to satisfy the validation in askHistory.ts or it
+ * is dropped on read and the bar does not appear - which is what the
+ * "only N controls" tripwire below exists to notice. */
+const SEEDED_ASK_CHATS = JSON.stringify([
+  {
+    id: "touch-probe-1",
+    title: "Is the still water in this minibar free?",
+    voice: "neighbour",
+    updatedAt: 1760000000000,
+    turns: [
+      { role: "user", content: "Is the still water in this minibar free?", hadPhoto: true },
+      { role: "assistant", content: "The card says the still water is included and the sparkling is not." },
+    ],
+  },
+]);
+
 /** The page that does the measuring.
  *
  * It reports its result base64-encoded, so that --dump-dom's HTML escaping
@@ -207,6 +236,8 @@ const page = q.get('p'), W = Number(q.get('w'));
 const f = document.getElementById('f');
 f.style.width = W + 'px';
 f.style.height = '3000px';
+// Same origin as the app, so the iframe reads this. See SEEDED_ASK_CHATS.
+try { localStorage.setItem('decide:askChats', ${JSON.stringify(SEEDED_ASK_CHATS)}); } catch (err) {}
 f.src = page;
 function label(el) {
   const cls = (typeof el.className === 'string' ? el.className : '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).join('.');
@@ -228,6 +259,12 @@ f.onload = async () => {
   style.textContent = css;
   d.head.appendChild(style);
   setTimeout(() => {
+    // Open the saved-chats list on /ask, so the row and its bin button are
+    // measured rather than skipped for being shut. A click, not a state
+    // poke, because React owns that flag - and after the wait above, so
+    // the page has hydrated and the handler is actually attached.
+    try { const tgl = d.querySelector('.ask-history-toggle'); if (tgl) tgl.click(); } catch (err) {}
+    setTimeout(() => {
     try {
       const small = [];
       let measured = 0;
@@ -275,6 +312,7 @@ f.onload = async () => {
     } catch (err) {
       report({ error: err && err.message ? err.message : String(err) });
     }
+    }, 400);
   }, 2600);
 };
 </script></body></html>

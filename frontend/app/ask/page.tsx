@@ -130,7 +130,13 @@ export default function AskPage() {
               boxShadow: "var(--shadow-panel)",
             }}
           >
-            <TripQA language={language} t={t} />
+            {/* saveHistory on THIS page only - see the prop's comment in
+                TripQA.tsx. A conversation here stands on its own, so it
+                can be reopened later and still make sense; the copy of
+                this component inside a generated itinerary is grounded in
+                that trip, and a saved thread reopened away from it would
+                have lost the thing it was about. */}
+            <TripQA language={language} t={t} saveHistory />
           </div>
         </div>
         </div>
