@@ -855,6 +855,20 @@ jobs:
       # the bug is invisible in the rendered text and lives entirely in
       # which tag wraps what. Reverting the prop makes 5 of 43 red.
       - run: npm run test:render-trip-form
+      # Ask a Local's photo button, and the one attribute that must not
+      # come back. The hidden file input carried capture="environment",
+      # chosen to open the rear camera in one tap. On iOS that does not
+      # mean "default to the camera", it means CAMERA ONLY: Safari skips
+      # its own sheet, so there was no Photo Library and no Choose File,
+      # and the commonest thing anyone would want to ask about could not
+      # be attached at all - a screenshot of a booking confirmation, a
+      # photo of a menu taken at lunch, a picture somebody sent. Found on
+      # a phone, by the owner, because nothing here could see it: the
+      # attribute is five characters, the input is display:none so nothing
+      # renders differently, every browser these checks drive ignores it,
+      # and check:a11y-names deliberately skips the input for being
+      # hidden. Reverting the fix makes this red.
+      - run: npm run test:render-trip-qa
       - run: npm run test:result-format
       # Money on the page, in the currency the traveller picked - and the
       # second defect here blanked the trip page. formatMoney read

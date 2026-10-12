@@ -20,6 +20,7 @@ import {
   type LocalVoice,
   type TripQAContext,
   type TripQAImage,
+  type TripQAImageMediaType,
   type TripQAMessage,
 } from "@/lib/tripQA";
 import type { Language } from "@/lib/types";
@@ -45,8 +46,9 @@ function monthName(date: string | undefined, language: Language): string {
 }
 
 /** Downscales a picked photo to TRIP_QA_IMAGE_MAX_EDGE_PX on its long edge
- * and re-encodes it as JPEG, in the browser, before anything is uploaded.
- * Three things this has to get right:
+ * and re-encodes it, in the browser, before anything is uploaded. JPEG for
+ * a photograph, PNG kept as PNG while it fits - see the note at the
+ * encoding step. Three things this has to get right:
  *
  * - EXIF orientation. A phone photo is very often stored rotated with an
  *   orientation flag, and drawing it to a canvas without honouring that
@@ -76,9 +78,24 @@ async function fileToResizedImage(file: File): Promise<TripQAImage> {
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close?.();
 
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-  const data = dataUrl.slice(dataUrl.indexOf(",") + 1);
-  return { mediaType: "image/jpeg", data };
+  function encode(mediaType: TripQAImageMediaType, quality?: number): TripQAImage {
+    const dataUrl = canvas.toDataURL(mediaType, quality);
+    return { mediaType, data: dataUrl.slice(dataUrl.indexOf(",") + 1) };
+  }
+
+  // A SCREENSHOT STAYS A PNG. Now that an existing photo can be attached
+  // at all, the commonest thing attached is not a photograph: it is a
+  // screenshot of a booking confirmation, a boarding pass, a message from
+  // a host. That is flat colour and small text, which is the one kind of
+  // image JPEG is worst at - its artifacts land exactly on the edges of
+  // letters, and reading small print is the whole feature. Re-encoded only
+  // if the lossless version will not fit, which a photographed scene
+  // never would.
+  if (file.type === "image/png") {
+    const png = encode("image/png");
+    if (Math.floor((png.data.length * 3) / 4) <= MAX_TRIP_QA_IMAGE_BYTES) return png;
+  }
+  return encode("image/jpeg", 0.9);
 }
 
 /** When a saved conversation was last added to, for the list. The time
@@ -800,26 +817,36 @@ export function TripQA({ context, language, t, saveHistory = false }: TripQAProp
       )}
       {/* One box, not three controls in a row. See .qa-composer. */}
       <div className="qa-composer">
-        {/* capture="environment" makes this open the rear camera directly on
-            a phone, which is the actual moment this feature is for - standing
-            in front of the thing you're asking about. Desktop browsers ignore
-            it and show a normal file picker. */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={onFilePicked}
-          style={{ display: "none" }}
-        />
+        {/* NO `capture` ATTRIBUTE, and that is the whole point of this
+            comment.
+
+            It used to carry capture="environment", which was chosen to
+            open the rear camera in one tap - the moment this feature is
+            for, standing in front of the thing you are asking about. On
+            iOS that attribute does not mean "default to the camera", it
+            means CAMERA ONLY: Safari skips the sheet entirely and goes
+            straight to a live viewfinder, so there is no way to attach a
+            photo you already have. Which is most of them. A screenshot of
+            a booking confirmation, a photo of a menu taken at lunch and
+            asked about on the walk home, a picture somebody sent you -
+            none of those could be attached at all.
+
+            Without it, iOS offers Photo Library, Take Photo and Choose
+            File, and Android offers the gallery with the camera beside it.
+            The camera is one tap further and everything else became
+            possible, which is the right way round. */}
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={onFilePicked} style={{ display: "none" }} />
         <button
           type="button"
           onClick={onPhotoButtonClick}
           disabled={sending}
           aria-label={t.tripQA.addPhoto}
           title={t.tripQA.addPhoto}
-          // The control for the one moment this feature is for: standing
-          // in front of the thing you are asking about.
+          // A PICTURE, NOT A CAMERA. It was a camera glyph, which read as
+          // "take a photo" - and while the input carried capture it was
+          // telling the truth, because taking one was all it could do. Now
+          // that an existing photo can be attached, a camera icon would
+          // advertise the smaller half of what the button does.
           className="font-ui qa-photo"
           style={{
             border: "none",
@@ -837,15 +864,25 @@ export function TripQA({ context, language, t, saveHistory = false }: TripQAProp
           }}
         >
           <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
+            <rect
+              x="3"
+              y="4.5"
+              width="18"
+              height="15"
+              rx="2.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+            />
+            <circle cx="8.6" cy="9.6" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
             <path
               fill="none"
               stroke="currentColor"
               strokeWidth="1.7"
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M3 8.5h3.2l1.4-2h7.8l1.4 2H20a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"
+              d="M3.4 16.4l4.3-4.1a1.6 1.6 0 0 1 2.2 0l3.5 3.4m-1.5 1.4l2.8-2.7a1.6 1.6 0 0 1 2.2 0l3.7 3.5"
             />
-            <circle cx="12" cy="13.5" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.7" />
           </svg>
         </button>
         <textarea
