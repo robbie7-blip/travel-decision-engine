@@ -97,6 +97,24 @@ check(
   "no aria-label matching tripQA.inputLabel"
 );
 
+section("saving is scoped, not shared");
+
+// The same component renders on /ask and inside a generated itinerary,
+// where it is handed the trip's dates, cities and party and its answers
+// lean on them. A shared list would mean reopening such a thread from
+// /ask with the trip it was grounded in gone. Both variants have to
+// render; the scoping itself is asserted in lib/askHistory.test.ts,
+// against the store.
+const onATrip = renderToStaticMarkup(
+  <TripQA language="en" t={TRANSLATIONS.en} saveHistory tripId="job-rome" context={{ destinations: ["Rome"] }} />
+);
+check("the trip-scoped variant renders", onATrip.includes("trip-qa-input"), onATrip.slice(0, 120));
+check(
+  "and does not put a job id in the markup",
+  !onATrip.includes("job-rome"),
+  "the job id reached the page"
+);
+
 section("a fresh visit");
 
 // The saved-chats bar renders only once there is something to show, and

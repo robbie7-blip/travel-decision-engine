@@ -205,6 +205,52 @@ check("deleting removes exactly that one", !getAskChats().some((chat) => chat.id
 check("and leaves the rest", getAskChats().length === before - 1, String(getAskChats().length));
 
 // ---------------------------------------------------------------------------
+section("a trip's conversations stay on that trip");
+
+// WHY SCOPE EXISTS. The same component renders on /ask, where a question
+// stands on its own, and inside a generated itinerary, where it is handed
+// the trip's dates, cities and party as context - so its answers lean on
+// them ("the second one is closer to your hotel"). One shared list would
+// mean reopening such a thread from /ask with the trip it was grounded in
+// gone: answers to nothing.
+clearAskChats();
+saveAskChat({ id: "standalone", voice: null, messages: thread() });
+saveAskChat({ id: "on-rome", voice: null, tripId: "job-rome", messages: thread() });
+saveAskChat({ id: "on-tokyo", voice: null, tripId: "job-tokyo", messages: thread() });
+
+check("/ask lists only the threads that stand alone", getAskChats().map((c) => c.id).join() === "standalone", getAskChats().map((c) => c.id).join());
+check("a trip lists only its own", getAskChats("job-rome").map((c) => c.id).join() === "on-rome", getAskChats("job-rome").map((c) => c.id).join());
+check("and another trip only its own", getAskChats("job-tokyo").map((c) => c.id).join() === "on-tokyo");
+check("a trip with no conversations lists none", getAskChats("job-nowhere").length === 0);
+
+// The bug this guards: writing one scope's list back over the stored
+// value would delete the others. Every save goes through the same list.
+saveAskChat({ id: "on-rome-2", voice: null, tripId: "job-rome", messages: thread() });
+check("saving on a trip does not wipe the /ask list", getAskChats().length === 1, String(getAskChats().length));
+check("  nor the other trip's", getAskChats("job-tokyo").length === 1, String(getAskChats("job-tokyo").length));
+check("  and this trip now has two", getAskChats("job-rome").length === 2, String(getAskChats("job-rome").length));
+
+deleteAskChat("on-rome-2");
+check("deleting reaches across scopes", getAskChats("job-rome").length === 1);
+check("  without touching /ask", getAskChats().length === 1);
+check("  or the other trip", getAskChats("job-tokyo").length === 1);
+
+{
+  // A tripId that is not a usable string decides WHERE a thread is
+  // listed, so a broken one is dropped rather than filed somewhere by
+  // accident.
+  for (const bad of ["", 7, {}, null]) {
+    storage.store.set(
+      STORAGE_KEY,
+      JSON.stringify([
+        { id: "x", title: "t", voice: null, updatedAt: 1, tripId: bad, turns: [{ role: "user", content: "hi" }] },
+      ])
+    );
+    check(`a tripId of ${JSON.stringify(bad)} is dropped`, getAskChats().length === 0 && getAskChats("x").length === 0);
+  }
+}
+
+// ---------------------------------------------------------------------------
 section("surviving what is already on disk");
 
 const bad: [string, unknown][] = [

@@ -887,10 +887,17 @@ export function ItineraryResult({
 
       <div className="no-print" style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
         <SectionLabel>{t.tripQA.sectionHeading}</SectionLabel>
+        {/* Saved and scoped to THIS trip - see tripId on TripQA. A
+            conversation held here leans on the trip it is inside ("the
+            second one is closer to your hotel"), so it is listed on this
+            page and nowhere else; /ask lists only the threads that stand
+            on their own. */}
         <TripQA
           context={{ destinations, start_date: startDate, end_date: endDate, party_composition: partyComposition, interests }}
           language={language}
           t={t}
+          saveHistory
+          tripId={jobId}
         />
       </div>
 

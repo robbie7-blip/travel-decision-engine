@@ -128,15 +128,21 @@ interface TripQAProps {
   language: Language;
   t: Dictionary;
   /** Remember these conversations so they can be reopened later
-   * (lib/askHistory.ts).
-   *
-   * ON /ask ONLY, and off by default. The other place this component
-   * renders is inside a generated itinerary, where the thread is already
-   * about one specific trip and the page is already reachable from the
-   * recent-trips list. Saving there would put a conversation in a list
-   * that, reopened from /ask, would have lost the trip it was grounded in
-   * - the same answer read back without the thing it was about. */
+   * (lib/askHistory.ts). Off by default. */
   saveHistory?: boolean;
+  /** The trip these conversations are about, on a generated itinerary.
+   *
+   * WHAT THIS SOLVES. Saving was /ask-only at first, because a thread
+   * held inside an itinerary is grounded in that trip - it is handed the
+   * dates, the cities and the party as context, and its answers lean on
+   * them ("the second one is closer to your hotel"). Reopened from /ask,
+   * with the trip gone, such a thread reads as answers to nothing.
+   *
+   * So the conversations are SCOPED instead of excluded: passing the job
+   * id files them under that trip, and a trip's conversations are only
+   * ever listed on that trip's own page. /ask lists only the ones that
+   * stand alone. Nothing crosses. */
+  tripId?: string;
 }
 
 /** General trip Q&A ("Ask a Local") - packing, safety, local customs - kept
@@ -150,7 +156,7 @@ interface TripQAProps {
  * chunk directly into the growing assistant message - the reply appears
  * word by word as it's generated, the same feel as ChatGPT/Gemini, rather
  * than a blank wait followed by the whole answer at once. */
-export function TripQA({ context, language, t, saveHistory = false }: TripQAProps) {
+export function TripQA({ context, language, t, saveHistory = false, tripId }: TripQAProps) {
   const [messages, setMessages] = useState<TripQAMessage[]>([]);
   // null is "Anyone", the plain assistant this feature had before. It is
   // the default on purpose: a picker that forces a choice before the first
@@ -199,8 +205,8 @@ export function TripQA({ context, language, t, saveHistory = false }: TripQAProp
   // Read once on mount rather than on every render: localStorage is
   // synchronous, and this list is only changed from this component.
   useEffect(() => {
-    if (saveHistory) setChats(getAskChats());
-  }, [saveHistory]);
+    if (saveHistory) setChats(getAskChats(tripId));
+  }, [saveHistory, tripId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -320,12 +326,13 @@ export function TripQA({ context, language, t, saveHistory = false }: TripQAProp
           id: chatId.current,
           voice,
           messages: [...next, { role: "assistant", content: answer }],
+          tripId,
         });
         // Re-read rather than splicing the returned chat into the list: a
         // tight quota can shed older conversations on write (see
         // askHistory.ts), and the list on screen should be the list that
         // is actually there.
-        if (stored) setChats(getAskChats());
+        if (stored) setChats(getAskChats(tripId));
       }
     } catch (e) {
       // Drop the empty assistant placeholder rather than leaving a blank
@@ -474,7 +481,7 @@ export function TripQA({ context, language, t, saveHistory = false }: TripQAProp
 
   function removeChat(chat: SavedAskChat) {
     deleteAskChat(chat.id);
-    setChats(getAskChats());
+    setChats(getAskChats(tripId));
     // Deleting the conversation that is on screen leaves it on screen but
     // unattached: carrying on from it would silently recreate the entry
     // that was just deleted, which is the opposite of what the button

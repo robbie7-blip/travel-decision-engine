@@ -47,6 +47,20 @@ export interface SavedAskTurn {
 
 export interface SavedAskChat {
   id: string;
+  /** The trip this conversation is about, when it is about one.
+   *
+   * WHY A CONVERSATION HAS A SCOPE. Ask a Local renders in two places: on
+   * /ask, where a question stands on its own, and inside a generated
+   * itinerary, where the same component is handed that trip's dates,
+   * cities and party as context - so the answers are about THAT trip and
+   * frequently make no sense without it ("the second one is closer to your
+   * hotel"). Saving both into one list would mean reopening such a thread
+   * from /ask, with the trip it was grounded in gone.
+   *
+   * So a conversation belongs to where it happened: absent for /ask, the
+   * job id for a trip. A trip's conversations are only ever listed on that
+   * trip's own page, and /ask lists only the ones that stand alone. */
+  tripId?: string;
   /** The first question asked, cut to one line. Stored as the traveler's
    * own words rather than a translated label, so it still reads correctly
    * after they switch the interface language - the empty case is filled in
@@ -136,13 +150,29 @@ function isSavedChat(value: unknown): value is SavedAskChat {
   if (typeof chat.title !== "string") return false;
   if (typeof chat.updatedAt !== "number" || !Number.isFinite(chat.updatedAt)) return false;
   if (chat.voice !== null && !LOCAL_VOICES.includes(chat.voice as LocalVoice)) return false;
+  // Checked, because this decides WHERE a conversation is listed: a
+  // tripId of the wrong type would compare unequal to both undefined and
+  // any real job id, which is harmless, but one that is an empty string
+  // would be written as absent and read as a trip. Dropping the entry is
+  // the honest answer to "which trip is this about".
+  if (chat.tripId !== undefined && (typeof chat.tripId !== "string" || chat.tripId === "")) return false;
   if (!Array.isArray(chat.turns) || chat.turns.length === 0) return false;
   if (!chat.turns.every(isSavedTurn)) return false;
   if (chat.turns.some((turn) => "images" in (turn as object))) return false;
   return true;
 }
 
-export function getAskChats(): SavedAskChat[] {
+/** The conversations belonging to one place.
+ *
+ * `tripId` undefined means the standalone /ask list, which is NOT "all of
+ * them": a trip's thread is only listed on that trip. See tripId on
+ * SavedAskChat. */
+/** Every stored conversation, whatever it belongs to, newest first.
+ *
+ * The scope filter is applied by getAskChats on top of this. Writing needs
+ * the unfiltered list: the cap and the stored value are global, so writing
+ * back one scope's list would delete the other's. */
+function allAskChats(): SavedAskChat[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -163,6 +193,10 @@ export function getAskChats(): SavedAskChat[] {
   } catch {
     return [];
   }
+}
+
+export function getAskChats(tripId?: string): SavedAskChat[] {
+  return allAskChats().filter((chat) => chat.tripId === tripId);
 }
 
 /** Writes the list, shedding the oldest conversations if the browser says
@@ -207,6 +241,8 @@ export function saveAskChat(input: {
   id: string;
   voice: LocalVoice | null;
   messages: TripQAMessage[];
+  /** Where this conversation happened. See tripId on SavedAskChat. */
+  tripId?: string;
 }): SavedAskChat | null {
   if (typeof window === "undefined") return null;
   const turns = toSavedTurns(input.messages).filter(
@@ -221,14 +257,20 @@ export function saveAskChat(input: {
     voice: input.voice,
     turns,
     updatedAt: Date.now(),
+    ...(input.tripId ? { tripId: input.tripId } : {}),
   };
-  const next = [chat, ...getAskChats().filter((existing) => existing.id !== chat.id)].slice(0, MAX_ASK_CHATS);
+  // Read ALL of them to write, not just this scope's: the cap and the
+  // stored value are global, so writing back only one scope's list would
+  // delete every conversation belonging to the other.
+  const next = [chat, ...allAskChats().filter((existing) => existing.id !== chat.id)].slice(0, MAX_ASK_CHATS);
   return write(next) ? chat : null;
 }
 
 export function deleteAskChat(id: string): void {
   if (typeof window === "undefined") return;
-  write(getAskChats().filter((chat) => chat.id !== id));
+  // Across every scope, for the same reason saveAskChat writes all of
+  // them: the stored list is one list.
+  write(allAskChats().filter((chat) => chat.id !== id));
 }
 
 export function clearAskChats(): void {

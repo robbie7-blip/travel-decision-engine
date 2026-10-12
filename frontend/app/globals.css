@@ -2241,6 +2241,13 @@ p {
 .ask-history-panel {
   display: flex;
   flex-direction: column;
+  /* A list of one-line titles, not a table. Inside an itinerary the
+     container is 1450px, which stretched a row holding "Is the Colosseum
+     lift working in May?" across the whole page with the date marooned at
+     the far end. Capped rather than made a percentage so it is the same
+     list on both surfaces, and narrower than this on a phone where the
+     column already is. */
+  max-width: 520px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--bg-panel-raised);
@@ -2346,6 +2353,7 @@ p {
 
 .ask-history-note {
   margin: 0;
+  max-width: 520px;
   font-size: 11px;
   line-height: 1.5;
   color: var(--ink-dim);
