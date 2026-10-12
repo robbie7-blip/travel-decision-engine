@@ -13,6 +13,7 @@
 // Presence only. It reads whether a variable is set, never what it is.
 
 import Link from "next/link";
+import { headers } from "next/headers";
 import { getRedis } from "@/lib/redis";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
 import {
@@ -24,8 +25,10 @@ import {
   type WorkerFailure,
   type WorkerHeartbeat,
 } from "@/lib/jobs";
+import { getSiteUrl } from "@/lib/siteUrl";
 import {
   checkFrontendEnv,
+  checkSessionHost,
   checkWorkerEnv,
   describeAge,
   heartbeatAgeSeconds,
@@ -272,6 +275,10 @@ function FailureEntry({ failure }: { failure: WorkerFailure }) {
 export default async function HealthAdminPage() {
   const redis = await loadRedisState();
   const frontendChecks = checkFrontendEnv();
+  // Whether the hostname this page is being served from is the one session
+  // cookies are issued for. Null, and rendered as nothing, in the ordinary
+  // case. See checkSessionHost.
+  const hostMismatch = checkSessionHost((await headers()).get("host"), getSiteUrl());
   const workerChecks = redis.heartbeat ? checkWorkerEnv(redis.heartbeat) : null;
 
   const frontendVerdict = worstOf(frontendChecks.map(verdictFor));
@@ -327,6 +334,36 @@ export default async function HealthAdminPage() {
           feedback →
         </Link>
       </div>
+
+      {/* Only when there is something to say, which there normally is not.
+          It sits first because it answers a question nothing else on this
+          page can: "why am I signed out every time the site updates?" */}
+      {hostMismatch && (
+        <Card title="Sign-in hostname" verdict="warn">
+          <Field label="You are on" value={hostMismatch.servedFrom} />
+          <Field label="Sessions belong to" value={hostMismatch.sessionsBelongTo} />
+          <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: "10px 0 0", lineHeight: 1.7 }}>
+            A session cookie is host-only: the browser hands it back to the hostname that issued it and
+            to nothing else. Signing in here would not sign you in on {hostMismatch.sessionsBelongTo},
+            and a session you already have there is not sent to this page.
+            {hostMismatch.perDeployment ? (
+              <>
+                {" "}
+                This hostname belongs to <strong>one deployment</strong>. Every deploy makes a new one, so
+                a browser that has only ever been signed in on these addresses is signed out every time
+                the site is updated - which is what that looks like from the outside. Use{" "}
+                {hostMismatch.sessionsBelongTo} instead.
+              </>
+            ) : (
+              <>
+                {" "}
+                Nothing here is broken; the two addresses simply keep separate sessions. If this is the
+                address people actually use, SITE_URL is pointing at the wrong one.
+              </>
+            )}
+          </p>
+        </Card>
+      )}
 
       <Card title="Failed generations" verdict={failuresVerdict}>
         {redis.failures.length === 0 ? (

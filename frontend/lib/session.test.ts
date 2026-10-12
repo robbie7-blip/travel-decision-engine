@@ -23,12 +23,15 @@
 
 import {
   MIN_SESSION_SECRET_CHARS,
+  SESSION_COOKIE_MAX_AGE_SECONDS,
   SESSION_COOKIE_NAME,
   createSessionCookieValue,
   isUsableSessionSecret,
+  renewSessionCookieValue,
+  sessionCookieOptions,
   verifySessionCookieValue,
 } from "./session";
-import { checkFrontendEnv, verdictFor, type CheckedEnv } from "./health";
+import { checkFrontendEnv, checkSessionHost, verdictFor, type CheckedEnv } from "./health";
 import { check, finish, heading, section } from "./testutil";
 
 heading("session cookie");
@@ -47,6 +50,34 @@ function withSecret<T>(secret: string | undefined, fn: () => T): T {
     if (saved === undefined) delete bag.SESSION_SECRET;
     else bag.SESSION_SECRET = saved;
   }
+}
+
+/** Runs `fn` with the clock stopped at `atMs`.
+ *
+ * Needed because everything about a session is a question about time, and
+ * none of it can be asked honestly without moving the clock. The expiry
+ * test below used to hand-build an out-of-date payload and pair it with a
+ * real cookie's signature - which a verifier refuses, but for the WRONG
+ * REASON: the signature covers the body, so a swapped body fails on the
+ * HMAC long before anything looks at `exp`. That test would have passed
+ * with the expiry check deleted. Minting a real cookie in the past and
+ * reading it in the present is the only version that tests what it says. */
+function withClock<T>(atMs: number, fn: () => T): T {
+  const real = Date.now;
+  Date.now = () => atMs;
+  try {
+    return fn();
+  } finally {
+    Date.now = real;
+  }
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The exp inside a cookie, in epoch seconds. Reads the public half, which
+ * is what a browser holds: no secret involved. */
+function expiryOf(cookie: string): number {
+  return (JSON.parse(Buffer.from(cookie.split(".")[0], "base64url").toString("utf8")) as { exp: number }).exp;
 }
 
 function threw(fn: () => unknown): { threw: boolean; message: string } {
@@ -121,17 +152,20 @@ function main() {
   }
 
   {
-    // A cookie whose payload is valid and signed but out of date.
-    const expired = Buffer.from(
-      JSON.stringify({ email: "a@b.com", exp: Math.floor(Date.now() / 1000) - 60 })
-    ).toString("base64url");
-    const signed = withSecret(STRONG, () => {
-      // Re-sign the expired body with the real secret, which is exactly
-      // what an old cookie in a browser is.
-      const issued = createSessionCookieValue("a@b.com");
-      return `${expired}.${issued.split(".")[1]}`;
-    });
-    check("an expired cookie is refused", withSecret(STRONG, () => verifySessionCookieValue(signed)) === null);
+    // A REAL cookie, properly signed, issued long enough ago to have run
+    // out. Minted with the clock moved back rather than hand-built, so the
+    // signature is genuine and `exp` is the only thing wrong with it - see
+    // withClock.
+    const now = Date.now();
+    const old = withClock(now - 31 * DAY_MS, () => withSecret(STRONG, () => createSessionCookieValue("a@b.com")));
+    check(
+      "a cookie older than its own expiry is refused",
+      withClock(now, () => withSecret(STRONG, () => verifySessionCookieValue(old))) === null
+    );
+    check(
+      "and the same cookie verified back when it was issued is fine",
+      withClock(now - 31 * DAY_MS, () => withSecret(STRONG, () => verifySessionCookieValue(old))) === "a@b.com"
+    );
   }
 
   {
@@ -140,6 +174,134 @@ function main() {
     const r = threw(() => withSecret(undefined, () => verifySessionCookieValue("a.b")));
     check("verify with no secret does not throw", r.threw === false, r.message);
     check("and reads as signed out", withSecret(undefined, () => verifySessionCookieValue("a.b")) === null);
+  }
+
+  section("staying signed in");
+
+  // WHAT THIS IS FOR. The cookie was issued once, at sign-in, with an
+  // absolute thirty-day expiry, and nothing ever touched it again. So
+  // "stay signed in" meant "signed in until thirty days after the day you
+  // clicked the link" - and then signed out mid-use, with no warning,
+  // however much the site had been used in between. A traveler who opens
+  // this every week was thrown out on the same day as one who signed in
+  // once and never came back.
+  {
+    const now = Date.now();
+    const mint = (atMs: number) => withClock(atMs, () => withSecret(STRONG, () => createSessionCookieValue("a@b.com")));
+    const renew = (cookie: string | null | undefined, atMs: number) =>
+      withClock(atMs, () => withSecret(STRONG, () => renewSessionCookieValue(cookie)));
+
+    check("a cookie issued seconds ago is not re-issued", renew(mint(now), now) === null);
+    check("nor one issued an hour ago", renew(mint(now - 3600_000), now) === null);
+
+    const weekOld = mint(now - 7 * DAY_MS);
+    const renewed = renew(weekOld, now);
+    check("one in use a week later IS re-issued", typeof renewed === "string", String(renewed));
+    check(
+      "to the same person",
+      withClock(now, () => withSecret(STRONG, () => verifySessionCookieValue(renewed))) === "a@b.com"
+    );
+    check(
+      "with the full thirty days ahead of it again",
+      renewed !== null && expiryOf(renewed) - Math.floor(now / 1000) === SESSION_COOKIE_MAX_AGE_SECONDS,
+      renewed === null ? "null" : String(expiryOf(renewed) - Math.floor(now / 1000))
+    );
+    check(
+      "which is later than the one it replaces",
+      renewed !== null && expiryOf(renewed) > expiryOf(weekOld)
+    );
+
+    // The whole point, stated as the thing someone would notice: use the
+    // site every fortnight for a year and you are never asked to sign in
+    // again.
+    {
+      let cookie = mint(now - 365 * DAY_MS);
+      let signedOutAt: number | null = null;
+      for (let day = 365 - 14; day >= 0; day -= 14) {
+        const at = now - day * DAY_MS;
+        if (withClock(at, () => withSecret(STRONG, () => verifySessionCookieValue(cookie))) === null) {
+          signedOutAt = day;
+          break;
+        }
+        cookie = renew(cookie, at) ?? cookie;
+      }
+      check("a fortnightly visitor is never signed out over a year", signedOutAt === null, `signed out ${signedOutAt} days ago`);
+    }
+
+    // And the other half: stopping counts. Nothing here keeps somebody
+    // signed in forever on the strength of one visit.
+    {
+      const abandoned = mint(now - 365 * DAY_MS);
+      check(
+        "somebody who signed in a year ago and never came back is signed out",
+        withClock(now, () => withSecret(STRONG, () => verifySessionCookieValue(abandoned))) === null
+      );
+      check("and there is nothing to renew", renew(abandoned, now) === null);
+    }
+
+    section("renewal never hands out a session nobody earned");
+
+    check("no cookie renews to nothing", renew(undefined, now) === null);
+    check("an empty cookie renews to nothing", renew("", now) === null);
+    check("a garbage cookie renews to nothing", renew("not.a.cookie", now) === null);
+    {
+      // The one that matters: a renewal must verify first. Re-issuing on a
+      // forged cookie would turn a failed forgery into a real session.
+      const victim = mint(now - 7 * DAY_MS);
+      const forgedBody = Buffer.from(
+        JSON.stringify({ email: "attacker@example.com", exp: Math.floor(now / 1000) + 60 })
+      ).toString("base64url");
+      check("a forged cookie renews to nothing", renew(`${forgedBody}.${victim.split(".")[1]}`, now) === null);
+      check(
+        "a cookie signed with another secret renews to nothing",
+        withClock(now, () => withSecret(`${STRONG}-other`, () => renewSessionCookieValue(victim))) === null
+      );
+    }
+    {
+      // A renewal rides along on an ordinary request. It must never be the
+      // thing that takes one down.
+      const weekOldCookie = mint(now - 7 * DAY_MS);
+      const r = threw(() => withClock(now, () => withSecret("x", () => renewSessionCookieValue(weekOldCookie))));
+      check("an unusable secret does not throw out of a renewal", r.threw === false, r.message);
+      check(
+        "it simply does not renew",
+        withClock(now, () => withSecret("x", () => renewSessionCookieValue(weekOldCookie))) === null
+      );
+      const absent = threw(() => withClock(now, () => withSecret(undefined, () => renewSessionCookieValue(weekOldCookie))));
+      check("and neither does a missing one", absent.threw === false, absent.message);
+    }
+  }
+
+  section("the attributes all three writers share");
+
+  {
+    // Sign-in, renewal and sign-out each set this cookie. A browser
+    // replaces a cookie only when the name, domain AND path match, so a
+    // renewal written under a different path is a SECOND cookie of the same
+    // name rather than a replacement - after which the browser sends both
+    // and signing out clears one of them.
+    const options = sessionCookieOptions();
+    check("the path is the whole site", options.path === "/", options.path);
+    check("it outlives the browser session", options.maxAge === SESSION_COOKIE_MAX_AGE_SECONDS, String(options.maxAge));
+    check("it is thirty days", options.maxAge === 60 * 60 * 24 * 30, String(options.maxAge));
+    check("JavaScript cannot read it", options.httpOnly === true);
+    check(
+      "and it survives the magic link, which arrives from the mail client",
+      options.sameSite === "lax",
+      options.sameSite
+    );
+
+    const bag = process.env as Record<string, string | undefined>;
+    const savedEnv = bag.NODE_ENV;
+    try {
+      bag.NODE_ENV = "production";
+      check("https only in production", sessionCookieOptions().secure === true);
+      bag.NODE_ENV = "development";
+      check("but usable on a local http run", sessionCookieOptions().secure === false);
+    } finally {
+      if (savedEnv === undefined) delete bag.NODE_ENV;
+      else bag.NODE_ENV = savedEnv;
+    }
   }
 
   section("a secret too short to sign with");
@@ -201,6 +363,59 @@ function main() {
     const absent = sessionCheck(undefined);
     check("an absent secret is still MISSING, not weak", absent?.present === false && !absent?.weak, JSON.stringify(absent));
     check("and still down", absent !== undefined && verdictFor(absent) === "down", absent && verdictFor(absent));
+  }
+
+  section("the hostname a session belongs to");
+
+  // "Why am I thrown out of my account after every update?" A session
+  // cookie is host-only - set with no `domain`, so the browser hands it
+  // back to exactly the hostname that issued it. Every Vercel deployment
+  // also gets its OWN permanent hostname, so reaching the site through the
+  // dashboard's link to the latest deployment means a different hostname
+  // after every deploy, and a browser with no cookie for it. Nothing is
+  // broken and nothing is logged; it just looks like being signed out
+  // every time the site is updated. /admin/health is the only thing that
+  // can see it, because it is the only place that knows both halves.
+  {
+    const PROD = "https://yourdecide.com";
+
+    check("the ordinary case says nothing", checkSessionHost("yourdecide.com", PROD) === null);
+    check("case does not matter", checkSessionHost("YourDecide.com", PROD) === null);
+    check("nor does a missing host header", checkSessionHost(null, PROD) === null);
+    check("nor an unparseable site url", checkSessionHost("yourdecide.com", "not a url") === null);
+
+    {
+      // The one that is a deploy-by-deploy sign-out.
+      const preview = checkSessionHost("decide-9f3a2b1c7-robbie.vercel.app", PROD);
+      check("a per-deployment hostname is reported", preview !== null);
+      check("  and named as per-deployment", preview?.perDeployment === true, JSON.stringify(preview));
+      check("  with both halves to compare", preview?.sessionsBelongTo === "yourdecide.com", preview?.sessionsBelongTo);
+    }
+
+    {
+      // The permanent version: one address, not a new one each time.
+      const www = checkSessionHost("www.yourdecide.com", PROD);
+      check("www against the bare domain is reported", www !== null);
+      check("  but not as per-deployment", www?.perDeployment === false, JSON.stringify(www));
+    }
+
+    {
+      // The project's own stable alias is a mismatch worth showing, and it
+      // is NOT per-deployment: it points at whatever is live, so a session
+      // started on it survives the next deploy.
+      const alias = checkSessionHost("decide.vercel.app", PROD);
+      check("the project alias is reported", alias !== null);
+      check("  but not as per-deployment", alias?.perDeployment === false, JSON.stringify(alias));
+    }
+
+    check(
+      "a port is part of the hostname, as the browser treats it",
+      checkSessionHost("localhost:3001", "http://localhost:3000") !== null
+    );
+    check(
+      "and the matching one is silent",
+      checkSessionHost("localhost:3000", "http://localhost:3000") === null
+    );
   }
 
   {

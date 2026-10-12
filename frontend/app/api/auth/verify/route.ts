@@ -31,7 +31,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { consumeMagicLinkToken } from "@/lib/magicLink";
-import { createSessionCookieValue, SESSION_COOKIE_NAME, SESSION_COOKIE_MAX_AGE_SECONDS } from "@/lib/session";
+import { createSessionCookieValue, sessionCookieOptions, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { isMagicLinkTokenShape, renderVerifyPage } from "@/lib/authVerifyPage";
 import { allowedOriginsFor, isCrossOriginRequest } from "@/lib/sameOrigin";
@@ -198,12 +198,10 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.redirect(`${site}/account?signedIn=1`, { status: 303 });
-  response.cookies.set(SESSION_COOKIE_NAME, cookieValue, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
-    path: "/",
-  });
+  // The attributes live in lib/session.ts, shared with the renewal in
+  // /api/account and the clear in /api/auth/logout. They have to match: a
+  // cookie re-issued under a different path or sameSite is a SECOND cookie,
+  // not a replacement.
+  response.cookies.set(SESSION_COOKIE_NAME, cookieValue, sessionCookieOptions());
   return response;
 }

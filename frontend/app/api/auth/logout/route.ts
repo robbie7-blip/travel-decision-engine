@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME } from "@/lib/session";
+import { sessionCookieOptions, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { allowedOriginsFor, isCrossOriginRequest } from "@/lib/sameOrigin";
 
@@ -15,6 +15,12 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.set(SESSION_COOKIE_NAME, "", { maxAge: 0, path: "/" });
+  // Cleared with the same attributes it was set with, maxAge aside. A
+  // browser matches a cookie to overwrite by name, domain and path, so the
+  // path is the load-bearing part - but now that the cookie is also
+  // RE-ISSUED on use (see lib/session.ts), the three places that write it
+  // agreeing is worth more than it was: a mismatch leaves a second cookie
+  // of the same name behind, and signing out would clear one of them.
+  response.cookies.set(SESSION_COOKIE_NAME, "", { ...sessionCookieOptions(), maxAge: 0 });
   return response;
 }

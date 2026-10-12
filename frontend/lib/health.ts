@@ -281,3 +281,62 @@ export function describeAge(seconds: number): string {
   if (hours < 48) return `${hours}h ${minutes % 60}m ago`;
   return `${Math.floor(hours / 24)}d ago`;
 }
+
+/** Whether the hostname somebody is looking at is the hostname their
+ * session cookie belongs to.
+ *
+ * THE QUESTION THIS ANSWERS: "why am I thrown out of my account after
+ * every update?" A session cookie is HOST-ONLY - it is set with no
+ * `domain`, so the browser hands it back to exactly the hostname that
+ * issued it and to nothing else. Every Vercel deployment also gets its own
+ * permanent hostname (`decide-<hash>-<org>.vercel.app`), so visiting the
+ * site through the dashboard's link to the latest deployment means a
+ * different hostname after every single deploy, and therefore a browser
+ * with no cookie for it. Nothing is broken, nothing is logged, and the
+ * experience is being signed out every time the site is updated.
+ *
+ * `www.` versus the bare domain does it too, permanently rather than per
+ * deploy: sign in on one and the other is a stranger.
+ *
+ * This is the only thing in the product that can see it, because it is the
+ * only place that knows both halves - what the browser asked for, and what
+ * getSiteUrl() builds the sign-in link out of. Hostnames are not secrets,
+ * so unlike everything else on that page this one may print both.
+ *
+ * Returns null when there is nothing to say, so the page renders nothing
+ * in the ordinary case. */
+export interface HostMismatch {
+  /** The hostname in front of the person reading the page. */
+  servedFrom: string;
+  /** The hostname sessions are issued for, from getSiteUrl(). */
+  sessionsBelongTo: string;
+  /** True when the served hostname changes with every deployment, which is
+   * the version of this that looks like "signed out after every update"
+   * rather than "signed out on this one address". */
+  perDeployment: boolean;
+}
+
+/** A Vercel per-deployment hostname: the project, a build hash, the scope,
+ * and `.vercel.app`. A custom domain and the project's own stable
+ * `<project>.vercel.app` alias both fall outside this. */
+function isPerDeploymentHost(host: string): boolean {
+  return /\.vercel\.app$/i.test(host) && /-[a-z0-9]{6,}-/i.test(host);
+}
+
+export function checkSessionHost(
+  requestHost: string | null | undefined,
+  siteUrl: string
+): HostMismatch | null {
+  const servedFrom = (requestHost ?? "").trim().toLowerCase();
+  if (!servedFrom) return null;
+
+  let sessionsBelongTo: string;
+  try {
+    sessionsBelongTo = new URL(siteUrl).host.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (!sessionsBelongTo || servedFrom === sessionsBelongTo) return null;
+
+  return { servedFrom, sessionsBelongTo, perDeployment: isPerDeploymentHost(servedFrom) };
+}
