@@ -60,6 +60,14 @@ export function TripView({ jobId }: { jobId: string }) {
   const [refining, setRefining] = useState(false);
   const [refineJobStatus, setRefineJobStatus] = useState<Job["status"] | null>(null);
   const [refineError, setRefineError] = useState("");
+  /** The id a failed pushback's revision was given, when it got that far.
+   *
+   * A refinement is commissioned the moment it is submitted - same model
+   * call and same quota slot as a new trip - so a poll that fails
+   * afterwards has NOT undone the work. Holding the id is what turns "it
+   * broke" into "open it": the trip page then handles it finished, still
+   * running, or stalled with a retry. See onRefinedJobId in lib/api.ts. */
+  const [refineJobId, setRefineJobId] = useState<string | null>(null);
 
   const t = TRANSLATIONS[language];
   const statusMessage = useJobStatusMessage(jobStatus, t);
@@ -170,6 +178,7 @@ export function TripView({ jobId }: { jobId: string }) {
     setRefining(true);
     setRefineJobStatus(null);
     setRefineError("");
+    setRefineJobId(null);
     try {
       // The CURRENT job id, not the one this page was opened with: after a
       // refinement they differ, and a second pushback has to build on the
@@ -177,7 +186,8 @@ export function TripView({ jobId }: { jobId: string }) {
       const { jobId: newJobId, itinerary, brief } = await refineItinerary(
         currentJobId,
         question,
-        setRefineJobStatus
+        setRefineJobStatus,
+        setRefineJobId
       );
       setResult(itinerary);
       setLastBrief(brief);
@@ -250,6 +260,7 @@ export function TripView({ jobId }: { jobId: string }) {
                 refining={refining}
                 refiningLabel={refiningMessage}
                 refineError={refineError}
+                refineJobId={refineJobId}
                 lastQuestion={lastQuestion}
                 currency={currency}
                 rates={rates}

@@ -1161,6 +1161,18 @@ jobs:
       # either way - a five-minute poll leaking one per iteration would
       # accumulate hundreds.
       - run: npm run test:poll-pacing
+      # A failed pushback must not lose the revision it already paid for.
+      # A refinement is a fresh job at a fresh id, commissioned the moment
+      # it is submitted - same model call, same quota slot, same daily
+      # budget as a brand new trip. refineItinerary handed that id back
+      # only on SUCCESS, so a poll that failed afterwards (a timeout, a
+      # dropped connection, a worker restart) left the caller never
+      # knowing it: the record sat in Redis, very possibly finished, at a
+      # URL nobody held, while the traveller looked at the old itinerary
+      # and a sentence in red. The id is handed over BEFORE polling now,
+      # and that ordering is the whole fix - moving the callback back
+      # after the poll turns two cases red.
+      - run: npm run test:refine-handover
       # Who gets paid access, and which Stripe events may change it.
       #
       # The webhook is the only place that grants or revokes paid access and

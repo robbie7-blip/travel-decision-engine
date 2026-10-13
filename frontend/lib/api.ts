@@ -270,7 +270,24 @@ export async function createGenerateJob(brief: TripBriefInput): Promise<string> 
 export async function refineItinerary(
   jobId: string,
   question: string,
-  onStatus?: (status: Job["status"]) => void
+  onStatus?: (status: Job["status"]) => void,
+  /** Called with the NEW job's id the moment it exists, before any
+   * polling.
+   *
+   * WHY IT IS NOT ENOUGH TO RETURN IT. A refinement is a fresh job at a
+   * fresh id, and this function used to hand that id back only on
+   * success. So if the poll threw - a timeout, a dropped connection, a
+   * worker restart - the caller never learned the id at all, and a
+   * refinement that had already been paid for (same model call, same
+   * quota slot, same daily budget as a brand new trip) was ORPHANED: the
+   * record sat in Redis, very possibly finished, at a URL nobody held.
+   * The traveller was left looking at the old itinerary and a sentence in
+   * red.
+   *
+   * Handed over up front, the caller can offer to open it, where the trip
+   * page's own machinery takes it from there - finished, still running,
+   * or stalled with a retry. */
+  onRefinedJobId?: (refinedJobId: string) => void
 ): Promise<{
   jobId: string;
   itinerary: Itinerary;
@@ -285,12 +302,14 @@ export async function refineItinerary(
   });
 
   if (!createResponse.ok) {
-    throw new ApiError(
-      await readErrorDetail(createResponse, `Request failed with status ${createResponse.status}.`)
-    );
+    const failure = await readError(createResponse, `Request failed with status ${createResponse.status}.`);
+    throw new ApiError(failure.detail, failure.reason);
   }
 
   const { jobId: refinedJobId } = (await createResponse.json()) as { jobId: string };
+  // Before the poll, deliberately - see onRefinedJobId. Everything that
+  // can go wrong from here on happens AFTER the work has been commissioned.
+  onRefinedJobId?.(refinedJobId);
   return pollJob(refinedJobId, onStatus);
 }
 

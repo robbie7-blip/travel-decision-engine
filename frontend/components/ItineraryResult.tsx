@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useState } from "react";
 import { ConfidenceTag, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
@@ -267,6 +268,10 @@ interface ItineraryResultProps {
   refining?: boolean;
   refiningLabel?: string;
   refineError?: string;
+  /** The revision's own id, when a failed pushback got as far as creating
+   * one. Offered as a way out rather than a dead end - see
+   * refineOpenRevision in lib/i18n.ts. */
+  refineJobId?: string | null;
   lastQuestion?: string;
   // Defaults to EUR/no rates - every cost figure just renders in EUR, the
   // currency the itinerary was actually generated and budget-checked in.
@@ -296,6 +301,7 @@ export function ItineraryResult({
   refining = false,
   refiningLabel,
   refineError,
+  refineJobId,
   lastQuestion,
   currency = "EUR",
   rates = null,
@@ -852,6 +858,19 @@ export function ItineraryResult({
         {refineError && (
           <div className="font-ui" style={{ marginTop: 8, fontSize: 12, color: "var(--infeasible)" }}>
             {refineError}
+            {/* The revision was already paid for. Whatever went wrong
+                happened after it was commissioned, so it may be sitting
+                there finished - and if it is not, the trip page says
+                which failure it was and offers the right action. Either
+                beats a dead end. */}
+            {refineJobId && (
+              <>
+                {" "}
+                <Link href={`/trip/${refineJobId}`} className="inline-link" style={{ color: "var(--infeasible)" }}>
+                  {t.trip.refineOpenRevision} &rarr;
+                </Link>
+              </>
+            )}
           </div>
         )}
         {!refining && result.pushback_response && (

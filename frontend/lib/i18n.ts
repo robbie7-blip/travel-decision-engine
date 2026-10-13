@@ -326,6 +326,14 @@ export interface Dictionary {
   trip: {
     planAnother: string;
     notFound: string;
+    /** Offered when a pushback failed but its revision EXISTS.
+     *
+     * A refinement is a fresh job at a fresh id, paid for at the moment
+     * it is submitted. If the poll then fails, the revision may well have
+     * finished anyway - so this opens it rather than leaving the
+     * traveller on the old itinerary with a sentence in red. Costs
+     * nothing: it is a link to a job that has already been commissioned. */
+    refineOpenRevision: string;
     /** The trip page when there is nothing to show.
      *
      * One entry per reason in TRIP_FAILURE_REASONS (lib/tripFailure.ts),
@@ -914,6 +922,7 @@ const en: Dictionary = {
   trip: {
     planAnother: "Plan your own trip",
     notFound: "This trip link has expired or doesn't exist.",
+    refineOpenRevision: "Open the revision anyway",
     failed: {
       expired: {
         heading: "This trip link has expired",
@@ -1515,6 +1524,7 @@ const bg: Dictionary = {
   trip: {
     planAnother: "Планирайте свое пътуване",
     notFound: "Тази връзка е изтекла или не съществува.",
+    refineOpenRevision: "Отвори новата версия",
     failed: {
       expired: {
         heading: "Връзката към това пътуване е изтекла",
