@@ -93,3 +93,41 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
     throw new EmailSendFailedError(res.status, reason || "no further detail returned");
   }
 }
+
+/** Sends a finished itinerary to the address on the account.
+ *
+ * Deliberately a sibling of sendMagicLinkEmail rather than a refactor of
+ * it. The two share a provider, a key and an error shape, and factoring
+ * out the fetch would be the obvious tidy - but sign-in is the one path in
+ * this product that cannot be allowed to break, and a shared helper means
+ * every future change to this feature touches it. The duplication is
+ * fifteen lines and buys that separation.
+ *
+ * Throws the same two errors, so the route can tell "not configured" apart
+ * from "Resend said no" the way /api/auth/request-link already does. */
+export async function sendItineraryEmail(to: string, subject: string, html: string): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!apiKey || !from) {
+    throw new EmailNotConfiguredError("RESEND_API_KEY / EMAIL_FROM are not set - cannot email itineraries.");
+  }
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to, subject, html }),
+    signal: AbortSignal.timeout(8_000),
+  });
+
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => "");
+    let reason = bodyText;
+    try {
+      const parsed = JSON.parse(bodyText);
+      if (typeof parsed?.message === "string") reason = parsed.message;
+    } catch {
+      // not JSON - keep the raw text
+    }
+    throw new EmailSendFailedError(res.status, reason || "no further detail returned");
+  }
+}

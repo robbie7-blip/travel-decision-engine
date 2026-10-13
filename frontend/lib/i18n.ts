@@ -207,6 +207,25 @@ export interface Dictionary {
     // Weather outlook strip (see components/WeatherStrip.tsx) - sourced from
     // Open-Meteo, a real forecast when the trip is soon, a labeled historical
     // average otherwise (historicalNote explains which one is showing).
+    /** Sending the itinerary to the signed-in traveller's own address.
+     *
+     * Only ever to their own: the trip link is a public capability, so a
+     * route that emailed it anywhere would be a way to send mail to
+     * arbitrary addresses from this domain. See app/api/trip-email. */
+    emailTrip: {
+      button: string;
+      sending: string;
+      sent: string;
+      /** Shown when the route answers 401 - there is no address to send
+       * to until somebody signs in. */
+      signInFirst: string;
+      failed: string;
+      /** {trip} is the destinations, joined. */
+      subject: string;
+      subjectFallback: string;
+      viewOnline: string;
+      footer: string;
+    };
     /** The trip page on the day itself.
      *
      * The itinerary is a plan - seven days at once, which is right while
@@ -869,6 +888,17 @@ const en: Dictionary = {
     budgetNotFeasible: "Budget: not feasible as stated",
     minEstimate: "Model's minimum estimate",
     free: "Free",
+    emailTrip: {
+      button: "Email it to me",
+      sending: "Sending...",
+      sent: "Sent - check your inbox.",
+      signInFirst: "Sign in and we can email this to you",
+      failed: "That did not send. Try again in a moment.",
+      subject: "Your trip: {trip}",
+      subjectFallback: "your itinerary",
+      viewOnline: "Open the full trip, with maps and prices",
+      footer: "Sent because you asked for it on your trip page. We do not send anything else.",
+    },
     today: {
       heading: "Today",
       position: "Day {day} of {total}",
@@ -1521,6 +1551,17 @@ const bg: Dictionary = {
     budgetNotFeasible: "Бюджет: непостижим при тези условия",
     minEstimate: "Минимална оценка на модела",
     free: "Безплатно",
+    emailTrip: {
+      button: "Изпрати ми го по имейл",
+      sending: "Изпращане...",
+      sent: "Изпратено - проверете пощата си.",
+      signInFirst: "Влезте в профила си и ще ви го изпратим",
+      failed: "Не се изпрати. Опитайте пак след малко.",
+      subject: "Вашето пътуване: {trip}",
+      subjectFallback: "вашият маршрут",
+      viewOnline: "Отворете цялото пътуване, с карти и цени",
+      footer: "Изпратено, защото го поискахте от страницата на пътуването. Друго не изпращаме.",
+    },
     today: {
       heading: "Днес",
       position: "Ден {day} от {total}",

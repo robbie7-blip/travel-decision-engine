@@ -1669,6 +1669,19 @@ jobs:
       # fixed hour must stay in "upcoming", because sorting it into
       # "earlier" buries something still to be done.
       - run: npm run test:today
+      # The itinerary as an email, and the one thing that must not go
+      # wrong in it. EVERY string in an itinerary is written by the MODEL
+      # - titles, locations, the reasoning behind each line - so
+      # interpolating them into HTML unescaped is the same class of bug
+      # app/api/auth/verify carries a comment about, where a value closed
+      # its own <script> and ran as one. HTML mail executes nothing in a
+      # modern client, but it renders injected markup, and an itinerary
+      # line that can rewrite the message around it can forge the link the
+      # message exists to carry. The adversarial case checks the ABSENCE
+      # of markup and of event handlers on real tags rather than the
+      # presence of one entity somebody thought of; dropping a single
+      # escape injects a second <a href> and turns it red.
+      - run: npm run test:itinerary-email
       # How numeric environment variables are read. A variable saved blank
       # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
       # Number("") is 0 - which set the free monthly quota to zero (every

@@ -15,6 +15,7 @@ import { DayPhoto } from "./DayPhoto";
 import { TravelLegRow } from "./TravelLeg";
 import { OfflineReady } from "./OfflineReady";
 import { PrintColophon } from "./PrintColophon";
+import { EmailTripButton } from "./EmailTripButton";
 import { ThinkingMark } from "./ThinkingMark";
 import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
@@ -453,6 +454,14 @@ export function ItineraryResult({
         >
           ⎙ {t.result.printItinerary}
         </button>
+      )}
+
+      {/* The third way of keeping this once you are off the page, beside
+          the other two. Takes no address: it sends to the one on the
+          account, which is the whole security design - see
+          app/api/trip-email. */}
+      {result.days && result.days.length > 0 && (
+        <EmailTripButton jobId={jobId} t={t} language={language} />
       )}
 
       {/* Whether this trip opens without a signal, read from the actual
