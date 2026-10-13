@@ -16,8 +16,9 @@
 // the type on the green keeps that guarantee exact instead of trading it
 // for a scrim and a hope.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { DESTINATION_CITY_NAMES_BG } from "@/lib/destinationCityNamesBg";
 import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import type { Dictionary } from "@/lib/i18n";
@@ -32,10 +33,17 @@ const FRAMES = ["rome", "tokyo", "lisbon", "prague", "copenhagen", "barcelona"] 
 const ROTATE_MS = 6000;
 const FADE_MS = 900;
 
+/** What the browser should pick a width for.
+ *
+ * Measured, not guessed: the gallery box is 326px wide on a 390px phone
+ * and 490px on a 1440px desktop. Getting this wrong is the main way
+ * next/image fails to help - too small a hint and it serves a soft image,
+ * too large and it serves the bytes this change exists to stop serving. */
+const SIZES = "(max-width: 860px) 85vw, 500px";
+
 export function HeroGallery({ t, language }: { t: Dictionary; language: Language }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const preloaded = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     // Motion that starts on its own is exactly what a reduced-motion
@@ -50,17 +58,16 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
     return () => clearInterval(timer);
   }, [paused]);
 
-  // Decode the next frame before it is needed, so the crossfade does not
-  // land on a blank box on a slow connection.
-  useEffect(() => {
-    const next = FRAMES[(index + 1) % FRAMES.length];
-    if (preloaded.current.has(next)) return;
-    preloaded.current.add(next);
-    const img = new Image();
-    img.src = `/destinations/${next}.jpg`;
-  }, [index]);
-
   const slug = FRAMES[index];
+  // The frame after this one, rendered invisibly below so the browser
+  // fetches it before the crossfade needs it.
+  //
+  // THIS REPLACES A `new Image()` PRELOADER, and had to. That preloader
+  // fetched `/destinations/<slug>.jpg` - the RAW file - which next/image
+  // never requests: it asks for `/_next/image?url=...&w=828`, a resized
+  // WebP. Keeping both would have downloaded the original AND the
+  // optimised copy, making this change worse than no change.
+  const nextSlug = FRAMES[(index + 1) % FRAMES.length];
   const suffix = language === "bg" ? "?lang=bg" : "";
   // These are Wikimedia photographs and most of their licences require the
   // photographer, the licence and a link back. Rendered wherever the photo
@@ -78,18 +85,43 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
       onBlur={() => setPaused(false)}
     >
       <Link href={`/destinations/${slug}${suffix}`} className="hero-gallery-link">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        {/* next/image, not <img>, and this is the whole point of the
+            change: the raw files are 42kB to 549kB of JPEG, six of them
+            1200-1600px wide, and they render into a box measured at 326px
+            on a phone. The optimiser serves a WebP at the width the device
+            actually needs - checked locally, where /destinations/rome
+            comes back as `_next/image?...&w=828` in image/webp rather than
+            the original.
+            
+            `fill` rather than width/height because .hero-gallery is
+            already position:relative with a fixed 4/3 aspect-ratio, so
+            there is a box to fill and no layout shift to guard against.
+            The class still lands on the <img>, so the crossfade animation
+            and object-fit:cover are untouched. */}
+        <Image
           key={slug}
           src={`/destinations/${slug}.jpg`}
           alt=""
+          fill
+          sizes={SIZES}
           className="hero-gallery-img"
           style={{ animationDuration: `${FADE_MS}ms` }}
-          // The first frame is the page's largest image and the likely LCP
-          // element, so it is fetched eagerly and at priority; the rest
-          // arrive through the preloader above.
-          fetchPriority={index === 0 ? "high" : "auto"}
-          decoding="async"
+          // The first frame is the page's largest image and the likely
+          // LCP element. `priority` is next/image's version of the
+          // fetchPriority hint this used to set by hand, and it also
+          // preloads it in the document head.
+          priority={index === 0}
+        />
+        {/* Invisible, and not announced: it exists only so the next
+            crossfade has something decoded to fade to. */}
+        <Image
+          key={`ahead-${nextSlug}`}
+          src={`/destinations/${nextSlug}.jpg`}
+          alt=""
+          fill
+          sizes={SIZES}
+          className="hero-gallery-ahead"
+          aria-hidden
         />
         <span className="hero-gallery-caption font-ui">
           <span className="hero-gallery-city">{cityName(slug, language)}</span>

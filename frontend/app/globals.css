@@ -2624,6 +2624,19 @@ p {
   animation: hero-gallery-fade ease both;
 }
 
+/* The frame AFTER the one on screen, mounted so the browser fetches it
+   before the crossfade needs it. It replaced a `new Image()` preloader
+   that fetched the raw JPEG - a file next/image never asks for - so
+   keeping that would have downloaded the original and the optimised copy
+   both. Invisible and untouchable rather than display:none, because a
+   display:none image is not fetched, which is the one thing this must
+   still do. */
+.hero-gallery-ahead {
+  object-fit: cover;
+  opacity: 0;
+  pointer-events: none;
+}
+
 @keyframes hero-gallery-fade {
   from {
     opacity: 0;

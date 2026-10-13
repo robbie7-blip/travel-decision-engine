@@ -17,6 +17,7 @@
 
 import { coverPhotoFor } from "@/lib/tripCover";
 import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
+import Image from "next/image";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 import { safeHref } from "@/lib/linkify";
@@ -75,8 +76,23 @@ export function TripCover({
   return (
     <header className="trip-cover" data-has-photo={photo !== null}>
       {photo && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo.src} alt="" className="trip-cover-photo" />
+        // next/image, same reasoning as HeroGallery: these are the
+        // Wikimedia guide photographs, which run to 549kB, and this one is
+        // full-bleed on the page a traveller spends the longest on. `fill`
+        // because .trip-cover is already position:relative with
+        // overflow:hidden, and .trip-cover-photo already sets inset:0 and
+        // object-fit:cover on whatever element lands there.
+        //
+        // priority: this is the first thing on the trip page and the
+        // certain LCP element, so it is preloaded rather than discovered.
+        <Image
+          src={photo.src}
+          alt=""
+          fill
+          sizes="(max-width: 1000px) 100vw, 960px"
+          priority
+          className="trip-cover-photo"
+        />
       )}
       <div className="trip-cover-scrim" />
       <div className="trip-cover-body">

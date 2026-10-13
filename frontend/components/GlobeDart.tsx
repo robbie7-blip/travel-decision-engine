@@ -34,6 +34,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import Image from "next/image";
 // TYPE ONLY, so none of lib/dartGlobe reaches the initial bundle.
 //
 // That module imports worldGeo, which is 140KB of country topology, and
@@ -229,8 +230,20 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
                 image. */}
             {guides.length > 0 && (
               <div className="spin-result-photo">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/destinations/${guides[0]}.jpg`} alt="" />
+                {/* next/image for the same reason as HeroGallery: the
+                    source files run to 549kB and render into a card a few
+                    hundred pixels wide, so the optimiser serves a WebP at
+                    the width the device needs. `fill` because
+                    .spin-result-photo is already position:relative with a
+                    16/9 aspect-ratio, and the existing
+                    `.spin-result-photo img` rule still applies to the
+                    element next/image renders. */}
+                <Image
+                  src={`/destinations/${guides[0]}.jpg`}
+                  alt=""
+                  fill
+                  sizes="(max-width: 860px) 90vw, 480px"
+                />
                 {DESTINATION_PHOTO_CREDITS[guides[0]] && (
                   <a
                     className="spin-result-credit font-ui"
