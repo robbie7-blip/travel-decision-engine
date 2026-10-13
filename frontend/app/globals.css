@@ -1487,6 +1487,10 @@ p {
   .btn-primary,
   .qa-example,
   .qa-photo,
+  /* The two tappable things in the Today panel: the "earlier today"
+     disclosure and the link down to the full plan. */
+  .today-past summary,
+  .today-all,
   /* The saved-conversations bar and its rows. A row is a line of text in a
      list, which is 30px of its own, and the delete button beside it is an
      icon. */
@@ -3580,6 +3584,134 @@ p {
   .dead-end-actions {
     justify-content: center;
   }
+}
+
+/* The trip page on the day itself (components/TodayOnTrip.tsx).
+ *
+ * A panel, not a section, and that is the point: on day three this is the
+ * thing you opened the page for, so it gets a box and the top of the
+ * page, while the plan below keeps its quieter typography. Absent
+ * entirely when today is not a trip day. */
+.today {
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--bg-panel-raised);
+  padding: 16px 18px;
+  margin-bottom: 26px;
+}
+
+.today-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.today-heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.today-position {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.today-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+}
+
+.today-note {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.today-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.today-item {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.today-item:last-child {
+  border-bottom: none;
+}
+
+/* The next thing, which is the one piece of information this panel
+   exists to deliver. Heavier than the rest rather than coloured: the
+   itinerary already uses colour for confidence, and a second meaning on
+   the same channel would muddle both. */
+.today-item[data-lead="true"] .today-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.today-time {
+  flex-shrink: 0;
+  min-width: 46px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.today-what {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.today-title {
+  font-size: 14px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.today-where {
+  font-size: 11px;
+  color: var(--ink-dim);
+  overflow-wrap: anywhere;
+}
+
+/* Collapsed, because what has already happened is context rather than
+   information - but kept, because "did we do that one" is a real question
+   at six in the evening. */
+.today-past {
+  margin-top: 12px;
+}
+
+.today-past summary {
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.today-list-past .today-title,
+.today-list-past .today-time {
+  color: var(--ink-dim);
+}
+
+.today-all {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--grounded);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* What to pack (components/PackingList.tsx).

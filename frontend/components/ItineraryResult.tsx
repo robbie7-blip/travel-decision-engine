@@ -5,6 +5,7 @@ import { Fragment, useState } from "react";
 import { ConfidenceTag, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
 import { PackingList } from "./PackingList";
+import { TodayOnTripPanel } from "./TodayOnTrip";
 import { useWeather } from "@/lib/useWeather";
 import { TripQA } from "./TripQA";
 import { TripVisitedPrompt } from "./TripVisitedPrompt";
@@ -460,6 +461,16 @@ export function ItineraryResult({
           answer "will I still have this when I need it". */}
       <OfflineReady jobId={jobId} t={t} />
 
+      {/* On the day itself, what is happening now goes FIRST - above the
+          confidence summary, because on day two "0 of 8 line items are
+          backed by a live search" is not what somebody standing in a
+          street needs before knowing where lunch is. The plan below is
+          the right shape for deciding and the wrong one for travelling.
+          
+          Renders nothing at all when today is not a trip day, so it is
+          absent for the whole of planning and after the trip ends. */}
+      <TodayOnTripPanel days={result.days} t={t} />
+
       {result.budget_feasibility && (
         <div style={{ marginBottom: 24 }}>
           <div
@@ -557,6 +568,10 @@ export function ItineraryResult({
         </div>
       )}
 
+      {/* Where the Today panel's "see the whole trip" lands. An anchor
+          rather than a route, so it still works with no network - this
+          page is cached for offline use. */}
+      <span id="trip-days" />
       {result.days &&
         result.days.map((day) => (
           <div key={day.day} className="trip-day" style={{ marginBottom: 28 }}>

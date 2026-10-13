@@ -207,6 +207,24 @@ export interface Dictionary {
     // Weather outlook strip (see components/WeatherStrip.tsx) - sourced from
     // Open-Meteo, a real forecast when the trip is soon, a labeled historical
     // average otherwise (historicalNote explains which one is showing).
+    /** The trip page on the day itself.
+     *
+     * The itinerary is a plan - seven days at once, which is right while
+     * deciding and wrong while standing in a street on day three. This is
+     * the panel that leads with today instead (lib/today.ts). */
+    today: {
+      heading: string;
+      /** "Day 3 of 7". */
+      position: string;
+      next: string;
+      earlier: string;
+      /** When everything on today's list has already been. */
+      done: string;
+      /** When today has no items at all - a deliberately free day. */
+      free: string;
+      /** Link down to the full itinerary below. */
+      seeWholeTrip: string;
+    };
     /** What to pack, derived from this trip's own forecast rather than a
      * generic list (lib/packing.ts). The reasons are data, not English, so
      * each line can say in the reading language which fact put it there -
@@ -851,6 +869,15 @@ const en: Dictionary = {
     budgetNotFeasible: "Budget: not feasible as stated",
     minEstimate: "Model's minimum estimate",
     free: "Free",
+    today: {
+      heading: "Today",
+      position: "Day {day} of {total}",
+      next: "Next",
+      earlier: "Earlier today",
+      done: "That is everything for today.",
+      free: "Nothing scheduled today - it is yours.",
+      seeWholeTrip: "See the whole trip",
+    },
     packing: {
       heading: "What to pack",
       basedOn: "From the forecast for your dates: {cold} to {hot}.",
@@ -1494,6 +1521,15 @@ const bg: Dictionary = {
     budgetNotFeasible: "Бюджет: непостижим при тези условия",
     minEstimate: "Минимална оценка на модела",
     free: "Безплатно",
+    today: {
+      heading: "Днес",
+      position: "Ден {day} от {total}",
+      next: "Следва",
+      earlier: "По-рано днес",
+      done: "Това е всичко за днес.",
+      free: "Днес няма нищо планирано - денят е ваш.",
+      seeWholeTrip: "Виж цялото пътуване",
+    },
     packing: {
       heading: "Какво да вземете",
       basedOn: "По прогнозата за вашите дати: {cold} до {hot}.",

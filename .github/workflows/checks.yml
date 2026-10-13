@@ -1658,6 +1658,17 @@ jobs:
       # millimetres and leaves the chance null, so checking only the
       # chance reported every trip booked months out as dry.
       - run: npm run test:packing
+      # Which part of the trip is happening now. Three things here would
+      # be wrong in ways nobody notices until they are standing in a
+      # street somewhere: localDateOf must read the LOCAL date parts, not
+      # toISOString(), which at 01:00 in Sofia returns yesterday and would
+      # show the wrong day of the trip to anyone looking late at night;
+      # minutesOfDay must return null for an unparseable time rather than
+      # 0, since midnight is a real time and folding junk into it files
+      # the item as already past for the whole day; and an item with no
+      # fixed hour must stay in "upcoming", because sorting it into
+      # "earlier" buries something still to be done.
+      - run: npm run test:today
       # How numeric environment variables are read. A variable saved blank
       # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
       # Number("") is 0 - which set the free monthly quota to zero (every
