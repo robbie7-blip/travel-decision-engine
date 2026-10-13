@@ -1640,6 +1640,24 @@ jobs:
       # the alignment makes 4 cases red; reverting the shiftYear clamp (Feb
       # 29 rolled FORWARD to Mar 1) makes 1.
       - run: npm run test:weather
+      # What to pack, derived from the trip's own forecast rather than a
+      # generic list - no model call, so it costs nothing, cannot
+      # hallucinate a hiking boot into a city break, and still works on
+      # the plane where the trip page already does.
+      #
+      # What the suite really guards is the LIST OF INPUTS. The tempting
+      # version reads item titles for "beach" and "hike", and lib/types.ts
+      # says directly above ItineraryItem why that cannot work: titles
+      # follow the trip's response language, which is the reason is_flight
+      # and venue_name exist as structured fields at all. interests and
+      # party_composition are free text the traveller typed, not a
+      # canonical set. So one case runs the SAME trip in English and
+      # Bulgarian and requires an identical list; reaching for a keyword
+      # turns it red. It also pins the rain count reading BOTH weather
+      # fields - a historical average beyond the forecast horizon carries
+      # millimetres and leaves the chance null, so checking only the
+      # chance reported every trip booked months out as dry.
+      - run: npm run test:packing
       # How numeric environment variables are read. A variable saved blank
       # in a hosting dashboard is PRESENT, so `?? default` doesn't fire and
       # Number("") is 0 - which set the free monthly quota to zero (every

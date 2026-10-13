@@ -3582,6 +3582,85 @@ p {
   }
 }
 
+/* What to pack (components/PackingList.tsx).
+ *
+ * Two columns per line, and that split is the feature: the item on the
+ * left, the FACT that put it there on the right. A packing list where
+ * every line says "rain forecast on 3 of your days" is a different object
+ * from one that says "umbrella", and it is the same posture every other
+ * line on this page takes with its confidence tag. */
+.packing {
+  break-inside: avoid;
+}
+
+.packing-basis {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.packing-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* Two columns where there is room, one on a phone. Not a flex wrap: the
+     reasons on the right have to line up or the column stops reading as a
+     column. */
+  /* 420, not 280. At 280 a 960px column fitted THREE of these, which
+     left so little room for the reason that it ellipsised to "13C between
+     morning an..." - and the reason is the entire point of the feature.
+     Two columns, each wide enough to say why. */
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 2px 32px;
+}
+
+.packing-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.packing-what {
+  color: var(--ink);
+}
+
+/* Dimmer and smaller: it is the evidence, not the instruction.
+   
+   WRAPPED, NOT CLIPPED. This was one line with an ellipsis, on the theory
+   that a long reason should not push its item onto two lines. Rendered,
+   that theory was plainly wrong: "13C between morning an..." and "rain
+   forecast on 2 of your ..." are the half of each line that justifies it,
+   and truncating them turns the feature back into an ordinary packing
+   list. A taller row is the cheaper cost. */
+.packing-why {
+  flex-shrink: 0;
+  max-width: 46%;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 520px) {
+  /* The reason moves under the item rather than competing with it for a
+     326px line. */
+  .packing-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .packing-why {
+    max-width: 100%;
+  }
+}
+
 /* The /showcase empty state (app/showcase/page.tsx).
 
    A panel rather than a bare line, because when there is nothing curated

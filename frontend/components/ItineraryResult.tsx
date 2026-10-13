@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Fragment, useState } from "react";
 import { ConfidenceTag, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
+import { PackingList } from "./PackingList";
+import { useWeather } from "@/lib/useWeather";
 import { TripQA } from "./TripQA";
 import { TripVisitedPrompt } from "./TripVisitedPrompt";
 import { DayMap } from "./DayMap";
@@ -312,6 +314,11 @@ export function ItineraryResult({
   interests,
   language = "en",
 }: ItineraryResultProps) {
+  // Fetched ONCE here and handed to both readers: the outlook strip and
+  // the packing list derived from it. It used to live privately inside
+  // WeatherStrip, which would have meant two /api/weather calls for one
+  // answer the moment a second reader existed.
+  const weather = useWeather(destinations ?? [], startDate ?? "", endDate ?? "");
   const [question, setQuestion] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
@@ -494,7 +501,13 @@ export function ItineraryResult({
       )}
 
       {destinations && destinations.length > 0 && startDate && endDate && (
-        <WeatherStrip destinations={destinations} startDate={startDate} endDate={endDate} t={t} language={language} />
+        <>
+          <WeatherStrip weather={weather} t={t} language={language} />
+          {/* Derived from the SAME forecast object, not a second fetch -
+              see lib/useWeather.ts. Sits under the outlook because it is
+              the conclusion drawn from it. */}
+          <PackingList weather={weather} days={result.days} startDate={startDate} endDate={endDate} t={t} />
+        </>
       )}
 
       {result.key_decisions && result.key_decisions.length > 0 && (

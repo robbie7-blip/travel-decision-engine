@@ -207,6 +207,20 @@ export interface Dictionary {
     // Weather outlook strip (see components/WeatherStrip.tsx) - sourced from
     // Open-Meteo, a real forecast when the trip is soon, a labeled historical
     // average otherwise (historicalNote explains which one is showing).
+    /** What to pack, derived from this trip's own forecast rather than a
+     * generic list (lib/packing.ts). The reasons are data, not English, so
+     * each line can say in the reading language which fact put it there -
+     * the same posture every other line on this page takes. */
+    packing: {
+      heading: string;
+      /** Quotes the numbers the list was built from, so it reads as a
+       * conclusion rather than received wisdom. */
+      basedOn: string;
+      /** Shown when there is a forecast but nothing it triggered. */
+      nothingSpecial: string;
+      items: Record<string, string>;
+      reasons: Record<string, string>;
+    };
     weather: {
       heading: string;
       historicalNote: string;
@@ -837,6 +851,40 @@ const en: Dictionary = {
     budgetNotFeasible: "Budget: not feasible as stated",
     minEstimate: "Model's minimum estimate",
     free: "Free",
+    packing: {
+      heading: "What to pack",
+      basedOn: "From the forecast for your dates: {cold} to {hot}.",
+      nothingSpecial: "Nothing unusual for these dates - the basics below will do.",
+      items: {
+        snowBoots: "Boots with grip",
+        hatGloves: "Hat and gloves",
+        winterCoat: "A proper winter coat",
+        warmLayer: "A warm layer for the evenings",
+        layers: "Layers you can take off",
+        rainShell: "A rain shell",
+        umbrella: "An umbrella",
+        sunProtection: "Sunscreen",
+        sunHat: "A sun hat",
+        waterBottle: "A refillable water bottle",
+        liquidsBag: "Liquids under 100ml, in one clear bag",
+        medsCarryOn: "Medication in your cabin bag, not the hold",
+        laundryPlan: "Half the clothes you think, and a laundry plan",
+        walkingShoes: "Shoes you have already broken in",
+        adapter: "A plug adapter",
+        documents: "Passport, cards, and a photo of both",
+      },
+      reasons: {
+        cold: "mornings down to {value}C",
+        freezing: "down to {value}C",
+        hot: "up to {value}C",
+        swing: "{value}C between morning and afternoon",
+        rain: "rain forecast on {value} of your days",
+        snow: "snow forecast on {value} of your days",
+        flight: "you are flying",
+        longTrip: "{value} nights away",
+        always: "on every trip",
+      },
+    },
     weather: {
       heading: "Weather outlook",
       historicalNote: "Some of these dates are beyond real forecast range - showing typical weather for these dates based on the last few years, not a forecast.",
@@ -1446,6 +1494,40 @@ const bg: Dictionary = {
     budgetNotFeasible: "Бюджет: непостижим при тези условия",
     minEstimate: "Минимална оценка на модела",
     free: "Безплатно",
+    packing: {
+      heading: "Какво да вземете",
+      basedOn: "По прогнозата за вашите дати: {cold} до {hot}.",
+      nothingSpecial: "Нищо необичайно за тези дати - основното по-долу е достатъчно.",
+      items: {
+        snowBoots: "Обувки с грайфер",
+        hatGloves: "Шапка и ръкавици",
+        winterCoat: "Истинско зимно яке",
+        warmLayer: "Топъл слой за вечерите",
+        layers: "Дрехи на слоеве, които да свалите",
+        rainShell: "Яке за дъжд",
+        umbrella: "Чадър",
+        sunProtection: "Слънцезащитен крем",
+        sunHat: "Шапка за слънце",
+        waterBottle: "Бутилка за вода за многократна употреба",
+        liquidsBag: "Течности под 100 мл, в един прозрачен плик",
+        medsCarryOn: "Лекарствата в ръчния багаж, не в багажното",
+        laundryPlan: "Половината дрехи, които мислите, и план за пране",
+        walkingShoes: "Обувки, които вече сте разходили",
+        adapter: "Адаптер за контакт",
+        documents: "Паспорт, карти и снимка на двете",
+      },
+      reasons: {
+        cold: "сутрини до {value}C",
+        freezing: "до {value}C",
+        hot: "до {value}C",
+        swing: "{value}C разлика между сутрин и следобед",
+        rain: "дъжд по прогноза в {value} от дните ви",
+        snow: "сняг по прогноза в {value} от дните ви",
+        flight: "летите",
+        longTrip: "{value} нощувки",
+        always: "при всяко пътуване",
+      },
+    },
     weather: {
       heading: "Прогноза за времето",
       historicalNote: "Част от тези дати са извън обхвата на реална прогноза - показваме типично време за тези дати въз основа на последните няколко години, не прогноза.",

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { SectionLabel } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
 import type { DestinationWeather, WeatherCondition } from "@/lib/weather";
@@ -60,31 +59,6 @@ function WeatherIcon({ condition }: { condition: WeatherCondition }) {
   }
 }
 
-function useWeather(destinations: string[], startDate: string, endDate: string): DestinationWeather | null {
-  const [weather, setWeather] = useState<DestinationWeather | null>(null);
-
-  useEffect(() => {
-    if (destinations.length === 0 || !startDate || !endDate) return;
-    let cancelled = false;
-
-    fetch(`/api/weather?destinations=${encodeURIComponent(destinations.join(","))}&start=${startDate}&end=${endDate}`)
-      .then((res) => res.json())
-      .then((data: DestinationWeather) => {
-        if (!cancelled) setWeather(data);
-      })
-      .catch(() => {
-        if (!cancelled) setWeather({});
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destinations.join(","), startDate, endDate]);
-
-  return weather;
-}
-
 // Bug fixed: this used to be a single module-level formatter hardcoded to
 // "en" regardless of the app's selected language - every forecast day
 // label ("Mon, 12 Aug") showed English weekday/month abbreviations even
@@ -97,19 +71,17 @@ const LOCALE_BY_LANGUAGE: Record<Language, string> = {
 };
 
 export function WeatherStrip({
-  destinations,
-  startDate,
-  endDate,
+  weather,
   t,
   language = "en",
 }: {
-  destinations: string[];
-  startDate: string;
-  endDate: string;
+  /** Fetched once by the caller and shared with the packing list, which
+     is derived from the same forecast - see lib/useWeather.ts. null while
+     it is still in flight. */
+  weather: DestinationWeather | null;
   t: Dictionary;
   language?: Language;
 }) {
-  const weather = useWeather(destinations, startDate, endDate);
   const weekdayFormatter = new Intl.DateTimeFormat(LOCALE_BY_LANGUAGE[language], {
     weekday: "short",
     day: "numeric",
