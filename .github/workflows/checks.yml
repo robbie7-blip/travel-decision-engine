@@ -1148,6 +1148,19 @@ jobs:
       # minutes of spinner") nor for a client-side timeout, whose job is
       # very likely still running and would be duplicated.
       - run: npm run test:trip-failure
+      # How often the trip page polls, and the one case where the answer
+      # is "less often". 400ms is right for a visible tab and is NOT a
+      # liveness ping - those polls are the content feed for
+      # components/TripBuilding, whose own comment reads "Nothing here is
+      # a fake progress bar. Every row is real content." A hidden tab is
+      # different: at 400ms it makes 150 round trips a minute to drive an
+      # interface nobody can see, and a minute is long enough that people
+      # go and do something else. Asserts that a hidden tab backs off,
+      # that returning to it resumes at once rather than after up to two
+      # seconds of staleness, and that the visibility listener is removed
+      # either way - a five-minute poll leaking one per iteration would
+      # accumulate hundreds.
+      - run: npm run test:poll-pacing
       # Who gets paid access, and which Stripe events may change it.
       #
       # The webhook is the only place that grants or revokes paid access and

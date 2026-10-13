@@ -35,8 +35,70 @@ export class ApiError extends Error {
 // sitting in Redis while the client waits out the rest of its sleep. At 800
 // that averaged ~400ms of pure lag on the traveler's clock for no reason
 // beyond saving a handful of Upstash reads per run.
-const POLL_INTERVAL_MS = 400;
+export const POLL_INTERVAL_MS = 400;
 const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes - generous now that generation runs in the worker, unconstrained by a serverless timeout
+
+/** How long to wait between polls while NOBODY IS LOOKING.
+ *
+ * 400ms is right for a visible tab and is not up for negotiation: these
+ * polls are not a "is it done yet" ping, they are the content feed for
+ * components/TripBuilding, whose own comment is "Nothing here is a fake
+ * progress bar. Every row is real content." Slowing them down would make
+ * the one genuinely engaging minute in this product stutter.
+ *
+ * None of that applies to a tab in the background, which is where a good
+ * share of generations are actually spent - a minute is long enough that
+ * people go and do something else. At 400ms a hidden tab makes 150 round
+ * trips a minute to drive an interface nobody can see.
+ *
+ * So hidden tabs back off to this, and come back to full speed the
+ * INSTANT they are looked at again: the wait races the timer against the
+ * visibility change, so returning to the tab costs nothing rather than up
+ * to two seconds of staleness. Browsers throttle background timers
+ * anyway, but by an amount that varies per browser and per power state -
+ * this makes the behaviour ours and predictable. */
+export const HIDDEN_POLL_INTERVAL_MS = 2000;
+
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Resolves the moment the page becomes visible again, or never if there
+ * is no document to ask (server, or a test). Always removes its listener,
+ * including when the race is won by the timer - a five-minute poll would
+ * otherwise accumulate hundreds of them. */
+function whenVisible(): { promise: Promise<void>; cancel: () => void } {
+  if (typeof document === "undefined") return { promise: new Promise<void>(() => {}), cancel: () => {} };
+  let off = () => {};
+  const promise = new Promise<void>((resolve) => {
+    const onChange = () => {
+      if (document.visibilityState === "visible") {
+        off();
+        resolve();
+      }
+    };
+    document.addEventListener("visibilitychange", onChange);
+    off = () => document.removeEventListener("visibilitychange", onChange);
+  });
+  return { promise, cancel: () => off() };
+}
+
+/** One gap between polls, at the speed the tab deserves.
+ *
+ * Exported for lib/pollPacing.test.ts, which is the only way to assert
+ * that a hidden tab actually backs off, that returning to it resumes
+ * immediately, and that the visibility listener is removed either way. */
+export async function waitBeforeNextPoll(): Promise<void> {
+  const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+  if (!hidden) {
+    await delay(POLL_INTERVAL_MS);
+    return;
+  }
+  const visible = whenVisible();
+  try {
+    await Promise.race([delay(HIDDEN_POLL_INTERVAL_MS), visible.promise]);
+  } finally {
+    visible.cancel();
+  }
+}
 
 async function readErrorDetail(response: Response, fallback: string): Promise<string> {
   return (await readError(response, fallback)).detail;
@@ -143,7 +205,7 @@ export async function pollJob(
       // running: the thing to do is look again, not start a second one.
       throw new ApiError("This is taking much longer than expected - try again shortly.", "timed_out");
     }
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    await waitBeforeNextPoll();
   }
 }
 
