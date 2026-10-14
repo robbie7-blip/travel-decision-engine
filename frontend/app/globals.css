@@ -2644,12 +2644,9 @@ p {
   min-width: 0;
 }
 
-/* Gold, the one warm accent on the band, and a short rule before it the
-   way a magazine sets a kicker. */
+/* Gold, the one warm accent on the band. No rule before it: a short
+   line ahead of the text read as a long dash. */
 .hero-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   margin: 0 0 16px;
   font-size: 12px;
   font-weight: 700;
@@ -2657,13 +2654,6 @@ p {
   text-transform: uppercase;
   line-height: 1.5;
   color: var(--brand-gold);
-}
-
-.hero-eyebrow::before {
-  content: "";
-  flex: 0 0 24px;
-  height: 2px;
-  background: var(--brand-gold);
 }
 
 .hero-subhead {
