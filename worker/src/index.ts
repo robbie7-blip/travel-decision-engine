@@ -2574,13 +2574,16 @@ const FINAL_WRITE_RETRY_MS = [100, 300, 800];
  * job id. Best effort with a short timeout: a missed ping costs the
  * traveller an email, never the trip, and the trip page still shows it. */
 async function notifyTripReady(redis: Redis, job: Job): Promise<void> {
-  if (job.status !== "done") {
-    // A failed job sends nothing; the request is simply dropped so a
-    // retry does not inherit it.
-    await redis.del(tripReadyNotifyKey(job.id)).catch(() => {});
-    return;
-  }
+  // One try around everything, including the failed-job branch: this is
+  // called without await, so anything it threw would surface as an
+  // unhandled rejection rather than a log line.
   try {
+    if (job.status !== "done") {
+      // A failed job sends nothing; the request is simply dropped so a
+      // retry does not inherit it.
+      await redis.del(tripReadyNotifyKey(job.id));
+      return;
+    }
     const notify = readTripReadyNotify(await redis.get(tripReadyNotifyKey(job.id)));
     if (!notify) return;
     const res = await fetch(notify.url, {
@@ -2928,6 +2931,14 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
       });
   };
 
+  /** A step forward in the work, published at once so the page moves
+   * with it rather than at the next day or heartbeat. */
+  const setStage = (next: GenerationStage): void => {
+    if (jobFinished || stage === next) return;
+    stage = next;
+    publishProgress(progressDays);
+  };
+
   /** Keeps a running job's record from being mistaken for a dead one.
    *
    * stallReason (lib/jobs.ts) calls a "running" job dead after
@@ -2949,14 +2960,6 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
    * write launched while the status is still "running" carries a snapshot
    * with no result, and nothing else stops it landing after the final
    * one. */
-  /** A step forward in the work, published at once so the page moves
-   * with it rather than at the next day or heartbeat. */
-  const setStage = (next: GenerationStage): void => {
-    if (jobFinished || stage === next) return;
-    stage = next;
-    publishProgress(progressDays);
-  };
-
   const touchRunning = (): void => {
     if (jobFinished) return;
     job.updatedAt = Date.now();
