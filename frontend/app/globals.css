@@ -140,7 +140,7 @@
      sans faces on the same line of sight, and a layout that measured
      differently on each platform. The system stack stays as the fallback
      for the moment before the webfont lands. */
-  --font-body: var(--font-ui), var(--font-ui-cyrillic), -apple-system, BlinkMacSystemFont,
+  --font-body: var(--font-ui), -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
 
   /* Decorative slot names kept from an earlier pass so component files
@@ -194,7 +194,7 @@ button {
    Before this, the display face had no Cyrillic at all and every Bulgarian
    heading dropped to Georgia. */
 .font-display {
-  font-family: var(--font-display), var(--font-display-cyrillic), Georgia, serif;
+  font-family: var(--font-display), Georgia, serif;
 }
 
 /* The interface class: nav, chips, labels, buttons, form controls, the
@@ -204,7 +204,7 @@ button {
 .font-ui {
   /* Two entries, one typeface: the second carries the Cyrillic cuts and
      is fetched only on pages that render them - see layout.tsx. */
-  font-family: var(--font-ui), var(--font-ui-cyrillic), -apple-system, BlinkMacSystemFont,
+  font-family: var(--font-ui), -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
   /* Digits still line up in a column even in the proportional face -
      which is most of what the monospace was really being used for. */
@@ -1144,7 +1144,7 @@ a {
   font-size: 20px;
   font-weight: 700;
   flex-shrink: 0;
-  font-family: var(--font-display), var(--font-display-cyrillic), Georgia, serif;
+  font-family: var(--font-display), Georgia, serif;
 }
 
 .account-plan-badge {
@@ -5238,4 +5238,72 @@ a.trip-notify-note {
     animation: none;
     background-image: none;
   }
+}
+
+/* "Type the 6-digit code from the email" - see components/SignInCodeEntry.tsx. */
+.signin-code {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--bg-panel-raised);
+}
+
+.signin-code-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* A grid, not a wrapping flex row: the button's own minimum width pushed
+   it past the card's edge on a 390px phone before the row would wrap. */
+.signin-code-row {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) auto;
+  justify-content: start;
+  gap: 8px;
+}
+
+.signin-code-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 22px;
+  letter-spacing: 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+
+.signin-code-input::placeholder {
+  color: var(--line-strong);
+}
+
+.signin-code-input[aria-invalid="true"] {
+  border-color: var(--infeasible);
+}
+
+.signin-code-submit {
+  min-height: 48px;
+  padding: 0 20px !important;
+  font-size: 14px !important;
+  box-shadow: none !important;
+}
+
+/* Disabled until six digits are in - but still visibly the button,
+   rather than .btn-primary's disabled grey on this grey panel. */
+.signin-code-submit:disabled {
+  background: var(--bg-panel) !important;
+  color: var(--ink-dim) !important;
+  border: 1px solid var(--line-strong) !important;
+}
+
+.signin-code-error {
+  font-size: 13px;
+  color: var(--infeasible);
 }

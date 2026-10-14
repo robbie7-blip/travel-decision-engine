@@ -25,18 +25,19 @@ const literata = Literata({
   style: ["normal", "italic"],
 });
 
-// Cyrillic cuts of the same face, split out for the same reason as the
-// interface font below: next/font preloads every declared subset, and a
-// single list would preload the Cyrillic file on English pages. Off the
-// preload list, the stylesheet's unicode-range fetches it only where a
-// Cyrillic character actually renders.
-const literataCyrillic = Literata({
-  subsets: ["cyrillic"],
-  variable: "--font-display-cyrillic",
-  style: ["normal", "italic"],
-  preload: false,
-});
-
+// Cyrillic comes with it, from this one declaration. `subsets` only
+// decides what is PRELOADED; the stylesheet next/font generates carries
+// every range the family has (Cyrillic, Greek, Latin Extended), each as
+// its own file behind a unicode-range, fetched only when a character in
+// that range is actually drawn. So English pages still never download a
+// Cyrillic file, and the Bulgarian site still gets Literata.
+//
+// There used to be a second, Cyrillic-only declaration of each face, on
+// the belief that the Latin one could not render Cyrillic. It could, and
+// the second declaration's stylesheet ALSO carried the Latin range, under
+// a different file name - so every first visit downloaded each Latin font
+// twice: 304kB of fonts where 150kB were needed, measured on a throttled
+// phone, and the single largest download on the homepage.
 // The interface font: nav, chips, labels, buttons, the whole generation
 // view - everything that isn't a heading and isn't a number in a column.
 //
@@ -52,23 +53,6 @@ const inter = Inter({
   subsets: ["latin"],
   variable: "--font-ui",
   weight: ["400", "500", "600", "700"],
-});
-
-// The same typeface, Cyrillic only, so the Bulgarian site is set in the
-// interface font rather than dropping to whatever the OS picks.
-//
-// Split into its own declaration instead of just adding "cyrillic" to the
-// subsets above, because next/font preloads every declared subset: one
-// list would put a <link rel="preload"> for the Cyrillic file on every
-// English page, which downloads it for visitors who will never render a
-// Cyrillic character. Declared separately with preload off, the
-// stylesheet's unicode-range fetches it exactly on the pages that need
-// it. Both resolve to Inter, so there is no seam between them.
-const interCyrillic = Inter({
-  subsets: ["cyrillic"],
-  variable: "--font-ui-cyrillic",
-  weight: ["400", "500", "600", "700"],
-  preload: false,
 });
 
 // Kept for the places a monospace actually earns its keep - a column of
@@ -137,7 +121,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // silently take the whole declaration with it.
     <html
       lang="en"
-      className={`${literata.variable} ${literataCyrillic.variable} ${inter.variable} ${interCyrillic.variable} ${dmMono.variable}`}
+      className={`${literata.variable} ${inter.variable} ${dmMono.variable}`}
     >
       {/* Installed-on-iOS launch screens. Without these iOS shows plain
           white - it does not read the manifest's background_color - so

@@ -96,6 +96,17 @@ export const HOME_ANALYTICS_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:home-analytics",
 };
 
+// Typing a sign-in code (/api/auth/verify-code). Separate from
+// AUTH_RATE_LIMIT, which also counts the email request itself - sharing it
+// would let one mistyped code use up the allowance for asking for a new
+// one. Each code also dies after five wrong tries on its own (see
+// lib/signInCode.ts); this is the per-IP ceiling across codes.
+export const SIGNIN_CODE_RATE_LIMIT: RateLimitConfig = {
+  perHour: envInt("SIGNIN_CODE_RATE_LIMIT_PER_HOUR", 20),
+  perDay: envInt("SIGNIN_CODE_RATE_LIMIT_PER_DAY", 60),
+  prefix: "ratelimit:signin-code",
+};
+
 export interface RateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;

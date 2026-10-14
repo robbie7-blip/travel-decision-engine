@@ -699,6 +699,17 @@ export interface Dictionary {
     paidPlanFeatures: string[]; // checklist; "{count}"/"{multiplier}" placeholders in the first entry
     paidPlanPrice: string;
     emailLabel: string;
+    /** The six-digit code from the sign-in email (lib/signInCode.ts). */
+    signInCode: {
+      label: string;
+      submit: string;
+      checking: string;
+      /** {left}: tries remaining. */
+      wrong: string;
+      locked: string;
+      expired: string;
+      tooMany: string;
+    };
     emailPlaceholder: string;
     emailMismatchNote: string; // must match whatever email you later sign in with
     subscribeButton: string;
@@ -1422,12 +1433,21 @@ const en: Dictionary = {
     ],
     paidPlanPrice: "€9/month",
     emailLabel: "EMAIL",
+    signInCode: {
+      label: "Type the 6-digit code from the email",
+      submit: "Sign in",
+      checking: "Checking...",
+      wrong: "That code is not right. {left} tries left.",
+      locked: "Too many wrong tries for that code. Ask for a new email.",
+      expired: "That code has expired or was already used. Ask for a new email.",
+      tooMany: "Too many tries from here. Wait a few minutes and try again.",
+    },
     emailPlaceholder: "you@example.com",
     emailMismatchNote: "Use the same email here that you'll sign in with below - that's how your plan gets linked to your account.",
     subscribeButton: "Subscribe",
     subscribing: "Starting checkout...",
-    signInButton: "Email me a sign-in link",
-    signInSent: "Check your email for a sign-in link.",
+    signInButton: "Email me a sign-in code",
+    signInSent: "Sent. Type the code from the email below, or tap the link in it.",
     accountHeading: "Your account",
     quotaUsed: "{used} of {limit} generations used this month",
     renewsOn: "Renews {date}",
@@ -1464,8 +1484,8 @@ const en: Dictionary = {
       added: "{places} added to your map.",
       undo: "Undo",
     },
-    signInButton: "Email me a sign-in link",
-    signInSent: "Check your email for a sign-in link.",
+    signInButton: "Email me a sign-in code",
+    signInSent: "Sent. Type the code from the email below, or tap the link in it.",
     badges: {
       first_stamp: "First stamp",
       explorer: "Explorer (10 countries)",
@@ -2124,12 +2144,21 @@ const bg: Dictionary = {
     ],
     paidPlanPrice: "9€/месец",
     emailLabel: "ИМЕЙЛ",
+    signInCode: {
+      label: "Въведете 6-цифрения код от имейла",
+      submit: "Вход",
+      checking: "Проверяваме...",
+      wrong: "Кодът не е верен. Остават {left} опита.",
+      locked: "Твърде много грешни опити за този код. Поискайте нов имейл.",
+      expired: "Кодът е изтекъл или вече е използван. Поискайте нов имейл.",
+      tooMany: "Твърде много опити от това устройство. Изчакайте няколко минути и опитайте отново.",
+    },
     emailPlaceholder: "you@example.com",
     emailMismatchNote: "Използвайте същия имейл, с който ще влезете по-долу - така планът ви се свързва с акаунта ви.",
     subscribeButton: "Абонирай се",
     subscribing: "Стартиране на плащане...",
-    signInButton: "Изпрати ми линк за вход",
-    signInSent: "Проверете имейла си за линк за вход.",
+    signInButton: "Изпрати ми код за вход",
+    signInSent: "Изпратено. Въведете кода от имейла по-долу или натиснете линка в него.",
     accountHeading: "Вашият акаунт",
     quotaUsed: "{used} от {limit} генерации използвани този месец",
     renewsOn: "Подновява се на {date}",
@@ -2166,8 +2195,8 @@ const bg: Dictionary = {
       added: "{places} е добавено към картата ви.",
       undo: "Отмени",
     },
-    signInButton: "Изпрати ми линк за вход",
-    signInSent: "Проверете имейла си за линк за вход.",
+    signInButton: "Изпрати ми код за вход",
+    signInSent: "Изпратено. Въведете кода от имейла по-долу или натиснете линка в него.",
     badges: {
       first_stamp: "Първи печат",
       explorer: "Изследовател (10 държави)",

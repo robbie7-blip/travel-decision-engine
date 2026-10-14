@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, AUTH_RATE_LIMIT } from "@/lib/ratelimit";
 import { generateMagicLinkToken, storeMagicLinkToken } from "@/lib/magicLink";
+import { generateSignInCode, storeSignInCode } from "@/lib/signInCode";
 import { sendMagicLinkEmail, EmailNotConfiguredError, EmailSendFailedError } from "@/lib/email";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { allowedOriginsFor, isCrossOriginRequest } from "@/lib/sameOrigin";
@@ -56,10 +57,19 @@ export async function POST(request: NextRequest) {
 
   const token = generateMagicLinkToken();
   await storeMagicLinkToken(redis, token, email);
+  // And a code, in the same email, for signing in from an in-app browser
+  // the link would not open in. See lib/signInCode.ts.
+  const code = generateSignInCode();
+  try {
+    await storeSignInCode(redis, email, code);
+  } catch (e) {
+    console.error("[request-link] could not store a sign-in code:", e);
+    return NextResponse.json({ detail: "Server is misconfigured (accounts are not set up)." }, { status: 500 });
+  }
   const verifyUrl = `${getSiteUrl()}/api/auth/verify?token=${token}`;
 
   try {
-    await sendMagicLinkEmail(email, verifyUrl);
+    await sendMagicLinkEmail(email, verifyUrl, code);
   } catch (e) {
     // Always logged server-side (visible in Vercel's function logs)
     // regardless of what's shown to the client below.

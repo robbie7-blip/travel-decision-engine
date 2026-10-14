@@ -44,6 +44,17 @@ const SIZES = "(max-width: 860px) 85vw, 500px";
 export function HeroGallery({ t, language }: { t: Dictionary; language: Language }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [aheadReady, setAheadReady] = useState(false);
+
+  // The next frame is fetched a little before it is needed, not with the
+  // page: halfway to the first rotation.
+  useEffect(() => {
+    const reduced =
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) return;
+    const timer = setTimeout(() => setAheadReady(true), ROTATE_MS / 2);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // Motion that starts on its own is exactly what a reduced-motion
@@ -106,15 +117,24 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
           sizes={SIZES}
           className="hero-gallery-img"
           style={{ animationDuration: `${FADE_MS}ms` }}
-          // The first frame is the page's largest image and the likely
-          // LCP element. `priority` is next/image's version of the
-          // fetchPriority hint this used to set by hand, and it also
-          // preloads it in the document head.
-          priority={index === 0}
+          // Eager, but no longer `priority`. That preloaded it from the
+          // document head at high priority, which was right when the photo
+          // was the first thing on a phone's screen and is wrong now: the
+          // search bar is, and the photo sits under it. Measured on a
+          // throttled phone, the preload was competing with the fonts and
+          // scripts the bar needs before it can be used. Eager still starts
+          // it as soon as the HTML is parsed, so on a desktop - where it is
+          // beside the headline - it arrives as fast as anything after
+          // what the page needs first.
+          loading="eager"
         />
         {/* Invisible, and not announced: it exists only so the next
-            crossfade has something decoded to fade to. */}
-        <Image
+            crossfade has something decoded to fade to. Mounted only once
+            the gallery is actually going to rotate - not on first load,
+            where it was the third-largest download on the page for a frame
+            nobody sees for six seconds, and never under reduced motion,
+            where there is no next frame at all. */}
+        {aheadReady && <Image
           key={`ahead-${nextSlug}`}
           src={`/destinations/${nextSlug}.jpg`}
           alt=""
@@ -122,7 +142,7 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
           sizes={SIZES}
           className="hero-gallery-ahead"
           aria-hidden
-        />
+        />}
         <span className="hero-gallery-caption font-ui">
           <span className="hero-gallery-city">{cityName(slug, language)}</span>
           <span className="hero-gallery-cue">{t.destinations.eyebrow}</span>

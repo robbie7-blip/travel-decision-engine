@@ -26,7 +26,10 @@ export class EmailSendFailedError extends Error {
   }
 }
 
-export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise<void> {
+export async function sendMagicLinkEmail(to: string, verifyUrl: string, code: string): Promise<void> {
+  // "042917" reads as "042 917" - two groups of three is how a person
+  // holds six digits in their head long enough to type them.
+  const spaced = `${code.slice(0, 3)} ${code.slice(3)}`;
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) {
@@ -42,7 +45,10 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
     body: JSON.stringify({
       from,
       to,
-      subject: "Your decide sign-in link",
+      // The code in the subject, so on most phones it can be read straight
+      // off the notification - the point of a code is not having to leave
+      // the app the visitor is signing in from (see lib/signInCode.ts).
+      subject: `Your decide sign-in code: ${spaced}`,
       // Hex values are hardcoded, not var(--x) - email clients strip CSS
       // custom properties, and this needs to render the same in Gmail/
       // Apple Mail/Outlook regardless of what globals.css defines. #2c6a4c
@@ -57,8 +63,12 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #2b241c;">
           <div style="font-size: 22px; font-weight: 700; color: #2c6a4c; margin-bottom: 24px;">decide</div>
           <h1 style="font-size: 18px; font-weight: 600; margin: 0 0 12px; color: #2b241c;">Sign in to decide</h1>
-          <p style="font-size: 14px; line-height: 1.6; color: #4a4136; margin: 0 0 24px;">
-            Click the button below to sign in. This link works once and expires in 15 minutes.
+          <p style="font-size: 14px; line-height: 1.6; color: #4a4136; margin: 0 0 12px;">
+            Type this code on the page you were signing in from:
+          </p>
+          <div style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #2b241c; background: #f1efe4; border-radius: 8px; padding: 14px 18px; display: inline-block; margin: 0 0 20px; font-family: 'SF Mono', Menlo, Consolas, monospace;">${spaced}</div>
+          <p style="font-size: 14px; line-height: 1.6; color: #4a4136; margin: 0 0 16px;">
+            Or tap the button to sign in on this device. Both work once and expire in 15 minutes.
           </p>
           <a href="${verifyUrl}" style="display: inline-block; background: #2c6a4c; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 8px; margin-bottom: 8px;">
             Sign in to decide
@@ -72,7 +82,7 @@ export async function sendMagicLinkEmail(to: string, verifyUrl: string): Promise
           </p>
         </div>
       `,
-      text: `decide\n\nSign in to decide\n\nClick the link below to sign in. This link works once and expires in 15 minutes.\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email - no account changes will be made.`,
+      text: `decide\n\nSign in to decide\n\nYour code: ${spaced}\n\nType it on the page you were signing in from, or open this link to sign in on this device. Both work once and expire in 15 minutes.\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email - no account changes will be made.`,
     }),
     signal: AbortSignal.timeout(8_000),
   });

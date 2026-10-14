@@ -71,7 +71,7 @@ export function DestinationBanner({
             // classed because this is an SVG <text> inside a generated
             // banner, and the eyebrow is Cyrillic on the Bulgarian guides
             // - which the interface font covers.
-            fontFamily: "var(--font-ui), var(--font-ui-cyrillic), -apple-system, sans-serif",
+            fontFamily: "var(--font-ui), -apple-system, sans-serif",
             fontSize: 20,
             letterSpacing: 4,
             fill: "rgba(255,253,248,0.75)",
@@ -84,7 +84,7 @@ export function DestinationBanner({
         x={56}
         y={compact ? height - 70 : height - 80}
         style={{
-          fontFamily: "var(--font-display), var(--font-display-cyrillic), Georgia, serif",
+          fontFamily: "var(--font-display), Georgia, serif",
           fontWeight: 600,
           fontSize: compact ? 100 : 92,
           fill: "#fffdf8",

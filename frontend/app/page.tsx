@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -292,6 +292,14 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Everything below the hero is its own Suspense boundary, and that
+          is a speed decision, not a loading state - nothing in here
+          suspends, so the fallback never shows. A boundary is a separate
+          unit of hydration: React can make the search bar above it
+          interactive first and wake this part (the long form, mostly) in a
+          later task, instead of hydrating the whole page before the bar
+          responds to a tap. Measured on a throttled phone. */}
+      <Suspense fallback={null}>
       {demo && <ExampleTrip demo={demo} t={t} language={form.language} />}
 
       <div style={{ padding: "18px clamp(32px, 8%, 180px)", borderBottom: "1px solid var(--line)" }}>
@@ -410,6 +418,7 @@ export default function Home() {
       </div>
 
       <TrustFooter t={t} />
+      </Suspense>
     </div>
   );
 }

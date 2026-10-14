@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SignInCodeEntry } from "@/components/SignInCodeEntry";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
@@ -341,6 +342,17 @@ export default function AccountPage() {
                   <div className="font-ui" style={{ fontSize: 12, color: "var(--accent-green)" }}>
                     {message}
                   </div>
+                )}
+                {message && (
+                  <SignInCodeEntry
+                    email={email.trim()}
+                    t={t}
+                    onSignedIn={() => {
+                      // The same landing the link uses, so everything that
+                      // reads ?signedIn=1 behaves identically either way.
+                      window.location.href = language === "bg" ? "/account?signedIn=1&lang=bg" : "/account?signedIn=1";
+                    }}
+                  />
                 )}
               </div>
             )}

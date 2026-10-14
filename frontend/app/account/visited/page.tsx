@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { FlightImport } from "@/components/FlightImport";
+import { SignInCodeEntry } from "@/components/SignInCodeEntry";
 import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/SiteHeader";
 import { VisitedMap } from "@/components/VisitedMap";
@@ -754,6 +755,9 @@ export default function VisitedPage() {
                 <div className="font-ui" style={{ fontSize: 12, color: "var(--accent-green)", marginTop: 10 }}>
                   {signInMessage}
                 </div>
+              )}
+              {signInMessage && (
+                <SignInCodeEntry email={signInEmail.trim()} t={t} onSignedIn={() => window.location.reload()} />
               )}
               {signInError && (
                 <div className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
