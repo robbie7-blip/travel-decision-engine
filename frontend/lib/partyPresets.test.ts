@@ -54,7 +54,7 @@ assert.deepEqual(stepParty(party("2", "me and my sister"), -1, "en"), party("1",
 assert.deepEqual(stepParty(party("", ""), 1, "en"), party("2", "couple"));
 
 // Stepping in Bulgarian writes Bulgarian.
-assert.deepEqual(stepParty(party("2", "couple"), -1, "bg"), party("1", "сам пътешественик"));
+assert.deepEqual(stepParty(party("2", "couple"), -1, "bg"), party("1", "един пътуващ"));
 
 // Language switch: presets follow, custom text does not.
 assert.equal(translatePartyComposition("couple", "bg"), "двойка");

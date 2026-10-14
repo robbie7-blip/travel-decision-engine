@@ -34,7 +34,9 @@ export function SignInCodeEntry({ email, t, onSignedIn }: { email: string; t: Di
       setState("error");
       setError(
         data?.code === "wrong"
-          ? copy.wrong.replace("{left}", String(data.attemptsLeft ?? 0))
+          ? data.attemptsLeft === 1
+            ? copy.wrongOne
+            : copy.wrong.replace("{left}", String(data.attemptsLeft ?? 0))
           : data?.code === "locked"
             ? copy.locked
             : data?.code === "expired"

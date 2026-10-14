@@ -704,8 +704,10 @@ export interface Dictionary {
       label: string;
       submit: string;
       checking: string;
-      /** {left}: tries remaining. */
+      /** {left}: tries remaining, two or more. */
       wrong: string;
+      /** Exactly one left: "1 tries" / "1 опита" read as mistakes. */
+      wrongOne: string;
       locked: string;
       expired: string;
       tooMany: string;
@@ -1438,6 +1440,7 @@ const en: Dictionary = {
       submit: "Sign in",
       checking: "Checking...",
       wrong: "That code is not right. {left} tries left.",
+      wrongOne: "That code is not right. 1 try left.",
       locked: "Too many wrong tries for that code. Ask for a new email.",
       expired: "That code has expired or was already used. Ask for a new email.",
       tooMany: "Too many tries from here. Wait a few minutes and try again.",
@@ -1583,7 +1586,7 @@ const en: Dictionary = {
 };
 
 const bg: Dictionary = {
-  tagline: "Твоето пътуване, измислено.",
+  tagline: "Твоето пътуване, решено.",
   howItWorks: "Как работи",
   browseDestinations: "Пътеводители",
   currencyLabel: "Валута",
@@ -1640,7 +1643,7 @@ const bg: Dictionary = {
     datesPlaceholder: "Изберете дати",
     submit: "Реши пътуването ми",
     presets: {
-      solo: { label: "Сам", party: "сам пътешественик" },
+      solo: { label: "Соло", party: "един пътуващ" },
       couple: { label: "Двойка", party: "двойка" },
       family: { label: "Семейство", party: "семейство с деца" },
       friends: { label: "Приятели", party: "група приятели" },
@@ -1657,8 +1660,8 @@ const bg: Dictionary = {
     timing: "Отнема около минута",
     moreDetails: "Добавете бюджет, темпо, интереси и още",
     fullForm: "Пълна форма",
-    nudgeTitle: "Да го направим по-точно?",
-    nudgeBody: "Всичко е по желание. Бюджет, интереси и темпо правят плана много по-ваш.",
+    nudgeTitle: "Искате ли по-точен план?",
+    nudgeBody: "Всичко е по желание. С бюджет, интереси и темпо планът става много по-личен.",
     nudgeAdd: "Още опции в пълната форма",
   },
   form: {
@@ -1913,21 +1916,21 @@ const bg: Dictionary = {
       alreadyRetried: "Това пътуване вече е стартирано отново веднъж, така че най-добре е да планирате ново.",
     },
     loading: "Зареждане на пътуването…",
-    buildingFor: "Изграждаме {places}",
+    buildingFor: "Подготвяме плана за {places}",
     buildingProgress: "{done} от {total} дни са готови",
     didYouKnow: "Знаете ли, че?",
     stages: {
       label: "Напредък",
       planning: "Проверяваме актуални цени и планираме маршрута",
-      writing: "Пишем всеки ден",
+      writing: "Подреждаме всеки ден",
       writingCount: "{done} от {total}",
       checking: "Проверяваме дали всяко място съществува и работи",
       repairing: "Заменяме това, което не мина проверката",
-      finishing: "Последни проверки на бюджета и времето",
+      finishing: "Последни проверки на бюджета и графика",
       doneLabel: "готово",
     },
     notify: {
-      button: "Изпратете ми го по имейл, когато е готов",
+      button: "Изпрати ми го по имейл, когато е готов",
       sending: "Момент...",
       scheduled: "Готово. Ще ви го изпратим по имейл, когато е готов, така че можете да затворите този раздел.",
       sent: "Готов е и вече е във входящата ви поща.",
@@ -2149,6 +2152,7 @@ const bg: Dictionary = {
       submit: "Вход",
       checking: "Проверяваме...",
       wrong: "Кодът не е верен. Остават {left} опита.",
+      wrongOne: "Кодът не е верен. Остава 1 опит.",
       locked: "Твърде много грешни опити за този код. Поискайте нов имейл.",
       expired: "Кодът е изтекъл или вече е използван. Поискайте нов имейл.",
       tooMany: "Твърде много опити от това устройство. Изчакайте няколко минути и опитайте отново.",
