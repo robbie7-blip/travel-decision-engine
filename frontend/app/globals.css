@@ -4908,13 +4908,15 @@ a.trip-notify-note {
  * four times is how they drift apart. The geometry matches the calendar
  * and print buttons beside it deliberately: three ways of asking the same
  * question should look like three of the same thing. */
-.trip-action {
-  /* Buttons and links both wear this, and on their own they sit on the
-     text baseline at different heights; aligned by their middles they
-     line up whichever they are. */
-  vertical-align: middle;
+.trip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 20px;
-  margin-left: 8px;
+}
+
+.trip-action {
   background: none;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -4941,7 +4943,6 @@ a.trip-notify-note {
 
 .trip-action-note {
   display: inline-block;
-  margin-left: 8px;
   font-size: 12px;
   color: var(--ink-soft);
 }

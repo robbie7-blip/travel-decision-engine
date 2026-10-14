@@ -396,6 +396,39 @@ section("the things the traveler actually asked for");
     "an unrelated location does not satisfy a different must-see",
     firedChecks2(unrelated, { ...BRIEF, must_see: ["Trevi Fountain"] }).includes("must_see_covered")
   );
+
+  // A real Rome run: "Il Paiolo Magico (reservation at 8 pm on the 6th)"
+  // was delivered as a dinner there, and reported as dropped because the
+  // note's words ("reservation", "6th") were being looked for too.
+  const withPaiolo = baseline();
+  withPaiolo[0].items.push(
+    item({ title: "Dinner at Il Paiolo Magico", venue_name: "Il Paiolo Magico", location: "Trastevere, Rome", time: "20:00" })
+  );
+  check(
+    "a must-see with a booking note is covered by the place itself",
+    !firedChecks2(withPaiolo, { ...BRIEF, must_see: ["Il Paiolo Magico (reservation at 8 pm on the 6th)"] }).includes(
+      "must_see_covered"
+    )
+  );
+  check(
+    "and without the brackets too",
+    !firedChecks2(withPaiolo, { ...BRIEF, must_see: ["Il Paiolo Magico, booked for 8pm on Nov 6"] }).includes(
+      "must_see_covered"
+    )
+  );
+  // The note must not become a way to satisfy it: the place still has to
+  // be there.
+  check(
+    "the place is still required",
+    firedChecks2(baseline(), { ...BRIEF, must_see: ["Il Paiolo Magico (reservation at 8 pm on the 6th)"] }).includes(
+      "must_see_covered"
+    )
+  );
+  // A must-see that is ONLY a bracket is not emptied by this.
+  check(
+    "a request that is all bracket still has to be found",
+    firedChecks2(baseline(), { ...BRIEF, must_see: ["(the old harbour)"] }).includes("must_see_covered")
+  );
 }
 
 section("the budget stamp against the actual bill");

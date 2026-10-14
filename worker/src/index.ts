@@ -1723,6 +1723,7 @@ What does NOT count, and matters more than the list above, because the failure m
 everything:
 - "might have it on the menu", "might cross-contaminate", "has not confirmed they cater to this"
 - "might involve some walking", "might have a step somewhere", "accessibility is not stated"
+- getting to or from an airport, train station or port, by any means - nobody walks those
 - anything you are guessing at. If you are unsure, do not flag it.
 
 Nearly every item would qualify under the loose reading, and a list that long is the same as no list.
@@ -1760,7 +1761,14 @@ async function screenStatedConstraints(
   const TRANSPORT_AS_CONSTRAINT: Record<NonNullable<TripBriefInput["transport_preference"]>, string> = {
     public_transit: "get around by public transit, not by taxi or rideshare",
     taxi_rideshare: "get around by taxi or rideshare, not by metro, bus or tram",
-    walking: "get around on foot wherever realistically possible, avoiding vehicles",
+    // Not "avoiding vehicles": read literally, that made the screen flag
+    // the taxi from Ciampino airport on a real Rome run, as if walking from
+    // an airport were an option. What breaks a walking preference is a
+    // vehicle for a hop that is easy to walk.
+    walking:
+      "walk between places in the city wherever the walk is realistic, rather than taking a taxi or " +
+      "rideshare for a distance that is easy to walk (getting to or from an airport or station is not " +
+      "part of this)",
   };
   const stated = [
     ...brief.dietary_constraints,

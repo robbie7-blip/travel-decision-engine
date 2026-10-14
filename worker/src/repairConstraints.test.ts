@@ -413,7 +413,7 @@ async function main() {
     );
     check(
       "and it is the constraint the screen is given",
-      seen2.dietaryScreenPrompts.some((p) => p.includes("on foot")),
+      seen2.dietaryScreenPrompts.some((p) => p.includes("walk between places")),
       seen2.dietaryScreenPrompts[0] ?? "(no screen call)"
     );
   }

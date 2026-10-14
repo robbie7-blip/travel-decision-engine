@@ -425,7 +425,14 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
         "taxis/rideshare (e.g. Uber) as the default way to get around instead of public transit - the " +
         "traveler has specifically asked for this (often for safety or convenience reasons), so don't " +
         "default back to metro/bus suggestions",
-      walking: "walking wherever realistically possible, minimizing any vehicle transport",
+      // Says what to do with a hop that is NOT walkable, which the old
+      // wording ("minimizing any vehicle transport") left open - and a real
+      // Rome run filled the gap with a taxi across 3km of central Rome.
+      walking:
+        "walking between places wherever the walk is realistic (up to roughly 30-40 minutes); for a " +
+        "longer hop use public transit (metro, tram, bus) rather than a taxi; arrival and departure " +
+        "transfers (airport, station) by train or bus where one exists, a taxi only where it is the only " +
+        "realistic option",
     };
     lines.push(`Preferred local transport: ${TRANSPORT_PREFERENCE_LABEL[brief.transport_preference]}.`);
   }

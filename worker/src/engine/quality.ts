@@ -276,6 +276,10 @@ const REQUEST_STOPWORDS = new Set([
   "the", "and", "for", "with", "from", "into", "near", "our", "your", "its",
   "see", "visit", "visiting", "tour", "trip", "day", "days", "some", "any",
   "want", "would", "like", "must", "really", "definitely", "maybe",
+  // Booking logistics. A traveler who writes "X (reservation at 8 pm)" is
+  // telling us about X; the itinerary will say "Dinner at X", not repeat
+  // the word "reservation".
+  "reservation", "reservations", "reserved", "booked", "booking", "bookings", "table", "tickets",
 ]);
 
 /** "a expensive venue" was appearing on the admin quality panel. Only the
@@ -283,6 +287,21 @@ const REQUEST_STOPWORDS = new Set([
  * rule. */
 function article(word: string): string {
   return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
+}
+
+/** The place a must-see names, without the note around it.
+ *
+ * A real Rome run asked for "Il Paiolo Magico (reservation at 8 pm on the
+ * 6th)", got a dinner at Il Paiolo Magico - the trip summary and the
+ * budget both mention it - and the gate reported it dropped: of the words
+ * left after filtering (paiolo, magico, reservation, 6th) the item had two
+ * and three were needed. A bracketed note, a time or a date is the
+ * traveler telling us WHEN, which is the prompt's job; whether the PLACE
+ * is in the plan is this check's. */
+function requestedPlace(wanted: string): string {
+  const outside = wanted.replace(/\([^)]*\)|\[[^\]]*\]/g, " ").trim();
+  // Only when something is left: "(the old harbour)" alone is all there is.
+  return outside.replace(/[^\p{L}\p{N}]/gu, "").length > 0 ? outside : wanted;
 }
 
 function mentions(haystack: string, wanted: string): boolean {
@@ -300,7 +319,10 @@ function mentions(haystack: string, wanted: string): boolean {
       .replace(/[^\p{L}\p{N}\s]/gu, " ")
       .split(/\s+/)
       .filter((w) => w.length > 2 && !REQUEST_STOPWORDS.has(w));
-  const words = normalize(wanted);
+  // Times and dates ("8pm", "20:00" -> "20" "00", "6th", "2026") are when,
+  // not what: any token carrying a digit is dropped from what is looked
+  // for. Kept in the haystack, where they do no harm.
+  const words = normalize(requestedPlace(wanted)).filter((w) => !/\p{N}/u.test(w));
   // Still true when there is nothing to look for - a must-see of "!!!" is
   // not a dropped requirement - but this is now reached only for input
   // that genuinely carries no letters or digits in any script.

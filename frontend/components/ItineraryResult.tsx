@@ -402,83 +402,59 @@ export function ItineraryResult({
         {result.trip_summary}
       </h2>
 
-      {result.days && result.days.length > 0 && (
-        <button
-          type="button"
-          onClick={() => downloadItineraryIcs(result, jobId)}
-          className="font-ui"
-          style={{
-            marginBottom: 20,
-            background: "none",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            padding: "8px 14px",
-            fontSize: 12,
-            color: "var(--ink-soft)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          ⬇ {t.result.downloadCalendar}
-        </button>
-      )}
+      {/* One row for the four ways to keep or reuse this plan. They used
+          to be loose inline siblings, each with its own margins, and the
+          two added later sat a few pixels off the first two - seen on a
+          real trip page. A flex row with one gap lines them up whatever
+          each one is (a button, a link) and wraps them evenly on a phone. */}
+      <div className="trip-actions">
+        {result.days && result.days.length > 0 && (
+          <button
+            type="button"
+            onClick={() => downloadItineraryIcs(result, jobId)}
+            className="font-ui trip-action"
+          >
+            ⬇ {t.result.downloadCalendar}
+          </button>
+        )}
 
-      {/* Print, beside the calendar export, because they are the same
-          question asked two ways: how do I keep this once I am off this
-          page. window.print() rather than a server-rendered PDF - the
-          print stylesheet already produces the document, the browser
-          already has a "save as PDF" in its print dialogue, and a
-          rendering service would be a second copy of the layout to keep
-          in step with this one. */}
-      {result.days && result.days.length > 0 && (
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="font-ui no-print"
-          style={{
-            marginBottom: 20,
-            marginLeft: 8,
-            background: "none",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            padding: "8px 14px",
-            fontSize: 12,
-            color: "var(--ink-soft)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          ⎙ {t.result.printItinerary}
-        </button>
-      )}
+        {/* Print, beside the calendar export, because they are the same
+            question asked two ways: how do I keep this once I am off this
+            page. window.print() rather than a server-rendered PDF - the
+            print stylesheet already produces the document, the browser
+            already has a "save as PDF" in its print dialogue, and a
+            rendering service would be a second copy of the layout to keep
+            in step with this one. */}
+        {result.days && result.days.length > 0 && (
+          <button type="button" onClick={() => window.print()} className="font-ui no-print trip-action">
+            ⎙ {t.result.printItinerary}
+          </button>
+        )}
 
-      {/* The third way of keeping this once you are off the page, beside
-          the other two. Takes no address: it sends to the one on the
-          account, which is the whole security design - see
-          app/api/trip-email. */}
-      {result.days && result.days.length > 0 && (
-        <EmailTripButton jobId={jobId} t={t} language={language} />
-      )}
+        {/* The third way of keeping this once you are off the page, beside
+            the other two. Takes no address: it sends to the one on the
+            account, which is the whole security design - see
+            app/api/trip-email. */}
+        {result.days && result.days.length > 0 && (
+          <EmailTripButton jobId={jobId} t={t} language={language} />
+        )}
 
-      {/* The same cities, back in the homepage bar, for new dates or a
-          second trip - and, for someone who opened a shared link, the way
-          from reading a plan to making one. Only the cities travel in the
-          link: they are on this page already, and nothing about who went
-          or what they spent is (see lib/publicBrief.ts). The bar fills in
-          the party from this device's own last search, if it has one. */}
-      {destinations && destinations.length > 0 && (
-        <Link
-          href={`/?dest=${encodeURIComponent(destinations.join(", "))}${language === "bg" ? "&lang=bg" : ""}`}
-          className="font-ui no-print trip-action"
-          style={{ textDecoration: "none" }}
-        >
-          <span aria-hidden>↻</span> {t.trip.planLikeThis}
-        </Link>
-      )}
+        {/* The same cities, back in the homepage bar, for new dates or a
+            second trip - and, for someone who opened a shared link, the way
+            from reading a plan to making one. Only the cities travel in the
+            link: they are on this page already, and nothing about who went
+            or what they spent is (see lib/publicBrief.ts). The bar fills in
+            the party from this device's own last search, if it has one. */}
+        {destinations && destinations.length > 0 && (
+          <Link
+            href={`/?dest=${encodeURIComponent(destinations.join(", "))}${language === "bg" ? "&lang=bg" : ""}`}
+            className="font-ui no-print trip-action"
+            style={{ textDecoration: "none" }}
+          >
+            <span aria-hidden>↻</span> {t.trip.planLikeThis}
+          </Link>
+        )}
+      </div>
 
       {/* Whether this trip opens without a signal, read from the actual
           cache rather than inferred from the service worker existing -
