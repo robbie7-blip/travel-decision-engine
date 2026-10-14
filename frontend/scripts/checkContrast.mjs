@@ -113,6 +113,13 @@ const PAIRS = [
   // way round and none of the checks above touch them.
   { fg: "--deep-ink", bg: "--deep", min: AA_NORMAL, note: "the headline on the hero band" },
   { fg: "--deep-soft", bg: "--deep", min: AA_NORMAL, note: "the subhead and legend on the band" },
+  { fg: "--brand-gold", bg: "--deep", min: AA_NORMAL, note: "the eyebrow above the headline" },
+  // The homepage search bar's button. Not --brand-coral: white on the
+  // bright coral is 3.59:1, which fails for a 17px label.
+  { fg: "--bg-panel", bg: "--brand-coral-ink", min: AA_NORMAL, note: "the search bar's button" },
+  { fg: "--bg-panel", bg: "--brand-red", min: AA_NORMAL, note: "the search bar's button, hovered" },
+  { fg: "--bg-panel", bg: "--brand-teal", min: AA_NORMAL, note: "a chosen party preset" },
+  { fg: "--brand-coral-ink", bg: "--bg-panel", min: AA_NORMAL, note: "a search bar caption asking for its field" },
 ];
 
 const css = await readFile(CSS, "utf8");

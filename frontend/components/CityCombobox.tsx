@@ -38,6 +38,17 @@ interface CityComboboxProps {
    * so the free-text path is discoverable rather than a thing you have to
    * guess works. */
   freeTextHint: string;
+  /** "field" is the form's boxed input. "bare" is the homepage search bar's
+   * segment: chips and the input share one row, and the box, border and
+   * focus ring belong to the segment around it rather than to the input. */
+  variant?: "field" | "bare";
+  /** The bare variant has no wrapping <Field> label to take a name from, so
+   * it is named directly. Deliberately not a wrapping <label>: a click
+   * anywhere in a label is forwarded to its first labelable descendant,
+   * which here is the first chip's remove button. */
+  ariaLabel?: string;
+  /** Lets the search bar move focus here when the destination is missing. */
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
 export function CityCombobox({
@@ -48,7 +59,11 @@ export function CityCombobox({
   addMorePlaceholder,
   removeLabel,
   freeTextHint,
+  variant = "field",
+  ariaLabel,
+  inputRef,
 }: CityComboboxProps) {
+  const bare = variant === "bare";
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -119,98 +134,116 @@ export function CityCombobox({
 
   const showHint = draft.trim().length > 0 && suggestions.length === 0;
 
+  const chipElements = cities.map((city) => (
+    <span
+      key={city}
+      className="font-ui"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        background: "var(--bg-panel-raised)",
+        border: "1px solid var(--line)",
+        borderRadius: 999,
+        padding: "4px 6px 4px 11px",
+        fontSize: 13,
+      }}
+    >
+      {city}
+      <button
+        type="button"
+        // onPointerDown, not onClick, and this is not a style choice.
+        //
+        // Removing a chip on click removed TWO cities from one
+        // click. Reproduced with a raw single mousedown/mouseup in
+        // Chromium, and the event log says why: the gesture
+        // produces two native click events -
+        //
+        //   pointerdown:Remove Tbilisi  mousedown:Remove Tbilisi
+        //   mouseup:Remove Tbilisi      click:Remove Tbilisi
+        //   focusout:Remove Tbilisi     click:Remove Rome
+        //
+        // The first click removes Tbilisi, the chip row reflows
+        // under the stationary pointer, and the second activation
+        // lands on whichever chip has slid into that spot - here
+        // the one to its left. Every chip field with this layout
+        // has this hazard; ours put it next to a field where the
+        // silent loss is a whole destination.
+        //
+        // Handling pointerdown ends the gesture before the row can
+        // move: the stray second click arrives at a button whose
+        // only handler never fires for it.
+        onPointerDown={(e) => {
+          e.preventDefault();
+          remove(city);
+        }}
+        aria-label={`${removeLabel} ${city}`}
+        className="cal-nav"
+        style={{
+          border: "none",
+          background: "none",
+          cursor: "pointer",
+          color: "var(--ink-soft)",
+          fontSize: 14,
+          lineHeight: 1,
+          padding: "0 2px",
+        }}
+      >
+        ×
+      </button>
+    </span>
+  ));
+
+  const inputElement = (
+    <input
+      ref={inputRef}
+      style={bare ? undefined : inputStyle}
+      className={bare ? "city-bare-input" : undefined}
+      aria-label={ariaLabel}
+      value={draft}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        setOpen(true);
+      }}
+      onFocus={() => setOpen(true)}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
+      onBlur={() => {
+        // Whatever is typed when focus leaves is a city the traveller
+        // meant. Without this, tabbing on after typing "Tbilisi" silently
+        // discarded it - and the one destination that is NOT on the
+        // suggestion list is exactly the one that would be lost.
+        if (draft.trim()) commit(draft);
+      }}
+      placeholder={cities.length > 0 ? addMorePlaceholder : placeholder}
+      role="combobox"
+      aria-expanded={open && suggestions.length > 0}
+      aria-controls={listId}
+      aria-autocomplete="list"
+    />
+  );
+
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
-      {cities.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 7 }}>
-          {cities.map((city) => (
-            <span
-              key={city}
-              className="font-ui"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                background: "var(--bg-panel-raised)",
-                border: "1px solid var(--line)",
-                borderRadius: 999,
-                padding: "4px 6px 4px 11px",
-                fontSize: 13,
-              }}
-            >
-              {city}
-              <button
-                type="button"
-                // onPointerDown, not onClick, and this is not a style choice.
-                //
-                // Removing a chip on click removed TWO cities from one
-                // click. Reproduced with a raw single mousedown/mouseup in
-                // Chromium, and the event log says why: the gesture
-                // produces two native click events -
-                //
-                //   pointerdown:Remove Tbilisi  mousedown:Remove Tbilisi
-                //   mouseup:Remove Tbilisi      click:Remove Tbilisi
-                //   focusout:Remove Tbilisi     click:Remove Rome
-                //
-                // The first click removes Tbilisi, the chip row reflows
-                // under the stationary pointer, and the second activation
-                // lands on whichever chip has slid into that spot - here
-                // the one to its left. Every chip field with this layout
-                // has this hazard; ours put it next to a field where the
-                // silent loss is a whole destination.
-                //
-                // Handling pointerdown ends the gesture before the row can
-                // move: the stray second click arrives at a button whose
-                // only handler never fires for it.
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  remove(city);
-                }}
-                aria-label={`${removeLabel} ${city}`}
-                className="cal-nav"
-                style={{
-                  border: "none",
-                  background: "none",
-                  cursor: "pointer",
-                  color: "var(--ink-soft)",
-                  fontSize: 14,
-                  lineHeight: 1,
-                  padding: "0 2px",
-                }}
-              >
-                ×
-              </button>
-            </span>
-          ))}
+      {bare ? (
+        // One row: chips, then the input taking whatever is left of it.
+        <div className="city-bare-row">
+          {chipElements}
+          {inputElement}
         </div>
+      ) : (
+        <>
+          {cities.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 7 }}>{chipElements}</div>
+          )}
+          {inputElement}
+        </>
       )}
 
-      <input
-        style={inputStyle}
-        value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        onBlur={() => {
-          // Whatever is typed when focus leaves is a city the traveller
-          // meant. Without this, tabbing on after typing "Tbilisi" silently
-          // discarded it - and the one destination that is NOT on the
-          // suggestion list is exactly the one that would be lost.
-          if (draft.trim()) commit(draft);
-        }}
-        placeholder={cities.length > 0 ? addMorePlaceholder : placeholder}
-        role="combobox"
-        aria-expanded={open && suggestions.length > 0}
-        aria-controls={listId}
-        aria-autocomplete="list"
-      />
-
       {showHint && (
-        <div className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 5 }}>
+        // In the bar the hint floats rather than pushing the row taller
+        // under every keystroke, which would shift the button beside it.
+        <div className={bare ? "font-ui city-bare-hint" : "font-ui"} style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 5 }}>
           {freeTextHint}
         </div>
       )}

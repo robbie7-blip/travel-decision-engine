@@ -763,21 +763,6 @@ button {
   display: none;
 }
 
-/* Hero subhead's forced break between its two sentences (see page.tsx) -
-   off by default (mobile: falls back to natural space-joined wrap, which
-   is what avoids stranding "guess." on its own line there) and turned on
-   once the paragraph's 820px column has room to fully apply, where the
-   natural wrap was instead splitting mid-way through the second sentence
-   rather than at the sentence boundary. */
-.subhead-break {
-  display: none;
-}
-@media (min-width: 640px) {
-  .subhead-break {
-    display: block;
-  }
-}
-
 /* /why-decide's two-column "generic chatbot vs decide" comparison rows -
    side by side on desktop, stacked on mobile where two ~150px-wide columns
    would otherwise squeeze both cells' text down to nearly unreadable. */
@@ -1507,8 +1492,18 @@ p {
      country checklist at 29px - which is not a detail on that page, it is
      how you record having been somewhere. */
   .visited-tab,
-  .visited-country {
+  .visited-country,
+  /* The homepage search bar: its two picker triggers are a line of text
+     on a desktop, and the controls inside the party picker. */
+  .search-bare-trigger,
+  .who-preset,
+  .who-done {
     min-height: 44px;
+  }
+
+  .who-step {
+    width: 44px;
+    height: 44px;
   }
 
   /* A camera glyph on its own is wide enough to read and too narrow to
@@ -2598,15 +2593,642 @@ p {
    The homepage hero gallery
    ============================================================ */
 
-/* The argument on the left, a real place on the right. minmax(0, ...) on
-   the text column because a grid track defaults to min-content and the
-   long headline would otherwise refuse to shrink and push the photo off
-   the band. */
-.hero-split {
+/* The hero, as named areas so the order can change by screen without
+   changing the markup: on a desktop the argument and the photo share a
+   row and the bar runs under both; on a phone the photo drops below the
+   bar, because the first screen of a phone is for the thing you came to
+   do. minmax(0, ...) on every track because a grid track defaults to
+   min-content, and the long headline (and the legend's unshrinkable
+   pills) would otherwise refuse to shrink and push the band wider than
+   the screen. */
+.hero {
+  --hero-pad-top: 44px;
+  --hero-pad-bottom: 40px;
+}
+
+.hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: clamp(24px, 4vw, 56px);
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+  grid-template-areas:
+    "copy photo"
+    "search search"
+    "trust trust"
+    "recent recent";
+  column-gap: clamp(24px, 4vw, 56px);
   align-items: center;
+}
+
+.hero-copy {
+  grid-area: copy;
+  min-width: 0;
+}
+
+.hero-photo {
+  grid-area: photo;
+  min-width: 0;
+}
+
+.hero-search-area {
+  grid-area: search;
+  min-width: 0;
+  margin-top: 36px;
+}
+
+.hero-trust {
+  grid-area: trust;
+  min-width: 0;
+}
+
+.hero-recent {
+  grid-area: recent;
+  min-width: 0;
+}
+
+/* Gold, the one warm accent on the band, and a short rule before it the
+   way a magazine sets a kicker. */
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  color: var(--brand-gold);
+}
+
+.hero-eyebrow::before {
+  content: "";
+  flex: 0 0 24px;
+  height: 2px;
+  background: var(--brand-gold);
+}
+
+.hero-subhead {
+  color: var(--deep-soft);
+  font-size: 16px;
+  line-height: 1.65;
+  max-width: 560px;
+  margin: 0;
+}
+
+/* The photo is shallower than it was on a desktop: it shares the first
+   screen with the bar now, and a 4/3 frame pushed the bar under the fold
+   on a 1366x768 laptop. */
+.hero-photo .hero-gallery {
+  aspect-ratio: 3 / 2;
+}
+
+/* ---------- The search bar ---------- */
+
+.hero-search-wrap {
+  position: relative;
+  /* Above the band's later rows, so an open calendar or suggestion list
+     covers the honesty line under it rather than sliding beneath it. */
+  z-index: 5;
+}
+
+/* No overflow: hidden anywhere on the bar, and none may be added: the
+   calendar, the suggestions and the party picker all open out of it. */
+.hero-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.05fr) minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 0;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  box-shadow:
+    0 2px 4px rgba(6, 16, 11, 0.18),
+    0 28px 56px -24px rgba(6, 16, 11, 0.7);
+}
+
+.hero-search-segment {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 11px 20px;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero-search-segment[data-segment="where"] {
+  cursor: text;
+}
+
+/* Hairlines between the cells, drawn rather than bordered so they can
+   stop short of the bar's edges and step aside for a hovered cell. */
+.hero-search-segment + .hero-search-segment::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 1px;
+  background: var(--line);
+  transition: opacity 0.15s ease;
+}
+
+.hero-search-segment:hover {
+  background: var(--bg-panel-raised);
+}
+
+.hero-search-segment:hover::before,
+.hero-search-segment:hover + .hero-search-segment::before,
+.hero-search-segment:focus-within::before,
+.hero-search-segment:focus-within + .hero-search-segment::before,
+.hero-search-segment[data-invalid]::before,
+.hero-search-segment[data-invalid] + .hero-search-segment::before {
+  opacity: 0;
+}
+
+/* The focus ring is the cell's, not the control's. The input and the two
+   triggers inside have no box of their own, so an outline on them would
+   be a ring around a line of text; this rings the whole cell instead,
+   which is where the eye already is. */
+.hero-search-segment:focus-within {
+  background: var(--bg-panel);
+  box-shadow: inset 0 0 0 2px var(--brand-teal);
+}
+
+.hero-search-segment[data-invalid] {
+  background: var(--bg-panel);
+  box-shadow: inset 0 0 0 2px var(--brand-coral-ink);
+}
+
+.hero-search-caption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  line-height: 1.2;
+  user-select: none;
+}
+
+.hero-search-segment[data-invalid] .hero-search-caption {
+  color: var(--brand-coral-ink);
+}
+
+/* The destinations chips and the input, on one line. */
+.city-bare-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+}
+
+.city-bare-input,
+.search-bare-trigger {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 3px 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  outline: none;
+}
+
+.city-bare-input {
+  flex: 1 1 120px;
+  min-width: 0;
+  font-family: inherit;
+}
+
+.city-bare-input::placeholder {
+  color: var(--ink-dim);
+  opacity: 1;
+  font-weight: 400;
+}
+
+.search-bare-trigger {
+  display: block;
+  width: 100%;
+  min-height: 30px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Floats rather than pushing the row taller under every keystroke. */
+.city-bare-hint {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 10px);
+  left: 0;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 48px));
+  margin: 0 !important;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px -8px rgba(43, 36, 28, 0.25);
+}
+
+.hero-search-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 62px;
+  padding: 0 30px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--brand-coral-ink);
+  color: var(--bg-panel);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 8px 18px -8px rgba(110, 36, 20, 0.7);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero-search-cta:hover:not(:disabled) {
+  background: var(--brand-red);
+  box-shadow: 0 10px 22px -8px rgba(110, 36, 20, 0.8);
+}
+
+.hero-search-cta-arrow {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.hero-search-cta:hover:not(:disabled) .hero-search-cta-arrow {
+  transform: translateX(3px);
+}
+
+.hero-search-cta:focus-visible {
+  outline: 3px solid var(--brand-gold);
+  outline-offset: 3px;
+}
+
+.hero-search-cta:disabled {
+  cursor: progress;
+}
+
+/* "Add at least one city" and its siblings, and a failed submit. On the
+   band rather than in the bar, so the bar never changes height. */
+.hero-search-message {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--deep-ink);
+}
+
+.hero-search-message::before {
+  content: "";
+  flex: 0 0 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--brand-gold);
+  transform: translateY(-1px);
+}
+
+.hero-search-message:empty {
+  display: none;
+}
+
+/* The party picker. Shares .date-popover's width rules. */
+.who-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 16px);
+  left: -20px;
+  padding: 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px -10px rgba(43, 36, 28, 0.35);
+  color: var(--ink);
+  cursor: default;
+}
+
+.who-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.who-preset {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.who-preset:hover {
+  background: var(--bg-panel-raised);
+}
+
+.who-preset[aria-pressed="true"] {
+  background: var(--brand-teal);
+  border-color: var(--brand-teal);
+  color: var(--bg-panel);
+}
+
+.who-count-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.who-count-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.who-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.who-step {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.who-step:hover:not(:disabled) {
+  background: var(--bg-panel-raised);
+}
+
+.who-step:disabled {
+  color: var(--line-strong);
+  cursor: default;
+}
+
+.who-count {
+  min-width: 32px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.who-done {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--grounded);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ---------- Under the bar ---------- */
+
+.hero-trust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+  margin-top: 20px;
+}
+
+.hero-trust-guarantee {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.hero-trust-lead {
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--deep-ink);
+  white-space: nowrap;
+}
+
+.hero-trust-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  font-size: 13px;
+  color: var(--deep-soft);
+}
+
+.hero .hero-trust-aside a {
+  color: var(--deep-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--deep-line);
+  text-underline-offset: 4px;
+}
+
+.hero .hero-trust-aside a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Two rows on a tablet or a narrow laptop: four cells in one row at this
+   width leave the party cell too narrow to say "2 travelers · Couple". */
+@media (max-width: 1100px) {
+  .hero-search {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "where where where"
+      "when who cta";
+  }
+
+  .hero-search-segment[data-segment="where"] {
+    grid-area: where;
+  }
+
+  .hero-search-segment[data-segment="when"] {
+    grid-area: when;
+  }
+
+  .hero-search-segment[data-segment="who"] {
+    grid-area: who;
+  }
+
+  .hero-search-cta {
+    grid-area: cta;
+    margin-left: 6px;
+  }
+
+  /* The rule under the destination row, and none to the left of "When",
+     which now starts a row. */
+  .hero-search-segment[data-segment="where"]::after {
+    content: "";
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 0;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .hero-search-segment[data-segment="where"]:hover::after,
+  .hero-search-segment[data-segment="where"]:focus-within::after,
+  .hero-search-segment[data-segment="where"][data-invalid]::after {
+    opacity: 0;
+  }
+
+  .hero-search-segment[data-segment="when"]::before {
+    content: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .hero {
+    --hero-pad-top: 28px;
+    --hero-pad-bottom: 32px;
+  }
+
+  .hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "copy"
+      "search"
+      "trust"
+      "photo"
+      "recent";
+  }
+
+  .hero-search-area {
+    margin-top: 24px;
+  }
+
+  .hero-photo {
+    margin-top: 28px;
+  }
+
+  .hero-photo .hero-gallery {
+    aspect-ratio: 16 / 9;
+  }
+
+  .hero-trust {
+    margin-top: 16px;
+  }
+
+  /* Centred on the screen rather than hung off the left of a cell, which
+     on a phone pushed the calendar past the right edge. Both cells span
+     the bar here, so the screen's centre is theirs. */
+  .hero-search .date-popover {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%);
+  }
+}
+
+/* A phone: one cell per row, the caption to the left of its value so the
+   bar stays short enough to leave the button on the first screen. */
+@media (max-width: 640px) {
+  .hero-search-area {
+    margin-left: -14px;
+    margin-right: -14px;
+  }
+
+  .hero-search {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "where"
+      "when"
+      "who"
+      "cta";
+    border-radius: 14px;
+  }
+
+  .hero-search-segment {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    min-height: 54px;
+  }
+
+  .hero-search-caption {
+    flex: 0 0 52px;
+  }
+
+  .hero-search-segment > :not(.hero-search-caption) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .hero-search-segment[data-segment="where"]::after {
+    left: 14px;
+    right: 14px;
+  }
+
+  .hero-search-segment[data-segment="who"]::before {
+    content: "";
+    left: 14px;
+    right: 14px;
+    top: 0;
+    bottom: auto;
+    width: auto;
+    height: 1px;
+  }
+
+  /* The caption sits beside the control here, so the control's own box
+     starts 78px in and anything centred on it lands off-centre. Hand the
+     popovers to the cell, which spans the bar. */
+  .hero-search-segment > div {
+    position: static !important;
+  }
+
+  .hero-search-cta {
+    margin: 6px 0 0;
+    min-height: 54px;
+    width: 100%;
+  }
+
+  .hero-trust-guarantee {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .hero-trust-guarantee > #confidence-legend {
+    max-width: 100%;
+  }
 }
 
 .hero-gallery {
@@ -2743,33 +3365,6 @@ p {
   .hero-gallery-dot[data-active="true"]::after {
     background: #fffdf8;
     transform: scale(1.25);
-  }
-}
-
-/* Stacked on a phone, and shallower: the hero's job below the fold break
-   is to get someone to the form, so the photo sets the scene without
-   becoming the whole first screen. */
-@media (max-width: 860px) {
-  .hero-split {
-    /* minmax(0, 1fr), not 1fr - and the difference is a real defect.
-    
-       A bare `1fr` is `minmax(auto, 1fr)`, so the column can never be
-       narrower than its own min-content width. The hero's left column
-       contains the confidence legend, a .scroll-row-mobile whose pills are
-       explicitly flex-shrink: 0 - so its min-content width is the full
-       557px of pills, and the column grew to 339px inside a 311px
-       container. Measured at a 375px viewport: the hero text broke 28px
-       out of its box, leaving a 4px gutter on the right against 32px on
-       the left. It reads as text running off the edge of the screen.
-    
-       The desktop rule above already uses minmax(0, ...) for exactly this
-       reason; the mobile override dropped the guard. */
-    grid-template-columns: minmax(0, 1fr);
-    gap: 22px;
-  }
-
-  .hero-gallery {
-    aspect-ratio: 16 / 9;
   }
 }
 

@@ -74,6 +74,42 @@ export interface Dictionary {
   // screens. Every other job status still uses the single static
   // jobStatus label above.
   runningMessages: string[];
+  /** The homepage search bar: the four things a trip cannot be planned
+   * without, at the top of the page, with the rest of the form below as
+   * optional detail. See components/HeroSearch.tsx. */
+  heroSearch: {
+    /** One line above the headline saying what the product IS, for a
+     * visitor who has never heard of it - the headline alone says how it
+     * behaves, not that it plans trips. */
+    eyebrow: string;
+    formLabel: string;
+    where: string;
+    when: string;
+    who: string;
+    wherePlaceholder: string;
+    datesPlaceholder: string;
+    submit: string;
+    /** The party presets. `party` is what is sent as party_composition,
+     * in the reading language, like everything else typed into the form. */
+    presets: {
+      solo: { label: string; party: string };
+      couple: { label: string; party: string };
+      family: { label: string; party: string };
+      friends: { label: string; party: string };
+    };
+    travelerOne: string;
+    /** {count} is the party size. */
+    travelerMany: string;
+    travelersHeading: string;
+    fewer: string;
+    more: string;
+    done: string;
+    missingWhere: string;
+    missingWhen: string;
+    missingWho: string;
+    timing: string;
+    moreDetails: string;
+  };
   form: {
     destinations: string;
     destinationsPlaceholder: string;
@@ -809,6 +845,33 @@ const en: Dictionary = {
     "Double-checking the numbers that matter…",
     "Putting the itinerary together…",
   ],
+  heroSearch: {
+    eyebrow: "A day-by-day trip plan, checked against live prices",
+    formLabel: "Plan a trip",
+    where: "Where",
+    when: "When",
+    who: "Who",
+    wherePlaceholder: "Type a city",
+    datesPlaceholder: "Add dates",
+    submit: "Decide my trip",
+    presets: {
+      solo: { label: "Solo", party: "solo traveler" },
+      couple: { label: "Couple", party: "couple" },
+      family: { label: "Family", party: "family with children" },
+      friends: { label: "Friends", party: "group of friends" },
+    },
+    travelerOne: "1 traveler",
+    travelerMany: "{count} travelers",
+    travelersHeading: "Travelers",
+    fewer: "Fewer travelers",
+    more: "More travelers",
+    done: "Done",
+    missingWhere: "Add at least one city to plan.",
+    missingWhen: "Pick the dates of the trip.",
+    missingWho: "Tell us how many are going.",
+    timing: "Takes about a minute",
+    moreDetails: "Add budget, pace, diet and more",
+  },
   form: {
     destinations: "Destinations",
     destinationsPlaceholder: "Start typing a city",
@@ -1471,6 +1534,33 @@ const bg: Dictionary = {
     "Двойна проверка на важните цифри…",
     "Сглобяване на плана…",
   ],
+  heroSearch: {
+    eyebrow: "Маршрут ден по ден, проверен спрямо актуални цени",
+    formLabel: "Планирайте пътуване",
+    where: "Къде",
+    when: "Кога",
+    who: "Кой",
+    wherePlaceholder: "Въведете град",
+    datesPlaceholder: "Изберете дати",
+    submit: "Реши пътуването ми",
+    presets: {
+      solo: { label: "Сам", party: "сам пътешественик" },
+      couple: { label: "Двойка", party: "двойка" },
+      family: { label: "Семейство", party: "семейство с деца" },
+      friends: { label: "Приятели", party: "група приятели" },
+    },
+    travelerOne: "1 пътуващ",
+    travelerMany: "{count} пътуващи",
+    travelersHeading: "Пътуващи",
+    fewer: "По-малко пътуващи",
+    more: "Повече пътуващи",
+    done: "Готово",
+    missingWhere: "Добавете поне един град.",
+    missingWhen: "Изберете датите на пътуването.",
+    missingWho: "Кажете ни колко души пътуват.",
+    timing: "Отнема около минута",
+    moreDetails: "Бюджет, темпо, хранене и още",
+  },
   form: {
     destinations: "Дестинации",
     destinationsPlaceholder: "Започнете да пишете град",

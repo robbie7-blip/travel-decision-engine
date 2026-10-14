@@ -14,14 +14,37 @@ import {
 import { CurrencySwitcher, useCurrency } from "@/components/CurrencySwitcher";
 import { RecentTrips } from "@/components/RecentTrips";
 import { HeroGallery } from "@/components/HeroGallery";
+import { HeroSearch } from "@/components/HeroSearch";
 import { SiteHeader } from "@/components/SiteHeader";
 import { TrustFooter } from "@/components/TrustFooter";
 import { ConfidenceRule } from "@/components/ui";
 import { ApiError, createGenerateJob } from "@/lib/api";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
+import { translatePartyComposition } from "@/lib/partyPresets";
 import type { Language } from "@/lib/types";
 
 type Status = "idle" | "loading" | "error";
+
+/** Which of the two ways in was used, so a failure is reported next to the
+ * button that was pressed rather than a screen away from it. */
+type SubmitSource = "hero" | "form";
+
+/** The bar opens on a couple, the way every booking site opens on two
+ * adults: it is the commonest answer, and a required question with a
+ * sensible answer already in it is one fewer thing between the visitor and
+ * the button. It is visible in the bar and in the form, and one tap to
+ * change. */
+const INITIAL_FORM: TripFormState = {
+  ...DEFAULT_FORM_STATE,
+  party_size: "2",
+  party_composition: TRANSLATIONS[DEFAULT_FORM_STATE.language].heroSearch.presets.couple.party,
+};
+
+/** A language switch, carrying a preset party description across with it
+ * (see translatePartyComposition). */
+function withLanguage(prev: TripFormState, language: Language): TripFormState {
+  return { ...prev, language, party_composition: translatePartyComposition(prev.party_composition, language) };
+}
 
 interface DemoTrip {
   jobId: string;
@@ -31,9 +54,10 @@ interface DemoTrip {
 export default function Home() {
   const router = useRouter();
   const { currency, setCurrency } = useCurrency();
-  const [form, setForm] = useState<TripFormState>(DEFAULT_FORM_STATE);
+  const [form, setForm] = useState<TripFormState>(INITIAL_FORM);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+  const [submitSource, setSubmitSource] = useState<SubmitSource>("form");
   const [demo, setDemo] = useState<DemoTrip | null>(null);
 
   const t = TRANSLATIONS[form.language];
@@ -56,12 +80,12 @@ export default function Home() {
     // persisted so it sticks on the next visit too.
     const urlLang = params.get("lang");
     if (urlLang === "en" || urlLang === "bg") {
-      setForm((prev) => ({ ...prev, language: urlLang }));
+      setForm((prev) => withLanguage(prev, urlLang));
       window.localStorage.setItem(LANGUAGE_STORAGE_KEY, urlLang);
     } else {
       const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
       if (saved === "en" || saved === "bg") {
-        setForm((prev) => ({ ...prev, language: saved }));
+        setForm((prev) => withLanguage(prev, saved));
       }
     }
 
@@ -74,11 +98,12 @@ export default function Home() {
   }, []);
 
   function setLanguage(language: Language) {
-    setForm((prev) => ({ ...prev, language }));
+    setForm((prev) => withLanguage(prev, language));
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(source: SubmitSource) {
+    setSubmitSource(source);
     setStatus("loading");
     setError("");
     try {
@@ -129,98 +154,119 @@ export default function Home() {
           and wrong about what it left: a travel product that opens on a
           flat light page has no moment in it. This is that moment - one
           deep band, the headline in warm off-white, everything below it
-          light and workmanlike. Nothing decorative was added to get it. */}
-      <div className="hero" style={{ padding: "44px clamp(32px, 8%, 180px) 40px", position: "relative" }}>
-        {/* The two decorative circle blobs that used to sit here and at the
-            bottom of the form section are gone. Large soft translucent
-            overlapping circles are one of the most recognisable AI-product
-            motifs going, and they were doing no work: pointer-events none,
-            13% opacity, purely atmospheric. An editorial page earns its
-            atmosphere from margin and type, not from wallpaper. */}
+          light and workmanlike. Nothing decorative was added to get it.
 
+          And now the band does the job, not only the argument: the search
+          bar is in it. See components/HeroSearch.tsx for why. The order
+          on a phone is headline, bar, the honesty line, then the photo -
+          the photo used to sit between the visitor and every field on the
+          page. */}
+      <div className="hero" style={{ padding: "var(--hero-pad-top) clamp(32px, 8%, 180px) var(--hero-pad-bottom)", position: "relative" }}>
         {/* 1550 matches the large header variant's own cap above so this
             section's left edge lines up with the logo instead of drifting
             based on its own narrower 960 reading-width - same fix applied
             sitewide, just with a percentage-based width instead of a flat
             maxWidth so the margin actually scales with the real window. */}
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
-        {/* Two columns: the argument on the left, a real place on the
-            right. The type stays on the green rather than over the
-            photograph, which is what keeps the band's contrast a
-            guarantee instead of a hope - see components/HeroGallery.tsx. */}
-        <div className="hero-split">
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <h1
-            className="font-display"
-            style={{
-              fontWeight: 600,
-              fontStyle: "italic",
-              fontSize: "clamp(32px, 6vw, 48px)",
-              lineHeight: 1.25,
-              paddingBottom: 6,
-              margin: "0 0 10px",
-            }}
-          >
-            {t.headlineLine1}
-            <br />
-            {t.headlineLine2}
-          </h1>
-          {/* The <br> is CSS-gated (.subhead-break, see globals.css), not
-              unconditional like headlineLine1/2's above - on a narrow phone,
-              subheadLine1 alone already wraps to 2-3 lines, and forcing
-              subheadLine2 onto its own line after that stranded "guess."
-              alone mid-paragraph and pushed the whole block to 4 lines. Below
-              the breakpoint the <br> collapses to nothing and this falls
-              back to the old space-joined natural wrap (3 lines on mobile).
-              At/above it, the full 820 column is available and natural wrap
-              was instead splitting mid-sentence-2 ("...never" / "overstated."
-              on separate lines) - the forced break fixes that by always
-              landing exactly on the sentence boundary. */}
-          <p style={{ color: "var(--deep-soft)", fontSize: 16, lineHeight: 1.65, maxWidth: 820, margin: 0 }}>
-            {t.subheadLine1} <br className="subhead-break" />
-            {t.subheadLine2}
-          </p>
-          {demo && (
-            <Link
-              href={`/trip/${demo.jobId}`}
-              className="font-ui"
-              style={{
-                display: "inline-block",
-                marginTop: 16,
-                fontSize: 13,
-                color: "var(--grounded)",
-                textDecoration: "underline",
-              }}
-            >
-              {t.demo.seeExample.replace("{destination}", demo.destinations.join(" · "))}
-            </Link>
-          )}
-          <div
-            id="confidence-legend"
-            className="font-ui scroll-row-mobile"
-            style={{ display: "flex", gap: 10, marginTop: 22, fontSize: 12, flexWrap: "wrap", alignItems: "center" }}
-          >
-            {(
-              ["verified", "fact_grounded", "single_source", "conflicting", "inferred"] as const
-            ).map((tier) => (
-              <span
-                key={tier}
-                data-tier={tier}
+          <div className="hero-grid">
+            <div className="hero-copy">
+              {/* What the product IS. The headline says how it behaves,
+                  and to someone who has never heard of decide, "it decides
+                  for you" does not yet say "trip plans". */}
+              <p className="hero-eyebrow font-ui">{t.heroSearch.eyebrow}</p>
+              <h1
+                className="font-display"
                 style={{
-                  color: "var(--deep-soft)",
-                  display: "flex",
-                  alignItems: "center",
+                  fontWeight: 600,
+                  fontStyle: "italic",
+                  fontSize: "clamp(32px, 6vw, 50px)",
+                  lineHeight: 1.18,
+                  paddingBottom: 4,
+                  margin: "0 0 14px",
                 }}
               >
-                <ConfidenceRule tier={tier} />
-                {t.tierLegend[tier]}
-              </span>
-            ))}
+                {t.headlineLine1}
+                <br />
+                {t.headlineLine2}
+              </h1>
+              <p className="hero-subhead">{t.subheadLine1}</p>
+              {demo && (
+                <Link
+                  href={`/trip/${demo.jobId}`}
+                  className="font-ui"
+                  style={{
+                    display: "inline-block",
+                    marginTop: 14,
+                    fontSize: 13,
+                    color: "var(--grounded)",
+                    textDecoration: "underline",
+                  }}
+                >
+                  {t.demo.seeExample.replace("{destination}", demo.destinations.join(" · "))}
+                </Link>
+              )}
+            </div>
+
+            {/* The type stays on the green rather than over the
+                photograph, which is what keeps the band's contrast a
+                guarantee instead of a hope - see components/HeroGallery.tsx. */}
+            <div className="hero-photo">
+              <HeroGallery t={t} language={form.language} />
+            </div>
+
+            <div className="hero-search-area">
+              <HeroSearch
+                value={form}
+                onChange={setForm}
+                onSubmit={() => handleSubmit("hero")}
+                submitting={status === "loading"}
+                error={status === "error" && submitSource === "hero" ? error : null}
+                t={t}
+              />
+            </div>
+
+            {/* The promise, directly under the button it is a promise
+                about: what comes back will say how sure it is of every
+                line. It used to be the subhead, read before there was
+                anything to be sure of. */}
+            <div className="hero-trust">
+              <div className="hero-trust-guarantee">
+                <span className="hero-trust-lead font-display">{t.subheadLine2}</span>
+                <div
+                  id="confidence-legend"
+                  className="font-ui scroll-row-mobile"
+                  style={{ display: "flex", gap: 12, fontSize: 12, flexWrap: "wrap", alignItems: "center" }}
+                >
+                  {(
+                    ["verified", "fact_grounded", "single_source", "conflicting", "inferred"] as const
+                  ).map((tier) => (
+                    <span
+                      key={tier}
+                      data-tier={tier}
+                      style={{
+                        color: "var(--deep-soft)",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <ConfidenceRule tier={tier} />
+                      {t.tierLegend[tier]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="hero-trust-aside font-ui">
+                <span>{t.heroSearch.timing}</span>
+                <a href="#trip-details" className="inline-link">
+                  {t.heroSearch.moreDetails} <span aria-hidden>↓</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="hero-recent">
+              <RecentTrips t={t} />
+            </div>
           </div>
-          <RecentTrips t={t} />
-        </div>
-        <HeroGallery t={t} language={form.language} />
-        </div>
         </div>
       </div>
 
@@ -276,17 +322,23 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ padding: "36px clamp(32px, 8%, 180px)", borderBottom: "1px solid var(--line)", position: "relative" }}>
+      {/* The same form state as the bar above, so this is the bar with
+          everything else showing - budget, pace, diet, the flight - rather
+          than a second form to fill in from the start. */}
+      <div
+        id="trip-details"
+        style={{ padding: "36px clamp(32px, 8%, 180px)", borderBottom: "1px solid var(--line)", position: "relative", scrollMarginTop: 12 }}
+      >
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>
         <div style={{ position: "relative", zIndex: 1 }}>
           <TripForm
             value={form}
             onChange={setForm}
-            onSubmit={handleSubmit}
+            onSubmit={() => handleSubmit("form")}
             submitting={status === "loading"}
             t={t}
           />
-          {status === "error" && (
+          {status === "error" && submitSource === "form" && (
             <div className="font-ui" style={{ marginTop: 14, color: "var(--infeasible)", fontSize: 13 }}>
               {error}
             </div>

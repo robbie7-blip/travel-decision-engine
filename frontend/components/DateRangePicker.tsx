@@ -22,6 +22,14 @@ interface DateRangePickerProps {
   toLabel: string;
   prevMonthLabel: string;
   nextMonthLabel: string;
+  /** "bare" is the homepage search bar's segment: no box of its own, since
+   * the segment around it is the box. See CityCombobox's variant. */
+  variant?: "field" | "bare";
+  /** Prefixed to the trigger's accessible name in the bar, where the
+   * visible caption ("When") is a sibling rather than a <label>. */
+  ariaLabel?: string;
+  /** Lets the search bar open the calendar when the dates are missing. */
+  triggerRef?: React.Ref<HTMLButtonElement>;
 }
 
 const LOCALE_BY_LANGUAGE: Record<Language, string> = {
@@ -29,7 +37,20 @@ const LOCALE_BY_LANGUAGE: Record<Language, string> = {
   bg: "bg-BG",
 };
 
-export function DateRangePicker({ startDate, endDate, onChange, language, placeholder, toLabel, prevMonthLabel, nextMonthLabel }: DateRangePickerProps) {
+export function DateRangePicker({
+  startDate,
+  endDate,
+  onChange,
+  language,
+  placeholder,
+  toLabel,
+  prevMonthLabel,
+  nextMonthLabel,
+  variant = "field",
+  ariaLabel,
+  triggerRef,
+}: DateRangePickerProps) {
+  const bare = variant === "bare";
   const [open, setOpen] = useState(false);
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,7 +105,17 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
     return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(ref);
   });
 
-  const displayFormatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
+  // The bar's segment is narrower than the form's full-width field, and
+  // "12 May 2027 → 19 May 2027" does not fit in it. The year is dropped
+  // there only when both ends are in the current year, where it says
+  // nothing; a trip next spring keeps it.
+  const currentYear = new Date().getFullYear();
+  const shortForm =
+    bare && (!start || start.getFullYear() === currentYear) && (!end || end.getFullYear() === currentYear);
+  const displayFormatter = new Intl.DateTimeFormat(
+    locale,
+    shortForm ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" }
+  );
   const displayText =
     start && end
       ? `${displayFormatter.format(start)} → ${displayFormatter.format(end)}`
@@ -98,15 +129,22 @@ export function DateRangePicker({ startDate, endDate, onChange, language, placeh
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="font-ui"
-        style={{
-          ...inputStyle,
-          textAlign: "left",
-          cursor: "pointer",
-          color: start ? "var(--ink)" : "var(--ink-dim)",
-        }}
+        className={bare ? "font-ui search-bare-trigger" : "font-ui"}
+        aria-label={ariaLabel ? `${ariaLabel}: ${displayText}` : undefined}
+        aria-expanded={bare ? open : undefined}
+        style={
+          bare
+            ? { color: start ? "var(--ink)" : "var(--ink-dim)" }
+            : {
+                ...inputStyle,
+                textAlign: "left",
+                cursor: "pointer",
+                color: start ? "var(--ink)" : "var(--ink-dim)",
+              }
+        }
       >
         {displayText}
       </button>
