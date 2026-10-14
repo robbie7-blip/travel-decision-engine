@@ -7,6 +7,7 @@
 
 import type { Redis } from "@upstash/redis";
 import type { Language } from "./types";
+import { HOME_EVENT_TYPES, type HomeEventType } from "./homeEvents";
 
 export type AnalyticsEventType = "generate" | "refine";
 
@@ -112,4 +113,20 @@ export async function loadAnalyticsSnapshot(redis: Redis, dayLimit = 14): Promis
     refineByLang: { en: refByLang[0] ?? 0, bg: refByLang[1] ?? 0 },
     daily: recentDays.map((day, i) => ({ day, generate: genCounts[i] ?? 0, refine: refCounts[i] ?? 0 })),
   };
+}
+
+// The homepage's own counters - which way in people use, and what the
+// "Want it sharper?" step does to them. See lib/homeEvents.ts for what is
+// (and is not) sent. Totals only, like the funnel above.
+const homeTotalKey = (type: HomeEventType) => `analytics:home:${type}:total`;
+
+export async function recordHomeEvent(redis: Redis, type: HomeEventType): Promise<void> {
+  await redis.incr(homeTotalKey(type));
+}
+
+export type HomeSnapshot = Record<HomeEventType, number>;
+
+export async function loadHomeSnapshot(redis: Redis): Promise<HomeSnapshot> {
+  const counts = await Promise.all(HOME_EVENT_TYPES.map((type) => redis.get<number>(homeTotalKey(type))));
+  return Object.fromEntries(HOME_EVENT_TYPES.map((type, i) => [type, counts[i] ?? 0])) as HomeSnapshot;
 }

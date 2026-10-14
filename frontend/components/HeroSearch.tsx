@@ -26,6 +26,7 @@ import { WhoPicker } from "./WhoPicker";
 import type { TripFormState } from "./TripForm";
 import { splitCities } from "@/lib/cityOptions";
 import type { Dictionary } from "@/lib/i18n";
+import { trackHomeEvent } from "@/lib/homeEvents";
 import { partySizeOf } from "@/lib/partyPresets";
 import { MAX_TRIP_DAYS, tripDayCount } from "@/lib/validation";
 
@@ -50,6 +51,7 @@ function onlyEssentials(value: TripFormState): boolean {
 
 /** Down to the part of the full form the bar does not cover. */
 export function scrollToFullForm() {
+  trackHomeEvent("full_form_opened");
   const target = document.getElementById("trip-form-more") ?? document.getElementById("trip-details");
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   target?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
@@ -68,9 +70,10 @@ function firstMissing(value: TripFormState): Segment | null {
 export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: HeroSearchProps) {
   const copy = t.heroSearch;
   const [missing, setMissing] = useState<Segment | null>(null);
-  // Asked once per visit, never twice: a second press of the button, or
-  // "Decide now", always goes straight through.
+  // Asked once per visit, never twice: a second press of the button
+  // always goes straight through.
   const [nudge, setNudge] = useState<"hidden" | "shown" | "done">("hidden");
+  const nudgeTitleRef = useRef<HTMLDivElement>(null);
   const whereRef = useRef<HTMLInputElement>(null);
   const whenRef = useRef<HTMLButtonElement>(null);
   const whoRef = useRef<HTMLButtonElement>(null);
@@ -81,6 +84,14 @@ export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: 
   useEffect(() => {
     if (missing !== null && stillMissing !== missing) setMissing(null);
   }, [missing, stillMissing]);
+
+  // Focus goes to the question when it appears, so a screen reader reads
+  // it and a keyboard is already inside it. The heading rather than the
+  // first field: on a phone a focused field opens the keyboard over the
+  // very thing being offered.
+  useEffect(() => {
+    if (nudge === "shown") nudgeTitleRef.current?.focus();
+  }, [nudge]);
 
   const dayCount = value.start_date && value.end_date ? tripDayCount(value.start_date, value.end_date) : null;
   const tooLong = dayCount !== null && dayCount > MAX_TRIP_DAYS;
@@ -93,10 +104,10 @@ export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: 
       setMissing(null);
       if (nudge === "hidden" && onlyEssentials(value)) {
         setNudge("shown");
+        trackHomeEvent("nudge_shown");
         return;
       }
-      setNudge("done");
-      onSubmit();
+      submitNow();
       return;
     }
     setMissing(gap);
@@ -106,6 +117,16 @@ export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: 
     if (gap === "where") whereRef.current?.focus();
     else if (gap === "when" && !tooLong) whenRef.current?.click();
     else if (gap === "who") whoRef.current?.click();
+  }
+
+  /** Every request from the bar goes through here, so each one is counted
+   * once and, when the nudge was showing, by how it ended. */
+  function submitNow() {
+    if (submitting) return;
+    if (nudge === "shown") trackHomeEvent(onlyEssentials(value) ? "nudge_without_detail" : "nudge_with_detail");
+    trackHomeEvent("submit_bar");
+    setNudge("done");
+    onSubmit();
   }
 
   /** A click on the segment's padding or caption acts on its control, so
@@ -237,39 +258,95 @@ export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: 
         {nudge === "shown" ? "" : message}
       </div>
 
+      {/* The three answers that change a plan most, right here, all
+          optional. Its own <form> so Enter in either field sends the trip,
+          the same as the button. The rest of the long form is one link
+          away for anyone who wants it. */}
       {nudge === "shown" && (
-        <div className="hero-nudge font-ui" role="group" aria-labelledby="hero-nudge-title">
+        <form
+          className="hero-nudge font-ui"
+          aria-labelledby="hero-nudge-title"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitNow();
+          }}
+        >
           <div className="hero-nudge-copy">
-            <div id="hero-nudge-title" className="hero-nudge-title font-display">
+            <div id="hero-nudge-title" ref={nudgeTitleRef} tabIndex={-1} className="hero-nudge-title font-display">
               {copy.nudgeTitle}
             </div>
             <p className="hero-nudge-body">{copy.nudgeBody}</p>
           </div>
+
+          <div className="hero-nudge-fields">
+            <label className="hero-nudge-field">
+              <span className="hero-nudge-label">{t.form.budget}</span>
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                className="hero-nudge-input"
+                value={value.budget_total_eur}
+                onChange={(e) => onChange({ ...value, budget_total_eur: e.target.value })}
+                placeholder={t.form.budgetPlaceholder}
+              />
+            </label>
+            <label className="hero-nudge-field hero-nudge-field-wide">
+              <span className="hero-nudge-label">{t.form.interests}</span>
+              <input
+                className="hero-nudge-input"
+                value={value.interests}
+                onChange={(e) => onChange({ ...value, interests: e.target.value })}
+                placeholder={t.form.interestsPlaceholder}
+              />
+            </label>
+            <fieldset className="hero-nudge-pace">
+              <legend className="hero-nudge-label">{t.form.pace}</legend>
+              <div className="hero-nudge-pace-options">
+                {(
+                  [
+                    ["relaxed", t.form.paceRelaxed],
+                    ["moderate", t.form.paceModerate],
+                    ["packed", t.form.pacePacked],
+                  ] as const
+                ).map(([pace, label]) => (
+                  <label key={pace} className="hero-nudge-pace-option">
+                    <input
+                      type="radio"
+                      name="hero-nudge-pace"
+                      value={pace}
+                      checked={value.pace === pace}
+                      onChange={() => onChange({ ...value, pace })}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+
           <div className="hero-nudge-actions">
-            <button
-              type="button"
-              className="hero-nudge-add"
-              autoFocus
-              onClick={() => {
-                setNudge("done");
+            <button type="submit" className="hero-search-cta hero-nudge-go" disabled={submitting} aria-busy={submitting}>
+              <span>{submitting ? t.form.submitting : copy.submit}</span>
+              {!submitting && (
+                <span className="hero-search-cta-arrow" aria-hidden>
+                  →
+                </span>
+              )}
+            </button>
+            <a
+              href="#trip-details"
+              className="hero-nudge-more inline-link"
+              onClick={(e) => {
+                e.preventDefault();
                 scrollToFullForm();
               }}
             >
               {copy.nudgeAdd} <span aria-hidden>↓</span>
-            </button>
-            <button
-              type="button"
-              className="hero-nudge-skip"
-              disabled={submitting}
-              onClick={() => {
-                setNudge("done");
-                onSubmit();
-              }}
-            >
-              {copy.nudgeSkip} <span aria-hidden>→</span>
-            </button>
+            </a>
           </div>
-        </div>
+        </form>
       )}
     </div>
   );

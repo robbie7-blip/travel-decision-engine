@@ -112,12 +112,11 @@ export interface Dictionary {
     moreDetails: string;
     fullForm: string;
     /** Shown once, on the first press of the bar's button when nothing
-     * beyond the essentials has been given. Optional by design: "Decide
-     * now" goes straight through. */
+     * beyond the essentials has been given, with budget, interests and
+     * pace inline. All optional: the button sends the trip either way. */
     nudgeTitle: string;
     nudgeBody: string;
     nudgeAdd: string;
-    nudgeSkip: string;
   };
   form: {
     destinations: string;
@@ -475,6 +474,18 @@ export interface Dictionary {
   // lib/demoTrip.ts). "{destination}" placeholder.
   demo: {
     seeExample: string;
+    /** The homepage section showing a few lines of a real plan (see
+     * components/ExampleTrip.tsx and lib/demoPreview.ts). */
+    eyebrow: string;
+    /** {destination}, and {days} in titleMany. */
+    titleOne: string;
+    titleMany: string;
+    /** {percent} is the trip's trust score. */
+    trust: string;
+    /** {day} and {date}. */
+    dayHeading: string;
+    open: string;
+    planYours: string;
   };
   // The /showcase gallery - a curated list of real, already-generated trips
   // (see lib/showcase.ts), admin-managed via /admin/showcase.
@@ -882,9 +893,8 @@ const en: Dictionary = {
     moreDetails: "Add budget, pace, interests and more",
     fullForm: "Full form",
     nudgeTitle: "Want it sharper?",
-    nudgeBody: "Plans come out noticeably more personal with a budget, your interests and a pace. About 30 seconds more.",
-    nudgeAdd: "Add more detail",
-    nudgeSkip: "Decide now",
+    nudgeBody: "All optional. A budget, your interests and a pace make the plan noticeably more yours.",
+    nudgeAdd: "More options in the full form",
   },
   form: {
     destinations: "Destinations",
@@ -1153,6 +1163,13 @@ const en: Dictionary = {
   },
   demo: {
     seeExample: "See a real example: {destination} →",
+    eyebrow: "A real plan, not a mock-up",
+    titleOne: "{destination}, 1 day",
+    titleMany: "{destination}, {days} days",
+    trust: "{percent}% of its lines are backed by a live search or a checked fact. The rest say plainly that they are guesses.",
+    dayHeading: "Day {day} · {date}",
+    open: "Open the full plan",
+    planYours: "Plan your own",
   },
   showcase: {
     navLabel: "Real examples",
@@ -1576,9 +1593,8 @@ const bg: Dictionary = {
     moreDetails: "Добавете бюджет, темпо, интереси и още",
     fullForm: "Пълна форма",
     nudgeTitle: "Да го направим по-точно?",
-    nudgeBody: "Планът става много по-личен с бюджет, вашите интереси и темпо. Около 30 секунди повече.",
-    nudgeAdd: "Добавете още детайли",
-    nudgeSkip: "Реши сега",
+    nudgeBody: "Всичко е по желание. Бюджет, интереси и темпо правят плана много по-ваш.",
+    nudgeAdd: "Още опции в пълната форма",
   },
   form: {
     destinations: "Дестинации",
@@ -1841,6 +1857,13 @@ const bg: Dictionary = {
   },
   demo: {
     seeExample: "Виж реален пример: {destination} →",
+    eyebrow: "Истински план, не макет",
+    titleOne: "{destination}, 1 ден",
+    titleMany: "{destination}, {days} дни",
+    trust: "{percent}% от редовете му са базирани на търсене на живо или проверен факт. Останалите казват направо, че са предположения.",
+    dayHeading: "Ден {day} · {date}",
+    open: "Отвори целия план",
+    planYours: "Планирайте своето",
   },
   showcase: {
     navLabel: "Реални примери",

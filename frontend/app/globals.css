@@ -1506,6 +1506,10 @@ p {
     height: 44px;
   }
 
+  .hero-nudge-pace-option span {
+    min-height: 44px;
+  }
+
   /* A camera glyph on its own is wide enough to read and too narrow to
      hit, same as the footer's "Terms". */
   .qa-photo,
@@ -3116,13 +3120,10 @@ p {
    One question, once, between the button and the wait - only when the
    bar was all that was filled in. Both answers are one tap. */
 .hero-nudge {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px 28px;
+  display: grid;
+  gap: 16px;
   margin-top: 12px;
-  padding: 18px 22px;
+  padding: 20px 22px;
   border: 1px solid var(--deep-line);
   border-radius: 14px;
   background: color-mix(in srgb, var(--deep-ink) 6%, var(--deep));
@@ -3140,73 +3141,330 @@ p {
   }
 }
 
-.hero-nudge-copy {
-  flex: 1 1 320px;
-  min-width: 0;
-}
-
 .hero-nudge-title {
   font-size: 20px;
   font-style: italic;
   font-weight: 600;
   color: var(--deep-ink);
+  outline: none;
 }
 
 .hero-nudge-body {
   margin: 4px 0 0;
-  max-width: 580px;
+  max-width: 620px;
   font-size: 14px;
   line-height: 1.55;
   color: var(--deep-soft);
 }
 
-.hero-nudge-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+/* Budget, interests, pace: one row on a desktop, stacked on a phone. */
+.hero-nudge-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto;
+  gap: 12px 16px;
+  align-items: end;
 }
 
-.hero-nudge-add,
-.hero-nudge-skip {
-  min-height: 48px;
-  padding: 0 20px;
-  border-radius: 10px;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+.hero-nudge-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
-.hero-nudge-add {
-  border: 0;
-  background: var(--bg-panel);
-  color: var(--ink);
-}
-
-.hero-nudge-add:hover {
-  background: var(--bg-panel-raised);
-}
-
-.hero-nudge-skip {
-  border: 1px solid var(--deep-soft);
-  background: transparent;
+.hero-nudge-label {
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--deep-ink);
 }
 
-.hero-nudge-skip:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--deep-ink) 10%, transparent);
+.hero-nudge-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
 }
 
-.hero-nudge-skip:disabled {
-  cursor: progress;
+.hero-nudge-input::placeholder {
+  color: var(--ink-dim);
+  opacity: 1;
 }
 
-.hero-nudge-add:focus-visible,
-.hero-nudge-skip:focus-visible {
+.hero-nudge-input:focus-visible {
+  outline: 3px solid var(--brand-gold);
+  outline-offset: 1px;
+}
+
+.hero-nudge-pace {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* A <legend> does not sit on a line like a label does; floated, it does,
+   and "Pace" lines up with the two labels beside it. */
+.hero-nudge-pace > legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+/* Three options as one segmented control: real radio inputs, so the
+   keyboard and a screen reader get a radio group for free, drawn as
+   buttons. */
+.hero-nudge-pace-options {
+  clear: both;
+  display: flex;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--bg-panel);
+}
+
+.hero-nudge-pace-option {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+}
+
+.hero-nudge-pace-option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.hero-nudge-pace-option span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 7px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.hero-nudge-pace-option input:checked + span {
+  background: var(--brand-teal);
+  color: var(--bg-panel);
+}
+
+.hero-nudge-pace-option input:focus-visible + span {
   outline: 3px solid var(--brand-gold);
   outline-offset: 2px;
+}
+
+.hero-nudge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+}
+
+/* The bar's button, reused - minus what the bar's grid gives it. */
+.hero-nudge .hero-nudge-go {
+  grid-area: auto;
+  margin: 0;
+  min-height: 52px;
+}
+
+.hero .hero-nudge-more {
+  color: var(--deep-ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--deep-soft);
+  text-underline-offset: 4px;
+}
+
+/* ---------- A real plan, under the hero ---------- */
+
+.example-trip {
+  padding: 44px clamp(32px, 8%, 180px);
+  border-bottom: 1px solid var(--line);
+}
+
+.example-trip-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: center;
+}
+
+.example-trip-eyebrow {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-gold-ink);
+}
+
+.example-trip-title {
+  margin: 0 0 10px;
+  font-size: clamp(26px, 3.4vw, 34px);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.example-trip-trust {
+  margin: 0;
+  max-width: 480px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.example-trip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+  margin-top: 20px;
+}
+
+.example-trip-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 10px;
+  background: var(--brand-teal);
+  color: var(--bg-panel);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.example-trip-open:hover {
+  background: color-mix(in srgb, var(--brand-teal) 85%, black);
+}
+
+.example-trip-yours {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--grounded);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.example-trip-open:focus-visible,
+.example-trip-yours:focus-visible {
+  outline: 3px solid var(--brand-gold);
+  outline-offset: 3px;
+}
+
+.example-trip-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px -28px rgba(43, 36, 28, 0.45);
+  overflow: hidden;
+}
+
+.example-trip-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--bg-panel-raised);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.example-trip-score {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--grounded);
+  white-space: nowrap;
+}
+
+.example-trip-lines {
+  list-style: none;
+  margin: 0;
+  padding: 6px 20px;
+}
+
+.example-trip-line {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.example-trip-line:first-child {
+  border-top: 0;
+}
+
+.example-trip-time {
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.example-trip-line-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 860px) {
+  .example-trip {
+    padding-top: 32px;
+    padding-bottom: 32px;
+  }
+
+  .example-trip-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .example-trip-lines {
+    padding: 4px 14px;
+  }
+
+  .example-trip-card-head {
+    padding: 12px 14px;
+  }
+
+  /* The tag goes under the title rather than squeezing it. */
+  .example-trip-line {
+    grid-template-columns: 44px minmax(0, 1fr);
+    row-gap: 4px;
+  }
+
+  .example-trip-line > :last-child {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 /* Two rows on a tablet or a narrow laptop: four cells in one row at this
@@ -3332,16 +3590,15 @@ p {
   .hero-nudge {
     margin-left: -14px;
     margin-right: -14px;
-    padding: 16px;
+    padding: 18px 16px;
   }
 
-  .hero-nudge-actions {
+  .hero-nudge-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-nudge .hero-nudge-go {
     width: 100%;
-  }
-
-  .hero-nudge-add,
-  .hero-nudge-skip {
-    flex: 1 1 auto;
   }
 
   .hero-search-segment {

@@ -15,11 +15,15 @@ import { CurrencySwitcher, useCurrency } from "@/components/CurrencySwitcher";
 import { RecentTrips } from "@/components/RecentTrips";
 import { HeroGallery } from "@/components/HeroGallery";
 import { HeroSearch } from "@/components/HeroSearch";
+import { ExampleTrip, type DemoWithPreview } from "@/components/ExampleTrip";
 import { SiteHeader } from "@/components/SiteHeader";
 import { TrustFooter } from "@/components/TrustFooter";
 import { ConfidenceRule } from "@/components/ui";
 import { ApiError, createGenerateJob } from "@/lib/api";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
+import { trackHomeEvent } from "@/lib/homeEvents";
+import { LAST_SEARCH_KEY, restoreLastSearch, serializeLastSearch } from "@/lib/lastSearch";
+import { localDateOf } from "@/lib/today";
 import { translatePartyComposition } from "@/lib/partyPresets";
 import type { Language } from "@/lib/types";
 
@@ -46,10 +50,6 @@ function withLanguage(prev: TripFormState, language: Language): TripFormState {
   return { ...prev, language, party_composition: translatePartyComposition(prev.party_composition, language) };
 }
 
-interface DemoTrip {
-  jobId: string;
-  destinations: string[];
-}
 
 export default function Home() {
   const router = useRouter();
@@ -58,7 +58,7 @@ export default function Home() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [submitSource, setSubmitSource] = useState<SubmitSource>("form");
-  const [demo, setDemo] = useState<DemoTrip | null>(null);
+  const [demo, setDemo] = useState<DemoWithPreview | null>(null);
 
   const t = TRANSLATIONS[form.language];
 
@@ -94,6 +94,21 @@ export default function Home() {
     const dest = params.get("dest");
     if (dest) {
       setForm((prev) => ({ ...prev, destinations: dest }));
+    } else {
+      // Otherwise, the bar as it was left on this device (lib/lastSearch.ts).
+      // A guide's "Plan a trip to X" wins over it, being the newer intent.
+      let restored = null;
+      try {
+        restored = restoreLastSearch(window.localStorage.getItem(LAST_SEARCH_KEY), localDateOf(new Date()));
+      } catch {
+        // Storage refused (private mode, blocked site data): start empty.
+      }
+      if (restored) {
+        setForm((prev) => {
+          const next = { ...prev, ...restored };
+          return { ...next, party_composition: translatePartyComposition(next.party_composition, prev.language) };
+        });
+      }
     }
   }, []);
 
@@ -102,7 +117,20 @@ export default function Home() {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   }
 
+  /** Only once a trip was actually accepted: a search that failed is not
+   * one worth coming back to. */
+  function rememberSearch() {
+    try {
+      window.localStorage.setItem(LAST_SEARCH_KEY, serializeLastSearch(form));
+    } catch {
+      // A full or blocked storage costs the convenience, nothing else.
+    }
+  }
+
   async function handleSubmit(source: SubmitSource) {
+    // The bar counts its own (HeroSearch.submitNow), with how the nudge
+    // ended; this is the other way in.
+    if (source === "form") trackHomeEvent("submit_form");
     setSubmitSource(source);
     setStatus("loading");
     setError("");
@@ -124,11 +152,13 @@ export default function Home() {
           ...compareDateOverride(form),
         };
         const [jobIdA, jobIdB] = await Promise.all([createGenerateJob(brief), createGenerateJob(compareBrief)]);
+        rememberSearch();
         router.push(`/compare?a=${jobIdA}&b=${jobIdB}`);
         return;
       }
 
       const jobId = await createGenerateJob(brief);
+      rememberSearch();
       router.push(`/trip/${jobId}`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t.genericError);
@@ -190,21 +220,6 @@ export default function Home() {
                 {t.headlineLine2}
               </h1>
               <p className="hero-subhead">{t.subheadLine1}</p>
-              {demo && (
-                <Link
-                  href={`/trip/${demo.jobId}`}
-                  className="font-ui"
-                  style={{
-                    display: "inline-block",
-                    marginTop: 14,
-                    fontSize: 13,
-                    color: "var(--grounded)",
-                    textDecoration: "underline",
-                  }}
-                >
-                  {t.demo.seeExample.replace("{destination}", demo.destinations.join(" · "))}
-                </Link>
-              )}
             </div>
 
             {/* The type stays on the green rather than over the
@@ -266,6 +281,8 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {demo && <ExampleTrip demo={demo} t={t} language={form.language} />}
 
       <div style={{ padding: "18px clamp(32px, 8%, 180px)", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1550, margin: "0 auto" }}>

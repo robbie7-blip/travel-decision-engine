@@ -86,6 +86,16 @@ export const VISITED_SHARE_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:visited-share",
 };
 
+// The homepage's counters (/api/analytics/home). Free to serve, but each
+// accepted call is a permanent increment, so one script must not be able
+// to make the numbers say anything it likes. A real visit sends at most a
+// handful.
+export const HOME_ANALYTICS_RATE_LIMIT: RateLimitConfig = {
+  perHour: envInt("HOME_ANALYTICS_RATE_LIMIT_PER_HOUR", 40),
+  perDay: envInt("HOME_ANALYTICS_RATE_LIMIT_PER_DAY", 150),
+  prefix: "ratelimit:home-analytics",
+};
+
 export interface RateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;

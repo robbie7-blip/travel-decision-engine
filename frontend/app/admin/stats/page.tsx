@@ -5,7 +5,14 @@
 
 import Link from "next/link";
 import { getRedis } from "@/lib/redis";
-import { loadAnalyticsSnapshot, loadFunnelSnapshot, type AnalyticsSnapshot, type FunnelSnapshot } from "@/lib/analytics";
+import {
+  loadAnalyticsSnapshot,
+  loadFunnelSnapshot,
+  loadHomeSnapshot,
+  type AnalyticsSnapshot,
+  type FunnelSnapshot,
+  type HomeSnapshot,
+} from "@/lib/analytics";
 import { checkDailyBudget, type BudgetCheckResult } from "@/lib/spendCheck";
 import { ALERT_THRESHOLD_RATIO } from "@/lib/costBudget";
 import { loadQualitySnapshot, QUALITY_CHECKS, type QualitySnapshot } from "@/lib/qualityStats";
@@ -25,6 +32,7 @@ export const runtime = "nodejs";
 async function loadSnapshot(): Promise<{
   analytics: AnalyticsSnapshot;
   funnel: FunnelSnapshot;
+  home: HomeSnapshot;
   budget: BudgetCheckResult;
   quality: QualitySnapshot;
   timing: TimingSnapshot;
@@ -35,14 +43,15 @@ async function loadSnapshot(): Promise<{
   } catch {
     return null;
   }
-  const [analytics, funnel, budget, quality, timing] = await Promise.all([
+  const [analytics, funnel, home, budget, quality, timing] = await Promise.all([
     loadAnalyticsSnapshot(redis),
     loadFunnelSnapshot(redis),
+    loadHomeSnapshot(redis),
     checkDailyBudget(redis),
     loadQualitySnapshot(redis),
     loadTimingSnapshot(redis),
   ]);
-  return { analytics, funnel, budget, quality, timing };
+  return { analytics, funnel, home, budget, quality, timing };
 }
 
 export default async function StatsAdminPage() {
@@ -60,7 +69,7 @@ export default async function StatsAdminPage() {
     );
   }
 
-  const { analytics: snapshot, funnel, budget, quality, timing } = loaded;
+  const { analytics: snapshot, funnel, home, budget, quality, timing } = loaded;
   // Percentage of `from` that reached `to` - null (rendered as "-") rather
   // than a misleading 0% or NaN when the denominator is 0 (no data yet).
   const rate = (from: number, to: number): string => (from > 0 ? `${Math.round((to / from) * 100)}%` : "-");
@@ -412,6 +421,46 @@ export default async function StatsAdminPage() {
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", gap: 20, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Free quota hit: {funnel.quota_blocked_free}</span>
           <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Pro quota hit: {funnel.quota_blocked_paid}</span>
+        </div>
+      </div>
+
+      {/* The homepage's two ways in and the "Want it sharper?" step
+          between the bar and the wait - see lib/homeEvents.ts. The
+          question this answers: does the step make plans more specific,
+          or only lose people? Totals since the counters were added. */}
+      <div style={{ fontSize: 11, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+        Homepage
+      </div>
+      <div style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "16px 20px", marginBottom: 32 }}>
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13 }}>Trips from the search bar: {home.submit_bar}</span>
+          <span style={{ fontSize: 13 }}>Trips from the full form: {home.submit_form}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13 }}>&quot;Want it sharper?&quot; shown: {home.nudge_shown}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13 }}>
+            → Sent with detail added: {home.nudge_with_detail}{" "}
+            <span style={{ color: "var(--ink-dim)" }}>({rate(home.nudge_shown, home.nudge_with_detail)} of shown)</span>
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13 }}>
+            → Sent without: {home.nudge_without_detail}{" "}
+            <span style={{ color: "var(--ink-dim)" }}>({rate(home.nudge_shown, home.nudge_without_detail)} of shown)</span>
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>
+            → Not sent from the page:{" "}
+            {Math.max(0, home.nudge_shown - home.nudge_with_detail - home.nudge_without_detail)} (left, or went to the
+            full form)
+          </span>
+        </div>
+        <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", gap: 20, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Opened the full form from the bar: {home.full_form_opened}</span>
+          <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Opened the real example: {home.example_opened}</span>
         </div>
       </div>
 
