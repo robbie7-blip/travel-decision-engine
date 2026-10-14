@@ -143,7 +143,7 @@ export function SiteHeader({
             </div>
           </Link>
 
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+          <div className="site-header-right" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
             {contextLink && (
               <Link href={contextLink.href} className="font-ui header-context-link" style={linkStyle}>
                 {contextLink.label}

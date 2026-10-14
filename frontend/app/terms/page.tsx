@@ -45,10 +45,10 @@ export default async function TermsPage({
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <div style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
+      <div className="site-header" style={{ padding: "18px clamp(32px, 8%, 180px) 0", background: "var(--bg-panel-raised)", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1450, margin: "0 auto" }}>
           <HeaderNavProvider>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
+          <div className="site-header-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBottom: 14 }}>
             <Link href={`/${langSuffix}`} className="header-logo" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-icon.svg" alt="" width={40} height={40} style={{ flexShrink: 0 }} />
@@ -56,7 +56,7 @@ export default async function TermsPage({
                 decide
               </span>
             </Link>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+            <div className="site-header-right" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               {/* The way back to the trip form, in words.
                   
                   The logo has always linked home and still does, on every

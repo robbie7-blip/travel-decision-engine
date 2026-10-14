@@ -3708,6 +3708,90 @@ a.trip-notify-note {
   }
 }
 
+/* Every other page's header, on a phone.
+
+   Swept at an in-app browser's size (390x670, Messenger) after the
+   homepage fix: nothing was broken, but the header was 160-200px on every
+   page - up to a third of the screen - and worst on the trip page, the one
+   people open from a shared link, where five controls wrapped onto three
+   lines with the currency select alone on the first.
+
+   Two lines instead. The page's own link ("Plan your own trip ->") moves
+   up beside the logo, where it is also more visible; the controls get the
+   whole second line. And where that link already goes home, the house
+   button beside it is the same destination twice, so it steps aside -
+   which is also what lets the five controls fit on one line. */
+@media (max-width: 640px) {
+  .site-header:not(.site-header--large) {
+    padding-top: 12px !important;
+  }
+
+  .site-header:not(.site-header--large) .site-header-row {
+    row-gap: 6px !important;
+    column-gap: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  /* A little smaller, so the logo and the page's link share the first
+     line on a 390px phone: at 40px and 24px they needed 338px of the 326
+     there are, and the link took a line of its own. */
+  .site-header:not(.site-header--large) .header-logo {
+    gap: 10px !important;
+  }
+
+  .site-header:not(.site-header--large) .header-logo img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .site-header:not(.site-header--large) .header-logo .font-display {
+    font-size: 22px !important;
+  }
+
+  .site-header:not(.site-header--large) .header-context-link {
+    letter-spacing: 0.02em !important;
+  }
+
+  /* !important: the group's display: flex is inline. */
+  .site-header-row > .site-header-right {
+    display: contents !important;
+  }
+
+  /* Undoes the 1040px rule's width: 100%, which is what put the link on a
+     line of its own - on a phone it now shares the logo's. */
+  .site-header-right > .header-context-link {
+    width: auto;
+    margin-top: 0;
+    margin-left: auto;
+    max-width: 55%;
+    text-align: right;
+  }
+
+  .site-header-right > .header-account-group {
+    flex-basis: 100%;
+  }
+
+  .site-header-row:has(.header-context-link[href="/"], .header-context-link[href="/?lang=bg"]) .home-chip {
+    display: none;
+  }
+}
+
+/* With the house gone, a trip page has four controls again, not five, and
+   four fit a 390px phone on one line (302px in 326). The "five controls"
+   rule further up counts children, and a hidden child is still a child,
+   so it would still break the currency onto a line of its own; this
+   undoes it for exactly that case. Not below 346px, where four do not fit
+   either and the rule above that one has to keep working. */
+@media (min-width: 346px) and (max-width: 640px) {
+  .site-header-row:has(.header-context-link[href="/"], .header-context-link[href="/?lang=bg"]) .header-account-group {
+    flex-wrap: nowrap;
+  }
+
+  .site-header-row:has(.header-context-link[href="/"], .header-context-link[href="/?lang=bg"]) .header-extra-control {
+    flex-basis: auto;
+  }
+}
+
 /* The homepage's large header, on a phone.
 
    It was 190px tall at 390px wide: an 84px mark, a 48px wordmark, then the
@@ -4825,6 +4909,10 @@ a.trip-notify-note {
  * and print buttons beside it deliberately: three ways of asking the same
  * question should look like three of the same thing. */
 .trip-action {
+  /* Buttons and links both wear this, and on their own they sit on the
+     text baseline at different heights; aligned by their middles they
+     line up whichever they are. */
+  vertical-align: middle;
   margin-bottom: 20px;
   margin-left: 8px;
   background: none;

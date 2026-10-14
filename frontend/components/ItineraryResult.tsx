@@ -464,6 +464,22 @@ export function ItineraryResult({
         <EmailTripButton jobId={jobId} t={t} language={language} />
       )}
 
+      {/* The same cities, back in the homepage bar, for new dates or a
+          second trip - and, for someone who opened a shared link, the way
+          from reading a plan to making one. Only the cities travel in the
+          link: they are on this page already, and nothing about who went
+          or what they spent is (see lib/publicBrief.ts). The bar fills in
+          the party from this device's own last search, if it has one. */}
+      {destinations && destinations.length > 0 && (
+        <Link
+          href={`/?dest=${encodeURIComponent(destinations.join(", "))}${language === "bg" ? "&lang=bg" : ""}`}
+          className="font-ui no-print trip-action"
+          style={{ textDecoration: "none" }}
+        >
+          <span aria-hidden>↻</span> {t.trip.planLikeThis}
+        </Link>
+      )}
+
       {/* Whether this trip opens without a signal, read from the actual
           cache rather than inferred from the service worker existing -
           see OfflineReady. Beside the calendar export on purpose: both

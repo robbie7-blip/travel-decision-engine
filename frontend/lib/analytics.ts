@@ -119,9 +119,43 @@ export async function loadAnalyticsSnapshot(redis: Redis, dayLimit = 14): Promis
 // "Want it sharper?" step does to them. See lib/homeEvents.ts for what is
 // (and is not) sent. Totals only, like the funnel above.
 const homeTotalKey = (type: HomeEventType) => `analytics:home:${type}:total`;
+/** Per UTC day as well, so a change to the homepage can be read as a
+ * before and after rather than folded into one running total. */
+const homeDayKey = (type: HomeEventType, day: string) => `analytics:home:${type}:day:${day}`;
+/** Ten weeks: long enough to compare a month either side of a change,
+ * short enough that the counters clean themselves up. */
+export const HOME_DAY_TTL_SECONDS = 70 * 24 * 60 * 60;
+export const HOME_DAILY_DAYS = 14;
 
 export async function recordHomeEvent(redis: Redis, type: HomeEventType): Promise<void> {
-  await redis.incr(homeTotalKey(type));
+  const todayKey = homeDayKey(type, dayKey());
+  const p = redis.pipeline();
+  p.incr(homeTotalKey(type));
+  p.incr(todayKey);
+  p.expire(todayKey, HOME_DAY_TTL_SECONDS);
+  await p.exec();
+}
+
+/** The last `days` UTC dates as YYYY-MM-DD, today first. */
+export function lastUtcDays(now: Date, days: number): string[] {
+  return Array.from({ length: days }, (_, i) => dayKey(new Date(now.getTime() - i * 86_400_000)));
+}
+
+export interface HomeDay {
+  day: string;
+  counts: HomeSnapshot;
+}
+
+export async function loadHomeDaily(redis: Redis, days = HOME_DAILY_DAYS): Promise<HomeDay[]> {
+  const dates = lastUtcDays(new Date(), days);
+  const keys = dates.flatMap((day) => HOME_EVENT_TYPES.map((type) => homeDayKey(type, day)));
+  const values = keys.length > 0 ? await redis.mget<(number | string | null)[]>(...keys) : [];
+  return dates.map((day, d) => ({
+    day,
+    counts: Object.fromEntries(
+      HOME_EVENT_TYPES.map((type, i) => [type, Number(values[d * HOME_EVENT_TYPES.length + i] ?? 0) || 0])
+    ) as HomeSnapshot,
+  }));
 }
 
 export type HomeSnapshot = Record<HomeEventType, number>;

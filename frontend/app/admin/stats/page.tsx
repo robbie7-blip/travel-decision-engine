@@ -8,9 +8,11 @@ import { getRedis } from "@/lib/redis";
 import {
   loadAnalyticsSnapshot,
   loadFunnelSnapshot,
+  loadHomeDaily,
   loadHomeSnapshot,
   type AnalyticsSnapshot,
   type FunnelSnapshot,
+  type HomeDay,
   type HomeSnapshot,
 } from "@/lib/analytics";
 import { checkDailyBudget, type BudgetCheckResult } from "@/lib/spendCheck";
@@ -33,6 +35,7 @@ async function loadSnapshot(): Promise<{
   analytics: AnalyticsSnapshot;
   funnel: FunnelSnapshot;
   home: HomeSnapshot;
+  homeDaily: HomeDay[];
   budget: BudgetCheckResult;
   quality: QualitySnapshot;
   timing: TimingSnapshot;
@@ -43,15 +46,16 @@ async function loadSnapshot(): Promise<{
   } catch {
     return null;
   }
-  const [analytics, funnel, home, budget, quality, timing] = await Promise.all([
+  const [analytics, funnel, home, homeDaily, budget, quality, timing] = await Promise.all([
     loadAnalyticsSnapshot(redis),
     loadFunnelSnapshot(redis),
     loadHomeSnapshot(redis),
+    loadHomeDaily(redis),
     checkDailyBudget(redis),
     loadQualitySnapshot(redis),
     loadTimingSnapshot(redis),
   ]);
-  return { analytics, funnel, home, budget, quality, timing };
+  return { analytics, funnel, home, homeDaily, budget, quality, timing };
 }
 
 export default async function StatsAdminPage() {
@@ -69,7 +73,7 @@ export default async function StatsAdminPage() {
     );
   }
 
-  const { analytics: snapshot, funnel, home, budget, quality, timing } = loaded;
+  const { analytics: snapshot, funnel, home, homeDaily, budget, quality, timing } = loaded;
   // Percentage of `from` that reached `to` - null (rendered as "-") rather
   // than a misleading 0% or NaN when the denominator is 0 (no data yet).
   const rate = (from: number, to: number): string => (from > 0 ? `${Math.round((to / from) * 100)}%` : "-");
@@ -461,6 +465,48 @@ export default async function StatsAdminPage() {
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", gap: 20, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Opened the full form from the bar: {home.full_form_opened}</span>
           <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Opened the real example: {home.example_opened}</span>
+        </div>
+
+        {/* By day (UTC), today first, so a change to the homepage reads as
+            a before and after. "Sharper" is how many saw the question;
+            "+detail" how many of those then sent a trip with a budget,
+            interests or must-sees added. */}
+        <div style={{ overflowX: "auto", marginTop: 16 }}>
+          <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 560, width: "100%" }}>
+            <thead>
+              <tr style={{ color: "var(--ink-dim)", textAlign: "right" }}>
+                {["Day (UTC)", "Bar", "Form", "Sharper", "+detail", "Without", "Full form", "Example"].map((h, i) => (
+                  <th key={h} style={{ fontWeight: 600, padding: "6px 8px", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid var(--line)" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {homeDaily.map(({ day, counts }) => {
+                const cells = [
+                  counts.submit_bar,
+                  counts.submit_form,
+                  counts.nudge_shown,
+                  counts.nudge_with_detail,
+                  counts.nudge_without_detail,
+                  counts.full_form_opened,
+                  counts.example_opened,
+                ];
+                const empty = cells.every((n) => n === 0);
+                return (
+                  <tr key={day} style={{ color: empty ? "var(--ink-dim)" : "var(--ink)" }}>
+                    <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--line)" }}>{day}</td>
+                    {cells.map((n, i) => (
+                      <td key={i} style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid var(--line)", fontVariantNumeric: "tabular-nums" }}>
+                        {n}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 

@@ -92,23 +92,33 @@ export default function Home() {
     // Arriving from a /destinations/[slug] page's "Plan a trip to X" link -
     // prefill the destination instead of leaving the sample data in place.
     const dest = params.get("dest");
+    // The bar as it was left on this device (lib/lastSearch.ts).
+    let restored = null;
+    try {
+      restored = restoreLastSearch(window.localStorage.getItem(LAST_SEARCH_KEY), localDateOf(new Date()));
+    } catch {
+      // Storage refused (private mode, blocked site data): start empty.
+    }
     if (dest) {
-      setForm((prev) => ({ ...prev, destinations: dest }));
-    } else {
-      // Otherwise, the bar as it was left on this device (lib/lastSearch.ts).
-      // A guide's "Plan a trip to X" wins over it, being the newer intent.
-      let restored = null;
-      try {
-        restored = restoreLastSearch(window.localStorage.getItem(LAST_SEARCH_KEY), localDateOf(new Date()));
-      } catch {
-        // Storage refused (private mode, blocked site data): start empty.
-      }
-      if (restored) {
-        setForm((prev) => {
-          const next = { ...prev, ...restored };
-          return { ...next, party_composition: translatePartyComposition(next.party_composition, prev.language) };
-        });
-      }
+      // A guide's "Plan a trip to X", or a trip page's "Plan a trip like
+      // this": those cities win, being the newer intent, and the dates are
+      // left for the traveller to choose. Who is going still comes from
+      // this device's last search - it is the same person.
+      setForm((prev) => {
+        const party =
+          restored?.party_size && restored.party_composition
+            ? {
+                party_size: restored.party_size,
+                party_composition: translatePartyComposition(restored.party_composition, prev.language),
+              }
+            : {};
+        return { ...prev, destinations: dest, ...party };
+      });
+    } else if (restored) {
+      setForm((prev) => {
+        const next = { ...prev, ...restored };
+        return { ...next, party_composition: translatePartyComposition(next.party_composition, prev.language) };
+      });
     }
   }, []);
 

@@ -420,6 +420,9 @@ export interface Dictionary {
   };
   trip: {
     planAnother: string;
+    /** On a finished trip: back to the homepage bar with these cities in
+     * it, for new dates or a second trip. */
+    planLikeThis: string;
     notFound: string;
     /** Offered when a pushback failed but its revision EXISTS.
      *
@@ -1136,6 +1139,7 @@ const en: Dictionary = {
   },
   trip: {
     planAnother: "Plan your own trip",
+    planLikeThis: "Plan a trip like this",
     notFound: "This trip link has expired or doesn't exist.",
     refineOpenRevision: "Open the revision anyway",
     failed: {
@@ -1848,6 +1852,7 @@ const bg: Dictionary = {
   },
   trip: {
     planAnother: "Планирайте свое пътуване",
+    planLikeThis: "Планирайте пътуване като това",
     notFound: "Тази връзка е изтекла или не съществува.",
     refineOpenRevision: "Отвори новата версия",
     failed: {

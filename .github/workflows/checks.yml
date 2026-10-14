@@ -1340,6 +1340,9 @@ jobs:
       # early ping, restored after a failed send, and the worker only ever
       # pings our own route.
       - run: npm run test:trip-ready
+      # The homepage counters by day: UTC dates, day keys expire and totals
+      # do not, and every event has a column.
+      - run: npm run test:home-daily
       # The destinations field's suggestions.
       #
       # "Make the destination a dropdown too" could not be a <select>: the
