@@ -1333,6 +1333,13 @@ jobs:
       # The bar's memory of the last search: only the four bar answers are
       # kept, and dates already started are never put back.
       - run: npm run test:last-search
+      # The wait screen's step list: only what the worker reported, and
+      # repairs listed only while they happen.
+      - run: npm run test:stage-steps
+      # "Email me when it's ready": exactly once, never consumed by an
+      # early ping, restored after a failed send, and the worker only ever
+      # pings our own route.
+      - run: npm run test:trip-ready
       # The destinations field's suggestions.
       #
       # "Make the destination a dropdown too" could not be a <select>: the

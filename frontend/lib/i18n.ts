@@ -462,6 +462,29 @@ export interface Dictionary {
     buildingFor: string;
     buildingProgress: string;
     didYouKnow: string; // label above the rotating city-fact shown on the loading screen
+    /** The wait screen's step list, one line per GenerationStage (see
+     * lib/jobs.ts). Each is shown only as the worker actually reaches it. */
+    stages: {
+      label: string;
+      planning: string;
+      writing: string;
+      /** {done} and {total}: days written so far. */
+      writingCount: string;
+      checking: string;
+      repairing: string;
+      finishing: string;
+      /** Read by a screen reader after a finished step. */
+      doneLabel: string;
+    };
+    /** "Email me when it's ready", on the wait screen. */
+    notify: {
+      button: string;
+      sending: string;
+      scheduled: string;
+      sent: string;
+      signIn: string;
+      failed: string;
+    };
   };
   // Bookmarks a browser has visited (see lib/recentTrips.ts) - no accounts,
   // purely a localStorage list of previously generated /trip/[jobId] links.
@@ -1156,6 +1179,24 @@ const en: Dictionary = {
     buildingFor: "Building {places}",
     buildingProgress: "{done} of {total} days written",
     didYouKnow: "Did you know?",
+    stages: {
+      label: "Progress",
+      planning: "Checking live prices and planning the route",
+      writing: "Writing each day",
+      writingCount: "{done} of {total}",
+      checking: "Checking every place is real and open",
+      repairing: "Replacing anything that did not check out",
+      finishing: "Final checks on budget and timing",
+      doneLabel: "done",
+    },
+    notify: {
+      button: "Email it to me when it's ready",
+      sending: "One moment...",
+      scheduled: "Done. We'll email it to you when it's ready, so you can close this tab.",
+      sent: "It's ready, and it's in your inbox.",
+      signIn: "Sign in and we'll email it to you when it's ready",
+      failed: "That did not work. Try again in a moment.",
+    },
   },
   recentTrips: {
     heading: "Your recent trips",
@@ -1850,6 +1891,24 @@ const bg: Dictionary = {
     buildingFor: "Изграждаме {places}",
     buildingProgress: "{done} от {total} дни са готови",
     didYouKnow: "Знаете ли, че?",
+    stages: {
+      label: "Напредък",
+      planning: "Проверяваме актуални цени и планираме маршрута",
+      writing: "Пишем всеки ден",
+      writingCount: "{done} от {total}",
+      checking: "Проверяваме дали всяко място съществува и работи",
+      repairing: "Заменяме това, което не мина проверката",
+      finishing: "Последни проверки на бюджета и времето",
+      doneLabel: "готово",
+    },
+    notify: {
+      button: "Изпратете ми го по имейл, когато е готов",
+      sending: "Момент...",
+      scheduled: "Готово. Ще ви го изпратим по имейл, когато е готов, така че можете да затворите този раздел.",
+      sent: "Готов е и вече е във входящата ви поща.",
+      signIn: "Влезте и ще ви го изпратим по имейл, когато е готов",
+      failed: "Не се получи. Опитайте отново след малко.",
+    },
   },
   recentTrips: {
     heading: "Скорошни пътувания",

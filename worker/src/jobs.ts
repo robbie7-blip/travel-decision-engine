@@ -115,11 +115,86 @@ export interface ProgressDay {
   titles?: string[];
 }
 
+/** Which part of the work a running generation is in, as the worker
+ * actually moves through it - the wait screen's step list is drawn from
+ * this, so it can never claim a check is happening that is not.
+ *
+ *   planning   live lodging prices and the plan: dates, cities, a theme
+ *              per day (phase 1)
+ *   writing    each day's own call
+ *   checking   every named venue looked up: real, open, where we said
+ *   repairing  replacing what the checks removed (only when needed)
+ *   finishing  budget and quality checks, then saving
+ */
+export type GenerationStage = "planning" | "writing" | "checking" | "repairing" | "finishing";
+
 export interface JobProgress {
   /** Set once phase 1 lands, so the page can stop guessing how many days
    * there will be. */
   days: ProgressDay[];
+  /** Absent on records from before stages were published; the page then
+   * falls back to its rotating status line. */
+  stage?: GenerationStage;
   updatedAt: number;
+}
+
+// ---------------------------------------------------------------------------
+// "Email me when it's ready"
+//
+// Asked for on the wait screen, so that closing the tab is safe. The
+// frontend writes this record (it holds the session's own address, which
+// is the only address this product ever sends a trip to); the worker,
+// once the job is saved as done, POSTs the job id to `url`; the frontend
+// route then claims the record with GETDEL and sends. GETDEL is what makes
+// it exactly once, whichever side gets there first - the frontend also
+// claims it itself if the job turns out to have finished already.
+//
+// The ping carries no secret, deliberately: the route does nothing for a
+// job that is not done, and for one that is, all it can do is send the
+// email the traveller asked for, once, to the traveller.
+
+export const TRIP_READY_NOTIFY_TTL_SECONDS = 60 * 60;
+
+export function tripReadyNotifyKey(jobId: string): string {
+  return `notify:ready:${jobId}`;
+}
+
+export interface TripReadyNotify {
+  email: string;
+  /** Where the worker sends the ping: the site's own route, written by
+   * the site. */
+  url: string;
+  requestedAt: number;
+}
+
+export function readTripReadyNotify(raw: unknown): TripReadyNotify | null {
+  let value: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value !== "object" || value === null) return null;
+  const v = value as Record<string, unknown>;
+  if (typeof v.email !== "string" || !v.email.includes("@")) return null;
+  if (typeof v.url !== "string") return null;
+  let url: URL;
+  try {
+    url = new URL(v.url);
+  } catch {
+    return null;
+  }
+  // Only ever our own route, over http(s). The record is written by the
+  // site, but the worker should not be talked into requesting anything
+  // else by a bad value.
+  if ((url.protocol !== "https:" && url.protocol !== "http:") || url.pathname !== "/api/trip-email/ready") return null;
+  return {
+    email: v.email,
+    url: url.toString(),
+    requestedAt: typeof v.requestedAt === "number" ? v.requestedAt : 0,
+  };
 }
 
 export type QualitySeverity = "defect" | "warning";

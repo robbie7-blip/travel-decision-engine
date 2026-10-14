@@ -235,6 +235,11 @@ export function TripView({ jobId }: { jobId: string }) {
               destinations={lastBrief?.destinations}
               message={statusMessage ?? t.trip.loading}
               t={t}
+              notify={
+                jobStatus === "pending" || jobStatus === "running"
+                  ? { jobId: currentJobId, language }
+                  : undefined
+              }
             />
           )}
           {loadError && (

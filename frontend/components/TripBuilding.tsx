@@ -33,22 +33,34 @@
 
 import type { JobProgress } from "@/lib/jobs";
 import type { Dictionary } from "@/lib/i18n";
+import { stageSteps } from "@/lib/stageSteps";
+import type { Language } from "@/lib/types";
 import { useCityFacts, useRotatingIndex } from "@/lib/useCityFacts";
+import { NotifyWhenReady } from "./NotifyWhenReady";
 
 export function TripBuilding({
   progress,
   destinations,
   message,
   t,
+  notify,
 }: {
   progress: JobProgress | undefined;
   destinations?: string[];
-  /** The rotating status line, still shown above the outline. */
+  /** The rotating status line. Shown only until the worker publishes a
+   * stage: a line that cycles on a timer cannot say what is happening,
+   * and the step list below can. */
   message: string;
   t: Dictionary;
+  /** Present while the job is actually generating, to offer "email it to
+   * me when it's ready". Absent when this is only a page loading a trip
+   * that already exists. */
+  notify?: { jobId: string; language: Language };
 }) {
   const days = progress?.days ?? [];
   const written = days.filter((d) => typeof d.itemCount === "number").length;
+  const steps = stageSteps(progress?.stage);
+  const stageCopy = t.trip.stages;
   const facts = useCityFacts(destinations);
   const factIndex = useRotatingIndex(facts.length);
   const fact = facts[factIndex];
@@ -61,8 +73,39 @@ export function TripBuilding({
             ? t.trip.buildingFor.replace("{places}", destinations.join(" · "))
             : t.trip.loading}
         </div>
-        <div className="font-ui trip-building-status">{message}</div>
+        {!steps && <div className="font-ui trip-building-status">{message}</div>}
       </div>
+
+      {/* Where the work actually is, step by step, as the worker reports
+          it - see lib/stageSteps.ts. */}
+      {steps && (
+        <ol className="trip-stages font-ui" aria-label={stageCopy.label}>
+          {steps.map((step) => (
+            <li
+              key={step.id}
+              className="trip-stage"
+              data-state={step.state}
+              aria-current={step.state === "current" ? "step" : undefined}
+            >
+              <span className="trip-stage-mark" aria-hidden>
+                {step.state === "done" ? "✓" : ""}
+              </span>
+              <span className="trip-stage-text">
+                {stageCopy[step.id]}
+                {step.id === "writing" && step.state === "current" && days.length > 0 && (
+                  <span className="trip-stage-count">
+                    {" "}
+                    · {stageCopy.writingCount.replace("{done}", String(written)).replace("{total}", String(days.length))}
+                  </span>
+                )}
+                {step.state === "done" && <span className="sr-only">, {stageCopy.doneLabel}</span>}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {notify && <NotifyWhenReady jobId={notify.jobId} t={t} language={notify.language} />}
 
       {/* Before the outline exists this is the only thing on the card, so
           it gets the room. Once days arrive it moves below them (see the

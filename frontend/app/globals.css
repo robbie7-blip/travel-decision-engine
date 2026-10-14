@@ -2000,6 +2000,150 @@ p {
   margin-top: 6px;
 }
 
+/* The step list: drawn only from the stage the worker published, so a
+   tick means the worker moved past that step. See lib/stageSteps.ts. */
+.trip-stages {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.trip-stage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+.trip-stage[data-state="done"] {
+  color: var(--ink-soft);
+}
+
+.trip-stage[data-state="current"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.trip-stage-mark {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px solid var(--line-strong);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.trip-stage[data-state="done"] .trip-stage-mark {
+  border-color: var(--grounded);
+  background: var(--grounded);
+  color: var(--bg-panel);
+}
+
+/* The one that is running: a ring that turns, which is honest motion -
+   it says "working", not "this far along". */
+.trip-stage[data-state="current"] .trip-stage-mark {
+  border-color: var(--line);
+  border-top-color: var(--brand-teal);
+  border-width: 2.5px;
+  animation: trip-stage-turn 0.9s linear infinite;
+}
+
+@keyframes trip-stage-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.trip-stage-count {
+  font-weight: 400;
+  color: var(--ink-dim);
+}
+
+/* "Email it to me when it's ready" */
+.trip-notify {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--bg-panel-raised);
+  font-size: 14px;
+}
+
+.trip-notify-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trip-notify-button:hover:not(:disabled) {
+  border-color: var(--ink-dim);
+}
+
+.trip-notify-button:disabled {
+  cursor: progress;
+  color: var(--ink-dim);
+}
+
+.trip-notify-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.trip-notify-note {
+  color: var(--ink-soft);
+}
+
+a.trip-notify-note {
+  color: var(--grounded);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.trip-notify-done {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.trip-notify-check {
+  flex: 0 0 22px;
+  margin-top: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--grounded);
+  color: var(--bg-panel);
+  font-size: 12px;
+}
+
 .trip-building-count {
   font-size: 11px;
   letter-spacing: 0.1em;

@@ -92,9 +92,12 @@ import {
   STALE_RUNNING_MS,
   jobKey,
   readJobRecord,
+  readTripReadyNotify,
+  tripReadyNotifyKey,
   ttlForJob,
   type Job,
   type JobTimings,
+  type GenerationStage,
   type ProgressDay,
   type RefinementRequest,
   type WorkerFailure,
@@ -2563,6 +2566,35 @@ const MAX_PROGRESS_TITLES = 4;
  * out a connection being re-established. */
 const FINAL_WRITE_RETRY_MS = [100, 300, 800];
 
+/** "Email me when it's ready": tell the site this job has finished, if
+ * the traveller asked to be told (see TripReadyNotify in jobs.ts).
+ *
+ * The worker sends no email itself - the site renders and sends it, from
+ * the record it wrote - so this is one GET and, at most, one POST of the
+ * job id. Best effort with a short timeout: a missed ping costs the
+ * traveller an email, never the trip, and the trip page still shows it. */
+async function notifyTripReady(redis: Redis, job: Job): Promise<void> {
+  if (job.status !== "done") {
+    // A failed job sends nothing; the request is simply dropped so a
+    // retry does not inherit it.
+    await redis.del(tripReadyNotifyKey(job.id)).catch(() => {});
+    return;
+  }
+  try {
+    const notify = readTripReadyNotify(await redis.get(tripReadyNotifyKey(job.id)));
+    if (!notify) return;
+    const res = await fetch(notify.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: job.id }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) console.warn(`[worker] trip-ready ping for ${job.id} answered HTTP ${res.status}`);
+  } catch (e) {
+    console.warn(`[worker] trip-ready ping for ${job.id} failed:`, e);
+  }
+}
+
 /** The finished job, published, insisting.
  *
  * The comment on the progress writes already says "the final writeJob is
@@ -2877,10 +2909,17 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // finished no further progress write is started at all.
   let progressWrites: Promise<unknown> = Promise.resolve();
   let jobFinished = false;
+  // Which part of the work this is in, for the wait screen's step list
+  // (see GenerationStage in jobs.ts). Moved forward by setStage only, at
+  // the points below where the work actually changes.
+  let stage: GenerationStage = job.refinement ? "writing" : "planning";
   const publishProgress = (days: ProgressDay[]): void => {
     if (jobFinished) return;
     progressDays = days;
-    job.progress = { days, updatedAt: Date.now() };
+    // The outline arriving IS the end of planning: from here each day's
+    // own call is what is running.
+    if (stage === "planning" && days.length > 0) stage = "writing";
+    job.progress = { days, stage, updatedAt: Date.now() };
     job.updatedAt = Date.now();
     progressWrites = progressWrites
       .then(() => writeJob(redis, job))
@@ -2910,6 +2949,14 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
    * write launched while the status is still "running" carries a snapshot
    * with no result, and nothing else stops it landing after the final
    * one. */
+  /** A step forward in the work, published at once so the page moves
+   * with it rather than at the next day or heartbeat. */
+  const setStage = (next: GenerationStage): void => {
+    if (jobFinished || stage === next) return;
+    stage = next;
+    publishProgress(progressDays);
+  };
+
   const touchRunning = (): void => {
     if (jobFinished) return;
     job.updatedAt = Date.now();
@@ -2924,6 +2971,9 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // The worker is long-lived, but a timer that outlives the job it belongs
   // to is the kind of thing that keeps a deploy hanging.
   heartbeat.unref?.();
+  // The first stage, published before any work starts, so the page shows
+  // the real step list from the first poll rather than a guess.
+  publishProgress(progressDays);
 
   let costUsd = 0;
   /** Per-model spend, so a stage running on a different model is billed at
@@ -3287,6 +3337,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     // verification has finished. Computing the gaps against pre-verification
     // state is safe because verification only ever removes: a meal missing
     // before is still missing after.
+    setStage("checking");
     const [verifiedItinerary, mealFills] = await timed("verify", () =>
       Promise.all([
         (async () => {
@@ -3378,6 +3429,7 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         }));
 
     if (needsSecondPass) {
+      setStage("repairing");
       await timed("repairs", () =>
         Promise.all([
           repairDuplicateVenues(client, job.brief, itinerary, claimedVenues, onUsage, repaired, constraintScreen.repairable),
@@ -3426,6 +3478,8 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
         );
       }
     }
+
+    setStage("finishing");
 
     // THE SHAPE, ESTABLISHED ONCE - AGAIN, because the repairs run after
     // the first pass and are the only stages that ADD items.
@@ -3675,6 +3729,10 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // sits after the catch above, so a throw here escaped processJob and lost
   // the itinerary. See publishJob.
   await publishJob(redis, job);
+  // "Email me when it's ready" - only after the done record has landed,
+  // since the route it pings reads that record. Not awaited: nothing the
+  // traveller is waiting on depends on it.
+  void notifyTripReady(redis, job);
 
   const breakdown = Object.entries(timings)
     .map(([label, ms]) => `${label} ${(ms / 1000).toFixed(1)}s`)

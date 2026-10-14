@@ -23,10 +23,9 @@ import { readJobRecord, jobKey, type Job } from "@/lib/jobs";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { allowedOriginsFor, isCrossOriginRequest } from "@/lib/sameOrigin";
 import { checkRateLimit, getClientIp, AUTH_RATE_LIMIT } from "@/lib/ratelimit";
-import { EmailNotConfiguredError, EmailSendFailedError, sendItineraryEmail } from "@/lib/email";
-import { itineraryEmailFor } from "@/lib/itineraryEmail";
+import { EmailNotConfiguredError, EmailSendFailedError } from "@/lib/email";
+import { sendTripEmail } from "@/lib/tripEmailSend";
 import { getSiteUrl } from "@/lib/siteUrl";
-import type { Language } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -86,17 +85,8 @@ export async function POST(request: NextRequest) {
 
   // From the job record, not from the request: the destinations and the
   // language that generated the trip, not whatever a caller claims.
-  const destinations = Array.isArray(job.brief?.destinations) ? job.brief.destinations : [];
-  const language: Language = job.brief?.language === "bg" ? "bg" : "en";
-  const { subject, html } = itineraryEmailFor({
-    itinerary: job.result,
-    tripUrl: `${site}/trip/${jobId}`,
-    destinations,
-    language,
-  });
-
   try {
-    await sendItineraryEmail(email, subject, html);
+    await sendTripEmail(job, email, site);
   } catch (e) {
     if (e instanceof EmailNotConfiguredError) {
       console.error("[trip-email] not configured:", e.message);
