@@ -78,7 +78,7 @@ export function SiteHeader({
       // site-header, so the print stylesheet can take the whole navigation
       // off the page in one selector. Printed, a nav bar is a row of words
       // nobody can click.
-      className="site-header"
+      className={large ? "site-header site-header--large" : "site-header"}
       style={{
         padding: large ? "28px clamp(32px, 8%, 180px) 0" : "18px clamp(32px, 8%, 180px) 0",
         background: "var(--bg-panel-raised)",
@@ -92,6 +92,7 @@ export function SiteHeader({
             row's own space need is small regardless of how many nav links
             exist. */}
         <div
+          className="site-header-row"
           style={{
             display: "flex",
             flexWrap: "wrap",
@@ -103,17 +104,24 @@ export function SiteHeader({
         >
           <Link href={`/${langSuffix}`} className="header-logo" style={{ display: "flex", alignItems: "center", gap: large ? 22 : 12, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-icon.svg" alt="" width={large ? 84 : 40} height={large ? 84 : 40} style={{ flexShrink: 0 }} />
+            <img
+              src="/logo-icon.svg"
+              alt=""
+              width={large ? 84 : 40}
+              height={large ? 84 : 40}
+              className="header-logo-mark"
+              style={{ flexShrink: 0 }}
+            />
             <div>
               <div
-                className="font-display"
+                className="font-display header-wordmark"
                 style={{ fontSize: large ? 48 : 24, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}
               >
                 decide
               </div>
               {large && (
                 <div
-                  className="font-ui"
+                  className="font-ui header-tagline"
                   style={{
                     fontSize: "clamp(10px, 2.6vw, 14px)",
                     fontWeight: 500,

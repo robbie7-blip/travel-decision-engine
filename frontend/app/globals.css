@@ -3708,10 +3708,72 @@ a.trip-notify-note {
   }
 }
 
+/* The homepage's large header, on a phone.
+
+   It was 190px tall at 390px wide: an 84px mark, a 48px wordmark, then the
+   controls on a second row. In an in-app browser (Messenger, Instagram)
+   the page gets roughly 670px of height, not Safari's 844, and that header
+   alone pushed the search bar's button below the fold - reported from a
+   real phone as "the button is cut off". Same header, at the size a phone
+   can afford; !important because the desktop sizes are inline. */
+@media (max-width: 640px) {
+  .site-header--large {
+    padding-top: 14px !important;
+  }
+
+  .site-header--large .site-header-row {
+    gap: 10px 12px !important;
+    padding-bottom: 12px !important;
+  }
+
+  .site-header--large .header-logo {
+    gap: 12px !important;
+  }
+
+  .site-header--large .header-logo-mark {
+    width: 44px;
+    height: 44px;
+  }
+
+  .site-header--large .header-wordmark {
+    font-size: 30px !important;
+  }
+
+  .site-header--large .header-tagline {
+    font-size: 10px !important;
+    margin-top: 4px !important;
+  }
+}
+
+/* A short phone screen - an in-app browser, a small Android, Safari with
+   its toolbars down. The subhead says what the line directly under the
+   bar also says (every line carries its confidence), so here it gives its
+   room to the button instead. A tall phone keeps it. */
+@media (max-width: 640px) and (max-height: 800px) {
+  .hero-subhead {
+    display: none;
+  }
+
+  .hero-copy h1 {
+    margin-bottom: 0 !important;
+  }
+}
+
 /* A phone: one cell per row, the caption to the left of its value so the
    bar stays short enough to leave the button on the first screen. */
 @media (max-width: 640px) {
+  .hero {
+    --hero-pad-top: 20px;
+  }
+
+  .hero-eyebrow {
+    margin-bottom: 10px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+
   .hero-search-area {
+    margin-top: 18px;
     margin-left: -14px;
     margin-right: -14px;
   }
