@@ -257,9 +257,6 @@ export default function Home() {
               </div>
               <div className="hero-trust-aside font-ui">
                 <span>{t.heroSearch.timing}</span>
-                <a href="#trip-details" className="inline-link">
-                  {t.heroSearch.moreDetails} <span aria-hidden>↓</span>
-                </a>
               </div>
             </div>
 

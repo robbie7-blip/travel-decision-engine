@@ -41,6 +41,20 @@ interface HeroSearchProps {
   t: Dictionary;
 }
 
+/** Nothing beyond the essentials: no budget, no interests, no must-sees.
+ * The plan will still be good, but it will be planned for anybody going to
+ * that city, which is the case the one-time nudge below is for. */
+function onlyEssentials(value: TripFormState): boolean {
+  return !value.budget_total_eur.trim() && !value.interests.trim() && !value.must_see.trim();
+}
+
+/** Down to the part of the full form the bar does not cover. */
+export function scrollToFullForm() {
+  const target = document.getElementById("trip-form-more") ?? document.getElementById("trip-details");
+  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  target?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+}
+
 /** What is missing, first one wins - the order the bar reads in. */
 function firstMissing(value: TripFormState): Segment | null {
   if (splitCities(value.destinations).length === 0) return "where";
@@ -54,6 +68,9 @@ function firstMissing(value: TripFormState): Segment | null {
 export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: HeroSearchProps) {
   const copy = t.heroSearch;
   const [missing, setMissing] = useState<Segment | null>(null);
+  // Asked once per visit, never twice: a second press of the button, or
+  // "Decide now", always goes straight through.
+  const [nudge, setNudge] = useState<"hidden" | "shown" | "done">("hidden");
   const whereRef = useRef<HTMLInputElement>(null);
   const whenRef = useRef<HTMLButtonElement>(null);
   const whoRef = useRef<HTMLButtonElement>(null);
@@ -74,6 +91,11 @@ export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: 
     const gap = firstMissing(value);
     if (gap === null) {
       setMissing(null);
+      if (nudge === "hidden" && onlyEssentials(value)) {
+        setNudge("shown");
+        return;
+      }
+      setNudge("done");
       onSubmit();
       return;
     }
@@ -187,11 +209,68 @@ export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: 
             </span>
           )}
         </button>
+
+        {/* The way to the full form, as part of the bar rather than a link
+            somewhere near it: everything above is the short version of the
+            form, and this says so. */}
+        <a
+          href="#trip-details"
+          className="hero-search-more font-ui"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToFullForm();
+          }}
+        >
+          <span className="hero-search-more-text">
+            <span className="hero-search-more-plus" aria-hidden>
+              +
+            </span>
+            {copy.moreDetails}
+          </span>
+          <span className="hero-search-more-tag">
+            {copy.fullForm} <span aria-hidden>↓</span>
+          </span>
+        </a>
       </form>
 
       <div className="hero-search-message font-ui" role="status" aria-live="polite">
-        {message}
+        {nudge === "shown" ? "" : message}
       </div>
+
+      {nudge === "shown" && (
+        <div className="hero-nudge font-ui" role="group" aria-labelledby="hero-nudge-title">
+          <div className="hero-nudge-copy">
+            <div id="hero-nudge-title" className="hero-nudge-title font-display">
+              {copy.nudgeTitle}
+            </div>
+            <p className="hero-nudge-body">{copy.nudgeBody}</p>
+          </div>
+          <div className="hero-nudge-actions">
+            <button
+              type="button"
+              className="hero-nudge-add"
+              autoFocus
+              onClick={() => {
+                setNudge("done");
+                scrollToFullForm();
+              }}
+            >
+              {copy.nudgeAdd} <span aria-hidden>↓</span>
+            </button>
+            <button
+              type="button"
+              className="hero-nudge-skip"
+              disabled={submitting}
+              onClick={() => {
+                setNudge("done");
+                onSubmit();
+              }}
+            >
+              {copy.nudgeSkip} <span aria-hidden>→</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

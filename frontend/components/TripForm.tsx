@@ -457,7 +457,11 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             )}
           </Field>
         </div>
-        <div className="form-group-label">{t.form.groupWho}</div>
+        {/* Where the homepage bar's "Full form" strip lands: the first
+            group the bar does not fully cover. */}
+        <div id="trip-form-more" className="form-group-label" style={{ scrollMarginTop: 16 }}>
+          {t.form.groupWho}
+        </div>
         <Field label={t.form.partySize}>
           <input
             type="number"

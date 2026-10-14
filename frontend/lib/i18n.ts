@@ -108,7 +108,16 @@ export interface Dictionary {
     missingWhen: string;
     missingWho: string;
     timing: string;
+    /** The strip along the bottom of the bar that leads to the full form. */
     moreDetails: string;
+    fullForm: string;
+    /** Shown once, on the first press of the bar's button when nothing
+     * beyond the essentials has been given. Optional by design: "Decide
+     * now" goes straight through. */
+    nudgeTitle: string;
+    nudgeBody: string;
+    nudgeAdd: string;
+    nudgeSkip: string;
   };
   form: {
     destinations: string;
@@ -870,7 +879,12 @@ const en: Dictionary = {
     missingWhen: "Pick the dates of the trip.",
     missingWho: "Tell us how many are going.",
     timing: "Takes about a minute",
-    moreDetails: "Add budget, pace, diet and more",
+    moreDetails: "Add budget, pace, interests and more",
+    fullForm: "Full form",
+    nudgeTitle: "Want it sharper?",
+    nudgeBody: "Plans come out noticeably more personal with a budget, your interests and a pace. About 30 seconds more.",
+    nudgeAdd: "Add more detail",
+    nudgeSkip: "Decide now",
   },
   form: {
     destinations: "Destinations",
@@ -1559,7 +1573,12 @@ const bg: Dictionary = {
     missingWhen: "Изберете датите на пътуването.",
     missingWho: "Кажете ни колко души пътуват.",
     timing: "Отнема около минута",
-    moreDetails: "Бюджет, темпо, хранене и още",
+    moreDetails: "Добавете бюджет, темпо, интереси и още",
+    fullForm: "Пълна форма",
+    nudgeTitle: "Да го направим по-точно?",
+    nudgeBody: "Планът става много по-личен с бюджет, вашите интереси и темпо. Около 30 секунди повече.",
+    nudgeAdd: "Добавете още детайли",
+    nudgeSkip: "Реши сега",
   },
   form: {
     destinations: "Дестинации",

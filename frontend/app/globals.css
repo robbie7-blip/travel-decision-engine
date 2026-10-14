@@ -3053,16 +3053,170 @@ p {
   color: var(--deep-soft);
 }
 
-.hero .hero-trust-aside a {
-  color: var(--deep-ink);
+/* ---------- The way to the full form ----------
+
+   Inside the bar, along its bottom edge, so it reads as part of the form
+   (the long version of it) rather than one more link on the band. */
+.hero-search-more {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 10px 20px 6px;
+  border-top: 1px solid var(--line);
+  color: var(--grounded);
+  font-size: 14px;
   font-weight: 600;
+  text-decoration: none;
+}
+
+.hero .hero-search-more {
+  color: var(--grounded);
+}
+
+.hero-search-more-text {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.hero-search-more-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.hero-search-more-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.hero-search-more:hover .hero-search-more-text {
   text-decoration: underline;
-  text-decoration-color: var(--deep-line);
   text-underline-offset: 4px;
 }
 
-.hero .hero-trust-aside a:hover {
-  text-decoration-color: currentColor;
+.hero-search-more:hover .hero-search-more-tag {
+  color: var(--ink);
+}
+
+.hero-search-more:focus-visible {
+  outline: 2px solid var(--brand-teal);
+  outline-offset: -2px;
+  border-radius: 0 0 10px 10px;
+}
+
+/* ---------- "Want it sharper?" ----------
+
+   One question, once, between the button and the wait - only when the
+   bar was all that was filled in. Both answers are one tap. */
+.hero-nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 28px;
+  margin-top: 12px;
+  padding: 18px 22px;
+  border: 1px solid var(--deep-line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--deep-ink) 6%, var(--deep));
+  animation: hero-nudge-in 0.25s ease both;
+}
+
+@keyframes hero-nudge-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-nudge-copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.hero-nudge-title {
+  font-size: 20px;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--deep-ink);
+}
+
+.hero-nudge-body {
+  margin: 4px 0 0;
+  max-width: 580px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--deep-soft);
+}
+
+.hero-nudge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hero-nudge-add,
+.hero-nudge-skip {
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.hero-nudge-add {
+  border: 0;
+  background: var(--bg-panel);
+  color: var(--ink);
+}
+
+.hero-nudge-add:hover {
+  background: var(--bg-panel-raised);
+}
+
+.hero-nudge-skip {
+  border: 1px solid var(--deep-soft);
+  background: transparent;
+  color: var(--deep-ink);
+}
+
+.hero-nudge-skip:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--deep-ink) 10%, transparent);
+}
+
+.hero-nudge-skip:disabled {
+  cursor: progress;
+}
+
+.hero-nudge-add:focus-visible,
+.hero-nudge-skip:focus-visible {
+  outline: 3px solid var(--brand-gold);
+  outline-offset: 2px;
 }
 
 /* Two rows on a tablet or a narrow laptop: four cells in one row at this
@@ -3072,7 +3226,12 @@ p {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
     grid-template-areas:
       "where where where"
-      "when who cta";
+      "when who cta"
+      "more more more";
+  }
+
+  .hero-search-more {
+    grid-area: more;
   }
 
   .hero-search-segment[data-segment="where"] {
@@ -3171,8 +3330,28 @@ p {
       "where"
       "when"
       "who"
-      "cta";
+      "cta"
+      "more";
     border-radius: 14px;
+  }
+
+  .hero-search-more {
+    padding: 10px 12px 4px;
+  }
+
+  .hero-nudge {
+    margin-left: -14px;
+    margin-right: -14px;
+    padding: 16px;
+  }
+
+  .hero-nudge-actions {
+    width: 100%;
+  }
+
+  .hero-nudge-add,
+  .hero-nudge-skip {
+    flex: 1 1 auto;
   }
 
   .hero-search-segment {
