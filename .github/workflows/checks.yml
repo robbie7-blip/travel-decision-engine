@@ -111,6 +111,10 @@ jobs:
       # once and only after the done record lands, and a failed job pings
       # nothing.
       - run: npm run test:stage-notify
+      # A venue rejected after repair (a real Rome run: a 3.9 cafe against
+      # the 4.3 bar) leaves the title as well, so the page never goes on
+      # recommending the place the check refused to stand behind.
+      - run: npm run test:title-without-venue
       # The failure diagnostics, driven through the real processJob.
       #
       # A failed generation tells the traveler one of seven sentences and

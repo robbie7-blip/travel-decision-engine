@@ -1356,6 +1356,34 @@ async function generateDay(
   return parsed;
 }
 
+/** The day as the repair calls see it: each item with its area, so a
+ * replacement can be chosen near the stops around it. The repairs used to
+ * get titles only - "08:00 Final packing and check-out" - and a real Rome
+ * run filled that morning's coffee with a café across the river from a
+ * guesthouse they had no way of knowing was in Trastevere. */
+function dayForRepair(day: ItineraryDay): string {
+  return (
+    day.items
+      .map((i) => `${i.time} ${i.title}${i.location?.trim() ? ` (${i.location.trim()})` : ""}`)
+      .join(" | ") || "(nothing)"
+  );
+}
+
+/** Where they sleep the night of this day (or the night before, on the
+ * last day): the traveler's own answer if they gave one, otherwise the
+ * itinerary's accommodation line. */
+function stayingNear(brief: TripBriefInput, itinerary: Itinerary, day: ItineraryDay): string {
+  const stated = brief.accommodation_location?.trim();
+  if (stated) return stated;
+  const days = itinerary.days ?? [];
+  const at = days.indexOf(day);
+  for (const d of [day, days[at - 1]].filter(Boolean) as ItineraryDay[]) {
+    const lodging = d.items.find((i) => i.type === "lodging");
+    if (lodging) return [lodging.venue_name, lodging.location].filter((v) => v?.trim()).join(", ") || lodging.title;
+  }
+  return "not known";
+}
+
 const VENUE_REPAIR_SYSTEM = `You are fixing ONE line of a travel itinerary. The reason it has to change is \
 given below - it may be a venue used twice in the same trip, or one the traveler cannot eat at. Replace it \
 with a DIFFERENT real, specific, named venue that fits the same slot just as well.
@@ -1366,6 +1394,12 @@ breakfast spot for breakfast, not a dinner restaurant), and must not be any of t
 The traveler's dietary constraints, mobility constraints and hard limits are given below and are not \
 preferences. This slot may be a MEAL: a replacement restaurant that cannot feed them is a wrong answer \
 however good the place is otherwise.
+
+Where it is matters as much as what it is. Pick a place close to where the traveler actually is at that \
+time: within about a 10-minute walk of the item just before or after this slot (each item's area is \
+listed), or of where they are staying when the slot opens or closes the day. A good place across town is a \
+wrong answer. And pick somewhere genuinely well regarded, roughly a Google rating of 4.3 or more: a mediocre \
+place is removed by the check that follows, and the traveler is left with a line that names nothing.
 
 Respond with ONLY this JSON, no other text:
 {"title": "<the item's new title, naming the new venue, in the same language as the original title>", "venue_name": "<the new venue's exact proper name>", "reasoning": "<one short sentence, <=15 words, why this place>"}
@@ -1441,6 +1475,8 @@ async function repairDuplicateVenues(
                 `Current title: ${item.title}\n` +
                 `Venue to replace: ${item.venue_name}\n` +
                 `Why it must change: ${reason}\n` +
+                `The rest of the day: ${dayForRepair(day)}\n` +
+                `Staying at or near: ${stayingNear(brief, itinerary, day)}\n` +
                 // The constraints this call used to be told nothing about.
                 //
                 // duplicateVenueItems treats meals and activities alike
@@ -1923,6 +1959,12 @@ The traveler's dietary constraints, mobility constraints and hard limits are giv
 preferences: a venue that cannot feed them, or that they cannot get into, is a wrong answer however good the \
 place is otherwise.
 
+Where it is matters as much as what it is. Pick a place close to where the traveler actually is at that \
+time: within about a 10-minute walk of the item just before or after this slot (each item's area is \
+listed), or of where they are staying when the slot opens or closes the day. A good place across town is a \
+wrong answer. And pick somewhere genuinely well regarded, roughly a Google rating of 4.3 or more: a mediocre \
+place is removed by the check that follows, and the traveler is left with a line that names nothing.
+
 Respond with ONLY this JSON, no other text:
 {"time": "<clock time or time-of-day phrase, in the same language as the day's other items>", "title": "<the item's title, naming the venue, in that same language>", "venue_name": "<the venue's exact proper name>", "location": "<neighborhood, city>", "cost_estimate_eur": <number, per person, EUR>, "reasoning": "<one short sentence, <=15 words, why this place>"}
 
@@ -2011,9 +2053,8 @@ async function repairMissingMeals(
                 `Date: ${day.date}\n` +
                 `Meal to add: ${meal}\n` +
                 `Day theme: ${plan.theme}\n` +
-                `What the day already has: ${
-                  day.items.map((i) => `${i.time} ${i.title}`).join(" | ") || "(nothing)"
-                }\n` +
+                `What the day already has: ${dayForRepair(day)}\n` +
+                `Staying at or near: ${stayingNear(brief, itinerary, day)}\n` +
                 `Party: ${brief.party_size} (${brief.party_composition})\n` +
                 `Dietary constraints: ${brief.dietary_constraints.join(", ") || "none"}\n` +
                 // Dietary was always here; these two were not, and a

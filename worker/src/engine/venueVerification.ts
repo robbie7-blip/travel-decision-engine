@@ -464,16 +464,54 @@ function isLodging(item: ItineraryItem): boolean {
   return item.type === "lodging";
 }
 
+/** The title with the rejected venue taken out of it.
+ *
+ * A real Rome run: a repaired breakfast, "Quick coffee and cornetto at
+ * Roscioli Caffè", failed the rating bar (3.9 against 4.3 for a meal), so
+ * its name, link and rating were stripped - and the title still named it.
+ * The page went on recommending the one place the check had just refused
+ * to stand behind, now without the rating that would have said why.
+ *
+ * Only the name and the word joining it go ("at", "в", "@", a dash); the
+ * rest of the sentence is the model's, in the trip's language, and stays.
+ * The name is also tried shortened, because a title often uses the short
+ * form ("Roscioli Caffè") of the full Places name. If nothing matches, or
+ * the title was nothing BUT the name, it is returned unchanged rather than
+ * emptied. */
+export function titleWithoutVenue(title: string, venue: string | null | undefined): string {
+  if (!title || !venue?.trim()) return title;
+  const words = venue.trim().split(/\s+/);
+  const candidates = [venue.trim(), words.slice(0, 2).join(" "), words[0]].filter(
+    (c, i, all) => c.replace(/[^\p{L}\p{N}]/gu, "").length >= 4 && all.indexOf(c) === i
+  );
+  const lower = title.toLocaleLowerCase();
+  for (const candidate of candidates) {
+    const at = lower.indexOf(candidate.toLocaleLowerCase());
+    if (at === -1) continue;
+    const left = title
+      .slice(0, at)
+      .replace(/(?:\s+(?:at|in|from|to|в|във|при|от|на)|\s*[@\-\u2013:,])\s*$/iu, "")
+      .trimEnd();
+    const right = title.slice(at + candidate.length).trim().replace(/^[,:\-\u2013]\s*/, "");
+    const result = [left, right].filter(Boolean).join(" ").replace(/\s{2,}/g, " ").trim();
+    return result.replace(/[^\p{L}\p{N}]/gu, "").length >= 3 ? result : title;
+  }
+  return title;
+}
+
 /** Reverts an item to its unnamed form: no venue_name (so nothing
  * downstream treats it as a confirmed venue) and no Places fields. Named
  * for its original and still-primary caller, lodging, but also used for any
- * item the second pass must keep rather than delete (see keepUnverified). The
- * title is deliberately left alone - it's written in the trip's own
- * language, so rewriting it here would either break localization or
- * require re-calling the model for a cosmetic fix. Its confidence tier
- * still reflects the price grounding, which is unaffected by whether the
- * property itself checked out. */
+ * item the second pass must keep rather than delete (see keepUnverified).
+ * For a meal or an activity the venue's name also comes out of the title
+ * (see titleWithoutVenue); the rest of the title is left as written, in
+ * the trip's own language. A lodging title is left whole: it is the
+ * accommodation line, and "Stay" on its own would say less than a name the
+ * budget is still built on. Its confidence tier still reflects the price
+ * grounding, which is unaffected by whether the property itself checked
+ * out. */
 export function stripToUnverified(item: ItineraryItem): void {
+  if (item.type !== "lodging") item.title = titleWithoutVenue(item.title, item.venue_name);
   item.venue_name = null;
   item.google_rating = undefined;
   item.google_rating_count = undefined;
