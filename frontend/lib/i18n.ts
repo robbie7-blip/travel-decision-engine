@@ -403,6 +403,46 @@ export interface Dictionary {
     feedbackFailed: string;
     pushbackLabel: string;
     pushbackPlaceholder: string;
+    /** Ready-made pushbacks above the box. A tap fills the box rather
+     * than sending, so nothing is spent until "ask" is pressed. */
+    /** Editing a trip by hand (components/TripEditControls.tsx). */
+    edit: {
+      start: string;
+      hint: string;
+      time: string;
+      day: string;
+      remove: string;
+      undo: string;
+      moved: string;
+      none: string;
+      oneChange: string;
+      changes: string;
+      save: string;
+      saving: string;
+      cancel: string;
+    };
+    /** Group voting on lines (components/TripVotes.tsx). */
+    votes: {
+      label: string;
+      up: string;
+      down: string;
+      share: string;
+      shareTitle: string;
+      copied: string;
+      copyPrompt: string;
+      voters: string;
+      oneVoter: string;
+      intro: string;
+      failed: string;
+    };
+    /** "Book this" links (lib/bookingLinks.ts). */
+    booking: {
+      stay: string;
+      tickets: string;
+      disclosure: string;
+    };
+    pushbackChipsLabel: string;
+    pushbackChips: { label: string; question: string }[];
     pushbackSubmit: string;
     pushbackSubmitting: string;
     pushbackYouAsked: string;
@@ -1157,6 +1197,47 @@ const en: Dictionary = {
     feedbackFailed: "failed - try again",
     pushbackLabel: "Push back on this",
     pushbackPlaceholder: "e.g. \"why not the cheaper hotel near the station?\"",
+    edit: {
+      start: "Edit plan",
+      hint: "Change times, move lines between days or remove them. Free and instant.",
+      time: "Time",
+      day: "Day",
+      remove: "Remove",
+      undo: "Undo",
+      moved: "Moves to day {n}",
+      none: "No changes yet",
+      oneChange: "1 change",
+      changes: "{n} changes",
+      save: "Save changes",
+      saving: "Saving…",
+      cancel: "Cancel",
+    },
+    votes: {
+      label: "Vote on this",
+      up: "Keep",
+      down: "Skip",
+      share: "Ask friends to vote",
+      shareTitle: "Vote on our trip",
+      copied: "Link copied - send it to your group",
+      copyPrompt: "Copy this link and send it to your group:",
+      voters: "{n} people have voted",
+      oneVoter: "1 person has voted",
+      intro: "Tap Keep or Skip on each line. Everyone with the link sees the counts.",
+      failed: "That vote did not go through. Try again.",
+    },
+    booking: {
+      stay: "Book on Booking.com",
+      tickets: "Find tickets",
+      disclosure: "Some booking links earn decide a small commission. The price is the same for you.",
+    },
+    pushbackChipsLabel: "Quick ideas",
+    pushbackChips: [
+      { label: "Cheaper", question: "Make this trip cheaper, but keep the highlights." },
+      { label: "More relaxed", question: "Make the pace more relaxed, with fewer things each day." },
+      { label: "Fewer museums", question: "Fewer museums, more time outdoors and in the neighbourhoods." },
+      { label: "Closer to my hotel", question: "Keep meals and activities closer to my hotel." },
+      { label: "Better food", question: "Swap in more memorable places to eat." },
+    ],
     pushbackSubmit: "ask",
     pushbackSubmitting: "thinking…",
     pushbackYouAsked: "You asked",
@@ -1893,6 +1974,47 @@ const bg: Dictionary = {
     feedbackFailed: "неуспешно - опитай отново",
     pushbackLabel: "Оспори това",
     pushbackPlaceholder: "напр. „защо не по-евтиния хотел до гарата?“",
+    edit: {
+      start: "Редактирай плана",
+      hint: "Смени часове, премести редове между дните или ги премахни. Безплатно и веднага.",
+      time: "Час",
+      day: "Ден",
+      remove: "Премахни",
+      undo: "Върни",
+      moved: "Отива в ден {n}",
+      none: "Още няма промени",
+      oneChange: "1 промяна",
+      changes: "{n} промени",
+      save: "Запази промените",
+      saving: "Запазва…",
+      cancel: "Откажи",
+    },
+    votes: {
+      label: "Гласувай",
+      up: "Остави",
+      down: "Пропусни",
+      share: "Питай приятелите",
+      shareTitle: "Гласувай за нашето пътуване",
+      copied: "Линкът е копиран - изпрати го на групата",
+      copyPrompt: "Копирай този линк и го изпрати на групата:",
+      voters: "{n} души гласуваха",
+      oneVoter: "1 човек гласува",
+      intro: "Натисни Остави или Пропусни на всеки ред. Всеки с линка вижда гласовете.",
+      failed: "Гласът не мина. Опитай отново.",
+    },
+    booking: {
+      stay: "Резервирай в Booking.com",
+      tickets: "Намери билети",
+      disclosure: "Някои линкове за резервация носят малка комисиона на decide. Цената за теб е същата.",
+    },
+    pushbackChipsLabel: "Бързи идеи",
+    pushbackChips: [
+      { label: "По-евтино", question: "Направи пътуването по-евтино, но запази най-важното." },
+      { label: "По-спокойно", question: "Направи темпото по-спокойно, с по-малко неща на ден." },
+      { label: "По-малко музеи", question: "По-малко музеи, повече време навън и из кварталите." },
+      { label: "По-близо до хотела", question: "Дръж храненията и забележителностите по-близо до хотела ми." },
+      { label: "По-добра храна", question: "Смени местата за хранене с по-запомнящи се." },
+    ],
     pushbackSubmit: "попитай",
     pushbackSubmitting: "обмисля…",
     pushbackYouAsked: "Попита",

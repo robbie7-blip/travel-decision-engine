@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { ConfidenceTag, inputStyle, SectionLabel, Stamp } from "./ui";
 import { WeatherStrip } from "./WeatherStrip";
 import { PackingList } from "./PackingList";
@@ -17,6 +17,11 @@ import { OfflineReady } from "./OfflineReady";
 import { PrintColophon } from "./PrintColophon";
 import { EmailTripButton } from "./EmailTripButton";
 import { RefinePanel } from "./RefinePanel";
+import { AskToVoteButton, ItemVotes, useTripVotes } from "./TripVotes";
+import { voteRef } from "@/lib/tripVotes";
+import { affiliateIds, bookingLinkFor, hasAffiliates, stayDates } from "@/lib/bookingLinks";
+import { editKey, ItemEditRow, TripEditBar, withEdit } from "./TripEditControls";
+import type { TripEdit } from "@/lib/tripEdits";
 import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -272,6 +277,9 @@ interface ItineraryResultProps {
   onRefine?: (question: string) => void;
   refining?: boolean;
   refiningLabel?: string;
+  /** Saves hand edits as a new revision; absent where a trip cannot be
+   * edited (the compare view), which hides the "Edit plan" button. */
+  onSaveEdits?: (edits: TripEdit[]) => Promise<void>;
   /** The running pushback's answer and stage, for RefinePanel. */
   refineProgress?: JobProgress;
   refineError?: string;
@@ -308,6 +316,7 @@ export function ItineraryResult({
   refining = false,
   refiningLabel,
   refineProgress,
+  onSaveEdits,
   refineError,
   refineJobId,
   lastQuestion,
@@ -326,9 +335,36 @@ export function ItineraryResult({
   // answer the moment a second reader existed.
   const weather = useWeather(destinations ?? [], startDate ?? "", endDate ?? "");
   const [question, setQuestion] = useState("");
+  const questionRef = useRef<HTMLInputElement>(null);
   // The pushback in flight, kept on screen while it runs.
   const [askedQuestion, setAskedQuestion] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const votes = useTripVotes(jobId);
+  // Hand edits: shown as a draft over the trip until saved.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Map<string, TripEdit>>(new Map());
+  const [savingEdits, setSavingEdits] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  function stopEditing() {
+    setEditing(false);
+    setDraft(new Map());
+    setEditError("");
+  }
+
+  async function saveEdits() {
+    if (!onSaveEdits || draft.size === 0) return;
+    setSavingEdits(true);
+    setEditError("");
+    try {
+      await onSaveEdits([...draft.values()]);
+      stopEditing();
+    } catch (e) {
+      setEditError(e instanceof Error && e.message ? e.message : t.genericError);
+    } finally {
+      setSavingEdits(false);
+    }
+  }
 
   function toggleEvidence(key: string) {
     setExpandedItems((prev) => {
@@ -365,6 +401,10 @@ export function ItineraryResult({
   //
   // Arriving-at is the honest anchor: a travel time belongs immediately
   // above the thing it gets you to.
+  // "Book this" links, with this deployment's affiliate ids if it has any.
+  const affiliates = affiliateIds();
+  const stays = stayDates(result.days ?? [], endDate);
+
   const legsByRow = new Map<string, TravelLeg>();
   for (const day of result.days ?? []) {
     for (const leg of travelLegsFor(day.items)) {
@@ -444,6 +484,17 @@ export function ItineraryResult({
             app/api/trip-email. */}
         {result.days && result.days.length > 0 && (
           <EmailTripButton jobId={jobId} t={t} language={language} />
+        )}
+
+        {/* Hand edits: free and instant, unlike a pushback. */}
+        {onSaveEdits && !editing && result.days && result.days.length > 0 && (
+          <button type="button" onClick={() => setEditing(true)} className="font-ui no-print trip-action">
+            <span aria-hidden>✎</span> {t.result.edit.start}
+          </button>
+        )}
+
+        {result.days && result.days.length > 0 && !editing && (
+          <AskToVoteButton jobId={jobId} onShared={votes.enable} t={t} />
         )}
 
         {/* The same cities, back in the homepage bar, for new dates or a
@@ -580,6 +631,17 @@ export function ItineraryResult({
           rather than a route, so it still works with no network - this
           page is cached for offline use. */}
       <span id="trip-days" />
+      {votes.visible && !editing && (
+        <div className="trip-votes-intro font-ui no-print" aria-live="polite">
+          {votes.failed
+            ? t.result.votes.failed
+            : votes.summary.voters === 0
+              ? t.result.votes.intro
+              : votes.summary.voters === 1
+                ? t.result.votes.oneVoter
+                : t.result.votes.voters.replace("{n}", String(votes.summary.voters))}
+        </div>
+      )}
       {result.days &&
         result.days.map((day) => (
           <div key={day.day} className="trip-day" style={{ marginBottom: 28 }}>
@@ -618,11 +680,13 @@ export function ItineraryResult({
               // so anchoring them to the row they leave from put them
               // above the wrong item.
               const leg = legsByRow.get(`${day.day}:${i}`);
+              const edit = editing ? draft.get(editKey(day.day, i)) : undefined;
               return (
                 <Fragment key={key}>
-                {leg && <TravelLegRow leg={leg} t={t} />}
+                {leg && !editing && <TravelLegRow leg={leg} t={t} />}
                 <div
                   className="hover-card"
+                  data-removed={edit?.remove ? "true" : undefined}
                   style={{
                     display: "flex",
                     gap: 4,
@@ -686,8 +750,22 @@ export function ItineraryResult({
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 2 }}>
-                      {item.location} · {item.time}
+                      {item.location} · {edit?.time ?? item.time}
+                      {edit?.toDay !== undefined && (
+                        <span className="trip-edit-moved"> · {t.result.edit.moved.replace("{n}", String(edit.toDay))}</span>
+                      )}
                     </div>
+                    {editing && (
+                      <ItemEditRow
+                        day={day.day}
+                        index={i}
+                        item={item}
+                        days={result.days}
+                        edit={edit}
+                        onChange={(patch) => setDraft((prev) => withEdit(prev, day.day, i, item, patch))}
+                        t={t}
+                      />
+                    )}
                     {/* Where this live-checked fare sits against the route's
                         own price history. Stated as a fact about a range
                         that actually happened, never as a prediction - the
@@ -798,6 +876,21 @@ export function ItineraryResult({
                         {t.result.checkFlightPrices} ↗
                       </a>
                     )}
+                    {(() => {
+                      if (editing) return null;
+                      const link = bookingLinkFor(item, stays.get(`${day.day}:${i}`), affiliates);
+                      if (!link) return null;
+                      return (
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel={link.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"}
+                          className="font-ui no-print booking-link"
+                        >
+                          {link.kind === "stay" ? t.result.booking.stay : t.result.booking.tickets} ↗
+                        </a>
+                      );
+                    })()}
                     <div style={{ fontSize: 13, marginTop: 4, color: "var(--ink-soft)" }}>{item.reasoning}</div>
                     <button
                       type="button"
@@ -817,6 +910,9 @@ export function ItineraryResult({
                       {expanded ? t.result.evidenceHide : t.result.evidenceShow}
                     </button>
                     {expanded && <ItemEvidence item={item} t={t} />}
+                    {votes.visible && !editing && (
+                      <ItemVotes voteRef={voteRef(day.day, i)} summary={votes.summary} onVote={(ref, v) => void votes.vote(ref, v)} t={t} />
+                    )}
                     <ItemFeedback jobId={jobId} day={day.day} item={item} t={t} />
                   </div>
                 </div>
@@ -834,6 +930,10 @@ export function ItineraryResult({
           </div>
         ))}
 
+      {hasAffiliates(affiliates) && (
+        <p className="font-ui no-print booking-disclosure">{t.result.booking.disclosure}</p>
+      )}
+
       {result.things_to_skip && result.things_to_skip.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <SectionLabel>{t.result.skipThis}</SectionLabel>
@@ -846,11 +946,44 @@ export function ItineraryResult({
         </div>
       )}
 
+      {editing && (
+        <TripEditBar
+          count={draft.size}
+          saving={savingEdits}
+          error={editError}
+          onSave={() => void saveEdits()}
+          onCancel={stopEditing}
+          t={t}
+        />
+      )}
+
       {onRefine && (
       <div className="no-print" style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
         <SectionLabel>{t.result.pushbackLabel}</SectionLabel>
+        {/* Fills the box, does not send: a pushback costs a generation,
+            so the traveller still presses "ask" - and can adjust the
+            wording first. */}
+        {!refining && (
+          <div className="pushback-chips" role="group" aria-label={t.result.pushbackChipsLabel}>
+            {t.result.pushbackChips.map((chip) => (
+              <button
+                key={chip.label}
+                type="button"
+                className="font-ui pushback-chip"
+                aria-pressed={question === chip.question}
+                onClick={() => {
+                  setQuestion(chip.question);
+                  questionRef.current?.focus();
+                }}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input
+            ref={questionRef}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => {

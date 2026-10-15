@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
+import { SendReportButton } from "@/components/SendReportButton";
 import { adminSummary, listAdminTrips, type AdminSummary, type AdminTrip } from "@/lib/tripsQuery";
 
 export const dynamic = "force-dynamic";
@@ -120,6 +121,14 @@ export default async function TripsAdminPage({ searchParams }: { searchParams: P
             </>
           )}
 
+          <div style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 18 }}>
+            Daily email (06:00 UTC, 8 or 9am in Sofia, to ADMIN_REPORT_EMAIL):{" "}
+            <a href="/api/admin/daily-report" target="_blank" rel="noopener noreferrer" style={{ color: "var(--grounded)" }}>
+              preview
+            </a>{" "}
+            · <SendReportButton />
+          </div>
+
           <div style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 10 }}>
             Newest {LIMIT}, times in UTC ·{" "}
             {includeTests ? (
@@ -162,7 +171,7 @@ export default async function TripsAdminPage({ searchParams }: { searchParams: P
                           {trip.testMode ? " · test" : ""}
                         </div>
                       </td>
-                      <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>{trip.kind === "refine" ? "pushback" : "new"}</td>
+                      <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>{trip.kind === "refine" ? "pushback" : trip.kind === "edit" ? "hand edit" : "new"}</td>
                       <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>{trip.dayCount ?? "-"}</td>
                       <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>{seconds(trip.totalMs)}</td>
                       <td style={{ padding: "8px", borderBottom: "1px solid var(--line)" }}>{dollars(trip.costUsd)}</td>

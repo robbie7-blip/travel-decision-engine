@@ -11,7 +11,7 @@ import { closeDb, deleteExpiredTrips, getDb, migrate, MIGRATIONS, saveTripRecord
 import { JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, type Job } from "./jobs";
 import { check, finish, heading, section } from "./testutil";
 import type { TripBriefInput } from "./types";
-import { adminSummary, listAdminTrips, listMyTrips } from "../../frontend/lib/tripsQuery";
+import { adminSummary, listAdminTrips, listMyTrips, saveEditedTrip } from "../../frontend/lib/tripsQuery";
 
 heading("trips in Postgres");
 
@@ -136,6 +136,24 @@ async function main() {
     check("with plain dates", mine[0]?.startDate === "2026-11-06" && mine[0]?.endDate === "2026-11-08", JSON.stringify(mine[0]));
     check("someone else's list is theirs", (await listMyTrips(db, "other@example.com")).map((t) => t.jobId).join(",") === "d");
     check("no address, no list", (await listMyTrips(db, " ")).length === 0);
+
+    // A hand edit of f: a copy of f's row with the new plan, replacing it.
+    await saveEditedTrip(db, {
+      id: "f-edit",
+      sourceId: "f",
+      expiresAt: new Date(Date.now() + 86_400_000),
+      dayCount: 2,
+      itinerary: { days: [{}, {}] },
+      ownerEmail: "ME@example.com",
+    });
+    const edited = (await db.query("select * from trips where id = 'f-edit'")).rows[0];
+    check("an edit copies the source's brief and dates", edited?.kind === "edit" && edited.brief.dietary_constraints[0] === "vegetarian" && edited.start_date instanceof Date);
+    check("but not its quality report", edited?.quality === null && edited?.day_count === 2);
+    const afterEdit = (await listMyTrips(db, me)).map((t) => t.jobId).join(",");
+    check("and takes the original's place in my trips", afterEdit === "f-edit,b", afterEdit);
+    await saveEditedTrip(db, { id: "x-edit", sourceId: "missing", expiresAt: new Date(), dayCount: 1, itinerary: {}, ownerEmail: null });
+    check("an edit of a trip the archive never had writes nothing", (await db.query("select 1 from trips where id = 'x-edit'")).rowCount === 0);
+    await db.query("delete from trips where id = 'f-edit'");
   }
 
   section("admin list");

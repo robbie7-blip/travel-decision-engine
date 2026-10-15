@@ -1382,6 +1382,10 @@ jobs:
       # and it is gone, single use, one address's code never signs in
       # another.
       - run: npm run test:signin-code
+      - run: npm run test:booking-links
+      - run: npm run test:daily-report
+      - run: npm run test:trip-votes
+      - run: npm run test:trip-edits
       # The destinations field's suggestions.
       #
       # "Make the destination a dropdown too" could not be a <select>: the

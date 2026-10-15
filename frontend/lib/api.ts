@@ -1,5 +1,6 @@
 import type { Itinerary, TripBriefInput } from "./types";
 import type { AccountTrip } from "./recentTrips";
+import type { TripEdit } from "./tripEdits";
 import type { Job, JobTimings, QualityReport, JobProgress } from "./jobs";
 import type { PublicJob, PublicTripBrief } from "./publicBrief";
 import type { FeedbackEntry } from "./feedback";
@@ -355,4 +356,23 @@ export async function fetchAccountTrips(): Promise<AccountTrip[]> {
   } catch {
     return [];
   }
+}
+
+/** Saves hand edits as a new revision of the trip (see
+ * app/api/trip-edit). Instant: there is no model call, so the finished
+ * itinerary comes straight back with the new id. */
+export async function saveTripEdits(
+  jobId: string,
+  edits: TripEdit[]
+): Promise<{ jobId: string; itinerary: Itinerary; brief: PublicTripBrief }> {
+  const response = await fetch("/api/trip-edit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jobId, edits }),
+  });
+  if (!response.ok) {
+    const failure = await readError(response, `Request failed with status ${response.status}.`);
+    throw new ApiError(failure.detail, failure.reason);
+  }
+  return (await response.json()) as { jobId: string; itinerary: Itinerary; brief: PublicTripBrief };
 }

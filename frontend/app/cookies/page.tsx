@@ -17,7 +17,7 @@ import { CONTACT_EMAIL } from "@/lib/legal";
 import type { Language } from "@/lib/types";
 import { SHARE_CARD } from "@/lib/shareCard";
 
-const LAST_UPDATED = "10 August 2026";
+const LAST_UPDATED = "15 October 2026";
 
 function resolveLanguage(lang?: string): Language {
   return lang === "bg" ? "bg" : "en";
@@ -114,9 +114,9 @@ export default async function CookiesPage({
             English only, for the same reason as the Terms of Service - see that page.
           </p>
 
-          <LegalSection heading="The one cookie decide sets">
+          <LegalSection heading="The cookies decide sets">
             <p style={{ margin: "0 0 10px" }}>
-              decide sets a single cookie, <code>decide_session</code>. It exists only to keep you signed in between
+              decide sets at most two cookies. The first, <code>decide_session</code>, exists only to keep you signed in between
               visits - it stores a signed token identifying your account, nothing else. It&apos;s marked httpOnly
               and secure, so it can&apos;t be read by page scripts or sent over an unencrypted connection.
             </p>
@@ -125,6 +125,11 @@ export default async function CookiesPage({
               actually sign in, and it&apos;s not used for advertising, analytics, or tracking you across sites.
               Under GDPR/ePrivacy rules, strictly-necessary cookies like this one are exempt from requiring consent,
               which is why decide doesn&apos;t show a cookie-consent banner.
+            </p>
+            <p style={{ margin: "10px 0 0" }}>
+              The second, <code>decide_voter</code>, is set only when you vote Keep or Skip on a shared trip. It holds a
+              random id, so voting again on the same line changes your vote instead of adding a second one. It says
+              nothing about who you are, is httpOnly, and is used for nothing else.
             </p>
           </LegalSection>
 

@@ -106,6 +106,26 @@ export const FRONTEND_ENV: readonly EnvCheck[] = [
     criticality: "optional",
     what: "Reading the Postgres archive of trips (the Database card below)",
   },
+  {
+    name: "ADMIN_REPORT_EMAIL",
+    criticality: "optional",
+    what: "Where the daily trips report is emailed (your own address)",
+  },
+  {
+    name: "CRON_SECRET",
+    criticality: "optional",
+    what: "Lets Vercel Cron start the daily report; without it the report never runs",
+  },
+  {
+    name: "NEXT_PUBLIC_BOOKING_AID",
+    criticality: "optional",
+    what: "Your Booking.com affiliate id, added to hotel booking links (needs a redeploy)",
+  },
+  {
+    name: "NEXT_PUBLIC_GYG_PARTNER_ID",
+    criticality: "optional",
+    what: "Your GetYourGuide partner id, added to ticket links (needs a redeploy)",
+  },
 ];
 
 /** Set on the Railway worker. Read from its heartbeat, not from here - this

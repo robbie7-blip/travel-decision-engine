@@ -5418,3 +5418,214 @@ a.trip-notify-note {
   font-size: 12px;
   color: var(--ink-dim);
 }
+
+/* Ready-made pushbacks (ItineraryResult). Fill the box, never send. */
+.pushback-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pushback-chip {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.pushback-chip:hover {
+  border-color: var(--brand-teal);
+  color: var(--brand-teal);
+}
+
+.pushback-chip[aria-pressed="true"] {
+  border-color: var(--brand-teal);
+  background: var(--brand-teal);
+  color: var(--bg-panel);
+}
+
+/* Editing a trip by hand (components/TripEditControls.tsx). */
+.hover-card[data-removed="true"] {
+  opacity: 0.45;
+}
+
+.hover-card[data-removed="true"] > div > div:first-child > span:first-child {
+  text-decoration: line-through;
+}
+
+.trip-edit-moved {
+  color: var(--brand-teal);
+  font-weight: 600;
+}
+
+.trip-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin: 10px 0 4px;
+}
+
+.trip-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trip-edit-field input,
+.trip-edit-field select {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.trip-edit-remove {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--infeasible);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trip-edit-remove[aria-pressed="true"] {
+  color: var(--ink-soft);
+}
+
+.trip-edit-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin: 24px -10px 0;
+  padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
+  background: var(--bg-panel);
+  border-top: 1px solid var(--line-strong);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.trip-edit-bar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.trip-edit-bar-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.trip-edit-bar-text strong {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.trip-edit-error {
+  color: var(--infeasible);
+}
+
+.trip-edit-bar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.trip-edit-cancel,
+.trip-edit-save {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.trip-edit-cancel {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+/* Group voting (components/TripVotes.tsx). */
+.trip-votes-intro {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.item-votes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.item-vote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.item-vote[aria-pressed="true"] {
+  border-color: var(--brand-teal);
+  background: var(--brand-teal);
+  color: var(--bg-panel);
+}
+
+.item-vote-count {
+  font-weight: 700;
+}
+
+/* "Book this" links (lib/bookingLinks.ts). */
+.booking-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 4px 12px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--grounded);
+  text-decoration: underline;
+}
+
+.booking-disclosure {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--ink-dim);
+}

@@ -64,7 +64,7 @@ export async function listMyTrips(db: Queryable, email: string, limit = MY_TRIPS
 
 export interface AdminTrip {
   id: string;
-  kind: "generate" | "refine";
+  kind: "generate" | "refine" | "edit";
   status: "done" | "error";
   testMode: boolean;
   finishedAt: string;
@@ -103,10 +103,17 @@ export const ADMIN_TRIPS_SQL = `
          error
   from trips
   where ($2::boolean or not test_mode)
+    and ($3::int is null or finished_at > now() - make_interval(hours => $3::int))
   order by finished_at desc
   limit $1`;
 
-export async function listAdminTrips(db: Queryable, limit = 100, includeTests = true): Promise<AdminTrip[]> {
+/** sinceHours narrows it to the last N hours (the daily report). */
+export async function listAdminTrips(
+  db: Queryable,
+  limit = 100,
+  includeTests = true,
+  sinceHours: number | null = null
+): Promise<AdminTrip[]> {
   const { rows } = await db.query<{
     id: string;
     kind: string;
@@ -126,10 +133,10 @@ export async function listAdminTrips(db: Queryable, limit = 100, includeTests = 
     defect_details: unknown;
     signed_in: boolean;
     error: string | null;
-  }>(ADMIN_TRIPS_SQL, [limit, includeTests]);
+  }>(ADMIN_TRIPS_SQL, [limit, includeTests, sinceHours]);
   return rows.map((r) => ({
     id: r.id,
-    kind: r.kind === "refine" ? "refine" : "generate",
+    kind: r.kind === "refine" || r.kind === "edit" ? r.kind : "generate",
     status: r.status === "done" ? "done" : "error",
     testMode: r.test_mode,
     finishedAt: new Date(r.finished_at).toISOString(),
@@ -170,7 +177,7 @@ export const ADMIN_SUMMARY_SQL = `
          percentile_cont(0.5) within group (order by (timings->>'totalMs')::float8) as median_ms,
          count(*) filter (where kind = 'refine')::int as refines
   from trips
-  where finished_at > now() - interval '7 days' and not test_mode`;
+  where finished_at > now() - interval '7 days' and not test_mode and kind <> 'edit'`;
 
 export async function adminSummary(db: Queryable): Promise<AdminSummary> {
   const { rows } = await db.query<{
@@ -190,4 +197,36 @@ export async function adminSummary(db: Queryable): Promise<AdminSummary> {
     medianMs: r?.median_ms ?? null,
     refines: r?.refines ?? 0,
   };
+}
+
+/** A hand-edited copy of a stored trip (/api/trip-edit), as its own row.
+ *
+ * Copied from the source row rather than built here, so the brief, the
+ * dates and the test flag are the ones the worker stored. The model's
+ * quality report and timings are left behind: they describe the trip
+ * before the edits, and the admin list should not credit a hand-edited
+ * plan with checks it never had. Nothing happens when the source row is
+ * missing (a trip from before the archive existed). */
+export const SAVE_EDITED_TRIP_SQL = `
+  insert into trips (id, kind, status, test_mode, created_at, finished_at, expires_at, language,
+    destinations, start_date, end_date, day_count, party_size, brief, itinerary, quality, timings,
+    cost_usd, error, owner_email, replaces)
+  select $1, 'edit', 'done', test_mode, now(), now(), $2, language,
+    destinations, start_date, end_date, $3, party_size, brief, $4::jsonb, null, null,
+    0, null, $5, id
+  from trips where id = $6
+  on conflict (id) do nothing`;
+
+export async function saveEditedTrip(
+  db: Queryable,
+  row: { id: string; sourceId: string; expiresAt: Date; dayCount: number; itinerary: unknown; ownerEmail: string | null }
+): Promise<void> {
+  await db.query(SAVE_EDITED_TRIP_SQL, [
+    row.id,
+    row.expiresAt,
+    row.dayCount,
+    JSON.stringify(row.itinerary),
+    row.ownerEmail ? row.ownerEmail.trim().toLowerCase() : null,
+    row.sourceId,
+  ]);
 }

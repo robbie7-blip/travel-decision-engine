@@ -10,7 +10,8 @@ import { SiteHeader } from "./SiteHeader";
 import { useJobStatusMessage } from "./useJobStatusMessage";
 import { TripBuilding } from "./TripBuilding";
 import { TripFailed } from "./TripFailed";
-import { ApiError, pollJob, refineItinerary, retryTrip } from "@/lib/api";
+import { ApiError, pollJob, refineItinerary, retryTrip, saveTripEdits } from "@/lib/api";
+import type { TripEdit } from "@/lib/tripEdits";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
 import type { Job, JobTimings as Timings, QualityReport, JobProgress } from "@/lib/jobs";
@@ -218,6 +219,28 @@ export function TripView({ jobId }: { jobId: string }) {
     }
   }
 
+  /** Hand edits: saved as a new revision at once, no model and no wait.
+   * Throws for ItineraryResult to show next to the Save button. */
+  async function handleSaveEdits(edits: TripEdit[]) {
+    try {
+      const { jobId: newJobId, itinerary, brief } = await saveTripEdits(currentJobId, edits);
+      setResult(itinerary);
+      setLastBrief(brief);
+      removeRecentTrip(currentJobId);
+      saveRecentTrip({
+        jobId: newJobId,
+        destinations: brief.destinations,
+        startDate: brief.start_date,
+        endDate: brief.end_date,
+        language: brief.language,
+      });
+      setCurrentJobId(newJobId);
+      router.push(`/trip/${newJobId}`);
+    } catch (e) {
+      throw new Error(e instanceof ApiError ? e.message : t.genericError);
+    }
+  }
+
   return (
     <div style={{ minHeight: "100%" }}>
       {/* 1450, not this page's own 960px content width below - matches the
@@ -271,6 +294,7 @@ export function TripView({ jobId }: { jobId: string }) {
                 refining={refining}
                 refiningLabel={refiningMessage}
                 refineProgress={refineProgress}
+                onSaveEdits={handleSaveEdits}
                 refineError={refineError}
                 refineJobId={refineJobId}
                 lastQuestion={lastQuestion}

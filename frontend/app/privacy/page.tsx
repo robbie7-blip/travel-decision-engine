@@ -72,6 +72,10 @@ const DATA_COLLECTED: DataRow[] = [
     what: "Aggregate usage counts",
     why: "E.g. how many trips were generated per day, per language. Not tied to any individual visitor - used only for our own internal stats.",
   },
+  {
+    what: "Votes on a shared trip",
+    why: "If you tap Keep or Skip on a trip's line - the vote, tied to a random id in a cookie (decide_voter) so a second tap changes it. Only the counts are shown, never who voted. Deleted with the trip.",
+  },
 ];
 
 export default async function PrivacyPage({
@@ -162,7 +166,8 @@ export default async function PrivacyPage({
           <p style={{ fontSize: 14, lineHeight: 1.65, color: "var(--ink-soft)", marginBottom: 28 }}>
             This describes what decide (the "Service"), operated by {OPERATOR_NAME}, collects, why, and how it&apos;s
             used. We don&apos;t sell your data, and we don&apos;t use third-party advertising or tracking cookies -
-            the only cookie decide sets is a session cookie used solely to keep you signed in.
+            the only cookies decide sets are a session cookie that keeps you signed in and, if you vote on a shared
+            trip, a random id that stops a vote being counted twice.
           </p>
 
           <LegalSection heading="What we collect">

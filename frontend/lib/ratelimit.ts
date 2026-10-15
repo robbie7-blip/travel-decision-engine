@@ -107,6 +107,24 @@ export const SIGNIN_CODE_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:signin-code",
 };
 
+// Saving hand edits to a trip (/api/trip-edit). No model call, so the
+// cost is a Redis write; the limit is there because each save creates a
+// new trip record that lives as long as the original.
+export const TRIP_EDIT_RATE_LIMIT: RateLimitConfig = {
+  perHour: envInt("TRIP_EDIT_RATE_LIMIT_PER_HOUR", 60),
+  perDay: envInt("TRIP_EDIT_RATE_LIMIT_PER_DAY", 200),
+  prefix: "ratelimit:trip-edit",
+};
+
+// A thumbs up or down on a shared trip's line (/api/trip-votes). Free, and
+// a group deciding together taps a lot; the ceiling only stops a script
+// from stuffing one trip's counts.
+export const TRIP_VOTE_RATE_LIMIT: RateLimitConfig = {
+  perHour: envInt("TRIP_VOTE_RATE_LIMIT_PER_HOUR", 150),
+  perDay: envInt("TRIP_VOTE_RATE_LIMIT_PER_DAY", 600),
+  prefix: "ratelimit:trip-vote",
+};
+
 export interface RateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;
