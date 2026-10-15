@@ -1,0 +1,37 @@
+# Fetches freely licensed cover-photo candidates from Wikimedia Commons
+# (scripts/fetch-commons-candidates.mjs) and commits them to the branch
+# that triggered it, under photo-candidates/, for a person to choose from.
+# Runs here because the dev sandbox cannot reach Wikimedia.
+#
+# Nothing it commits is served: photo-candidates/ is outside public/, and
+# a separate, reviewed step moves the chosen photos into place.
+name: photo candidates
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/photo-candidates.yml
+      - scripts/fetch-commons-candidates.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+      - run: node scripts/fetch-commons-candidates.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add photo-candidates
+          git commit -m "Photo candidates from Wikimedia Commons" || exit 0
+          git push origin HEAD:${{ github.ref_name }}
