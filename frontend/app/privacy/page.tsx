@@ -201,7 +201,7 @@ export default async function PrivacyPage({
 
           <LegalSection heading="Who we share it with">
             <p style={{ margin: "0 0 10px" }}>
-              <strong style={{ color: "var(--ink)" }}>Travelpayouts</strong> - on trip pages, a script that credits
+              <strong style={{ color: "var(--ink)" }}>Travelpayouts</strong> - a script that credits
               bookings made through our links to decide. It sees the page's links, not your trip details or account.
               <br />
               <strong style={{ color: "var(--ink)" }}>Anthropic</strong> - trip details and questions, to generate

@@ -4,6 +4,7 @@ import { Literata, DM_Mono, Inter } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { AppSplash } from "@/components/AppSplash";
 import { SiteFooter } from "@/components/SiteFooter";
+import { TravelpayoutsDrive } from "@/components/TravelpayoutsDrive";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { LAUNCH_DEVICES, launchImageHref, launchMediaQuery } from "@/lib/launchScreens";
 import "./globals.css";
@@ -137,6 +138,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           media={launchMediaQuery(device)}
         />
       ))}
+      {/* In <head> because Travelpayouts' installer looks for it there.
+          See the component for why it costs nothing at load. */}
+      <head>
+        <TravelpayoutsDrive />
+      </head>
       <body>
         <AppSplash />
         {children}

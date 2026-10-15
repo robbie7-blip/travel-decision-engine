@@ -132,7 +132,7 @@ export default async function CookiesPage({
               nothing about who you are, is httpOnly, and is used for nothing else.
             </p>
             <p style={{ margin: "10px 0 0" }}>
-              On trip pages only, a script from Travelpayouts, our travel affiliate partner, marks booking links so
+              A script from Travelpayouts, our travel affiliate partner, marks booking links so
               that a booking made through them is credited to decide. It may set its own cookies to do that. It is
               not used for advertising, and nothing about your trip or account is sent to it.
             </p>

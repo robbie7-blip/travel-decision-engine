@@ -15,7 +15,6 @@ import type { Itinerary } from "@/lib/types";
 import { RoutedSiteHeader } from "@/components/RoutedSiteHeader";
 import { PublishedPlan } from "@/components/PublishedPlan";
 import { TripMap } from "@/components/TripMap";
-import { TravelpayoutsDrive } from "@/components/TravelpayoutsDrive";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -56,7 +55,6 @@ export default async function PublishedTripPage({ params }: { params: Promise<{ 
 
   return (
     <div style={{ minHeight: "100%" }}>
-      <TravelpayoutsDrive />
       <RoutedSiteHeader language={trip.language} contextLink={{ href: "/plans", label: `${t.plans.browse} →` }} />
       <main className="plan-page">
         <p className="font-ui plan-eyebrow">{trip.destinations.join(" · ")}</p>
