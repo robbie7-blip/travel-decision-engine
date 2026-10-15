@@ -82,6 +82,19 @@ export const MIGRATIONS: { id: number; sql: string }[] = [
       create index if not exists trips_expires_at on trips (expires_at);
     `,
   },
+  {
+    // "My trips" on any device: who asked for a trip, and which trip a
+    // revision replaces, so the list shows the latest version only.
+    // Lowercased on the way in (tripRow): the address someone signed in
+    // with is not normalised, and Me@x.com and me@x.com are one person.
+    id: 2,
+    sql: `
+      alter table trips add column if not exists owner_email text;
+      alter table trips add column if not exists replaces text;
+      create index if not exists trips_owner on trips (owner_email, finished_at desc) where owner_email is not null;
+      create index if not exists trips_replaces on trips (replaces) where replaces is not null;
+    `,
+  },
 ];
 
 /** Applies whatever has not run yet. Once per process. */
@@ -150,6 +163,8 @@ export function tripRow(job: Job, costUsd: number, now = Date.now()) {
     timings: job.timings ?? null,
     cost_usd: Number.isFinite(costUsd) ? Math.round(costUsd * 10_000) / 10_000 : null,
     error: job.error ?? null,
+    owner_email: typeof job.ownerEmail === "string" && job.ownerEmail.trim() ? job.ownerEmail.trim().toLowerCase() : null,
+    replaces: typeof job.replaces === "string" && job.replaces ? job.replaces : null,
   };
 }
 
@@ -163,8 +178,8 @@ export async function saveTripRecord(job: Job, costUsd: number): Promise<void> {
     await db.query(
       `insert into trips (id, kind, status, test_mode, created_at, finished_at, expires_at, language,
          destinations, start_date, end_date, day_count, party_size, brief, itinerary, quality, timings,
-         cost_usd, error)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+         cost_usd, error, owner_email, replaces)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        on conflict (id) do update set
          kind = excluded.kind, status = excluded.status, test_mode = excluded.test_mode,
          finished_at = excluded.finished_at, expires_at = excluded.expires_at,
@@ -172,13 +187,13 @@ export async function saveTripRecord(job: Job, costUsd: number): Promise<void> {
          start_date = excluded.start_date, end_date = excluded.end_date, day_count = excluded.day_count,
          party_size = excluded.party_size, brief = excluded.brief, itinerary = excluded.itinerary,
          quality = excluded.quality, timings = excluded.timings, cost_usd = excluded.cost_usd,
-         error = excluded.error`,
+         error = excluded.error, owner_email = excluded.owner_email, replaces = excluded.replaces`,
       [
         r.id, r.kind, r.status, r.test_mode, r.created_at, r.finished_at, r.expires_at, r.language,
         r.destinations, r.start_date, r.end_date, r.day_count, r.party_size,
         JSON.stringify(r.brief), r.itinerary === null ? null : JSON.stringify(r.itinerary),
         r.quality === null ? null : JSON.stringify(r.quality), r.timings === null ? null : JSON.stringify(r.timings),
-        r.cost_usd, r.error,
+        r.cost_usd, r.error, r.owner_email, r.replaces,
       ]
     );
   } catch (e) {

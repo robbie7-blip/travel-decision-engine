@@ -30,6 +30,11 @@ const TOOLS: { href: string; name: string; blurb: string }[] = [
     blurb: "Usage counters, conversion funnel, generation latency, and today's spend against the daily budget.",
   },
   {
+    href: "/admin/trips",
+    name: "Trips",
+    blurb: "Recent trips from the database: where, how long, what it cost, and what the quality check found.",
+  },
+  {
     href: "/admin/feedback",
     name: "Feedback",
     blurb: "Every line item a traveler flagged as right or wrong.",

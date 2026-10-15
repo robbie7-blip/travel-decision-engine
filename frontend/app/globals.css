@@ -5366,3 +5366,55 @@ a.trip-notify-note {
   font-size: 13px;
   color: var(--infeasible);
 }
+
+/* "Your trips" on the account page (components/AccountTripList.tsx). */
+.account-trips {
+  margin-top: 28px;
+}
+
+.account-trips-heading {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--brand-teal);
+  margin: 0 0 12px;
+}
+
+.account-trips-empty {
+  font-size: 13px;
+  color: var(--ink-dim);
+  margin: 0;
+}
+
+.account-trips-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.account-trip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  min-height: 44px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.account-trip:hover .account-trip-places {
+  color: var(--brand-teal);
+}
+
+.account-trip-places {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.account-trip-dates {
+  font-size: 12px;
+  color: var(--ink-dim);
+}

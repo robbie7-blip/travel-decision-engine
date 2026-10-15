@@ -137,6 +137,7 @@ const ROUTES_NOT_CHECKED = {
   "/admin/showcase": "see /admin",
   "/admin/stats": "see /admin",
   "/admin/test-mode": "see /admin",
+  "/admin/trips": "see /admin",
   // Needs a generated trip in Redis, which means a real model call and
   // real money. Its controls come from ItineraryResult and TripQA, and
   // TripQA's are measured on /ask, which renders the same component.

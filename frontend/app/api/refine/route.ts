@@ -140,9 +140,10 @@ export async function POST(request: NextRequest) {
   // this, answering a question about a saved trip produced a REPLACEMENT
   // that expired in thirty days while the trip it came from lived for
   // over a year, and the refined version is the one the traveller keeps.
-  const ttlSeconds = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value)
-    ? SAVED_JOB_TTL_SECONDS
-    : JOB_TTL_SECONDS;
+  // The person asking, not whoever made the trip being revised: a
+  // revision of a shared trip belongs to the account that asked for it.
+  const ownerEmail = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+  const ttlSeconds = ownerEmail ? SAVED_JOB_TTL_SECONDS : JOB_TTL_SECONDS;
   const job: Job = {
     id,
     status: "pending",
@@ -151,6 +152,8 @@ export async function POST(request: NextRequest) {
     createdAt: now,
     updatedAt: now,
     ttlSeconds,
+    replaces: sourceJobId,
+    ...(ownerEmail ? { ownerEmail } : {}),
   };
 
   await redis.set(jobKey(id), JSON.stringify(job), { ex: ttlSeconds });

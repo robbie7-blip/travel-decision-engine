@@ -180,7 +180,9 @@ export default async function PrivacyPage({
             <p style={{ margin: 0 }}>
               Upstash Redis, a hosted database, for everything the product does while you use it. Finished trips
               are also copied to a Postgres database hosted by Neon in the EU (Frankfurt), where they are kept
-              for exactly as long as below and then deleted.
+              for exactly as long as below and then deleted. A trip made while signed in is stored with your
+              email address, so it appears under &quot;Your trips&quot; on any device you sign in on. Only you see
+              that list.
             </p>
           </LegalSection>
 

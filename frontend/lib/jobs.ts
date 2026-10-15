@@ -87,6 +87,15 @@ export interface Job {
    *
    * Absent means JOB_TTL_SECONDS. See ttlForJob. */
   ttlSeconds?: number;
+  /** The signed-in account that asked for this trip, if any - the
+   * session's own address, never one from a request body. It is what
+   * puts the trip under "My trips" on that account's other devices (the
+   * trips table, worker/src/db.ts). Private: publicJob is an allowlist and
+   * this is not on it. */
+  ownerEmail?: string;
+  /** For a refinement or a retry: the job it replaces. "My trips" shows
+   * only the latest version of a trip, not every revision of it. */
+  replaces?: string;
   /** When this job was started again after stalling, if it was.
    *
    * ONE retry per dropped generation, and this field is what enforces it.

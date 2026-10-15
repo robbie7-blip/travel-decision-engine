@@ -190,6 +190,7 @@ export async function POST(request: NextRequest) {
     createdAt: now,
     updatedAt: now,
     ttlSeconds,
+    ...(email ? { ownerEmail: email } : {}),
     ...(testMode ? { testMode } : {}),
   };
 

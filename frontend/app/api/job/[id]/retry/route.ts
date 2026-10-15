@@ -106,9 +106,8 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
   // A retry is a new job with a new id, so the lifetime decision is made
   // again rather than inherited - the same reasoning /api/refine documents:
   // the version the traveller keeps is the one that finished.
-  const ttlSeconds = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value)
-    ? SAVED_JOB_TTL_SECONDS
-    : JOB_TTL_SECONDS;
+  const ownerEmail = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+  const ttlSeconds = ownerEmail ? SAVED_JOB_TTL_SECONDS : JOB_TTL_SECONDS;
   const retry: Job = {
     id,
     status: "pending",
@@ -116,6 +115,8 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
     createdAt: now,
     updatedAt: now,
     ttlSeconds,
+    replaces: sourceJobId,
+    ...(ownerEmail ? { ownerEmail } : {}),
     // Inherited deliberately: a test-mode generation that the server drops
     // has to be retryable without the owner's key being re-sent, and a
     // retry of a test generation is still a test generation.

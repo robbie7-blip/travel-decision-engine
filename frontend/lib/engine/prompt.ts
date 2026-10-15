@@ -313,10 +313,14 @@ export function loadFacts(city: string): Fact[] {
  * sees "match the surrounding items" reads the CITY as the language cue and
  * writes an Italian dinner into an English trip to Rome - confirmed on a
  * real generation. The brief already knows the answer; there is no reason
- * to make it a judgement. */
+ * to make it a judgement.
+ *
+ * The Bulgarian label carries the register too: the site speaks to the
+ * traveller as "ти" everywhere, and a trip that switched to "Вие" in its
+ * reasoning would read as a different voice from the page around it. */
 export const LANGUAGE_LABEL: Record<TripBriefInput["language"], string> = {
   en: "English",
-  bg: "Bulgarian (български)",
+  bg: 'Bulgarian (български), addressing the traveller informally as "ти", never "Вие"',
 };
 
 function tripBriefToPromptBlock(brief: TripBriefInput): string {

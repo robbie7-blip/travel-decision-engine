@@ -11,6 +11,7 @@ import { closeDb, deleteExpiredTrips, getDb, migrate, MIGRATIONS, saveTripRecord
 import { JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, type Job } from "./jobs";
 import { check, finish, heading, section } from "./testutil";
 import type { TripBriefInput } from "./types";
+import { adminSummary, listAdminTrips, listMyTrips } from "../../frontend/lib/tripsQuery";
 
 heading("trips in Postgres");
 
@@ -58,6 +59,10 @@ async function main() {
     check("kind", r.kind === "generate" && tripRow(job({ refinement: { question: "q" } as never }), 0).kind === "refine");
     const bad = tripRow(job({ brief: { ...brief, start_date: "06/11/2026" } }), 0);
     check("a malformed date is stored as no date, not an error", bad.start_date === null);
+    const owned = tripRow(job({ ownerEmail: "  Me@Example.COM ", replaces: "trip-0" }), 0);
+    check("the owner is stored lowercased", owned.owner_email === "me@example.com", String(owned.owner_email));
+    check("with the trip it replaces", owned.replaces === "trip-0");
+    check("an anonymous trip has no owner", r.owner_email === null && r.replaces === null);
   }
 
   if (!process.env.DATABASE_URL) {
@@ -101,6 +106,71 @@ async function main() {
   const left = (await db.query("select id from trips order by id")).rows.map((r) => r.id);
   check("expired trips are removed", removed === 1 && !left.includes("trip-old"), `${removed} removed, left ${left}`);
   check("current ones stay", left.includes("trip-1"));
+
+  section("my trips");
+  {
+    await db.query("delete from trips");
+    const me = "me@example.com";
+    const at = (id: string, minutesAgo: number) =>
+      db.query("update trips set finished_at = now() - ($2 || ' minutes')::interval where id = $1", [id, minutesAgo]);
+    await saveTripRecord(job({ id: "a", ownerEmail: "Me@Example.com" }), 0);
+    await at("a", 50);
+    await saveTripRecord(job({ id: "b", ownerEmail: me, replaces: "a", refinement: { question: "q" } as never }), 0);
+    await at("b", 40);
+    await saveTripRecord(job({ id: "c", ownerEmail: me, status: "error", error: "x", result: undefined }), 0);
+    await at("c", 30);
+    await saveTripRecord(job({ id: "d", ownerEmail: "other@example.com" }), 0);
+    await at("d", 25);
+    await saveTripRecord(job({ id: "e" }), 0);
+    await at("e", 20);
+    await saveTripRecord(job({ id: "f", ownerEmail: me, replaces: "d" }), 0);
+    await at("f", 10);
+    await saveTripRecord(job({ id: "g", ownerEmail: me }), 0);
+    await db.query("update trips set expires_at = now() - interval '1 minute' where id = 'g'");
+    // A revision that failed does not hide the trip it was revising.
+    await saveTripRecord(job({ id: "h", ownerEmail: me, replaces: "f", status: "error", error: "x", result: undefined }), 0);
+
+    const mine = await listMyTrips(db, "  ME@example.com ");
+    const ids = mine.map((t) => t.jobId).join(",");
+    check("only my finished, unexpired trips, newest first, latest version only", ids === "f,b", ids);
+    check("with plain dates", mine[0]?.startDate === "2026-11-06" && mine[0]?.endDate === "2026-11-08", JSON.stringify(mine[0]));
+    check("someone else's list is theirs", (await listMyTrips(db, "other@example.com")).map((t) => t.jobId).join(",") === "d");
+    check("no address, no list", (await listMyTrips(db, " ")).length === 0);
+  }
+
+  section("admin list");
+  {
+    await saveTripRecord(
+      job({
+        id: "q",
+        testMode: true,
+        quality: {
+          findings: [
+            { check: "meals", severity: "defect", detail: "day 1 has no lunch" },
+            { check: "grounding", severity: "warning", detail: "low grounding" },
+          ],
+          defectCount: 1,
+          warningCount: 1,
+          groundedPercent: 40,
+          itemCount: 9,
+          passed: false,
+        } as never,
+        timings: { totalMs: 51000 } as never,
+      }),
+      0.37
+    );
+    const all = await listAdminTrips(db, 100, true);
+    const q = all.find((t) => t.id === "q");
+    check("lists every trip, test runs included when asked", all.length === 9, String(all.length));
+    check("newest first", all[0]?.id === "q" || all[0]?.id === "h", all[0]?.id);
+    check("quality and time read out of the json", q?.passed === false && q?.defects === 1 && q?.totalMs === 51000 && q?.groundedPercent === 40);
+    check("defect lines only, not warnings", JSON.stringify(q?.defectDetails) === '["day 1 has no lunch"]', JSON.stringify(q?.defectDetails));
+    check("cost as a number", q?.costUsd === 0.37);
+    check("says signed in or not, never who", q?.signedIn === false && all.find((t) => t.id === "a")?.signedIn === true && !JSON.stringify(all).includes("@"));
+    check("test runs can be left out", !(await listAdminTrips(db, 100, false)).some((t) => t.id === "q"));
+    const summary = await adminSummary(db);
+    check("summary counts real traffic only", summary.trips === 8 && summary.failed === 2 && summary.refines === 1, JSON.stringify(summary));
+  }
 
   // Tidy up the throwaway database.
   await db.query("drop table if exists trips; drop table if exists schema_migrations");

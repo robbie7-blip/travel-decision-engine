@@ -96,7 +96,9 @@ export function readTripQAContext(value: unknown): TripQAContext | undefined {
 }
 
 function languageLabel(language: Language): string {
-  return language === "bg" ? "Bulgarian (български)" : "English";
+  // "ти", like the rest of the Bulgarian site (see LANGUAGE_LABEL in
+  // lib/engine/prompt.ts).
+  return language === "bg" ? 'Bulgarian (български), addressing them informally as "ти", never "Вие"' : "English";
 }
 
 /** The context as the model reads it.

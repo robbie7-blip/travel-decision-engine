@@ -1,4 +1,5 @@
 import type { Itinerary, TripBriefInput } from "./types";
+import type { AccountTrip } from "./recentTrips";
 import type { Job, JobTimings, QualityReport, JobProgress } from "./jobs";
 import type { PublicJob, PublicTripBrief } from "./publicBrief";
 import type { FeedbackEntry } from "./feedback";
@@ -329,5 +330,29 @@ export async function submitFeedback(entry: Omit<FeedbackEntry, "id" | "createdA
     throw new ApiError(
       await readErrorDetail(response, `Feedback submission failed (status ${response.status}).`)
     );
+  }
+}
+
+/** The signed-in account's own trips, for lists that should follow the
+ * traveller between devices. Empty for a visitor who is not signed in,
+ * and empty rather than thrown on any failure: every caller also has the
+ * browser's own list to fall back on. */
+export async function fetchAccountTrips(): Promise<AccountTrip[]> {
+  try {
+    const response = await fetch("/api/account/trips", { cache: "no-store" });
+    if (!response.ok) return [];
+    const data = (await response.json()) as { trips?: unknown };
+    if (!Array.isArray(data.trips)) return [];
+    return data.trips.filter(
+      (t): t is AccountTrip =>
+        Boolean(t) &&
+        typeof (t as AccountTrip).jobId === "string" &&
+        Array.isArray((t as AccountTrip).destinations) &&
+        typeof (t as AccountTrip).startDate === "string" &&
+        typeof (t as AccountTrip).endDate === "string" &&
+        typeof (t as AccountTrip).finishedAt === "string"
+    );
+  } catch {
+    return [];
   }
 }

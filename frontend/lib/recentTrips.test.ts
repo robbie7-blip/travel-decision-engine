@@ -22,7 +22,7 @@
 // is safe here because recentTrips.ts reads `window` INSIDE each function
 // (every one opens with `typeof window === "undefined"`), never at module
 // load - so hoisting the import above the stub changes nothing.
-import { getRecentTrips, removeRecentTrip, saveRecentTrip } from "./recentTrips";
+import { getHiddenTrips, getRecentTrips, mergeRecentTrips, removeRecentTrip, saveRecentTrip } from "./recentTrips";
 import { check, finish, heading, section } from "./testutil";
 
 heading("recent trips");
@@ -188,6 +188,29 @@ function main() {
     saveRecentTrip({ jobId: "fresh", destinations: ["Rome"], startDate: "2027-05-01", endDate: "2027-05-04", language: "en" });
     const trips = getRecentTrips();
     check("only the valid entry remains", trips.length === 1 && trips[0].jobId === "fresh", JSON.stringify(trips.map((t) => t.jobId)));
+  }
+
+  {
+    store.clear();
+    const local = (jobId: string, savedAt: number) => ({ jobId, destinations: ["Rome"], startDate: "2027-05-01", endDate: "2027-05-04", language: "en" as const, savedAt });
+    const account = (jobId: string, finishedAt: string) => ({ jobId, destinations: ["Paris"], startDate: "2027-06-01", endDate: "2027-06-03", language: "en" as const, finishedAt });
+    const merged = mergeRecentTrips(
+      [local("here", Date.parse("2026-10-10T00:00:00Z")), local("both", Date.parse("2026-10-01T00:00:00Z"))],
+      [account("phone", "2026-10-12T00:00:00Z"), account("both", "2026-10-11T00:00:00Z"), account("removed", "2026-10-13T00:00:00Z")],
+      ["removed"]
+    );
+    check(
+      "account trips join this browser's, newest first, each once, removed ones left out",
+      merged.map((t) => t.jobId).join(",") === "phone,here,both",
+      merged.map((t) => t.jobId).join(",")
+    );
+    check("this browser's own entry wins", merged.find((t) => t.jobId === "both")?.destinations[0] === "Rome");
+    const many = Array.from({ length: 20 }, (_, i) => account(`t${i}`, new Date(Date.UTC(2026, 0, i + 1)).toISOString()));
+    check("capped like the list", mergeRecentTrips([], many, []).length === 8);
+
+    saveRecentTrip({ jobId: "x", destinations: ["Rome"], startDate: "2027-05-01", endDate: "2027-05-04", language: "en" });
+    removeRecentTrip("x");
+    check("removing a trip hides it from the account list on this browser", getHiddenTrips().includes("x"));
   }
 
   finish();

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SignInCodeEntry } from "@/components/SignInCodeEntry";
+import { AccountTripList } from "@/components/AccountTripList";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
@@ -362,6 +363,7 @@ export default function AccountPage() {
               </div>
             )}
           </div>
+          {account?.signedIn && <AccountTripList t={t} />}
         </div>
         </div>
       </div>

@@ -83,12 +83,66 @@ export function saveRecentTrip(entry: Omit<RecentTrip, "savedAt">): void {
   }
 }
 
+/** Also remembers the id as hidden, so a trip that comes back from the
+ * account's own list (mergeRecentTrips) stays gone on this browser once
+ * the traveller has removed it here. */
 export function removeRecentTrip(jobId: string): void {
   if (typeof window === "undefined") return;
   try {
     const next = getRecentTrips().filter((trip) => trip.jobId !== jobId);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    const hidden = [jobId, ...getHiddenTrips().filter((id) => id !== jobId)].slice(0, MAX_HIDDEN);
+    window.localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
   } catch {
     // ignore - see rationale above
   }
+}
+
+const HIDDEN_KEY = "decide:hiddenTrips";
+const MAX_HIDDEN = 100;
+
+export function getHiddenTrips(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(HIDDEN_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** A trip from the signed-in account's own list (/api/account/trips),
+ * which is what makes the list follow the traveller between devices. */
+export interface AccountTrip {
+  jobId: string;
+  destinations: string[];
+  startDate: string;
+  endDate: string;
+  language: Language;
+  finishedAt: string;
+}
+
+/** This browser's list and the account's, as one: newest first, each
+ * trip once, nothing the traveller removed here, capped like the list
+ * itself. The browser's own entry wins a tie - it is the one this device
+ * has actually opened. */
+export function mergeRecentTrips(local: RecentTrip[], account: AccountTrip[], hidden: string[]): RecentTrip[] {
+  const gone = new Set(hidden);
+  const byId = new Map<string, RecentTrip>();
+  for (const trip of account) {
+    const savedAt = Date.parse(trip.finishedAt);
+    byId.set(trip.jobId, {
+      jobId: trip.jobId,
+      destinations: trip.destinations,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      language: trip.language,
+      savedAt: Number.isFinite(savedAt) ? savedAt : 0,
+    });
+  }
+  for (const trip of local) byId.set(trip.jobId, trip);
+  return [...byId.values()]
+    .filter((trip) => !gone.has(trip.jobId) || local.some((l) => l.jobId === trip.jobId))
+    .sort((a, b) => b.savedAt - a.savedAt)
+    .slice(0, MAX_ENTRIES);
 }

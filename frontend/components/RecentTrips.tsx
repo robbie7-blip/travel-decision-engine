@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getRecentTrips, removeRecentTrip, type RecentTrip } from "@/lib/recentTrips";
+import {
+  getHiddenTrips,
+  getRecentTrips,
+  mergeRecentTrips,
+  removeRecentTrip,
+  type RecentTrip,
+} from "@/lib/recentTrips";
+import { fetchAccountTrips } from "@/lib/api";
 import { SectionLabel } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
 
@@ -15,12 +22,24 @@ import type { Dictionary } from "@/lib/i18n";
  * rendered inside the hero band (app/page.tsx), and it was still wearing
  * the palette drawn for the parchment ground it used to sit on. --ink on
  * --deep is near-black on dark green - about 1.1:1, which is not dim
- * text, it's invisible text. */
+ * text, it's invisible text.
+ *
+ * Signed in, the list also carries the account's trips from other
+ * devices (mergeRecentTrips), added once they arrive - the browser's own
+ * list shows first and is never held up waiting for them. */
 export function RecentTrips({ t }: { t: Dictionary }) {
   const [trips, setTrips] = useState<RecentTrip[] | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setTrips(getRecentTrips());
+    void fetchAccountTrips().then((account) => {
+      if (cancelled || account.length === 0) return;
+      setTrips(mergeRecentTrips(getRecentTrips(), account, getHiddenTrips()));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!trips || trips.length === 0) return null;
