@@ -11,7 +11,20 @@ import { closeDb, deleteExpiredTrips, getDb, migrate, MIGRATIONS, saveTripRecord
 import { JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, type Job } from "./jobs";
 import { check, finish, heading, section } from "./testutil";
 import type { TripBriefInput } from "./types";
-import { adminSummary, listAdminTrips, listMyTrips, saveEditedTrip } from "../../frontend/lib/tripsQuery";
+import {
+  adminSummary,
+  adminUnpublish,
+  getPublished,
+  listAdminTrips,
+  listMyTrips,
+  listPublished,
+  publishedForJob,
+  publishedSlug,
+  publishedTitle,
+  publishTrip,
+  saveEditedTrip,
+  unpublishTrip,
+} from "../../frontend/lib/tripsQuery";
 
 heading("trips in Postgres");
 
@@ -63,6 +76,16 @@ async function main() {
     check("the owner is stored lowercased", owned.owner_email === "me@example.com", String(owned.owner_email));
     check("with the trip it replaces", owned.replaces === "trip-0");
     check("an anonymous trip has no owner", r.owner_email === null && r.replaces === null);
+  }
+
+  section("published trip addresses and titles (no database needed)");
+  {
+    check("readable and unique", publishedSlug(["Rome", "Florence"], 5, "3f9a1c2b-0000") === "rome-florence-5-days-3f9a1c");
+    check("Bulgarian names transliterated", publishedSlug(["Рим", "Флоренция"], 3, "abcdef12") === "rim-florentsiya-3-days-abcdef");
+    check("accents folded", publishedSlug(["Zürich"], 2, "abcdef") === "zurich-2-days-abcdef");
+    check("no cities still makes an address", publishedSlug([], 1, "abc") === "trip-1-days-abc");
+    check("English title", publishedTitle(["Rome", "Florence", "Venice"], 5, "en") === "5 days in Rome, Florence and Venice");
+    check("Bulgarian title", publishedTitle(["Рим"], 1, "bg") === "1 ден в Рим");
   }
 
   if (!process.env.DATABASE_URL) {
@@ -190,8 +213,40 @@ async function main() {
     check("summary counts real traffic only", summary.trips === 8 && summary.failed === 2 && summary.refines === 1, JSON.stringify(summary));
   }
 
+  section("published trips");
+  {
+    await db.query("delete from published_trips");
+    const base = {
+      jobId: "job-pub",
+      language: "en" as const,
+      title: "3 days in Rome",
+      summary: "A slow Rome weekend.",
+      destinations: ["Rome"],
+      dayCount: 3,
+      party: "couple",
+      itinerary: { days: [{ day: 1 }] },
+    };
+    const slug = await publishTrip(db, { ...base, slug: "rome-3-days-jobpub", ownerEmail: "Me@Example.com" });
+    check("publishing returns the address", slug === "rome-3-days-jobpub");
+    const again = await publishTrip(db, { ...base, slug: "a-different-slug", summary: "Updated.", ownerEmail: "me@example.com" });
+    check("publishing again keeps the same address", again === "rome-3-days-jobpub");
+    const page = await getPublished(db, slug);
+    check("the page has the plan and the new summary", page?.summary === "Updated." && (page?.itinerary as { days: unknown[] }).days.length === 1);
+    check("and never the owner's address", !JSON.stringify(page).includes("@"));
+    check("the trip knows its page", (await publishedForJob(db, "job-pub")) === slug);
+    const list = await listPublished(db);
+    check("the index lists it, without plans or owners", list.length === 1 && !("itinerary" in list[0]) && !JSON.stringify(list).includes("@"));
+    await unpublishTrip(db, "job-pub", "someone-else@example.com");
+    check("someone else cannot take it down", (await getPublished(db, slug)) !== null);
+    await unpublishTrip(db, "job-pub", "ME@example.com");
+    check("its owner can", (await getPublished(db, slug)) === null);
+    await publishTrip(db, { ...base, slug, ownerEmail: "me@example.com" });
+    await adminUnpublish(db, slug);
+    check("and so can the admin", (await getPublished(db, slug)) === null);
+  }
+
   // Tidy up the throwaway database.
-  await db.query("drop table if exists trips; drop table if exists schema_migrations");
+  await db.query("drop table if exists trips; drop table if exists published_trips; drop table if exists schema_migrations");
   await closeDb();
 
   section("an unreachable database never breaks a trip");

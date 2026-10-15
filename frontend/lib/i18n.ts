@@ -450,6 +450,15 @@ export interface Dictionary {
       transport: string;
       disclosure: string;
     };
+    /** Publishing a trip as a public page (/plans), from the trip page. */
+    publish: {
+      button: string;
+      confirm: string;
+      published: string;
+      view: string;
+      unpublish: string;
+      failed: string;
+    };
     /** The evening-before email (lib/dayAhead.ts) and its switch on the
      * trip page. {day} is the day number, {places} the cities. */
     dayAhead: {
@@ -494,6 +503,17 @@ export interface Dictionary {
     };
   };
   genericError: string;
+  /** Published trips: /plans and /plans/<slug>. */
+  plans: {
+    indexTitle: string;
+    indexIntro: string;
+    empty: string;
+    meta: string;
+    metaParty: string;
+    cta: string;
+    note: string;
+    browse: string;
+  };
   // Homepage footer band translating the confidence-tier system into plain
   // language (see components/TrustFooter.tsx) - decide's answer to a
   // Booking.com-style "why trust us" strip, built from claims the app
@@ -1270,6 +1290,14 @@ const en: Dictionary = {
       transport: "Trains and buses",
       disclosure: "Some booking links earn decide a small commission. The price is the same for you.",
     },
+    publish: {
+      button: "Publish as a public guide",
+      confirm: "Make this plan a public page anyone can find? It shows the plan, the cities and who it was for, never your name, email or budget. You can take it down any time.",
+      published: "Published",
+      view: "View public page",
+      unpublish: "Take down",
+      failed: "That didn't work. Try again in a minute.",
+    },
     dayAhead: {
       turnOn: "Email me each evening before a trip day",
       on: "Evening emails on",
@@ -1315,6 +1343,16 @@ const en: Dictionary = {
     },
   },
   genericError: "Something went wrong. Try again.",
+  plans: {
+    indexTitle: "Trips travellers planned with decide",
+    indexIntro: "Real itineraries their travellers chose to share: every hotel, meal and sight decided, with how sure we are of each.",
+    empty: "No published trips yet.",
+    meta: "{days} days",
+    metaParty: "{days} days · for {party}",
+    cta: "Plan a trip like this",
+    note: "Planned with decide and shared by the traveller. Prices and opening hours were checked when it was planned and may have changed since.",
+    browse: "More trips",
+  },
   trustFooter: {
     heading: "Why the numbers can be trusted",
     intro: "Every line in an itinerary carries one of five confidence levels - shown openly, never averaged away or hidden behind a single score.",
@@ -2075,6 +2113,14 @@ const bg: Dictionary = {
       transport: "Влакове и автобуси",
       disclosure: "Някои линкове за резервация носят малка комисиона на decide. Цената за теб е същата.",
     },
+    publish: {
+      button: "Публикувай като публичен пътеводител",
+      confirm: "Да стане ли този план публична страница, която всеки може да намери? Тя показва плана, градовете и за кого е, никога името, имейла или бюджета ти. Можеш да я свалиш по всяко време.",
+      published: "Публикувано",
+      view: "Виж публичната страница",
+      unpublish: "Свали",
+      failed: "Не се получи. Опитай отново след минута.",
+    },
     dayAhead: {
       turnOn: "Изпращай ми плана вечер преди всеки ден",
       on: "Вечерните имейли са включени",
@@ -2120,6 +2166,16 @@ const bg: Dictionary = {
     },
   },
   genericError: "Нещо не сработи. Опитай отново.",
+  plans: {
+    indexTitle: "Пътувания, планирани с decide",
+    indexIntro: "Истински маршрути, споделени от пътуващите: всеки хотел, ресторант и забележителност е избран, с това колко сме сигурни във всеки.",
+    empty: "Още няма публикувани пътувания.",
+    meta: "{days} дни",
+    metaParty: "{days} дни · за {party}",
+    cta: "Планирай пътуване като това",
+    note: "Планирано с decide и споделено от пътуващия. Цените и работното време са проверени при планирането и може да са се променили.",
+    browse: "Още пътувания",
+  },
   trustFooter: {
     heading: "Защо на цифрите може да се вярва",
     intro: "Всеки ред в плана носи едно от пет нива на увереност - показани открито, никога осреднени или скрити зад една обща оценка.",

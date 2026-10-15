@@ -12,6 +12,7 @@ import { TripVisitedPrompt } from "./TripVisitedPrompt";
 import { DayMap } from "./DayMap";
 import { TripMap } from "./TripMap";
 import { DayAheadToggle } from "./DayAheadToggle";
+import { PublishToggle } from "./PublishToggle";
 import { SpendInput, SpendingSummaryBar, useSpending } from "./SpendingTracker";
 import { spendRef } from "@/lib/spending";
 import { TripCover } from "./TripCover";
@@ -499,6 +500,8 @@ export function ItineraryResult({
         )}
 
         {result.days && result.days.length > 0 && !editing && <DayAheadToggle jobId={jobId} t={t} />}
+
+        {result.days && result.days.length > 0 && !editing && <PublishToggle jobId={jobId} t={t} />}
 
         {result.days && result.days.length > 0 && !editing && (
           <button type="button" onClick={spending.toggle} aria-pressed={spending.on} className="font-ui no-print trip-action">

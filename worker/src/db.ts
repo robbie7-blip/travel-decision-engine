@@ -95,6 +95,32 @@ export const MIGRATIONS: { id: number; sql: string }[] = [
       create index if not exists trips_replaces on trips (replaces) where replaces is not null;
     `,
   },
+  {
+    // Trips their owners chose to publish as public pages (/plans). A
+    // COPY of the plan, not a pointer to the trip: the trip itself
+    // expires on its own schedule, and a published page has to outlive
+    // it until its owner takes it down. Only public fields are kept - the
+    // plan, the cities, the day count, who it was for in the traveller's
+    // own words - never the account, the budget or the private brief.
+    id: 3,
+    sql: `
+      create table if not exists published_trips (
+        slug          text primary key,
+        job_id        text not null unique,
+        owner_email   text not null,
+        language      text not null,
+        title         text not null,
+        summary       text not null,
+        destinations  text[] not null,
+        day_count     integer not null,
+        party         text,
+        itinerary     jsonb not null,
+        published_at  timestamptz not null default now()
+      );
+      create index if not exists published_trips_newest on published_trips (published_at desc);
+      create index if not exists published_trips_owner on published_trips (owner_email);
+    `,
+  },
 ];
 
 /** Applies whatever has not run yet. Once per process. */

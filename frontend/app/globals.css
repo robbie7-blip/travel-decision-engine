@@ -4178,6 +4178,17 @@ a.trip-notify-note {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
+/* A real link on a phone, not 12px of fine print: the box grows upwards
+   from the corner and the text stays where it was. */
+@media (pointer: coarse) {
+  .hero-gallery-credit,
+  .trip-cover-credit {
+    display: inline-flex;
+    align-items: flex-end;
+    min-height: 44px;
+  }
+}
+
 .hero-gallery-credit:hover,
 .trip-cover-credit:hover,
 .hero-gallery-credit:focus-visible,
@@ -5740,4 +5751,169 @@ a.trip-notify-note {
   color: var(--ink);
   font: inherit;
   font-size: 16px;
+}
+
+/* Published trips: /plans and /plans/<slug>. */
+.plan-page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 32px 16px 72px;
+}
+
+.plan-eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.plan-title {
+  margin: 0 0 6px;
+  font-size: clamp(28px, 4.5vw, 38px);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--brand-teal);
+}
+
+.plan-meta {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.plan-summary {
+  margin: 0 0 20px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.plan-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  margin-bottom: 28px;
+}
+
+.plan-day {
+  margin: 0 0 28px;
+}
+
+.plan-day-heading {
+  margin: 0 0 10px;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.plan-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.plan-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-item-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.plan-item-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.plan-item-why {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.plan-item-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+
+.plan-item-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--grounded);
+}
+
+.plan-note {
+  margin: 20px 0 0;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.plan-card:hover {
+  border-color: var(--brand-teal);
+}
+
+.plan-card-title {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--brand-teal);
+}
+
+.plan-card-meta {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.plan-card-summary {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.publish-state {
+  gap: 6px;
+}
+
+.publish-undo {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--infeasible);
+  text-decoration: underline;
+  cursor: pointer;
 }

@@ -14,7 +14,8 @@ import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
 import { SendReportButton } from "@/components/SendReportButton";
-import { adminSummary, listAdminTrips, type AdminSummary, type AdminTrip } from "@/lib/tripsQuery";
+import { AdminUnpublishButton } from "@/components/AdminUnpublishButton";
+import { adminSummary, listAdminTrips, listPublished, type AdminSummary, type AdminTrip } from "@/lib/tripsQuery";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -78,10 +79,15 @@ export default async function TripsAdminPage({ searchParams }: { searchParams: P
 
   let trips: AdminTrip[] = [];
   let summary: AdminSummary | null = null;
+  let published: Awaited<ReturnType<typeof listPublished>> = [];
   let error: string | null = null;
   if (db) {
     try {
-      [trips, summary] = await Promise.all([listAdminTrips(db, LIMIT, includeTests), adminSummary(db)]);
+      [trips, summary, published] = await Promise.all([
+        listAdminTrips(db, LIMIT, includeTests),
+        adminSummary(db),
+        listPublished(db, 200).catch(() => []),
+      ]);
     } catch (e) {
       // Shown, but with anything shaped like a connection string removed:
       // admin pages carry presence, never credentials.
@@ -128,6 +134,22 @@ export default async function TripsAdminPage({ searchParams }: { searchParams: P
             </a>{" "}
             · <SendReportButton />
           </div>
+
+          <div style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 8 }}>Published as public pages ({published.length})</div>
+          {published.length === 0 ? (
+            <p style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 24 }}>None yet.</p>
+          ) : (
+            <ul style={{ fontSize: 12, margin: "0 0 24px", paddingLeft: 18 }}>
+              {published.map((p) => (
+                <li key={p.slug} style={{ marginBottom: 4 }}>
+                  <Link href={`/plans/${p.slug}`} style={{ color: "var(--ink)" }}>
+                    {p.title}
+                  </Link>{" "}
+                  <span style={{ color: "var(--ink-dim)" }}>{p.publishedAt.slice(0, 10)}</span> · <AdminUnpublishButton slug={p.slug} />
+                </li>
+              ))}
+            </ul>
+          )}
 
           <div style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 10 }}>
             Newest {LIMIT}, times in UTC ·{" "}

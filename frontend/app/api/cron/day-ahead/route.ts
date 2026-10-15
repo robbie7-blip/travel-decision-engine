@@ -58,7 +58,13 @@ export async function GET(request: NextRequest) {
       // Claimed before sending: a second run the same evening finds it.
       const claimed = await redis.set(dayAheadSentKey(jobId, date), "1", { nx: true, ex: 3 * 24 * 3600 });
       if (claimed !== "OK") continue;
-      await sendItineraryEmail(job.ownerEmail, email.subject, email.html);
+      try {
+        await sendItineraryEmail(job.ownerEmail, email.subject, email.html);
+      } catch (e) {
+        // Not sent, so not claimed: a retry this evening tries again.
+        await redis.del(dayAheadSentKey(jobId, date)).catch(() => {});
+        throw e;
+      }
       sent++;
     } catch (e) {
       failed++;

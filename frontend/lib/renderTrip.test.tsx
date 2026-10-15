@@ -261,7 +261,9 @@ function main() {
     const body = html ?? "";
     const legAt = body.indexOf("↓");
     const lunchAt = body.indexOf("Lunch at an unconfirmed place");
-    const colosseumAt = body.indexOf("Colosseum");
+    // The line's own title, not any mention: the Rome cover photo's credit
+    // links to "File:Colosseum_in_Rome..." on Commons, above everything.
+    const colosseumAt = body.indexOf(">Colosseum<");
     check("a leg is drawn at all", legAt !== -1, "no travel annotation rendered");
     check(
       "it is below the stop it cannot describe",

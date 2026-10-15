@@ -122,6 +122,7 @@ const PAGES = [
   "/cookies",
   "/compare",
   "/compare-stats",
+  "/plans",
   /* Not a page.tsx, so the route sweep below cannot find it: this is a
      deliberately missing URL, served by app/not-found.tsx. Its links are
      the only way off a dead end and were added at 17px high, so the one
@@ -142,6 +143,9 @@ const ROUTES_NOT_CHECKED = {
   // real money. Its controls come from ItineraryResult and TripQA, and
   // TripQA's are measured on /ask, which renders the same component.
   "/trip/[jobId]": "needs a paid generation to render",
+  // Needs a published trip in Postgres. Its only controls are the plan's
+  // links (.plan-item-links, 44px rows) and the CTA (.plan-cta, 44px).
+  "/plans/[slug]": "needs a published trip in Postgres",
   // Measured, but through a real slug rather than the literal route - see
   // GUIDE_PAGE below.
   "/destinations/[slug]": "measured through a real slug instead",

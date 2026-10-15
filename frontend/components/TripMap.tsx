@@ -78,10 +78,12 @@ export function TripMap({ days, t }: { days: ItineraryDay[]; t: Dictionary }) {
                   {t.result.day} {day}
                 </span>
               ))}
-              <span className="day-map-legend-item">
-                <span className="trip-map-swatch trip-map-swatch-stay" aria-hidden />
-                {t.result.tripMap.stay}
-              </span>
+              {cluster.points.some((p) => p.lodging) && (
+                <span className="day-map-legend-item">
+                  <span className="trip-map-swatch trip-map-swatch-stay" aria-hidden />
+                  {t.result.tripMap.stay}
+                </span>
+              )}
             </figcaption>
           </figure>
         );
