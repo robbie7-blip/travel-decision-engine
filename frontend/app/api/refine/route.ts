@@ -34,6 +34,7 @@ import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimi
 import { checkDailyBudget } from "@/lib/spendCheck";
 import { ValidationError } from "@/lib/validation";
 import { refineSource } from "@/lib/refineSource";
+import { carryDayAhead } from "@/lib/dayAhead";
 import { recordEvent } from "@/lib/analytics";
 
 export const runtime = "nodejs";
@@ -157,6 +158,7 @@ export async function POST(request: NextRequest) {
   };
 
   await redis.set(jobKey(id), JSON.stringify(job), { ex: ttlSeconds });
+  await carryDayAhead(redis, { id: sourceJobId, ownerEmail: source.job.ownerEmail }, { id, ownerEmail: ownerEmail ?? undefined, ttlSeconds });
   await redis.lpush(JOBS_QUEUE_KEY, id);
 
   try {

@@ -52,13 +52,14 @@ if (notJpg.length > 0) {
   process.exit(1);
 }
 
-// Attribution. These are Wikimedia photographs and most of those licences
-// require the photographer, the licence and a link back. This reports
-// rather than fails, because the images were committed long before the
-// manifest was and failing here would block deploys over a pre-existing
-// gap - but it says so every single build, which is the difference
-// between a known debt and a forgotten one.
+// Attribution. Every photo must be accounted for: credited (most Commons
+// licences require the photographer, the licence and a link back), or
+// listed under the licence that asks for no credit. This used to only
+// warn, while the old photos had no known source; since they were
+// replaced it fails, so a new photo cannot arrive without its licence.
 const creditsSource = readFileSync(join(ROOT, "lib", "destinationPhotoCredits.ts"), "utf8");
+// Both the credited photos and the ones whose licence asks for none
+// (CREDIT_NOT_REQUIRED) count as accounted for.
 const creditedBlock = creditsSource.slice(creditsSource.indexOf("DESTINATION_PHOTO_CREDITS"));
 const credited = new Set([...creditedBlock.matchAll(/^\s{2}"([a-z0-9_]+)":/gm)].map((m) => m[1]));
 const uncredited = [...onDisk].filter((slug) => !credited.has(slug)).sort();
@@ -216,12 +217,12 @@ if (tooBig.length > 0) {
 console.log(`All ${onDisk.size} destination photos are listed and reachable.`);
 
 if (uncredited.length > 0) {
-  console.warn(
-    `\nWARNING: ${uncredited.length} of ${onDisk.size} photo(s) have no attribution entry.\n` +
-      `  These came from Wikimedia Commons; CC BY and CC BY-SA require credit.\n` +
-      `  Recover it with: node scripts/recover-photo-credits.mjs (needs internet access)\n` +
-      `  Uncredited: ${uncredited.join(", ")}`
+  console.error(
+    `\n${uncredited.length} of ${onDisk.size} photo(s) have no licence on record: ${uncredited.join(", ")}\n` +
+      `  Add each to DESTINATION_PHOTO_CREDITS (photographer, licence, source page) or, if its\n` +
+      `  licence asks for no credit, to CREDIT_NOT_REQUIRED - in lib/destinationPhotoCredits.ts.`
   );
+  process.exit(1);
 } else {
   console.log(`All ${onDisk.size} are attributed.`);
 }

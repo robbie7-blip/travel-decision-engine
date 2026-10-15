@@ -3,7 +3,7 @@ import { DestinationBanner } from "./DestinationBanner";
 import { getDestinationPhoto } from "@/lib/destinations";
 
 /** Picks a real photo when one has been fetched onto disk (see
- * scripts/fetch-destination-photos.mjs), falling back to the generated
+ * scripts/fetch-commons-candidates.mjs), falling back to the generated
  * banner otherwise - same call signature either way, so callers don't need
  * to know which one they're getting. */
 export function DestinationHero({

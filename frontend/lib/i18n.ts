@@ -345,6 +345,14 @@ export interface Dictionary {
       heading: string;
       note: string;
     };
+    /** The whole trip on one map (components/TripMap.tsx). {days} is
+     * "Day 1-3". */
+    tripMap: {
+      heading: string;
+      alt: string;
+      stay: string;
+      note: string;
+    };
     /** The cover at the top of a finished itinerary. "{count}" days. */
     dayCount: string;
     /** Joins the two halves of the cover's date range. Its own string
@@ -439,7 +447,32 @@ export interface Dictionary {
     booking: {
       stay: string;
       tickets: string;
+      transport: string;
       disclosure: string;
+    };
+    /** The evening-before email (lib/dayAhead.ts) and its switch on the
+     * trip page. {day} is the day number, {places} the cities. */
+    dayAhead: {
+      turnOn: string;
+      on: string;
+      subject: string;
+      intro: string;
+      tickets: string;
+      open: string;
+      why: string;
+      stop: string;
+      stopped: string;
+    };
+    /** The spending tracker (components/SpendingTracker.tsx). */
+    spending: {
+      start: string;
+      stop: string;
+      spent: string;
+      total: string;
+      hint: string;
+      onPlan: string;
+      over: string;
+      under: string;
     };
     pushbackChipsLabel: string;
     pushbackChips: { label: string; question: string }[];
@@ -1145,6 +1178,12 @@ const en: Dictionary = {
       heading: "The shape of the day",
       note: "Verified stops only, plotted to scale. Straight lines show the order, not the route.",
     },
+    tripMap: {
+      heading: "The whole trip",
+      alt: "A plot of every verified stop, {days}, coloured by day.",
+      stay: "Where you stay",
+      note: "Verified stops only, each day in its own colour. Numbers are the order within the day.",
+    },
     dayCount: "{count} days",
     dateRangeJoin: "to",
     closedTemporarily: "Temporarily closed (Google)",
@@ -1228,7 +1267,29 @@ const en: Dictionary = {
     booking: {
       stay: "Book on Booking.com",
       tickets: "Find tickets",
+      transport: "Trains and buses",
       disclosure: "Some booking links earn decide a small commission. The price is the same for you.",
+    },
+    dayAhead: {
+      turnOn: "Email me each evening before a trip day",
+      on: "Evening emails on",
+      subject: "Tomorrow: day {day} in {places}",
+      intro: "Here is tomorrow's plan, so you have it before you go to sleep.",
+      tickets: "Worth booking tonight:",
+      open: "Open the whole trip",
+      why: "You asked for this the evening before each day of this trip.",
+      stop: "Stop these emails",
+      stopped: "Done. You won't get evening emails for this trip any more.",
+    },
+    spending: {
+      start: "Track spending",
+      stop: "Hide spending",
+      spent: "Spent",
+      total: "Spent {spent} of about {planned} planned",
+      hint: "Type what you paid under each line. Saved on this device only.",
+      onPlan: "Right on plan so far.",
+      over: "{amount} over the plan on the lines you've entered.",
+      under: "{amount} under the plan on the lines you've entered.",
     },
     pushbackChipsLabel: "Quick ideas",
     pushbackChips: [
@@ -1929,6 +1990,12 @@ const bg: Dictionary = {
       heading: "Формата на деня",
       note: "Само потвърдени места, нанесени в мащаб. Правите линии показват реда, не маршрута.",
     },
+    tripMap: {
+      heading: "Цялото пътуване",
+      alt: "Схема на всички потвърдени спирки, {days}, оцветени по дни.",
+      stay: "Къде спиш",
+      note: "Само потвърдени места, всеки ден в свой цвят. Числата са редът в рамките на деня.",
+    },
     dayCount: "{count} дни",
     dateRangeJoin: "до",
     closedTemporarily: "Временно затворено (Google)",
@@ -2005,7 +2072,29 @@ const bg: Dictionary = {
     booking: {
       stay: "Резервирай в Booking.com",
       tickets: "Намери билети",
+      transport: "Влакове и автобуси",
       disclosure: "Някои линкове за резервация носят малка комисиона на decide. Цената за теб е същата.",
+    },
+    dayAhead: {
+      turnOn: "Изпращай ми плана вечер преди всеки ден",
+      on: "Вечерните имейли са включени",
+      subject: "Утре: ден {day} в {places}",
+      intro: "Ето плана за утре, за да го имаш преди лягане.",
+      tickets: "Добре е да резервираш тази вечер:",
+      open: "Отвори цялото пътуване",
+      why: "Поиска този имейл вечер преди всеки ден от това пътуване.",
+      stop: "Спри тези имейли",
+      stopped: "Готово. Повече няма да получаваш вечерни имейли за това пътуване.",
+    },
+    spending: {
+      start: "Следи разходите",
+      stop: "Скрий разходите",
+      spent: "Похарчено",
+      total: "Похарчено {spent} от около {planned} по план",
+      hint: "Въведи сумата, която плати, под всеки ред. Пази се само на това устройство.",
+      onPlan: "Засега точно по план.",
+      over: "{amount} над плана за въведените редове.",
+      under: "{amount} под плана за въведените редове.",
     },
     pushbackChipsLabel: "Бързи идеи",
     pushbackChips: [

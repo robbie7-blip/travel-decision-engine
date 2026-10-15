@@ -1,4 +1,12 @@
 :root {
+  /* One colour per day on the whole-trip map (components/TripMap.tsx),
+     cycling after six. Each carries white numerals at AA. */
+  --day-1: #2c6a4c;
+  --day-2: #b9472a;
+  --day-3: #2f5f93;
+  --day-4: #8a5a00;
+  --day-5: #6d4596;
+  --day-6: #a3355a;
   /* ============================================================
      COLOR SYSTEM - exactly 6 brand colors, chosen from and anchored to
      logo-icon.svg's own palette, plus the ink/bg neutrals below. Every
@@ -5628,4 +5636,108 @@ a.trip-notify-note {
   margin: 8px 0 0;
   font-size: 12px;
   color: var(--ink-dim);
+}
+
+/* The whole trip on one map (components/TripMap.tsx). */
+.trip-map {
+  margin: 0 0 32px;
+}
+
+.trip-map-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin: 0 0 10px;
+}
+
+.trip-map-panel {
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-panel);
+}
+
+.trip-map-pin-label {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trip-map-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.trip-map-swatch-stay {
+  border-radius: 3px;
+  border: 2px solid var(--brand-gold-ink);
+  background: var(--bg-panel);
+}
+
+.trip-map-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+/* The spending tracker (components/SpendingTracker.tsx). */
+.spend-summary {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.spend-summary-main {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.spend-summary-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.spend-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.spend-input-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--ink-soft);
+}
+
+.spend-input-box input {
+  width: 90px;
+  min-height: 42px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
 }

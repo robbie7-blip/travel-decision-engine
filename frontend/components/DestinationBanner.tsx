@@ -1,6 +1,6 @@
 // Generative hero banner for the /destinations guides - there's no photo
 // budget (no external network access to fetch real photography in this
-// session - see the accompanying scripts/fetch-destination-photos.mjs for
+// session - see the accompanying scripts/fetch-commons-candidates.mjs for
 // a real-photo path), so each city gets a distinct-but-on-brand banner
 // instead: one of a handful of gradient pairs built entirely from the app's
 // existing palette, plus a faint great-circle arc motif that echoes the

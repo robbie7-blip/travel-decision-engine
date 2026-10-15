@@ -5,22 +5,14 @@
 // thing to leave lying around.
 
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
 import { runDailyReport } from "@/lib/dailyReportRun";
+import { isCronRequest } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function authorised(header: string | null): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || !header) return false;
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const given = Buffer.from(header);
-  return expected.length === given.length && timingSafeEqual(expected, given);
-}
-
 export async function GET(request: NextRequest) {
-  if (!authorised(request.headers.get("authorization"))) {
+  if (!isCronRequest(request.headers.get("authorization"))) {
     return NextResponse.json({ detail: "Not allowed." }, { status: 401 });
   }
   const run = await runDailyReport({ send: true });

@@ -1,7 +1,7 @@
 // Run: npm run test:booking-links
 
 import assert from "node:assert/strict";
-import { bookingLinkFor, hasAffiliates, stayDates } from "./bookingLinks";
+import { bookingLinkFor, groundLinkFor, hasAffiliates, stayDates } from "./bookingLinks";
 import type { ItineraryDay } from "./types";
 
 const item = (type: string, extra: Record<string, unknown> = {}) =>
@@ -67,5 +67,19 @@ assert.equal(new URL(noDates.url).searchParams.get("checkin"), null);
 
 assert.equal(hasAffiliates({}), false);
 assert.equal(hasAffiliates({ gygPartnerId: "x" }), true);
+
+// Trains and buses between two of the trip's cities.
+const train = (title: string, location = "") =>
+  ({ time: "09:00", type: "transport", title, location, cost_estimate_eur: 20, reasoning: "", source_confidence: "inferred" }) as never;
+assert.equal(groundLinkFor(train("Train Brussels to Bruges"), ["Brussels", "Bruges"])?.url, "https://www.omio.com/travel/brussels/bruges");
+assert.equal(groundLinkFor(train("Back by train", "Bruges to Brussels"), ["Brussels", "Bruges"])?.url, "https://www.omio.com/travel/bruges/brussels", "the order in the text is the direction");
+assert.equal(groundLinkFor(train("Frecciarossa to Florence from Roma Termini", "Rome"), ["Rome", "Florence"])?.url, "https://www.omio.com/travel/rome/florence", "'from' and 'to' decide, not word order");
+assert.equal(groundLinkFor(train("Bus to Mexico City from Puebla"), ["Puebla", "Mexico City"])?.url, "https://www.omio.com/travel/puebla/mexico-city");
+assert.equal(groundLinkFor(train("Day trip: Bruges and back to Brussels"), ["Brussels", "Bruges"])?.url, "https://www.omio.com/travel/bruges/brussels", "only a 'to': that end goes last");
+assert.equal(groundLinkFor(train("Train to Zürich", "from München"), ["München", "Zürich"])?.url, "https://www.omio.com/travel/munchen/zurich", "accents fold");
+assert.equal(groundLinkFor(train("Metro to the hotel", "Rome"), ["Rome", "Florence"]), null, "one city is not a route");
+assert.equal(groundLinkFor(train("Влак от Рим до Флоренция"), ["Рим", "Флоренция"]), null, "Cyrillic names: no link rather than a wrong one");
+assert.equal(groundLinkFor({ ...(train("Flight Rome to Florence") as object), is_flight: true } as never, ["Rome", "Florence"]), null);
+assert.equal(groundLinkFor(train("Train Rome to Florence"), undefined), null);
 
 console.log("bookingLinks: all assertions passed");

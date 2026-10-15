@@ -73,6 +73,10 @@ const DATA_COLLECTED: DataRow[] = [
     why: "E.g. how many trips were generated per day, per language. Not tied to any individual visitor - used only for our own internal stats.",
   },
   {
+    what: "Evening trip emails",
+    why: "If you switch them on for a trip you planned while signed in - a flag on that trip, so we email tomorrow's plan to your account's address the evening before each trip day. Every email has a one-click stop link. Deleted with the trip.",
+  },
+  {
     what: "Votes on a shared trip",
     why: "If you tap Keep or Skip on a trip's line - the vote, tied to a random id in a cookie (decide_voter) so a second tap changes it. Only the counts are shown, never who voted. Deleted with the trip.",
   },

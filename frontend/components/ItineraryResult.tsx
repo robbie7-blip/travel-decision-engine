@@ -10,6 +10,10 @@ import { useWeather } from "@/lib/useWeather";
 import { TripQA } from "./TripQA";
 import { TripVisitedPrompt } from "./TripVisitedPrompt";
 import { DayMap } from "./DayMap";
+import { TripMap } from "./TripMap";
+import { DayAheadToggle } from "./DayAheadToggle";
+import { SpendInput, SpendingSummaryBar, useSpending } from "./SpendingTracker";
+import { spendRef } from "@/lib/spending";
 import { TripCover } from "./TripCover";
 import { DayPhoto } from "./DayPhoto";
 import { TravelLegRow } from "./TravelLeg";
@@ -19,7 +23,7 @@ import { EmailTripButton } from "./EmailTripButton";
 import { RefinePanel } from "./RefinePanel";
 import { AskToVoteButton, ItemVotes, useTripVotes } from "./TripVotes";
 import { voteRef } from "@/lib/tripVotes";
-import { affiliateIds, bookingLinkFor, hasAffiliates, stayDates } from "@/lib/bookingLinks";
+import { affiliateIds, bookingLinkFor, groundLinkFor, hasAffiliates, stayDates } from "@/lib/bookingLinks";
 import { editKey, ItemEditRow, TripEditBar, withEdit } from "./TripEditControls";
 import type { TripEdit } from "@/lib/tripEdits";
 import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
@@ -340,6 +344,7 @@ export function ItineraryResult({
   const [askedQuestion, setAskedQuestion] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const votes = useTripVotes(jobId);
+  const spending = useSpending(jobId);
   // Hand edits: shown as a draft over the trip until saved.
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Map<string, TripEdit>>(new Map());
@@ -493,6 +498,14 @@ export function ItineraryResult({
           </button>
         )}
 
+        {result.days && result.days.length > 0 && !editing && <DayAheadToggle jobId={jobId} t={t} />}
+
+        {result.days && result.days.length > 0 && !editing && (
+          <button type="button" onClick={spending.toggle} aria-pressed={spending.on} className="font-ui no-print trip-action">
+            <span aria-hidden>€</span> {spending.on ? t.result.spending.stop : t.result.spending.start}
+          </button>
+        )}
+
         {result.days && result.days.length > 0 && !editing && (
           <AskToVoteButton jobId={jobId} onShared={votes.enable} t={t} />
         )}
@@ -630,7 +643,12 @@ export function ItineraryResult({
       {/* Where the Today panel's "see the whole trip" lands. An anchor
           rather than a route, so it still works with no network - this
           page is cached for offline use. */}
+      {result.days && result.days.length > 1 && !editing && <TripMap days={result.days} t={t} />}
+
       <span id="trip-days" />
+      {spending.on && !editing && result.days && (
+        <SpendingSummaryBar days={result.days} spent={spending.spent} currency={currency} rates={rates} t={t} />
+      )}
       {votes.visible && !editing && (
         <div className="trip-votes-intro font-ui no-print" aria-live="polite">
           {votes.failed
@@ -878,7 +896,8 @@ export function ItineraryResult({
                     )}
                     {(() => {
                       if (editing) return null;
-                      const link = bookingLinkFor(item, stays.get(`${day.day}:${i}`), affiliates);
+                      const link =
+                        bookingLinkFor(item, stays.get(`${day.day}:${i}`), affiliates) ?? groundLinkFor(item, destinations);
                       if (!link) return null;
                       return (
                         <a
@@ -887,7 +906,7 @@ export function ItineraryResult({
                           rel={link.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"}
                           className="font-ui no-print booking-link"
                         >
-                          {link.kind === "stay" ? t.result.booking.stay : t.result.booking.tickets} ↗
+                          {link.kind === "stay" ? t.result.booking.stay : link.kind === "transport" ? t.result.booking.transport : t.result.booking.tickets} ↗
                         </a>
                       );
                     })()}
@@ -910,6 +929,16 @@ export function ItineraryResult({
                       {expanded ? t.result.evidenceHide : t.result.evidenceShow}
                     </button>
                     {expanded && <ItemEvidence item={item} t={t} />}
+                    {spending.on && !editing && (
+                      <SpendInput
+                        spendRef={spendRef(day.day, i)}
+                        stored={spending.spent[spendRef(day.day, i)]}
+                        currency={currency}
+                        rates={rates}
+                        onCommit={spending.setAmount}
+                        t={t}
+                      />
+                    )}
                     {votes.visible && !editing && (
                       <ItemVotes voteRef={voteRef(day.day, i)} summary={votes.summary} onVote={(ref, v) => void votes.vote(ref, v)} t={t} />
                     )}

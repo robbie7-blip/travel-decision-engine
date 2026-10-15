@@ -15,7 +15,7 @@ import type { Language } from "./types";
 const FACTS_DIR = path.join(process.cwd(), "facts");
 
 // Real photos are opt-in: this repo's own build environment has no network
-// access to fetch any (see scripts/fetch-destination-photos.mjs, meant to
+// access to fetch any (see scripts/fetch-commons-candidates.mjs, meant to
 // be run somewhere that does), so pages fall back to a generated banner
 // (components/DestinationBanner) until a photo actually exists on disk.
 const PHOTO_DIR = path.join(process.cwd(), "public/destinations");
@@ -82,7 +82,7 @@ export function getLocalizedCityName(slug: string, language: Language, fallback:
 }
 
 /** Returns a real photo for this destination if one has been fetched onto
- * disk (see scripts/fetch-destination-photos.mjs), otherwise null - callers
+ * disk (see scripts/fetch-commons-candidates.mjs), otherwise null - callers
  * should fall back to <DestinationBanner> when this returns null. */
 export function getDestinationPhoto(slug: string): DestinationPhoto | null {
   for (const ext of PHOTO_EXTENSIONS) {

@@ -35,7 +35,7 @@ export interface AffiliateIds {
 }
 
 export interface BookingLink {
-  kind: "stay" | "tickets";
+  kind: "stay" | "tickets" | "transport";
   url: string;
   affiliate: boolean;
 }
@@ -142,4 +142,49 @@ export function bookingLinkFor(
     return { kind: "tickets", url: `https://www.getyourguide.com/s/?${params}`, affiliate: Boolean(ids.gygPartnerId) };
   }
   return null;
+}
+
+/** Omio's route pages are named by city: "rome", "mexico-city". */
+function routeSlug(city: string): string {
+  return city
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** Trains and buses between two of the trip's cities: Omio's page for
+ * that route, which compares every operator on it.
+ *
+ * Only when the line itself names both ends. The itinerary does not say
+ * which city a day is in, and a train line that says "Train to the coast"
+ * has no route a link could honestly point at. City names are matched as
+ * the traveller entered them, in Latin script - a Bulgarian trip whose
+ * cities were typed in Cyrillic gets no link rather than a wrong one.
+ * No affiliate id yet: Omio pays through Travelpayouts, see the README. */
+export function groundLinkFor(item: ItineraryItem, destinations: string[] | undefined): BookingLink | null {
+  if (item.type !== "transport" || item.is_flight) return null;
+  const text = `${str(item.title)} ${str(item.location)}`.toLowerCase();
+  const hits: { city: string; at: number }[] = [];
+  for (const city of destinations ?? []) {
+    const name = str(city);
+    if (!name || !/^[\p{Script=Latin}\s.'-]+$/u.test(name)) continue;
+    const at = text.indexOf(name.toLowerCase());
+    if (at >= 0) hits.push({ city: name, at });
+  }
+  if (hits.length < 2) return null;
+  hits.sort((a, b) => a.at - b.at);
+  // "to Florence from Rome": the word before each name says which end it
+  // is, and beats the order the names happen to appear in.
+  const before = (h: { at: number }) => text.slice(0, h.at).trim().split(/\s+/).pop() ?? "";
+  const origin = hits.find((h) => before(h) === "from");
+  const destination = hits.find((h) => before(h) === "to" && h !== origin);
+  const first = origin ?? hits.find((h) => h !== destination)!;
+  const second = destination && destination !== first ? destination : hits.find((h) => h !== first)!;
+  const from = routeSlug(first.city);
+  const to = routeSlug(second.city);
+  if (!from || !to || from === to) return null;
+  return { kind: "transport", url: `https://www.omio.com/travel/${from}/${to}`, affiliate: false };
 }
