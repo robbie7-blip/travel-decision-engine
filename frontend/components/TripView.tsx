@@ -59,6 +59,8 @@ export function TripView({ jobId }: { jobId: string }) {
   const [quality, setQuality] = useState<QualityReport | undefined>(undefined);
   const [refining, setRefining] = useState(false);
   const [refineJobStatus, setRefineJobStatus] = useState<Job["status"] | null>(null);
+  // The pushback's answer and stage while it runs (see refineSteps).
+  const [refineProgress, setRefineProgress] = useState<JobProgress | undefined>(undefined);
   const [refineError, setRefineError] = useState("");
   /** The id a failed pushback's revision was given, when it got that far.
    *
@@ -177,6 +179,7 @@ export function TripView({ jobId }: { jobId: string }) {
     if (!result) return;
     setRefining(true);
     setRefineJobStatus(null);
+    setRefineProgress(undefined);
     setRefineError("");
     setRefineJobId(null);
     try {
@@ -186,7 +189,10 @@ export function TripView({ jobId }: { jobId: string }) {
       const { jobId: newJobId, itinerary, brief } = await refineItinerary(
         currentJobId,
         question,
-        setRefineJobStatus,
+        (status, revisionProgress) => {
+          setRefineJobStatus(status);
+          if (revisionProgress) setRefineProgress(revisionProgress);
+        },
         setRefineJobId
       );
       setResult(itinerary);
@@ -264,6 +270,7 @@ export function TripView({ jobId }: { jobId: string }) {
                 onRefine={handleRefine}
                 refining={refining}
                 refiningLabel={refiningMessage}
+                refineProgress={refineProgress}
                 refineError={refineError}
                 refineJobId={refineJobId}
                 lastQuestion={lastQuestion}

@@ -14,7 +14,7 @@ import { computeTrustScore } from "@/lib/trustScore";
 import { formatMoney } from "@/lib/currency";
 import { costForSum } from "@/lib/engine/money";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS, type Dictionary } from "@/lib/i18n";
-import type { Job } from "@/lib/jobs";
+import type { Job, JobProgress } from "@/lib/jobs";
 import type { Itinerary, Language } from "@/lib/types";
 import type { PublicTripBrief } from "@/lib/publicBrief";
 
@@ -44,6 +44,7 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
   const [lastQuestion, setLastQuestion] = useState<string | undefined>(undefined);
   const [refining, setRefining] = useState(false);
   const [refineJobStatus, setRefineJobStatus] = useState<Job["status"] | null>(null);
+  const [refineProgress, setRefineProgress] = useState<JobProgress | undefined>(undefined);
   const [refineError, setRefineError] = useState("");
 
   // Read through a ref, not captured.
@@ -87,6 +88,7 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
     if (!state.result || !currentJobId) return;
     setRefining(true);
     setRefineJobStatus(null);
+    setRefineProgress(undefined);
     setRefineError("");
     try {
       // This COLUMN's current job id - each column refines independently and
@@ -95,7 +97,10 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
       const { jobId: newJobId, itinerary, brief } = await refineItinerary(
         currentJobId,
         question,
-        setRefineJobStatus
+        (status, progress) => {
+          setRefineJobStatus(status);
+          if (progress) setRefineProgress(progress);
+        }
       );
       setState({ jobStatus: "done", loadError: "", result: itinerary, brief });
       setLastQuestion(question);
@@ -110,7 +115,7 @@ function useCompareColumn(jobId: string | null, paramKey: "a" | "b", t: Dictiona
     }
   }
 
-  return { ...state, currentJobId, handleRefine, refining, refineJobStatus, refineError, lastQuestion };
+  return { ...state, currentJobId, handleRefine, refining, refineJobStatus, refineProgress, refineError, lastQuestion };
 }
 
 /** The compared trips' headline figure, added up from the line items.
@@ -296,6 +301,7 @@ export function CompareView() {
                     onRefine={col.handleRefine}
                     refining={col.refining}
                     refiningLabel={refiningMessage}
+                    refineProgress={col.refineProgress}
                     refineError={col.refineError}
                     lastQuestion={col.lastQuestion}
                     currency={currency}

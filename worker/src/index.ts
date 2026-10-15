@@ -18,7 +18,8 @@ import { createAnthropicClient, isMissingWorkspaceIdError, workspaceId } from ".
 // against in production (works locally where the full repo is checked
 // out, breaks in the deployed container). Mirrors the existing
 // facts/ vs frontend/facts/ duplication already in this repo.
-import { buildPrompt, buildRefinementPrompt, LANGUAGE_LABEL, SYSTEM_PROMPT } from "./engine/prompt";
+import { buildPrompt, buildRefinementPatchPrompt, buildRefinementPrompt, LANGUAGE_LABEL, SYSTEM_PROMPT } from "./engine/prompt";
+import { applyRefinePatch, itineraryForPatch, parseRefinePatch } from "./engine/refinePatch";
 import {
   assembleItinerary,
   buildDayPrompt,
@@ -2595,15 +2596,84 @@ async function generateItinerary(
  * itinerary plus the traveler's question, and asks the model to either
  * revise the itinerary or explain why it's standing firm - see
  * buildRefinementPrompt for the exact instructions given. */
-function generateRefinement(
+/** How hard the model thinks about a pushback. Medium, not the full
+ * generation's high: the trip is already planned, and the job is to answer
+ * one question and edit a few lines. */
+const REFINE_EFFORT = readEffort("REFINE_MODEL_EFFORT", capEffort(EFFORT, "medium"));
+
+/** The pushback as edits (see engine/refinePatch.ts). Null on anything
+ * unusable - the caller then does the full rewrite, so this path can only
+ * ever make a pushback faster, never worse. */
+async function generateRefinementPatch(
   client: Anthropic,
   brief: TripBriefInput,
   refinement: RefinementRequest,
   onUsage?: (usage: ModelUsage, model?: string) => void
+): Promise<{ itinerary: Itinerary; changes: number } | null> {
+  const skipSearch = false;
+  try {
+    const response = await streamMessage(client, {
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      // The same system blocks as callModel, in the same order, so the
+      // prompt cache the original generation warmed is reused here.
+      system: [
+        { type: "text", text: SYSTEM_PROMPT },
+        {
+          type: "text",
+          text: !brief.needs_lodging ? NO_LODGING_INSTRUCTIONS : skipSearch ? NO_SEARCH_INSTRUCTIONS : SEARCH_INSTRUCTIONS,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      output_config: { effort: REFINE_EFFORT },
+      ...(brief.needs_lodging
+        ? { tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: estimateMaxSearchUses(brief) }] }
+        : {}),
+      messages: [
+        {
+          role: "user",
+          content: buildRefinementPatchPrompt(brief, itineraryForPatch(refinement.baseItinerary), refinement.question),
+        },
+      ],
+    });
+    onUsage?.(response.usage, response.model);
+    if (response.stop_reason === "refusal" || response.stop_reason === "max_tokens") return null;
+    const patch = parseRefinePatch(JSON.parse(extractJson(lastTextOf(response))));
+    if (!patch) {
+      console.warn("[worker] refine patch was not usable - falling back to the full rewrite");
+      return null;
+    }
+    const applied = applyRefinePatch(refinement.baseItinerary, patch);
+    if (!applied) {
+      console.warn("[worker] refine patch pointed at items that do not exist - falling back to the full rewrite");
+      return null;
+    }
+    return { itinerary: applied.itinerary, changes: applied.changed.length + patch.changes.filter((c) => c.op === "remove").length };
+  } catch (e) {
+    console.warn("[worker] refine patch failed - falling back to the full rewrite:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+async function generateRefinement(
+  client: Anthropic,
+  brief: TripBriefInput,
+  refinement: RefinementRequest,
+  onUsage?: (usage: ModelUsage, model?: string) => void,
+  /** Told the answer the moment there is one, so the page can show it
+   * while the changed lines are still being checked. */
+  onAnswer?: (answer: string, changes: number) => void
 ): Promise<Itinerary> {
-  return withOneRetry(() =>
+  const patched = await generateRefinementPatch(client, brief, refinement, onUsage);
+  if (patched) {
+    onAnswer?.(patched.itinerary.pushback_response ?? "", patched.changes);
+    return patched.itinerary;
+  }
+  const full = await withOneRetry(() =>
     callModel(client, brief, buildRefinementPrompt(brief, refinement.baseItinerary, refinement.question), onUsage)
   );
+  if (full.pushback_response) onAnswer?.(full.pushback_response, -1);
+  return full;
 }
 
 /** How many item titles a finished day contributes to the progress
@@ -2966,13 +3036,22 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // (see GenerationStage in jobs.ts). Moved forward by setStage only, at
   // the points below where the work actually changes.
   let stage: GenerationStage = job.refinement ? "writing" : "planning";
+  // A pushback's answer, published as soon as the model has given it (see
+  // generateRefinement), so the page can show it before the changed lines
+  // have been checked.
+  let refineAnswer: { answer: string; changes: number } | null = null;
   const publishProgress = (days: ProgressDay[]): void => {
     if (jobFinished) return;
     progressDays = days;
     // The outline arriving IS the end of planning: from here each day's
     // own call is what is running.
     if (stage === "planning" && days.length > 0) stage = "writing";
-    job.progress = { days, stage, updatedAt: Date.now() };
+    job.progress = {
+      days,
+      stage,
+      ...(refineAnswer ? { answer: refineAnswer.answer, changes: refineAnswer.changes } : {}),
+      updatedAt: Date.now(),
+    };
     job.updatedAt = Date.now();
     progressWrites = progressWrites
       .then(() => writeJob(redis, job))
@@ -3147,7 +3226,10 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
     let itinerary: Itinerary;
     if (job.refinement) {
       itinerary = await timed("refine", () =>
-        generateRefinement(client, job.brief, job.refinement!, onUsage)
+        generateRefinement(client, job.brief, job.refinement!, onUsage, (answer, changes) => {
+          refineAnswer = { answer, changes };
+          setStage("checking");
+        })
       );
     } else {
       // Both reads go together - same keys, and the pipeline needs the

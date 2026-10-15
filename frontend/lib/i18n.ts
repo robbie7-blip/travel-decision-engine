@@ -406,6 +406,19 @@ export interface Dictionary {
     pushbackSubmit: string;
     pushbackSubmitting: string;
     pushbackYouAsked: string;
+    /** The pushback wait panel (lib/stageSteps.ts refineSteps). {n} is
+     * the number of changed lines. */
+    refine: {
+      answer: string;
+      thinking: string;
+      updating: string;
+      updatingOne: string;
+      updatingMany: string;
+      updatingNone: string;
+      updatingRewrite: string;
+      checking: string;
+      finishing: string;
+    };
   };
   genericError: string;
   // Homepage footer band translating the confidence-tier system into plain
@@ -1144,6 +1157,17 @@ const en: Dictionary = {
     pushbackSubmit: "ask",
     pushbackSubmitting: "thinking…",
     pushbackYouAsked: "You asked",
+    refine: {
+      answer: "Answer",
+      thinking: "Thinking about your question",
+      updating: "Updating the plan",
+      updatingOne: "Updating the plan · 1 change",
+      updatingMany: "Updating the plan · {n} changes",
+      updatingNone: "No changes to the plan",
+      updatingRewrite: "Rewriting the plan",
+      checking: "Checking the new places",
+      finishing: "Final checks",
+    },
   },
   genericError: "Something went wrong. Try again.",
   trustFooter: {
@@ -1867,6 +1891,17 @@ const bg: Dictionary = {
     pushbackSubmit: "попитай",
     pushbackSubmitting: "обмисля…",
     pushbackYouAsked: "Попитахте",
+    refine: {
+      answer: "Отговор",
+      thinking: "Обмисля въпроса ви",
+      updating: "Обновява плана",
+      updatingOne: "Обновява плана · 1 промяна",
+      updatingMany: "Обновява плана · {n} промени",
+      updatingNone: "Без промени в плана",
+      updatingRewrite: "Пренаписва плана",
+      checking: "Проверява новите места",
+      finishing: "Последни проверки",
+    },
   },
   genericError: "Нещо не сработи. Опитайте отново.",
   trustFooter: {

@@ -134,6 +134,10 @@ jobs:
       # exactly as long as its Redis record (the privacy page's promise),
       # expired rows are removed, and an unreachable database never breaks
       # a trip.
+      # A pushback answered as edits: unchanged lines keep their
+      # verification, the answer is published while the job is still
+      # running, and an unusable reply falls back to the full rewrite.
+      - run: npm run test:refine-patch
       - run: npm run test:db
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/decide_test

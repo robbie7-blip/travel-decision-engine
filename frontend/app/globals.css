@@ -2067,6 +2067,64 @@ p {
   color: var(--ink-dim);
 }
 
+/* The pushback wait (components/RefinePanel.tsx): the question, the
+   answer as soon as it exists, then the steps after it. */
+.refine-panel {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-panel-raised);
+  scroll-margin-bottom: 24px;
+}
+
+.refine-panel-question {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+}
+
+.refine-panel-question-text {
+  text-transform: none;
+  font-style: italic;
+}
+
+.refine-panel-thinking {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+
+.refine-panel-answer {
+  margin-bottom: 14px;
+}
+
+.refine-panel-answer-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--grounded);
+  margin-bottom: 4px;
+}
+
+.refine-panel-answer-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  white-space: pre-line;
+}
+
+.refine-panel-steps {
+  margin: 0;
+}
+
+.refine-panel-steps .trip-stage {
+  font-size: 13px;
+}
+
 /* "Email it to me when it's ready" */
 .trip-notify {
   display: flex;

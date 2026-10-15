@@ -16,7 +16,7 @@ import { TravelLegRow } from "./TravelLeg";
 import { OfflineReady } from "./OfflineReady";
 import { PrintColophon } from "./PrintColophon";
 import { EmailTripButton } from "./EmailTripButton";
-import { ThinkingMark } from "./ThinkingMark";
+import { RefinePanel } from "./RefinePanel";
 import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -27,6 +27,7 @@ import { hoursLineFor, splitIntoSentences } from "@/lib/resultFormat";
 import { safeHref } from "@/lib/linkify";
 import type { FeedbackRating } from "@/lib/feedback";
 import type { Dictionary } from "@/lib/i18n";
+import type { JobProgress } from "@/lib/jobs";
 import type { GooglePriceLevel, Itinerary, ItineraryItem, Language } from "@/lib/types";
 
 // Google's price_level is a 0-4 tier, not a literal per-person figure - shown
@@ -271,6 +272,8 @@ interface ItineraryResultProps {
   onRefine?: (question: string) => void;
   refining?: boolean;
   refiningLabel?: string;
+  /** The running pushback's answer and stage, for RefinePanel. */
+  refineProgress?: JobProgress;
   refineError?: string;
   /** The revision's own id, when a failed pushback got as far as creating
    * one. Offered as a way out rather than a dead end - see
@@ -304,6 +307,7 @@ export function ItineraryResult({
   onRefine,
   refining = false,
   refiningLabel,
+  refineProgress,
   refineError,
   refineJobId,
   lastQuestion,
@@ -322,6 +326,8 @@ export function ItineraryResult({
   // answer the moment a second reader existed.
   const weather = useWeather(destinations ?? [], startDate ?? "", endDate ?? "");
   const [question, setQuestion] = useState("");
+  // The pushback in flight, kept on screen while it runs.
+  const [askedQuestion, setAskedQuestion] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   function toggleEvidence(key: string) {
@@ -337,6 +343,7 @@ export function ItineraryResult({
     const trimmed = question.trim();
     if (!trimmed || refining || !onRefine) return;
     onRefine(trimmed);
+    setAskedQuestion(trimmed);
     setQuestion("");
   }
 
@@ -870,20 +877,10 @@ export function ItineraryResult({
             {refining ? t.result.pushbackSubmitting : t.result.pushbackSubmit}
           </button>
         </div>
-        {/* Shown from the moment "ask" is pressed, not from the first poll.
-            refiningLabel comes from useJobStatusMessage and is undefined
-            until a status has been fetched, so gating the whole row on it
-            left a second and a half where nothing on the page had changed -
-            which is the complaint this indicator exists to answer. */}
-        {refining && (
-          <div
-            className="font-ui thinking-row"
-            style={{ marginTop: 10, fontSize: 12, color: "var(--ink-dim)" }}
-          >
-            <ThinkingMark size={20} />
-            <span>{refiningLabel ?? t.result.pushbackSubmitting}</span>
-          </div>
-        )}
+        {/* Shown from the moment "ask" is pressed, not from the first poll:
+            the question, then the answer as soon as the worker has it, then
+            the steps after it. See RefinePanel. */}
+        {refining && <RefinePanel question={askedQuestion} progress={refineProgress} waitingLabel={refiningLabel} t={t} />}
         {refineError && (
           <div className="font-ui" style={{ marginTop: 8, fontSize: 12, color: "var(--infeasible)" }}>
             {refineError}

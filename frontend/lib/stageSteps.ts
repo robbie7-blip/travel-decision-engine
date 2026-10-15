@@ -29,3 +29,37 @@ export function stageSteps(stage: GenerationStage | undefined): Step[] | null {
     return { id, state: i < at ? "done" : i === at ? "current" : "upcoming" };
   });
 }
+
+// A pushback's wait, as data. Shorter than a trip's: there is no outline
+// to plan, and the first thing worth showing is the answer itself, which
+// the worker publishes (progress.answer) before it checks the changed
+// lines. Same rule as above: every state comes from what the worker
+// reported, never from a clock.
+
+export type RefineStepId = "thinking" | "updating" | "checking" | "finishing";
+
+export interface RefineStep {
+  id: RefineStepId;
+  state: StepState;
+}
+
+export function refineSteps(
+  progress: { stage?: GenerationStage; answer?: string } | undefined
+): RefineStep[] {
+  const answered = typeof progress?.answer === "string" && progress.answer.trim() !== "";
+  if (!answered) {
+    return [
+      { id: "thinking", state: "current" },
+      { id: "updating", state: "upcoming" },
+      { id: "checking", state: "upcoming" },
+      { id: "finishing", state: "upcoming" },
+    ];
+  }
+  const finishing = progress?.stage === "finishing";
+  return [
+    { id: "thinking", state: "done" },
+    { id: "updating", state: "done" },
+    { id: "checking", state: finishing ? "done" : "current" },
+    { id: "finishing", state: finishing ? "current" : "upcoming" },
+  ];
+}

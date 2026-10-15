@@ -592,3 +592,43 @@ night, grounding discipline, hedge language for unverified data.
 Output ONLY valid JSON matching the schema, now including a top-level "pushback_response" string \
 field alongside the existing fields. No prose outside the JSON.`;
 }
+
+/** A pushback, answered as edits rather than a rewritten trip - see
+ * engine/refinePatch.ts for why, and for how the reply is applied.
+ *
+ * The item schema is the one in the system prompt, which this call shares
+ * (and shares the cache of) with the original generation. */
+export function buildRefinementPatchPrompt(brief: TripBriefInput, itineraryWithRefs: unknown, question: string): string {
+  const { tripBlock, factsBlock, warning } = buildContext(brief);
+
+  return `Trip brief:
+${tripBlock}
+
+${factsBlock}
+${warning}
+This is a FOLLOW-UP to an itinerary you already generated for this exact trip. Here it is, each item \
+with a "ref" that identifies it:
+${JSON.stringify(itineraryWithRefs)}
+
+The traveler has this pushback/follow-up question about it:
+"${question}"
+
+Your job:
+1. "pushback_response": a direct, one-paragraph answer to their question, in the response language \
+specified above. If they're right, say so and say what you're changing. If they're wrong, or the \
+request conflicts with a hard constraint or the budget, say so plainly and explain why - the way an \
+opinionated local friend who disagrees with you would. Do not silently comply just to please them, \
+and do not silently ignore the question either.
+2. "changes": ONLY the edits this pushback needs - nothing else in the trip is rewritten. Each one is:
+   {"op": "replace", "ref": "<ref>", "item": <a full item, same schema as the itinerary's items>}
+   {"op": "add", "day": <day number>, "item": <a full item>}
+   {"op": "remove", "ref": "<ref>"}
+   An empty list is the right answer when no change is warranted. A new or replaced item follows every \
+rule from before: a real, specific, named place you believe exists; near the stops around it; within \
+the budget; grounded or hedged like any other line.
+3. "trip_summary" and "budget_feasibility": include them ONLY if this change makes the current ones \
+wrong; otherwise leave them out.
+
+Output ONLY this JSON, no prose outside it:
+{"pushback_response": "...", "changes": [...]}`;
+}

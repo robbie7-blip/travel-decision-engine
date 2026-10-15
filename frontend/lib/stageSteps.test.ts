@@ -1,7 +1,7 @@
 // Run: npm run test:stage-steps
 
 import assert from "node:assert/strict";
-import { stageSteps } from "./stageSteps";
+import { refineSteps, stageSteps } from "./stageSteps";
 
 const show = (stage: Parameters<typeof stageSteps>[0]) =>
   stageSteps(stage)?.map((s) => `${s.id}:${s.state}`).join(" ") ?? null;
@@ -19,5 +19,14 @@ assert.equal(show("repairing"), "planning:done writing:done checking:done repair
 // ...and are not announced afterwards either: the list never shows a
 // problem that was fixed as a step the traveller should wonder about.
 assert.equal(show("finishing"), "planning:done writing:done checking:done finishing:current");
+
+// A pushback: thinking until the answer exists, whatever the stage says.
+const showRefine = (p: Parameters<typeof refineSteps>[0]) =>
+  refineSteps(p).map((s) => `${s.id}:${s.state}`).join(" ");
+assert.equal(showRefine(undefined), "thinking:current updating:upcoming checking:upcoming finishing:upcoming");
+assert.equal(showRefine({ stage: "checking", answer: "  " }), "thinking:current updating:upcoming checking:upcoming finishing:upcoming");
+assert.equal(showRefine({ stage: "checking", answer: "Swapped it." }), "thinking:done updating:done checking:current finishing:upcoming");
+assert.equal(showRefine({ stage: "repairing", answer: "Swapped it." }), "thinking:done updating:done checking:current finishing:upcoming");
+assert.equal(showRefine({ stage: "finishing", answer: "Swapped it." }), "thinking:done updating:done checking:done finishing:current");
 
 console.log("stageSteps: all assertions passed");

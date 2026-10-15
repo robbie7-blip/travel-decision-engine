@@ -135,6 +135,12 @@ export interface JobProgress {
   /** Absent on records from before stages were published; the page then
    * falls back to its rotating status line. */
   stage?: GenerationStage;
+  /** A pushback's answer, as soon as the model has given it - before the
+   * changed lines are checked - so the page shows it while it waits. */
+  answer?: string;
+  /** How many lines that answer changes; -1 when the whole trip was
+   * rewritten (the fallback path), where there is no count to give. */
+  changes?: number;
   updatedAt: number;
 }
 

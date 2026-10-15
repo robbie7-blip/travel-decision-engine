@@ -270,7 +270,9 @@ export async function createGenerateJob(brief: TripBriefInput): Promise<string> 
 export async function refineItinerary(
   jobId: string,
   question: string,
-  onStatus?: (status: Job["status"]) => void,
+  /** progress carries the pushback's answer as soon as the worker has it
+   * (JobProgress.answer), before the changed lines are checked. */
+  onStatus?: (status: Job["status"], progress?: JobProgress) => void,
   /** Called with the NEW job's id the moment it exists, before any
    * polling.
    *
@@ -310,7 +312,7 @@ export async function refineItinerary(
   // Before the poll, deliberately - see onRefinedJobId. Everything that
   // can go wrong from here on happens AFTER the work has been commissioned.
   onRefinedJobId?.(refinedJobId);
-  return pollJob(refinedJobId, onStatus);
+  return pollJob(refinedJobId, (status, _brief, progress) => onStatus?.(status, progress));
 }
 
 /** Submits feedback on one itinerary line item. Swallows nothing - throws
