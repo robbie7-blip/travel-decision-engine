@@ -7,18 +7,24 @@
 // dates lands on it - where a guessed listing URL would sometimes land on
 // the wrong hotel.
 //
-// AFFILIATE IDS are optional and come from the environment
-// (NEXT_PUBLIC_BOOKING_AID, NEXT_PUBLIC_GYG_PARTNER_ID). Without them the
-// links still work, they just earn nothing; with them the page also shows
-// a one-line disclosure, which the affiliate programmes and consumer law
-// both expect.
+// AFFILIATE IDS are optional and come from the environment. Without them
+// the links still work, they just earn nothing; with them the page also
+// shows a one-line disclosure, which the affiliate programmes and consumer
+// law both expect.
+//
+//   Booking.com closed its direct affiliate programme in 2025 and now runs
+//   it through Awin (and CJ). So a hotel link is wrapped in an Awin
+//   tracking link: NEXT_PUBLIC_AWIN_PUBLISHER_ID (your Awin account) and
+//   NEXT_PUBLIC_AWIN_BOOKING_MID (Booking.com's advertiser id in Awin).
+//   GetYourGuide still runs its own: NEXT_PUBLIC_GYG_PARTNER_ID.
 //
 // Run: npm run test:booking-links
 
 import type { ItineraryDay, ItineraryItem } from "./types";
 
 export interface AffiliateIds {
-  bookingAid?: string;
+  /** Both or neither: an Awin link needs the publisher and the advertiser. */
+  awin?: { publisherId: string; bookingMid: string };
   gygPartnerId?: string;
 }
 
@@ -39,16 +45,19 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 /** The configured ids, each only if it looks like an id. Read at build
  * time (NEXT_PUBLIC_), which is when Next inlines them. */
 export function affiliateIds(): AffiliateIds {
-  const booking = process.env.NEXT_PUBLIC_BOOKING_AID?.trim();
+  const publisherId = process.env.NEXT_PUBLIC_AWIN_PUBLISHER_ID?.trim();
+  const bookingMid = process.env.NEXT_PUBLIC_AWIN_BOOKING_MID?.trim();
   const gyg = process.env.NEXT_PUBLIC_GYG_PARTNER_ID?.trim();
   return {
-    ...(booking && ID.test(booking) ? { bookingAid: booking } : {}),
+    ...(publisherId && bookingMid && ID.test(publisherId) && ID.test(bookingMid)
+      ? { awin: { publisherId, bookingMid } }
+      : {}),
     ...(gyg && ID.test(gyg) ? { gygPartnerId: gyg } : {}),
   };
 }
 
 export function hasAffiliates(ids: AffiliateIds): boolean {
-  return Boolean(ids.bookingAid || ids.gygPartnerId);
+  return Boolean(ids.awin || ids.gygPartnerId);
 }
 
 /** Check-in and check-out for each stay, keyed "day:index". A hotel that
@@ -98,8 +107,12 @@ export function bookingLinkFor(
       params.set("checkin", stay.checkIn);
       params.set("checkout", stay.checkOut);
     }
-    if (ids.bookingAid) params.set("aid", ids.bookingAid);
-    return { kind: "stay", url: `https://www.booking.com/searchresults.html?${params}`, affiliate: Boolean(ids.bookingAid) };
+    const url = `https://www.booking.com/searchresults.html?${params}`;
+    if (!ids.awin) return { kind: "stay", url, affiliate: false };
+    // Awin's deep link: their redirect records the click, then sends the
+    // traveller on to exactly this search.
+    const awin = new URLSearchParams({ awinmid: ids.awin.bookingMid, awinaffid: ids.awin.publisherId, ued: url });
+    return { kind: "stay", url: `https://www.awin1.com/cread.php?${awin}`, affiliate: true };
   }
 
   // Tickets only for a named place that costs something: a free park or a

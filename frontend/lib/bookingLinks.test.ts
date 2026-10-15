@@ -28,10 +28,14 @@ assert.equal(u.hostname, "www.booking.com");
 assert.equal(u.searchParams.get("ss"), "Hotel Raphael, Trastevere, Rome");
 assert.equal(u.searchParams.get("checkin"), "2026-11-06");
 assert.equal(u.searchParams.get("checkout"), "2026-11-08");
-assert.equal(u.searchParams.get("aid"), null);
 
-const paid = bookingLinkFor(days[0].items[0], stays.get("1:0"), { bookingAid: "123456" })!;
-assert.equal(new URL(paid.url).searchParams.get("aid"), "123456");
+// Through Awin: their redirect, carrying the exact same search.
+const paid = bookingLinkFor(days[0].items[0], stays.get("1:0"), { awin: { publisherId: "111", bookingMid: "6776" } })!;
+const a = new URL(paid.url);
+assert.equal(a.hostname, "www.awin1.com");
+assert.equal(a.searchParams.get("awinmid"), "6776");
+assert.equal(a.searchParams.get("awinaffid"), "111");
+assert.equal(a.searchParams.get("ued"), stay.url, "the traveller lands on the same search");
 assert.ok(paid.affiliate);
 
 const tickets = bookingLinkFor(days[3].items[0], undefined, { gygPartnerId: "ABC" })!;

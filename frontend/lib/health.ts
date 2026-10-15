@@ -117,9 +117,14 @@ export const FRONTEND_ENV: readonly EnvCheck[] = [
     what: "Lets Vercel Cron start the daily report; without it the report never runs",
   },
   {
-    name: "NEXT_PUBLIC_BOOKING_AID",
+    name: "NEXT_PUBLIC_AWIN_PUBLISHER_ID",
     criticality: "optional",
-    what: "Your Booking.com affiliate id, added to hotel booking links (needs a redeploy)",
+    what: "Your Awin publisher id, for Booking.com hotel links (needs a redeploy)",
+  },
+  {
+    name: "NEXT_PUBLIC_AWIN_BOOKING_MID",
+    criticality: "optional",
+    what: "Booking.com's advertiser id in Awin, once you are approved for it (needs a redeploy)",
   },
   {
     name: "NEXT_PUBLIC_GYG_PARTNER_ID",
