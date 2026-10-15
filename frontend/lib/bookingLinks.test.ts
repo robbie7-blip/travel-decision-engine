@@ -38,6 +38,17 @@ assert.equal(a.searchParams.get("awinaffid"), "111");
 assert.equal(a.searchParams.get("ued"), stay.url, "the traveller lands on the same search");
 assert.ok(paid.affiliate);
 
+// Through CJ (Booking.com's network for Europe), which wins over Awin.
+const viaCj = bookingLinkFor(days[0].items[0], stays.get("1:0"), {
+  cj: { pid: "1234567", bookingAid: "7654321" },
+  awin: { publisherId: "111", bookingMid: "6776" },
+})!;
+const c = new URL(viaCj.url);
+assert.equal(c.hostname, "www.anrdoezrs.net");
+assert.equal(c.pathname, "/click-1234567-7654321");
+assert.equal(c.searchParams.get("url"), stay.url, "the traveller lands on the same search");
+assert.ok(viaCj.affiliate);
+
 const tickets = bookingLinkFor(days[3].items[0], undefined, { gygPartnerId: "ABC" })!;
 assert.equal(tickets.kind, "tickets");
 assert.equal(new URL(tickets.url).searchParams.get("q"), "Colosseum Trastevere, Rome");

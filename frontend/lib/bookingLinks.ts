@@ -13,16 +13,22 @@
 // law both expect.
 //
 //   Booking.com closed its direct affiliate programme in 2025 and now runs
-//   it through Awin (and CJ). So a hotel link is wrapped in an Awin
-//   tracking link: NEXT_PUBLIC_AWIN_PUBLISHER_ID (your Awin account) and
-//   NEXT_PUBLIC_AWIN_BOOKING_MID (Booking.com's advertiser id in Awin).
-//   GetYourGuide still runs its own: NEXT_PUBLIC_GYG_PARTNER_ID.
+//   it through networks by region: CJ for Europe, Awin elsewhere. So a
+//   hotel link is wrapped in that network's tracking link:
+//     CJ:   NEXT_PUBLIC_CJ_PID (the decide property's id in CJ) and
+//           NEXT_PUBLIC_CJ_BOOKING_AID (the id of a Booking.com link in
+//           CJ's "Get Links" that allows deep linking).
+//     Awin: NEXT_PUBLIC_AWIN_PUBLISHER_ID and NEXT_PUBLIC_AWIN_BOOKING_MID.
+//   CJ wins if both are set. GetYourGuide still runs its own programme:
+//   NEXT_PUBLIC_GYG_PARTNER_ID.
 //
 // Run: npm run test:booking-links
 
 import type { ItineraryDay, ItineraryItem } from "./types";
 
 export interface AffiliateIds {
+  /** Both or neither: a CJ deep link needs the property and the ad. */
+  cj?: { pid: string; bookingAid: string };
   /** Both or neither: an Awin link needs the publisher and the advertiser. */
   awin?: { publisherId: string; bookingMid: string };
   gygPartnerId?: string;
@@ -47,8 +53,11 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 export function affiliateIds(): AffiliateIds {
   const publisherId = process.env.NEXT_PUBLIC_AWIN_PUBLISHER_ID?.trim();
   const bookingMid = process.env.NEXT_PUBLIC_AWIN_BOOKING_MID?.trim();
+  const cjPid = process.env.NEXT_PUBLIC_CJ_PID?.trim();
+  const cjAid = process.env.NEXT_PUBLIC_CJ_BOOKING_AID?.trim();
   const gyg = process.env.NEXT_PUBLIC_GYG_PARTNER_ID?.trim();
   return {
+    ...(cjPid && cjAid && /^\d{1,12}$/.test(cjPid) && /^\d{1,12}$/.test(cjAid) ? { cj: { pid: cjPid, bookingAid: cjAid } } : {}),
     ...(publisherId && bookingMid && ID.test(publisherId) && ID.test(bookingMid)
       ? { awin: { publisherId, bookingMid } }
       : {}),
@@ -57,7 +66,7 @@ export function affiliateIds(): AffiliateIds {
 }
 
 export function hasAffiliates(ids: AffiliateIds): boolean {
-  return Boolean(ids.awin || ids.gygPartnerId);
+  return Boolean(ids.cj || ids.awin || ids.gygPartnerId);
 }
 
 /** Check-in and check-out for each stay, keyed "day:index". A hotel that
@@ -108,6 +117,15 @@ export function bookingLinkFor(
       params.set("checkout", stay.checkOut);
     }
     const url = `https://www.booking.com/searchresults.html?${params}`;
+    if (ids.cj) {
+      // CJ's deep link: the click is recorded against the ad, then the
+      // traveller lands on exactly this search.
+      return {
+        kind: "stay",
+        url: `https://www.anrdoezrs.net/click-${ids.cj.pid}-${ids.cj.bookingAid}?url=${encodeURIComponent(url)}`,
+        affiliate: true,
+      };
+    }
     if (!ids.awin) return { kind: "stay", url, affiliate: false };
     // Awin's deep link: their redirect records the click, then sends the
     // traveller on to exactly this search.
