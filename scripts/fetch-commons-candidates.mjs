@@ -35,7 +35,7 @@ const PER_CITY = 3;
 const CITIES = {
   amsterdam: ["Amsterdam canal houses", "Amsterdam canal"],
   athens: ["Acropolis of Athens", "Athens Parthenon"],
-  barcelona: ["Sagrada Familia", "Barcelona skyline"],
+  barcelona: ["Barcelona skyline Montjuic", "Sagrada Familia exterior", "Casa Batllo facade"],
   berlin: ["Brandenburg Gate", "Berlin Cathedral Spree"],
   bruges: ["Bruges canal", "Bruges Rozenhoedkaai"],
   brussels: ["Grand Place Brussels", "Brussels Town Hall"],
@@ -50,10 +50,13 @@ const CITIES = {
   prague: ["Charles Bridge Prague", "Prague Old Town Square"],
   rome: ["Colosseum Rome", "Rome Trevi Fountain"],
   venice: ["Grand Canal Venice", "Venice Rialto Bridge"],
-  vienna: ["Schönbrunn Palace", "Vienna Hofburg"],
+  vienna: ["Vienna State Opera", "Stephansdom Vienna", "Michaelerplatz Hofburg"],
 };
 
-const ONLY = process.argv.slice(2).filter((a) => !a.startsWith("-"));
+// A re-run for a few cities: PHOTO_ONLY="barcelona vienna". Their new
+// candidates are numbered after the ones already there, and the manifest
+// is added to rather than replaced, so earlier choices stay reviewable.
+const ONLY = [...process.argv.slice(2).filter((a) => !a.startsWith("-")), ...(process.env.PHOTO_ONLY ?? "").split(/\s+/).filter(Boolean)];
 
 const ALLOWED_LICENCE = /^(cc0|public domain|pd|cc by(-sa)? \d(\.\d)?( [a-z]+)?)$/i;
 
@@ -123,7 +126,8 @@ async function search(query, qualityOnly) {
 
 async function main() {
   await fs.mkdir(OUT, { recursive: true });
-  const manifest = [];
+  const manifestPath = path.join(OUT, "candidates.json");
+  const manifest = ONLY.length ? JSON.parse(await fs.readFile(manifestPath, "utf8").catch(() => "[]")) : [];
   for (const [slug, queries] of Object.entries(CITIES)) {
     if (ONLY.length && !ONLY.includes(slug)) continue;
     const found = [];
@@ -138,21 +142,24 @@ async function main() {
         await sleep(1500);
       }
     }
-    for (let i = 0; i < found.length; i++) {
-      const c = found[i];
-      const raw = path.join(OUT, `${slug}-${i + 1}.raw.jpg`);
-      const file = path.join(OUT, `${slug}-${i + 1}.jpg`);
+    const already = manifest.filter((m) => m.slug === slug);
+    const fresh = found.filter((c) => !already.some((m) => m.title === c.title));
+    for (let i = 0; i < fresh.length; i++) {
+      const c = fresh[i];
+      const n = already.length + i + 1;
+      const raw = path.join(OUT, `${slug}-${n}.raw.jpg`);
+      const file = path.join(OUT, `${slug}-${n}.jpg`);
       await fs.writeFile(raw, await get(c.thumb, { json: false }));
       // 1600 wide, re-encoded the way the existing covers are, metadata
       // stripped (the credit lives in the manifest, not the EXIF).
       execFileSync("convert", [raw, "-resize", "1600x>", "-strip", "-interlace", "Plane", "-quality", "74", file]);
       await fs.rm(raw);
-      manifest.push({ slug, choice: i + 1, file: path.basename(file), ...c });
+      manifest.push({ slug, choice: n, file: path.basename(file), ...c });
       await sleep(1000);
     }
     console.log(`${slug}: ${found.length} candidate(s)`);
   }
-  await fs.writeFile(path.join(OUT, "candidates.json"), JSON.stringify(manifest, null, 2) + "\n");
+  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 }
 
 main().catch((e) => {
