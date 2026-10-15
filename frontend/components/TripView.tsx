@@ -12,6 +12,7 @@ import { TripBuilding } from "./TripBuilding";
 import { TripFailed } from "./TripFailed";
 import { ApiError, pollJob, refineItinerary, retryTrip, saveTripEdits } from "@/lib/api";
 import type { TripEdit } from "@/lib/tripEdits";
+import { TravelpayoutsDrive } from "./TravelpayoutsDrive";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import { removeRecentTrip, saveRecentTrip } from "@/lib/recentTrips";
 import type { Job, JobTimings as Timings, QualityReport, JobProgress } from "@/lib/jobs";
@@ -286,6 +287,7 @@ export function TripView({ jobId }: { jobId: string }) {
           )}
           {result && (
             <>
+              <TravelpayoutsDrive />
               <ItineraryResult
                 result={result}
                 jobId={currentJobId}

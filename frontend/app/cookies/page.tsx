@@ -131,6 +131,11 @@ export default async function CookiesPage({
               random id, so voting again on the same line changes your vote instead of adding a second one. It says
               nothing about who you are, is httpOnly, and is used for nothing else.
             </p>
+            <p style={{ margin: "10px 0 0" }}>
+              On trip pages only, a script from Travelpayouts, our travel affiliate partner, marks booking links so
+              that a booking made through them is credited to decide. It may set its own cookies to do that. It is
+              not used for advertising, and nothing about your trip or account is sent to it.
+            </p>
           </LegalSection>
 
           <LegalSection heading="What decide doesn't do">
