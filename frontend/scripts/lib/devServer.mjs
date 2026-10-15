@@ -70,7 +70,12 @@ export function findChrome() {
  * stop() is idempotent and safe to call from an exit handler.
  */
 export async function startNextServer({ cwd, probePath, timeoutMs = 45_000 }) {
-  const port = 3100 + Math.floor(Math.random() * 800);
+  // 3659 is on the browsers' unsafe-port list, which `next start` refuses
+  // ("reserved for apple-sasl") - the only such port in this range. It
+  // failed a CI run once in eight hundred, which is exactly the kind of
+  // failure nobody can reproduce.
+  let port = 3659;
+  while (port === 3659) port = 3100 + Math.floor(Math.random() * 800);
   const server = spawn("npx", ["next", "start", "-p", String(port)], {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
