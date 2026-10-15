@@ -88,6 +88,7 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.34.3",
     "next": "^15.1.0",
+    "pg": "^8.13.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-globe.gl": "^2.38.0",
@@ -100,6 +101,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
     "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.185.4",

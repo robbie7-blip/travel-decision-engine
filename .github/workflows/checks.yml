@@ -22,6 +22,21 @@ jobs:
   worker:
     name: worker - typecheck + pipeline & quality suites
     runs-on: ubuntu-latest
+    # A real, throwaway Postgres for test:db - the archive of finished
+    # trips is tested against the database it runs on, not a fake of it.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: decide_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: worker
@@ -115,6 +130,13 @@ jobs:
       # the 4.3 bar) leaves the title as well, so the page never goes on
       # recommending the place the check refused to stand behind.
       - run: npm run test:title-without-venue
+      # Finished trips in Postgres: migrations apply once, a trip lives
+      # exactly as long as its Redis record (the privacy page's promise),
+      # expired rows are removed, and an unreachable database never breaks
+      # a trip.
+      - run: npm run test:db
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/decide_test
       # The failure diagnostics, driven through the real processJob.
       #
       # A failed generation tells the traveler one of seven sentences and

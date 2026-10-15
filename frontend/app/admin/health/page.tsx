@@ -15,6 +15,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { getRedis } from "@/lib/redis";
+import { loadDbState } from "@/lib/db";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
 import {
   JOBS_QUEUE_KEY,
@@ -273,7 +274,7 @@ function FailureEntry({ failure }: { failure: WorkerFailure }) {
 }
 
 export default async function HealthAdminPage() {
-  const redis = await loadRedisState();
+  const [redis, db] = await Promise.all([loadRedisState(), loadDbState()]);
   const frontendChecks = checkFrontendEnv();
   // Whether the hostname this page is being served from is the one session
   // cookies are issued for. Null, and rendered as nothing, in the ordinary
@@ -285,6 +286,16 @@ export default async function HealthAdminPage() {
   // Unreachable is down; reachable but with a failed read is degraded -
   // the queue still works, we just could not see into it.
   const redisVerdict: Verdict = !redis.reachable ? "down" : redis.error ? "warn" : "ok";
+  // Postgres is optional: not configured is a note, not an outage, because
+  // every trip still works from Redis. Unreachable once configured IS
+  // worth a red card - something set it up and it has stopped answering.
+  const dbVerdict: Verdict = !db.configured
+    ? "warn"
+    : !db.reachable
+      ? "down"
+      : db.error || db.trips === null
+        ? "warn"
+        : "ok";
   // No heartbeat is "down" and not "warn" on purpose. Either the worker is
   // not running, or it is running a build from before the heartbeat
   // existed - and both of those are things to go and look at rather than
@@ -439,6 +450,33 @@ export default async function HealthAdminPage() {
           <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: 0, lineHeight: 1.7 }}>
             {redis.error ?? "Unreachable."} Nothing can be queued, so every trip fails at submit.
           </p>
+        )}
+      </Card>
+
+      <Card title="Database (Postgres)" verdict={dbVerdict}>
+        {!db.configured ? (
+          <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: 0, lineHeight: 1.7 }}>
+            Not connected - no DATABASE_URL on this deployment. Trips are kept in Redis only, which is how the
+            product worked before; nothing is broken.
+          </p>
+        ) : !db.reachable ? (
+          <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: 0, lineHeight: 1.7 }}>
+            Configured but not answering: {db.error}. Trips still work; they are just not being archived.
+          </p>
+        ) : (
+          <>
+            <Field label="Ping" value={`${db.pingMs} ms`} />
+            <Field
+              label="Trips stored"
+              value={db.trips === null ? "no table yet - the worker creates it when it starts with DATABASE_URL set" : String(db.trips)}
+            />
+            {db.lastSavedAt && <Field label="Last saved" value={db.lastSavedAt.replace("T", " ").slice(0, 16) + " UTC"} />}
+            {db.error && (
+              <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: "8px 0 0", lineHeight: 1.7 }}>
+                Connected, but reading the trips failed: {db.error}
+              </p>
+            )}
+          </>
         )}
       </Card>
 

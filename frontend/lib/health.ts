@@ -101,6 +101,11 @@ export const FRONTEND_ENV: readonly EnvCheck[] = [
     criticality: "degrades",
     what: "Recording a completed payment (an upgrade would be charged and not applied)",
   },
+  {
+    name: "DATABASE_URL",
+    criticality: "optional",
+    what: "Reading the Postgres archive of trips (the Database card below)",
+  },
 ];
 
 /** Set on the Railway worker. Read from its heartbeat, not from here - this
@@ -141,6 +146,11 @@ export const WORKER_ENV: readonly EnvCheck[] = [
     name: "BUDGET_ALERT_WEBHOOK_URL",
     criticality: "optional",
     what: "Pushing a spend alert somewhere other than the logs",
+  },
+  {
+    name: "DATABASE_URL",
+    criticality: "optional",
+    what: "Saving finished trips to Postgres (they stay in Redis either way)",
   },
 ];
 

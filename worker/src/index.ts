@@ -10,6 +10,7 @@ import "./env"; // must run before the engine import below reads FACTS_DIR
 import Anthropic from "@anthropic-ai/sdk";
 import type Redis from "ioredis";
 import { getRedis } from "./redis";
+import { saveTripRecord, startDbMaintenance } from "./db";
 import { createAnthropicClient, isMissingWorkspaceIdError, workspaceId } from "./anthropicClient";
 // Local copies of the shared engine/job code, not "../../frontend/..." -
 // Railway's "Root Directory: worker" setting deploys only this directory,
@@ -3785,6 +3786,10 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // since the route it pings reads that record. Not awaited: nothing the
   // traveller is waiting on depends on it.
   void notifyTripReady(redis, job);
+  // And into Postgres, for the records that outlive a Redis key (see
+  // db.ts). Same reason for no await: the traveller is not waiting on it,
+  // and it cannot fail the trip.
+  void saveTripRecord(job, costUsd);
 
   const breakdown = Object.entries(timings)
     .map(([label, ms]) => `${label} ${(ms / 1000).toFixed(1)}s`)
@@ -3884,6 +3889,7 @@ const HEARTBEAT_ENV_NAMES = [
   "AMADEUS_API_KEY",
   "AMADEUS_API_SECRET",
   "BUDGET_ALERT_WEBHOOK_URL",
+  "DATABASE_URL",
 ] as const;
 
 /** Says the worker is alive, and what it can see, on a repeating clock.
@@ -3951,6 +3957,8 @@ async function main() {
     workspaceId() ? `- workspace ${workspaceId()}` : "- no ANTHROPIC_WORKSPACE_ID set"
   );
   startHeartbeat(redis);
+  // Postgres schema and the expiry sweep; a no-op without DATABASE_URL.
+  startDbMaintenance();
   await Promise.all(
     Array.from({ length: WORKER_CONCURRENCY }, (_, i) => runConsumer(i, redis, client))
   );

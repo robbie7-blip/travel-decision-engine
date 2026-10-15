@@ -18,7 +18,7 @@ import { OPERATOR_NAME, CONTACT_EMAIL } from "@/lib/legal";
 import type { Language } from "@/lib/types";
 import { SHARE_CARD } from "@/lib/shareCard";
 
-const LAST_UPDATED = "10 August 2026";
+const LAST_UPDATED = "15 October 2026";
 
 function resolveLanguage(lang?: string): Language {
   return lang === "bg" ? "bg" : "en";
@@ -178,7 +178,9 @@ export default async function PrivacyPage({
 
           <LegalSection heading="Where it's stored">
             <p style={{ margin: 0 }}>
-              Upstash Redis - a hosted database. There&apos;s no separate customer database beyond that.
+              Upstash Redis, a hosted database, for everything the product does while you use it. Finished trips
+              are also copied to a Postgres database hosted by Neon in the EU (Frankfurt), where they are kept
+              for exactly as long as below and then deleted.
             </p>
           </LegalSection>
 
@@ -201,7 +203,9 @@ export default async function PrivacyPage({
 
           <LegalSection heading="How long we keep it">
             <p style={{ margin: 0 }}>
-              Generated trip records: 30 days. Usage/quota counters: roughly 40 days. Account and subscription
+              Generated trip records: 30 days, or about 13 months for a trip made while signed in, so a trip
+              planned months ahead is still there when you travel. The same in both databases above. Usage/quota
+              counters: roughly 40 days. Account and subscription
               records, and visited-countries data (if you&apos;re signed in): kept for as long as your account
               exists.
             </p>
