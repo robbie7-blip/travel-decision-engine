@@ -17,7 +17,7 @@ import { CONTACT_EMAIL } from "@/lib/legal";
 import type { Language } from "@/lib/types";
 import { SHARE_CARD } from "@/lib/shareCard";
 
-const LAST_UPDATED = "15 October 2026";
+const LAST_UPDATED = "16 October 2026";
 
 function resolveLanguage(lang?: string): Language {
   return lang === "bg" ? "bg" : "en";
@@ -116,7 +116,7 @@ export default async function CookiesPage({
 
           <LegalSection heading="The cookies decide sets">
             <p style={{ margin: "0 0 10px" }}>
-              decide sets at most two cookies. The first, <code>decide_session</code>, exists only to keep you signed in between
+              decide sets at most three cookies of its own. The first, <code>decide_session</code>, exists only to keep you signed in between
               visits - it stores a signed token identifying your account, nothing else. It&apos;s marked httpOnly
               and secure, so it can&apos;t be read by page scripts or sent over an unencrypted connection.
             </p>
@@ -130,6 +130,11 @@ export default async function CookiesPage({
               The second, <code>decide_voter</code>, is set only when you vote Keep or Skip on a shared trip. It holds a
               random id, so voting again on the same line changes your vote instead of adding a second one. It says
               nothing about who you are, is httpOnly, and is used for nothing else.
+            </p>
+            <p style={{ margin: "10px 0 0" }}>
+              The third, <code>decide_ref</code>, is set only when you open a friend&apos;s invite link. It holds that
+              link&apos;s code for up to 30 days, so your first trip can earn you both a free one, and is removed once it
+              has. It is httpOnly and used for nothing else.
             </p>
             <p style={{ margin: "10px 0 0" }}>
               A script from Travelpayouts, our travel affiliate partner, marks booking links so

@@ -15,6 +15,7 @@ import {
   adminSummary,
   adminUnpublish,
   getPublished,
+  hasOwnedTrips,
   listAdminTrips,
   listMyTrips,
   listPublished,
@@ -268,6 +269,12 @@ async function main() {
     const rows = await listTripFeedback(db);
     check("a second tap changes the answer and keeps the note", rows.length === 1 && rows[0].rating === "great" && rows[0].note === "The museum was shut.", JSON.stringify(rows));
     check("and never holds the owner's address", !JSON.stringify(rows).includes("@"));
+  }
+
+  section("invites only count a first trip");
+  {
+    check("an address with a trip has one", await hasOwnedTrips(db, " A@Example.com "));
+    check("a new address has none", !(await hasOwnedTrips(db, "new@example.com")));
   }
 
   // Tidy up the throwaway database.

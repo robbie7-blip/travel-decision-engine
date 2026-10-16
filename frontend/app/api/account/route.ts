@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       plan,
       subscriptionStatus: user?.subscriptionStatus ?? null,
       currentPeriodEnd: user?.currentPeriodEnd ?? null,
-      quota: { used: quota.used, limit: quota.limit },
+      quota: { used: quota.used, limit: quota.limit, bonus: quota.bonus },
       // Pro from a real Stripe subscription has something for the billing
       // portal to manage; Pro from the owner-override allowlist (see
       // lib/account.ts's PRO_OVERRIDE_EMAILS) doesn't - no stripeCustomerId

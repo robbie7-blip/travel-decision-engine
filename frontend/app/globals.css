@@ -5917,3 +5917,18 @@ a.trip-notify-note {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* The account page's invite button (components/InviteFriend.tsx). */
+.invite-button {
+  min-height: 40px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+}
+@media (pointer: coarse) {
+  .invite-button {
+    min-height: 44px;
+  }
+}

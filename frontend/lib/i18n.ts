@@ -844,6 +844,14 @@ export interface Dictionary {
     signInSent: string;
     accountHeading: string;
     quotaUsed: string; // "{used}" / "{limit}" placeholders
+    /** Invite a friend (lib/referral.ts), on the account page. */
+    bonusTrips: string; // "{count}"
+    inviteHeading: string;
+    inviteBody: string; // "{cap}"
+    inviteCopy: string;
+    inviteCopied: string;
+    inviteShare: string;
+    inviteJoined: string; // "{count}"
     renewsOn: string; // "{date}" placeholder
     upgradeCta: string;
     // Self-service cancel/manage-payment-method flow via Stripe's hosted
@@ -1694,6 +1702,13 @@ const en: Dictionary = {
     signInSent: "Sent. Type the code from the email below, or tap the link in it.",
     accountHeading: "Your account",
     quotaUsed: "{used} of {limit} generations used this month",
+    bonusTrips: "Bonus trips from invites: {count}",
+    inviteHeading: "Invite a friend, you both get a free trip",
+    inviteBody: "When a friend signs in through your link and plans their first trip, you each get one extra trip, kept until you use it. Up to {cap} a month.",
+    inviteCopy: "Copy link",
+    inviteCopied: "Copied",
+    inviteShare: "Share",
+    inviteJoined: "Friends who joined: {count}",
     renewsOn: "Renews {date}",
     upgradeCta: "Upgrade to Pro →",
     manageSubscriptionButton: "Manage subscription",
@@ -2522,6 +2537,13 @@ const bg: Dictionary = {
     signInSent: "Изпратено. Въведи кода от имейла по-долу или натисни линка в него.",
     accountHeading: "Твоят акаунт",
     quotaUsed: "{used} от {limit} генерации използвани този месец",
+    bonusTrips: "Бонус пътувания от покани: {count}",
+    inviteHeading: "Покани приятел и двамата получавате безплатно пътуване",
+    inviteBody: "Когато приятел влезе през твоя линк и планира първото си пътуване, всеки от вас получава по едно допълнително, което остава, докато не го използваш. До {cap} на месец.",
+    inviteCopy: "Копирай линка",
+    inviteCopied: "Копирано",
+    inviteShare: "Сподели",
+    inviteJoined: "Приятели, които се присъединиха: {count}",
     renewsOn: "Подновява се на {date}",
     upgradeCta: "Надгради до Pro →",
     manageSubscriptionButton: "Управление на абонамента",

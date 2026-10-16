@@ -15,7 +15,10 @@ import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent, recordFunnelEvent } from "@/lib/analytics";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
-import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan } from "@/lib/account";
+import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan, type QuotaResult } from "@/lib/account";
+import { REFERRAL_COOKIE_NAME, isReferralCode, rewardReferral } from "@/lib/referral";
+import { getDb } from "@/lib/db";
+import { hasOwnedTrips } from "@/lib/tripsQuery";
 import { getVisitedCodes } from "@/lib/visited";
 import { getCountry } from "@/lib/countries";
 import { TEST_MODE_HEADER } from "@/lib/testMode";
@@ -72,6 +75,7 @@ export async function POST(request: NextRequest) {
   // for the public.
   const email = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   let quotaPlan: "free" | "paid" | null = null;
+  let quotaStatus: QuotaResult | null = null;
   // Read alongside the account record below, rather than in its own
   // round-trip further down.
   let visitedCodes: string[] | null = null;
@@ -119,6 +123,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ detail }, { status: 429 });
       }
       quotaPlan = plan;
+      quotaStatus = quota;
     } else {
       // Every request here costs real Anthropic API money once the worker
       // picks it up (each generation runs 1-2 live web searches per
@@ -206,12 +211,42 @@ export async function POST(request: NextRequest) {
   // Quota is consumed only now, after the job is actually enqueued: a
   // failure above (validation, budget) shouldn't cost the traveler a slot
   // from their monthly allowance.
+  //
+  // An invite (lib/referral.ts) is settled here too, after the enqueue, so
+  // it never costs the traveller time before their trip starts.
+  const refCode = request.cookies.get(REFERRAL_COOKIE_NAME)?.value;
+  let referralSettled = false;
   await Promise.all([
     email && quotaPlan
-      ? consumeQuota(redis, email).catch(() => {}) // never block an enqueued job on its counter
+      ? consumeQuota(redis, email, quotaStatus ?? undefined).catch(() => {}) // never block an enqueued job on its counter
+      : Promise.resolve(),
+    email && quotaStatus && isReferralCode(refCode)
+      ? settleReferral(redis, email, refCode, quotaStatus)
+          .then(() => {
+            referralSettled = true;
+          })
+          .catch(() => {}) // an invite never breaks a trip
       : Promise.resolve(),
     recordEvent(redis, "generate", brief.language).catch(() => {}), // analytics never breaks generation
   ]);
 
-  return NextResponse.json({ jobId: id }, { status: 202 });
+  const response = NextResponse.json({ jobId: id }, { status: 202 });
+  // Settled one way or the other (rewarded, already counted, not a first
+  // trip): the cookie has done its job.
+  if (referralSettled) response.cookies.delete(REFERRAL_COOKIE_NAME);
+  return response;
+}
+
+/** A first trip is one with nothing used this month and nothing of theirs
+ * in the archive. Without a database (or with one that is down), this
+ * month's count is all there is to go on. */
+async function settleReferral(redis: ReturnType<typeof getRedis>, email: string, code: string, quota: QuotaResult): Promise<void> {
+  let firstTrip = quota.used === 0;
+  const db = getDb();
+  if (firstTrip && db) {
+    // A database that cannot answer falls back to the month's count
+    // rather than losing the invite.
+    firstTrip = !(await hasOwnedTrips(db, email).catch(() => false));
+  }
+  await rewardReferral(redis, { friendEmail: email, code, firstTrip });
 }

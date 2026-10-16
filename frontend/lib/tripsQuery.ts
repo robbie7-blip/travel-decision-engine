@@ -371,6 +371,13 @@ export async function listPublished(db: Queryable, limit = 60): Promise<Omit<Pub
   });
 }
 
+/** Whether this address has any trip in the archive: an invite only counts
+ * for someone's first (lib/referral.ts). */
+export async function hasOwnedTrips(db: Queryable, email: string): Promise<boolean> {
+  const { rows } = await db.query("select 1 from trips where owner_email = $1 limit 1", [email.toLowerCase().trim()]);
+  return rows.length > 0;
+}
+
 // ---------------------------------------------------------------------------
 // "How was your trip?" (lib/howWasIt.ts). Table: trip_feedback, migration 4.
 

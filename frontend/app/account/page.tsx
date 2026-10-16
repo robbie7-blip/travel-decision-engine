@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SignInCodeEntry } from "@/components/SignInCodeEntry";
 import { AccountTripList } from "@/components/AccountTripList";
+import { InviteFriend } from "@/components/InviteFriend";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
@@ -16,7 +17,7 @@ interface AccountState {
   email?: string;
   plan?: "free" | "paid";
   currentPeriodEnd?: number | null;
-  quota?: { used: number; limit: number };
+  quota?: { used: number; limit: number; bonus?: number };
   // False for an account that's "paid" via the owner-override allowlist
   // (see lib/account.ts's resolvePlan) rather than a real Stripe
   // subscription - nothing for the billing portal to manage in that case.
@@ -231,6 +232,11 @@ export default function AccountPage() {
                     <div className="account-progress-track">
                       <div className="account-progress-fill" style={{ width: `${quotaPercent}%`, background: quotaColor }} />
                     </div>
+                    {(account.quota.bonus ?? 0) > 0 && (
+                      <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
+                        {t.account.bonusTrips.replace("{count}", String(account.quota.bonus))}
+                      </div>
+                    )}
                     {account.plan === "paid" && account.currentPeriodEnd && (
                       <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
                         {t.account.renewsOn.replace(
@@ -254,6 +260,8 @@ export default function AccountPage() {
                     <span className="account-row-arrow">→</span>
                   </Link>
                 </div>
+
+                <InviteFriend t={t} />
 
                 <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   {account.plan === "paid" && account.hasStripeSubscription && (

@@ -12,6 +12,7 @@
 
 import type { Redis } from "@upstash/redis";
 import { FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS } from "./planLimits";
+import { bonusKey } from "./referral";
 
 export { FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS };
 
@@ -166,15 +167,22 @@ export interface QuotaResult {
   plan: Plan;
   limit: number;
   used: number;
+  /** Bonus trips from invites (lib/referral.ts), spent once `used` reaches
+   * `limit` and kept until spent. */
+  bonus: number;
 }
 
 /** Checks this month's usage against the caller's plan limit WITHOUT
  * consuming a slot - used to decide whether to even attempt the increment,
- * and to show remaining quota in the account UI. */
+ * and to show remaining quota in the account UI. One round trip for the
+ * count and the bonus together: this sits on the traveller's clock before
+ * the job is enqueued. */
 export async function getQuotaStatus(redis: Redis, email: string, plan: Plan): Promise<QuotaResult> {
   const limit = plan === "paid" ? PAID_MONTHLY_GENERATIONS : FREE_MONTHLY_GENERATIONS;
-  const used = (await redis.get<number>(quotaKey(email, monthKey()))) ?? 0;
-  return { allowed: used < limit, plan, limit, used };
+  const [rawUsed, rawBonus] = await redis.mget<[number | null, number | null]>(quotaKey(email, monthKey()), bonusKey(email));
+  const used = Number(rawUsed) || 0;
+  const bonus = Math.max(0, Number(rawBonus) || 0);
+  return { allowed: used < limit || bonus > 0, plan, limit, used, bonus };
 }
 
 // ~40 days: comfortably outlives the calendar month the key is scoped to
@@ -182,12 +190,18 @@ export async function getQuotaStatus(redis: Redis, email: string, plan: Plan): P
 // stale counters forever.
 const QUOTA_KEY_TTL_SECONDS = 60 * 60 * 24 * 40;
 
-/** Records one generation against this month's count. Called only after
+/** Records one generation against this month's count - or, once the month's
+ * allowance is used up, spends a bonus trip instead. Called only after
  * getQuotaStatus already confirmed room - this is a plain increment, not a
  * check-and-increment, so it accepts the same small race-condition
  * tolerance as the existing daily spend cap (spendCheck.ts) rather than
  * reaching for Redis transactions at this scale. */
-export async function consumeQuota(redis: Redis, email: string): Promise<void> {
+export async function consumeQuota(redis: Redis, email: string, quota?: QuotaResult): Promise<void> {
+  if (quota && quota.used >= quota.limit && quota.bonus > 0) {
+    const left = await redis.decr(bonusKey(email));
+    if (left < 0) await redis.set(bonusKey(email), 0);
+    return;
+  }
   const key = quotaKey(email, monthKey());
   await redis.incr(key);
   await redis.expire(key, QUOTA_KEY_TTL_SECONDS);

@@ -18,7 +18,7 @@ import { OPERATOR_NAME, CONTACT_EMAIL } from "@/lib/legal";
 import type { Language } from "@/lib/types";
 import { SHARE_CARD } from "@/lib/shareCard";
 
-const LAST_UPDATED = "15 October 2026";
+const LAST_UPDATED = "16 October 2026";
 
 function resolveLanguage(lang?: string): Language {
   return lang === "bg" ? "bg" : "en";
@@ -83,6 +83,10 @@ const DATA_COLLECTED: DataRow[] = [
   {
     what: "How was your trip?",
     why: "The day after a trip you planned while signed in ends, we email your account's address once to ask how it went. If you tap an answer, we keep it with the trip's cities and any note you add - not your email or name - for about 13 months, to see where plans go wrong.",
+  },
+  {
+    what: "Invites",
+    why: "If you share your invite link: a random code for your account, and which account each friend who joined came from, so each of you gets your free trip once. The link itself never contains your email.",
   },
   {
     what: "Votes on a shared trip",
