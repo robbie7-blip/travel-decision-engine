@@ -81,6 +81,10 @@ const DATA_COLLECTED: DataRow[] = [
     why: "If you switch them on for a trip you planned while signed in - a flag on that trip, so we email tomorrow's plan to your account's address the evening before each trip day. Every email has a one-click stop link. Deleted with the trip.",
   },
   {
+    what: "How was your trip?",
+    why: "The day after a trip you planned while signed in ends, we email your account's address once to ask how it went. If you tap an answer, we keep it with the trip's cities and any note you add - not your email or name - for about 13 months, to see where plans go wrong.",
+  },
+  {
     what: "Votes on a shared trip",
     why: "If you tap Keep or Skip on a trip's line - the vote, tied to a random id in a cookie (decide_voter) so a second tap changes it. Only the counts are shown, never who voted. Deleted with the trip.",
   },

@@ -503,6 +503,24 @@ export interface Dictionary {
     };
   };
   genericError: string;
+  /** "How was your trip?" - the email the day after a trip ends, and the
+   * page its buttons open (lib/howWasIt.ts). {places} is the cities. */
+  howWasIt: {
+    subject: string;
+    intro: string;
+    great: string;
+    ok: string;
+    bad: string;
+    why: string;
+    thanksGreat: string;
+    thanksOk: string;
+    thanksBad: string;
+    notePrompt: string;
+    send: string;
+    sent: string;
+    notSaved: string;
+    invalid: string;
+  };
   /** Published trips: /plans and /plans/<slug>. */
   plans: {
     indexTitle: string;
@@ -1343,6 +1361,22 @@ const en: Dictionary = {
     },
   },
   genericError: "Something went wrong. Try again.",
+  howWasIt: {
+    subject: "How was {places}?",
+    intro: "Your trip to {places} ended yesterday. One tap tells us how the plan held up:",
+    great: "Great",
+    ok: "It was OK",
+    bad: "Something was wrong",
+    why: "We ask once, the day after a trip planned while signed in.",
+    thanksGreat: "Glad to hear it. Thank you!",
+    thanksOk: "Thanks for telling us.",
+    thanksBad: "Sorry it didn't go to plan.",
+    notePrompt: "Anything we should know? A place that was closed, a price that was off, something you loved. (Optional)",
+    send: "Send",
+    sent: "Thanks. We read every one.",
+    notSaved: "We could not save that just now. Please try the link again later.",
+    invalid: "This link is not valid.",
+  },
   plans: {
     indexTitle: "Trips travellers planned with decide",
     indexIntro: "Real itineraries their travellers chose to share: every hotel, meal and sight decided, with how sure we are of each.",
@@ -2166,6 +2200,22 @@ const bg: Dictionary = {
     },
   },
   genericError: "Нещо не сработи. Опитай отново.",
+  howWasIt: {
+    subject: "Как мина {places}?",
+    intro: "Пътуването ти до {places} приключи вчера. С едно докосване ни кажи как се справи планът:",
+    great: "Чудесно",
+    ok: "Горе-долу",
+    bad: "Нещо не беше наред",
+    why: "Питаме веднъж, ден след пътуване, планирано в профила ти.",
+    thanksGreat: "Радваме се да го чуем. Благодарим!",
+    thanksOk: "Благодарим, че ни каза.",
+    thanksBad: "Съжаляваме, че не всичко мина по план.",
+    notePrompt: "Има ли нещо, което да знаем? Затворено място, сгрешена цена, нещо, което ти хареса. (По желание)",
+    send: "Изпрати",
+    sent: "Благодарим. Четем всяко.",
+    notSaved: "Не успяхме да го запазим точно сега. Опитай линка отново по-късно.",
+    invalid: "Този линк не е валиден.",
+  },
   plans: {
     indexTitle: "Пътувания, планирани с decide",
     indexIntro: "Истински маршрути, споделени от пътуващите: всеки хотел, ресторант и забележителност е избран, с това колко сме сигурни във всеки.",

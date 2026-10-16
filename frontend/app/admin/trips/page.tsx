@@ -15,7 +15,7 @@ import { getDb } from "@/lib/db";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
 import { SendReportButton } from "@/components/SendReportButton";
 import { AdminUnpublishButton } from "@/components/AdminUnpublishButton";
-import { adminSummary, listAdminTrips, listPublished, type AdminSummary, type AdminTrip } from "@/lib/tripsQuery";
+import { adminSummary, listAdminTrips, listPublished, listTripFeedback, type AdminSummary, type AdminTrip, type TripFeedbackRow } from "@/lib/tripsQuery";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -80,13 +80,15 @@ export default async function TripsAdminPage({ searchParams }: { searchParams: P
   let trips: AdminTrip[] = [];
   let summary: AdminSummary | null = null;
   let published: Awaited<ReturnType<typeof listPublished>> = [];
+  let feedback: TripFeedbackRow[] = [];
   let error: string | null = null;
   if (db) {
     try {
-      [trips, summary, published] = await Promise.all([
+      [trips, summary, published, feedback] = await Promise.all([
         listAdminTrips(db, LIMIT, includeTests),
         adminSummary(db),
         listPublished(db, 200).catch(() => []),
+        listTripFeedback(db, 50).catch(() => []),
       ]);
     } catch (e) {
       // Shown, but with anything shaped like a connection string removed:
@@ -146,6 +148,30 @@ export default async function TripsAdminPage({ searchParams }: { searchParams: P
                     {p.title}
                   </Link>{" "}
                   <span style={{ color: "var(--ink-dim)" }}>{p.publishedAt.slice(0, 10)}</span> · <AdminUnpublishButton slug={p.slug} />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 8 }}>
+            After the trip ({feedback.length}): answers to the &quot;How was your trip?&quot; email
+          </div>
+          {feedback.length === 0 ? (
+            <p style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 24 }}>None yet.</p>
+          ) : (
+            <ul style={{ fontSize: 12, margin: "0 0 24px", paddingLeft: 18 }}>
+              {feedback.map((f) => (
+                <li key={f.jobId} style={{ marginBottom: 6 }}>
+                  <span style={{ color: f.rating === "great" ? "var(--grounded)" : f.rating === "bad" ? "var(--infeasible)" : "var(--ink)", fontWeight: 600 }}>
+                    {f.rating === "great" ? "great" : f.rating === "ok" ? "ok" : "something wrong"}
+                  </span>{" "}
+                  <Link href={`/trip/${f.jobId}`} style={{ color: "var(--ink)" }}>
+                    {f.destinations.join(" · ") || "(no city)"}
+                  </Link>{" "}
+                  <span style={{ color: "var(--ink-dim)" }}>
+                    {f.language} · {f.updatedAt.slice(0, 10)}
+                  </span>
+                  {f.note && <div style={{ color: "var(--ink-soft)", whiteSpace: "pre-wrap", marginTop: 2 }}>{f.note}</div>}
                 </li>
               ))}
             </ul>

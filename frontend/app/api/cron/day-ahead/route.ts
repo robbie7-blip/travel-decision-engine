@@ -4,6 +4,9 @@
 // Sends only to Job.ownerEmail - the address of the signed-in account that
 // made the trip - and at most once per trip per day, whatever retries or
 // double invocations happen (the sent key is claimed before sending).
+//
+// The same run also sends "How was your trip?" (lib/howWasIt.ts) for
+// signed-in trips that ended yesterday, once per trip, to the same owner.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
@@ -12,6 +15,9 @@ import { isCronRequest } from "@/lib/cronAuth";
 import { dayAheadEmailFor, dayAheadKey, dayAheadSentKey, stopToken, tomorrowIso } from "@/lib/dayAhead";
 import { sendItineraryEmail } from "@/lib/email";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { getDb } from "@/lib/db";
+import { tripsEndedOn } from "@/lib/tripsQuery";
+import { howWasItEmailFor, howWasItSentKey, yesterdayIso } from "@/lib/howWasIt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,5 +77,45 @@ export async function GET(request: NextRequest) {
       console.error(`[day-ahead] ${jobId}:`, e instanceof Error ? e.message : e);
     }
   }
-  return NextResponse.json({ date, candidates: keys.length, sent, failed });
+
+  const howWasIt = await sendHowWasIt(redis, site);
+  return NextResponse.json({ date, candidates: keys.length, sent, failed, howWasIt });
+}
+
+async function sendHowWasIt(redis: ReturnType<typeof getRedis>, site: string) {
+  const db = getDb();
+  const ended = yesterdayIso();
+  if (!db) return { ended, candidates: 0, sent: 0, failed: 0 };
+  let candidates: Awaited<ReturnType<typeof tripsEndedOn>> = [];
+  try {
+    candidates = await tripsEndedOn(db, ended);
+  } catch (e) {
+    console.error("[how-was-it] could not list trips:", e instanceof Error ? e.message.slice(0, 200) : e);
+    return { ended, candidates: 0, sent: 0, failed: 1 };
+  }
+  let sent = 0;
+  let failed = 0;
+  // One email per address per evening, however many trips ended: the
+  // first one asks, a second would be nagging.
+  const asked = new Set<string>();
+  for (const trip of candidates.slice(0, 500)) {
+    if (asked.has(trip.ownerEmail)) continue;
+    try {
+      const claimed = await redis.set(howWasItSentKey(trip.jobId), "1", { nx: true, ex: 30 * 24 * 3600 });
+      if (claimed !== "OK") continue;
+      const email = howWasItEmailFor({ site, jobId: trip.jobId, destinations: trip.destinations, language: trip.language });
+      try {
+        await sendItineraryEmail(trip.ownerEmail, email.subject, email.html);
+      } catch (e) {
+        await redis.del(howWasItSentKey(trip.jobId)).catch(() => {});
+        throw e;
+      }
+      asked.add(trip.ownerEmail);
+      sent++;
+    } catch (e) {
+      failed++;
+      console.error(`[how-was-it] ${trip.jobId}:`, e instanceof Error ? e.message : e);
+    }
+  }
+  return { ended, candidates: candidates.length, sent, failed };
 }

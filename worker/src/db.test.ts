@@ -18,11 +18,15 @@ import {
   listAdminTrips,
   listMyTrips,
   listPublished,
+  listTripFeedback,
   publishedForJob,
   publishedSlug,
   publishedTitle,
   publishTrip,
   saveEditedTrip,
+  saveTripNote,
+  saveTripRating,
+  tripsEndedOn,
   unpublishTrip,
 } from "../../frontend/lib/tripsQuery";
 
@@ -245,8 +249,29 @@ async function main() {
     check("and so can the admin", (await getPublished(db, slug)) === null);
   }
 
+  section("how was your trip?");
+  {
+    await db.query("delete from trip_feedback");
+    const ended = { ...brief, end_date: "2026-09-20" };
+    await saveTripRecord(job({ id: "hw-1", brief: ended, ownerEmail: "a@example.com", ttlSeconds: SAVED_JOB_TTL_SECONDS, createdAt: Date.now(), updatedAt: Date.now() }), 0);
+    await saveTripRecord(job({ id: "hw-anon", brief: ended, createdAt: Date.now(), updatedAt: Date.now() }), 0);
+    await saveTripRecord(job({ id: "hw-test", brief: ended, ownerEmail: "a@example.com", testMode: true, createdAt: Date.now(), updatedAt: Date.now() }), 0);
+    await saveTripRecord(job({ id: "hw-old", brief: ended, ownerEmail: "b@example.com", ttlSeconds: SAVED_JOB_TTL_SECONDS, createdAt: Date.now(), updatedAt: Date.now() }), 0);
+    await saveTripRecord(job({ id: "hw-new", brief: ended, ownerEmail: "b@example.com", replaces: "hw-old", ttlSeconds: SAVED_JOB_TTL_SECONDS, createdAt: Date.now(), updatedAt: Date.now() }), 0);
+    const ids = (await tripsEndedOn(db, "2026-09-20")).map((t) => t.jobId).sort();
+    check("asks about signed-in trips that ended that day, latest version only", JSON.stringify(ids) === '["hw-1","hw-new"]', JSON.stringify(ids));
+    check("not about trips ending another day", (await tripsEndedOn(db, "2026-09-21")).length === 0);
+    await saveTripRating(db, { jobId: "hw-1", rating: "ok", destinations: ["Rome"], language: "en" });
+    check("a note with no answer behind it is not stored", (await saveTripNote(db, "hw-none", "hi")) === false);
+    check("a note on an answer is", (await saveTripNote(db, "hw-1", "The museum was shut.")) === true);
+    await saveTripRating(db, { jobId: "hw-1", rating: "great", destinations: ["Rome"], language: "en" });
+    const rows = await listTripFeedback(db);
+    check("a second tap changes the answer and keeps the note", rows.length === 1 && rows[0].rating === "great" && rows[0].note === "The museum was shut.", JSON.stringify(rows));
+    check("and never holds the owner's address", !JSON.stringify(rows).includes("@"));
+  }
+
   // Tidy up the throwaway database.
-  await db.query("drop table if exists trips; drop table if exists published_trips; drop table if exists schema_migrations");
+  await db.query("drop table if exists trips; drop table if exists published_trips; drop table if exists trip_feedback; drop table if exists schema_migrations");
   await closeDb();
 
   section("an unreachable database never breaks a trip");

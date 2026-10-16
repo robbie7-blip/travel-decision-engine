@@ -121,6 +121,24 @@ export const MIGRATIONS: { id: number; sql: string }[] = [
       create index if not exists published_trips_owner on published_trips (owner_email);
     `,
   },
+  {
+    // "How was your trip?" (frontend/lib/howWasIt.ts): one answer per trip,
+    // from the email sent the day after it ends. The cities and language
+    // are copied so the admin list reads without the trip, which expires.
+    id: 4,
+    sql: `
+      create table if not exists trip_feedback (
+        job_id        text primary key,
+        rating        text not null check (rating in ('great', 'ok', 'bad')),
+        note          text,
+        destinations  text[] not null default '{}',
+        language      text not null default 'en',
+        created_at    timestamptz not null default now(),
+        updated_at    timestamptz not null default now()
+      );
+      create index if not exists trip_feedback_newest on trip_feedback (updated_at desc);
+    `,
+  },
 ];
 
 /** Applies whatever has not run yet. Once per process. */
@@ -234,6 +252,9 @@ export async function deleteExpiredTrips(): Promise<number> {
   try {
     await migrate();
     const res = await db.query("delete from trips where expires_at < now()");
+    // Post-trip answers live as long as a signed-in trip does (about
+    // thirteen months), which is what the privacy page promises.
+    await db.query("delete from trip_feedback where updated_at < now() - interval '400 days'").catch(() => {});
     return res.rowCount ?? 0;
   } catch (e) {
     console.error("[db] expiry sweep failed:", e instanceof Error ? e.message : e);

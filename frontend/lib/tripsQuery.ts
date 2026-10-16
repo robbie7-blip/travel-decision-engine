@@ -370,3 +370,89 @@ export async function listPublished(db: Queryable, limit = 60): Promise<Omit<Pub
     return rest;
   });
 }
+
+// ---------------------------------------------------------------------------
+// "How was your trip?" (lib/howWasIt.ts). Table: trip_feedback, migration 4.
+
+export type TripRating = "great" | "ok" | "bad";
+
+export interface HowWasItCandidate {
+  jobId: string;
+  ownerEmail: string;
+  destinations: string[];
+  language: "en" | "bg";
+}
+
+/** Signed-in trips that ended on `endDate`, latest version of each only -
+ * the same "a revision replaces its original" rule as My trips. Test runs
+ * are left out: nobody travelled on them. */
+export async function tripsEndedOn(db: Queryable, endDate: string): Promise<HowWasItCandidate[]> {
+  const { rows } = await db.query<{ id: string; owner_email: string; destinations: string[]; language: string }>(
+    `select t.id, t.owner_email, t.destinations, t.language
+     from trips t
+     where t.owner_email is not null and t.status = 'done' and not t.test_mode
+       and t.end_date = $1::date and t.expires_at > now()
+       and not exists (
+         select 1 from trips r where r.replaces = t.id and r.owner_email = t.owner_email and r.status = 'done'
+       )`,
+    [endDate]
+  );
+  return rows.map((r) => ({
+    jobId: r.id,
+    ownerEmail: r.owner_email,
+    destinations: r.destinations,
+    language: r.language === "bg" ? "bg" : "en",
+  }));
+}
+
+/** One answer per trip. A second tap changes the rating; the note is kept
+ * unless a new one is given. */
+export async function saveTripRating(
+  db: Queryable,
+  row: { jobId: string; rating: TripRating; destinations: string[]; language: "en" | "bg" }
+): Promise<void> {
+  await db.query(
+    `insert into trip_feedback (job_id, rating, destinations, language)
+     values ($1, $2, $3, $4)
+     on conflict (job_id) do update set rating = excluded.rating, updated_at = now()`,
+    [row.jobId, row.rating, row.destinations, row.language]
+  );
+}
+
+/** Adds the free-text note to an answer that exists; a note with no rating
+ * behind it is not stored. Returns whether it was. */
+export async function saveTripNote(db: Queryable, jobId: string, note: string): Promise<boolean> {
+  const { rows } = await db.query<{ job_id: string }>(
+    "update trip_feedback set note = $2, updated_at = now() where job_id = $1 returning job_id",
+    [jobId, note.slice(0, 2000)]
+  );
+  return rows.length > 0;
+}
+
+export interface TripFeedbackRow {
+  jobId: string;
+  rating: TripRating;
+  note: string | null;
+  destinations: string[];
+  language: string;
+  updatedAt: string;
+}
+
+export async function listTripFeedback(db: Queryable, limit = 100): Promise<TripFeedbackRow[]> {
+  const { rows } = await db.query<{
+    job_id: string;
+    rating: TripRating;
+    note: string | null;
+    destinations: string[];
+    language: string;
+    updated_at: Date;
+  }>("select job_id, rating, note, destinations, language, updated_at from trip_feedback order by updated_at desc limit $1", [limit]);
+  return rows.map((r) => ({
+    jobId: r.job_id,
+    rating: r.rating,
+    note: r.note,
+    destinations: r.destinations,
+    language: r.language,
+    updatedAt: new Date(r.updated_at).toISOString(),
+  }));
+}
