@@ -9,7 +9,6 @@ import { getDb } from "@/lib/db";
 import { getPublished } from "@/lib/tripsQuery";
 import { TRANSLATIONS } from "@/lib/i18n";
 import { getSiteUrl } from "@/lib/siteUrl";
-import { SHARE_CARD } from "@/lib/shareCard";
 import { affiliateIds, hasAffiliates } from "@/lib/bookingLinks";
 import type { Itinerary } from "@/lib/types";
 import { RoutedSiteHeader } from "@/components/RoutedSiteHeader";
@@ -39,8 +38,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description,
     alternates: { canonical: `${getSiteUrl()}/plans/${trip.slug}` },
-    openGraph: { title, description, ...SHARE_CARD },
-    twitter: { title, description },
+    // No images here: the route's own opengraph-image.tsx is the card.
+    openGraph: { title, description },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 

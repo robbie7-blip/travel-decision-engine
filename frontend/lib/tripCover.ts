@@ -11,6 +11,8 @@
 // updating this file fails the build rather than silently showing a blank
 // cover.
 
+import { DESTINATION_CITY_NAMES_BG } from "./destinationCityNamesBg";
+
 export const COVER_PHOTO_SLUGS = [
   "amsterdam",
   "athens",
@@ -61,10 +63,19 @@ function slugify(city: string): string {
  * treatment rather than a broken image or a stock photo of somewhere else,
  * which would be worse than no photo at all - a picture of the wrong city
  * on your own itinerary reads as carelessness. */
+/** "рим" -> "rome": a Bulgarian trip names its cities in Cyrillic, and
+ * without this every one of them went without a cover photo. */
+const SLUG_BY_BG_NAME = new Map(
+  Object.entries(DESTINATION_CITY_NAMES_BG).map(([slug, name]) => [name.toLowerCase(), slug])
+);
+
 export function coverPhotoFor(destinations: string[] | undefined): { src: string; slug: string } | null {
   for (const city of destinations ?? []) {
+    if (typeof city !== "string") continue;
     const slug = slugify(city);
     if (SLUGS.has(slug)) return { src: `/destinations/${slug}.jpg`, slug };
+    const fromBg = SLUG_BY_BG_NAME.get(city.split(",")[0].trim().toLowerCase());
+    if (fromBg && SLUGS.has(fromBg)) return { src: `/destinations/${fromBg}.jpg`, slug: fromBg };
   }
   return null;
 }
