@@ -80,6 +80,8 @@ const dmMono = DM_Mono({
 
 const siteUrl = getSiteUrl();
 
+const IMPACT_SITE_VERIFICATION = "c77826bc-750e-443a-bf77-4682a78faaaa";
+
 const title = "decide - Travel decision engine";
 const description = "It doesn't list options. It decides.";
 
@@ -142,6 +144,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           See the component for why it costs nothing at load. */}
       <head>
         <TravelpayoutsDrive />
+        {/* Skyscanner's affiliate network (Impact) proves the site is ours
+            by finding this tag. Written by hand because Impact reads a
+            `value` attribute, which Next's metadata API does not emit.
+            Public by design: it is meant to be seen in the page source. */}
+        <meta name="impact-site-verification" {...{ value: IMPACT_SITE_VERIFICATION }} />
       </head>
       <body>
         <AppSplash />
