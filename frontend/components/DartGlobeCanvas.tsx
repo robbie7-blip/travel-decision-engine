@@ -31,6 +31,7 @@ import {
   type DartHit,
 } from "@/lib/dartGlobe";
 import { CANVAS_COLORS } from "@/lib/theme";
+import { usePauseWhenHidden } from "./usePauseWhenHidden";
 
 interface DartGlobeCanvasProps {
   /** Where the dart is stuck, or null before the first throw. */
@@ -204,6 +205,8 @@ export default function DartGlobeCanvas({ hit, throwId, reducedMotion, onArrived
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  usePauseWhenHidden(wrapperRef, globeRef, size);
 
   // Idle: a slow turn, so the globe reads as a globe rather than a picture
   // of one. Stopped the moment a dart is in the air - a target that is

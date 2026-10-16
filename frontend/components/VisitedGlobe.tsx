@@ -29,6 +29,7 @@ import { WORLD_COUNTRY_FEATURES, type CountryFeature } from "@/lib/worldGeo";
 import { CANVAS_COLORS } from "@/lib/theme";
 import { getCountry, getCountryName } from "@/lib/countries";
 import type { Language } from "@/lib/types";
+import { usePauseWhenHidden } from "./usePauseWhenHidden";
 
 export interface GlobePin {
   id: string;
@@ -70,6 +71,7 @@ export function VisitedGlobe({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const [size, setSize] = useState(0);
+  usePauseWhenHidden(wrapperRef, globeRef, size);
 
   useEffect(() => {
     const el = wrapperRef.current;

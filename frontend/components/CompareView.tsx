@@ -183,8 +183,12 @@ export function CompareView() {
   );
 
   if (!jobIdA || !jobIdB) {
+    // 100vh here and on the page below, the same as the Suspense fallback
+    // in the route: the footer stays below the fold from the first paint
+    // on, instead of jumping up into view when a short page replaces the
+    // placeholder (a layout shift on every visit).
     return (
-      <div style={{ minHeight: "100%" }}>
+      <div style={{ minHeight: "100vh" }}>
         {header}
         <div style={{ padding: "36px 24px" }}>
           {/* The same heading the loaded page carries. Without it this
@@ -221,7 +225,7 @@ export function CompareView() {
   ];
 
   return (
-    <div style={{ minHeight: "100%" }}>
+    <div style={{ minHeight: "100vh" }}>
       {header}
       <div style={{ padding: "36px 24px 64px" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>

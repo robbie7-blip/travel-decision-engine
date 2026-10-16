@@ -11,11 +11,15 @@ export function DestinationHero({
   slug,
   compact = false,
   eyebrow = "DESTINATION GUIDE",
+  priority = false,
 }: {
   city: string;
   slug: string;
   compact?: boolean;
   eyebrow?: string;
+  /** Loaded first rather than lazily: for the photo that is the page's
+   * largest paint (a guide's own hero, the first cards on the index). */
+  priority?: boolean;
 }) {
   const photo = getDestinationPhoto(slug);
   if (!photo) {
@@ -34,8 +38,11 @@ export function DestinationHero({
     >
       <Image
         src={photo.src}
-        alt={`${city}`}
+        // Empty: the city's name is printed over the photo just below, so
+        // naming it here too made a screen reader say every city twice.
+        alt=""
         fill
+        priority={priority}
         style={{ objectFit: "cover" }}
         sizes={compact ? "(max-width: 700px) 100vw, 320px" : "(max-width: 800px) 100vw, 780px"}
       />

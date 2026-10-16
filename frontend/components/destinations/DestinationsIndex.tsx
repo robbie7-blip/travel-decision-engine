@@ -124,7 +124,7 @@ export function DestinationsIndex({ language }: { language: Language }) {
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16 }}>
-            {destinations.map((d) => (
+            {destinations.map((d, i) => (
               <Link
                 key={d.slug}
                 href={destinationsPath(language, d.slug)}
@@ -138,7 +138,7 @@ export function DestinationsIndex({ language }: { language: Language }) {
                   color: "inherit",
                 }}
               >
-                <DestinationHero city={d.displayCity} slug={d.slug} compact eyebrow={dt.eyebrow} />
+                <DestinationHero city={d.displayCity} slug={d.slug} compact eyebrow={dt.eyebrow} priority={i < 2} />
                 <div style={{ padding: "10px 14px 14px" }}>
                   <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)" }}>
                     {dt.localNotesCount.replace("{count}", String(d.facts.length))}

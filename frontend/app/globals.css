@@ -4237,6 +4237,11 @@ a.trip-notify-note {
 .spin-stage {
   position: relative;
   max-width: min(100%, 62vh);
+  /* The globe is square (DartGlobeCanvas sizes it width x width), and it
+     arrives in a script loaded after the page: without the square held
+     open, the text beside and below it drew first and jumped when the
+     globe landed. */
+  aspect-ratio: 1 / 1;
 }
 
 /* The throw and its result, in two halves of the globe's own height.
@@ -4708,7 +4713,7 @@ a.trip-notify-note {
    because the dart and the wheel make different claims and each has to
    carry its own. */
 .spin-note {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink-dim);
   line-height: 1.5;
   margin-top: 28px;

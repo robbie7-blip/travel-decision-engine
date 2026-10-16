@@ -211,7 +211,7 @@ export function DestinationGuide({ slug, language }: { slug: string; language: L
               landed on one with nothing to land on. One clipped h1 covers
               both paths identically and duplicates nothing on screen. */}
           <h1 className="sr-only">{displayCity}</h1>
-          <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} />
+          <DestinationHero city={displayCity} slug={slug} eyebrow={dt.eyebrow} priority />
           {photo?.credit && (
             <p className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 8 }}>
               {dt.photoCredit}{" "}
@@ -262,7 +262,10 @@ export function DestinationGuide({ slug, language }: { slug: string; language: L
                     fontSize: 11,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    color,
+                    // The words in ink, the colour in the rule beside them:
+                    // at 11px the category colours (the cost orange most of
+                    // all, 3.4:1) were too faint to read as text.
+                    color: "var(--ink-soft)",
                     marginBottom: 12,
                   }}
                 >

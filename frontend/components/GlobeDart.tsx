@@ -176,7 +176,13 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
   // flash of the no-globe version and an apology for it, replaced a frame
   // later by the globe it said could not be drawn.
   if (webgl === null) {
-    return <div className="spin" style={{ minHeight: 360 }} aria-hidden />;
+    // The globe's square held open, as the real layout will hold it, so
+    // nothing below moves when the question is answered a moment later.
+    return (
+      <div className="spin" aria-hidden>
+        <div className="spin-stage" />
+      </div>
+    );
   }
 
   return (

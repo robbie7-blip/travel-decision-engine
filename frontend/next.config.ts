@@ -22,6 +22,24 @@ const nextConfig: NextConfig = {
   redirects() {
     return Promise.resolve([
       { source: "/spin", destination: "/decide-for-me", permanent: true },
+      // The Bulgarian destination guides moved from ?lang=bg on the English
+      // page to their own address (/bg/destinations). Redirected here, not
+      // in the page, so the English guides need no query string and are
+      // built once as static pages. Next carries ?lang=bg across; the
+      // Bulgarian page ignores it and its canonical link is the clean
+      // address, so search engines index that one.
+      {
+        source: "/destinations",
+        has: [{ type: "query", key: "lang", value: "bg" }],
+        destination: "/bg/destinations",
+        permanent: true,
+      },
+      {
+        source: "/destinations/:slug",
+        has: [{ type: "query", key: "lang", value: "bg" }],
+        destination: "/bg/destinations/:slug",
+        permanent: true,
+      },
     ]);
   },
 };
