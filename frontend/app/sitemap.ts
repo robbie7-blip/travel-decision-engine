@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { listDestinationSlugs } from "@/lib/destinations";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { destinationAlternates } from "@/lib/destinationPaths";
 import { getDb } from "@/lib/db";
 import { listPublished } from "@/lib/tripsQuery";
 
@@ -20,25 +21,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: siteUrl, lastModified: now, changeFrequency: "weekly", priority: 1 },
-    { url: `${siteUrl}/destinations`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
   ];
 
-  // Each guide is also reachable with ?lang=bg (see DESTINATION_CITY_NAMES_BG
-  // etc.) - that's a query-param variant of the same URL, not a distinct
-  // path, so it's surfaced via `alternates.languages` rather than as its own
-  // sitemap entry.
-  const destinationRoutes: MetadataRoute.Sitemap = listDestinationSlugs().map((slug) => ({
-    url: `${siteUrl}/destinations/${slug}`,
+  // Each guide in both languages, each its own page (the Bulgarian ones
+  // at /bg/destinations), each naming the other as its alternate.
+  const guide = (language: "en" | "bg", slug?: string) => ({
+    url: destinationAlternates(siteUrl, language, slug).canonical,
     lastModified: now,
-    changeFrequency: "monthly",
-    priority: 0.6,
-    alternates: {
-      languages: {
-        en: `${siteUrl}/destinations/${slug}`,
-        bg: `${siteUrl}/destinations/${slug}?lang=bg`,
-      },
-    },
-  }));
+    changeFrequency: "monthly" as const,
+    priority: slug ? 0.6 : 0.8,
+    alternates: { languages: destinationAlternates(siteUrl, language, slug).languages },
+  });
+  const destinationRoutes: MetadataRoute.Sitemap = [
+    guide("en"),
+    guide("bg"),
+    ...listDestinationSlugs().flatMap((slug) => [guide("en", slug), guide("bg", slug)]),
+  ];
 
   // Trips their travellers published (/plans). A database that is down or
   // not configured leaves them out rather than failing the whole sitemap.

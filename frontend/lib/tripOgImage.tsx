@@ -111,7 +111,14 @@ export async function tripOgImage(input: TripOgInput): Promise<ImageResponse> {
  * Next itself uses for images; if it is ever missing, the PNG is served
  * rather than nothing. */
 export async function tripOgJpeg(input: TripOgInput): Promise<Response> {
-  const png = Buffer.from(await (await tripOgImage(input)).arrayBuffer());
+  return asJpeg(await tripOgImage(input));
+}
+
+/** Any ImageResponse, re-encoded as JPEG (see tripOgJpeg). The
+ * destination guides' share images use it too: a full-bleed photo as PNG
+ * was 1.4 MB. */
+export async function asJpeg(image: Response): Promise<Response> {
+  const png = Buffer.from(await image.arrayBuffer());
   const headers = { "Cache-Control": "public, max-age=3600, s-maxage=86400" };
   try {
     const sharp = (await import("sharp")).default;

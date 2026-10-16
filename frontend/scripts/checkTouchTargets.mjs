@@ -114,6 +114,7 @@ const PAGES = [
   "/account",
   "/account/visited",
   "/destinations",
+  "/bg/destinations",
   "/showcase",
   "/decide-for-me",
   "/why-decide",
@@ -149,6 +150,9 @@ const ROUTES_NOT_CHECKED = {
   // Measured, but through a real slug rather than the literal route - see
   // GUIDE_PAGE below.
   "/destinations/[slug]": "measured through a real slug instead",
+  // The same component as the English guide (components/destinations/
+  // DestinationGuide.tsx), only the words differ.
+  "/bg/destinations/[slug]": "same component as /destinations/[slug], measured there",
 };
 
 /** One real city guide, resolved from the destination list rather than

@@ -54,6 +54,7 @@ import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import { safeHref } from "@/lib/linkify";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { destinationsPath } from "@/lib/destinationPaths";
 
 // ssr: false is not optional - three.js touches document at construction
 // time and throws during server rendering. Same rule the visited globe
@@ -170,7 +171,6 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
     [landed]
   );
   const countryName = landed ? getCountryName(landed.code, language) : "";
-  const suffix = language === "bg" ? "?lang=bg" : "";
 
   // Still deciding whether the globe can be drawn. Nothing, rather than a
   // flash of the no-globe version and an apology for it, replaced a frame
@@ -275,7 +275,7 @@ export function GlobeDart({ t, language }: { t: Dictionary; language: Language }
                         {spinCityName(slug, language)}
                       </Link>
                     ))}
-                    <Link href={`/destinations/${guides[0]}${suffix}`} className="font-ui spin-guide">
+                    <Link href={destinationsPath(language, guides[0])} className="font-ui spin-guide">
                       {t.spin.readGuide}
                     </Link>
                   </div>

@@ -60,6 +60,7 @@ const PAGES = [
   "/account/visited",
   "/destinations",
   "/destinations/rome",
+  "/bg/destinations/rome",
   "/showcase",
   "/decide-for-me",
   "/why-decide",

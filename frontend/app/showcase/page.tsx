@@ -18,6 +18,7 @@ import { HeaderNavProvider, HeaderNavRow, HeaderNavToggle } from "@/components/H
 import { TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 import { SHARE_CARD } from "@/lib/shareCard";
+import { destinationsPath } from "@/lib/destinationPaths";
 
 export const dynamic = "force-dynamic"; // always fresh, never statically cached
 export const runtime = "nodejs";
@@ -205,7 +206,7 @@ export default async function ShowcasePage({
               <h2 className="font-display showcase-empty-heading">{t.showcase.emptyHeading}</h2>
               <p className="showcase-empty-text">{t.showcase.emptyState}</p>
               <div className="showcase-empty-actions">
-                <Link href={`/destinations${langSuffix}`} className="font-ui btn-primary">
+                <Link href={destinationsPath(language)} className="font-ui btn-primary">
                   {t.showcase.emptyGuides}
                 </Link>
                 <Link href={`/${langSuffix}`} className="font-ui showcase-empty-link">

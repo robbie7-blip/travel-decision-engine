@@ -32,6 +32,7 @@ import Link from "next/link";
 import { SiteHeader } from "./SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { destinationsPath } from "@/lib/destinationPaths";
 
 /** The illustration, as a file rather than inline.
  *
@@ -100,7 +101,7 @@ export function DeadEndView({ kind, onRetry }: { kind: "not-found" | "error"; on
                   <Link href={`/${suffix}`} className="font-ui btn-primary">
                     {t.notFound.planTrip}
                   </Link>
-                  <Link href={`/destinations${suffix}`} className="font-ui dead-end-link">
+                  <Link href={destinationsPath(language)} className="font-ui dead-end-link">
                     {t.notFound.guides}
                   </Link>
                   <Link href={`/decide-for-me${suffix}`} className="font-ui dead-end-link">

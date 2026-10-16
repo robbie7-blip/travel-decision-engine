@@ -26,6 +26,7 @@ import { LAST_SEARCH_KEY, restoreLastSearch, serializeLastSearch } from "@/lib/l
 import { localDateOf } from "@/lib/today";
 import { translatePartyComposition } from "@/lib/partyPresets";
 import type { Language } from "@/lib/types";
+import { destinationsPath } from "@/lib/destinationPaths";
 
 type Status = "idle" | "loading" | "error";
 
@@ -387,7 +388,7 @@ export default function Home() {
                   destination in mind, was the one person who never saw it. */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px", marginTop: 6 }}>
                 <Link
-                  href={form.language === "bg" ? "/destinations?lang=bg" : "/destinations"}
+                  href={destinationsPath(form.language)}
                   className="font-ui inline-link"
                   style={{
                     fontSize: 12,

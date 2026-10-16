@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 import { HouseGlyph } from "./HouseGlyph";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import { destinationsPath } from "@/lib/destinationPaths";
 
 // One small monoline glyph per nav item - the plain-text pills read as flat
 // and generic on the pages where nothing is "active" yet. (That used to
@@ -103,7 +104,7 @@ export function NavMenu({
     // alike, rather than four more hand-written links.
     { href: `/${langSuffix}`, label: t.navHome, icon: NAV_ICONS.home },
     { href: `/why-decide${langSuffix}`, label: t.whyDecide.navLink, icon: NAV_ICONS.whyDecide },
-    { href: `/destinations${langSuffix}`, label: t.browseDestinations, icon: NAV_ICONS.destinations },
+    { href: destinationsPath(language), label: t.browseDestinations, icon: NAV_ICONS.destinations },
     { href: `/showcase${langSuffix}`, label: t.showcase.navLabel, icon: NAV_ICONS.showcase },
     { href: "/ask", label: t.tripQA.navLink, icon: NAV_ICONS.ask },
     { href: `/decide-for-me${langSuffix}`, label: t.spin.navLink, icon: NAV_ICONS.spin },

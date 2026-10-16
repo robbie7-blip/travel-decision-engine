@@ -2650,7 +2650,7 @@ const bg: Dictionary = {
     moreGuides: "Още пътеводители",
     photoCredit: "Снимка:",
     metaIndexDescription: "Какво decide вече знае за 18 града, преди изобщо да направи търсене на живо.",
-    metaDetailTitle: "{city} - бележки за пътуване - decide",
+    metaDetailTitle: "Пътуване до {city}: какво да знаеш - decide",
     metaDetailDescription:
       "Какво decide вече знае за {city}, преди изобщо да направи търсене на живо: придвижване, реални разходи и какво пропускат местните.",
   },

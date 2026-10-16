@@ -24,6 +24,7 @@ import { DESTINATION_PHOTO_CREDITS } from "@/lib/destinationPhotoCredits";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 import { safeHref } from "@/lib/linkify";
+import { destinationsPath } from "@/lib/destinationPaths";
 
 /** Hand-ordered, not the whole set of 24: these are the frames worth
  * leading with, and the first one is the page's largest image so it is
@@ -79,7 +80,6 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
   // WebP. Keeping both would have downloaded the original AND the
   // optimised copy, making this change worse than no change.
   const nextSlug = FRAMES[(index + 1) % FRAMES.length];
-  const suffix = language === "bg" ? "?lang=bg" : "";
   // These are Wikimedia photographs and most of their licences require the
   // photographer, the licence and a link back. Rendered wherever the photo
   // is, not only on the guide page it came from.
@@ -95,7 +95,7 @@ export function HeroGallery({ t, language }: { t: Dictionary; language: Language
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <Link href={`/destinations/${slug}${suffix}`} className="hero-gallery-link">
+      <Link href={destinationsPath(language, slug)} className="hero-gallery-link">
         {/* next/image, not <img>, and this is the whole point of the
             change: the raw files are 42kB to 549kB of JPEG, six of them
             1200-1600px wide, and they render into a box measured at 326px
