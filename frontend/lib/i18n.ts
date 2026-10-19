@@ -531,6 +531,9 @@ export interface Dictionary {
     cta: string;
     note: string;
     browse: string;
+    /** The public page's description, in place of the trip's own summary
+     * (written for the traveller, so it can be personal). "{title}". */
+    description: string;
   };
   // Homepage footer band translating the confidence-tier system into plain
   // language (see components/TrustFooter.tsx) - decide's answer to a
@@ -1394,6 +1397,7 @@ const en: Dictionary = {
     cta: "Plan a trip like this",
     note: "Planned with decide and shared by the traveller. Prices and opening hours were checked when it was planned and may have changed since.",
     browse: "More trips",
+    description: "{title}, day by day: every place, when to go, and how sure decide is of each one.",
   },
   trustFooter: {
     heading: "Why the numbers can be trusted",
@@ -2240,6 +2244,7 @@ const bg: Dictionary = {
     cta: "Планирай пътуване като това",
     note: "Планирано с decide и споделено от пътуващия. Цените и работното време са проверени при планирането и може да са се променили.",
     browse: "Още пътувания",
+    description: "{title}, ден по ден: всяко място, кога да отидеш и колко сигурен е decide във всяко.",
   },
   trustFooter: {
     heading: "Защо на цифрите може да се вярва",

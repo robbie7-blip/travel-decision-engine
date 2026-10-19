@@ -78,7 +78,9 @@ export async function POST(request: NextRequest) {
       ownerEmail: mine.email,
       language,
       title: publishedTitle(brief.destinations, dayCount, language),
-      summary: typeof itinerary.trip_summary === "string" ? itinerary.trip_summary.slice(0, 600) : "",
+      // Not the trip's summary: it is written to this traveller and can be
+      // personal. The page describes itself (t.plans.description).
+      summary: "",
       destinations: brief.destinations,
       dayCount,
       party: brief.party_composition || null,

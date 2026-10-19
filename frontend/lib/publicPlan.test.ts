@@ -25,10 +25,9 @@ const full = {
 };
 
 const pub = publicItinerary(full) as unknown as Record<string, unknown> & { days: { items: Record<string, unknown>[] }[] };
-assert.equal(pub.trip_summary, "Three days in Rome.");
-for (const key of ["budget_feasibility", "key_decisions", "things_to_skip", "pushback_response"]) assert.ok(!(key in pub), `no ${key}`);
+for (const key of ["trip_summary", "budget_feasibility", "key_decisions", "things_to_skip", "pushback_response"]) assert.ok(!(key in pub), `no ${key}`);
 assert.deepEqual(pub.days[0].items.map((i) => i.title), ["Check in", "Pantheon"], "no flight; decide's hotel suggestion stays");
-assert.equal(pub.days[0].items[1].reasoning, "Free.", "the why of a place stays");
+assert.ok(!("reasoning" in pub.days[0].items[1]), "no line's why: it was written to the traveller");
 assert.equal(pub.days[0].items[1].google_lat, 41.9, "the map still has its pins");
 assert.ok(!("google_place_id" in pub.days[0].items[1]) && !("source_urls" in pub.days[0].items[1]), "only listed fields");
 assert.ok(!JSON.stringify(pub).includes("600") && !JSON.stringify(pub).includes("wheelchair") && !JSON.stringify(pub).includes("Sofia"));

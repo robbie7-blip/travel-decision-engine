@@ -33,7 +33,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const trip = await load(slug);
   if (!trip) return { title: "decide" };
   const title = `${trip.title} - decide`;
-  const description = trip.summary.slice(0, 200);
+  // Never the stored summary: pages published before lib/publicPlan.ts
+  // still hold the traveller's own, which can be personal.
+  const description = TRANSLATIONS[trip.language].plans.description.replace("{title}", trip.title);
   return {
     title,
     description,
@@ -62,7 +64,7 @@ export default async function PublishedTripPage({ params }: { params: Promise<{ 
         <p className="font-ui plan-eyebrow">{trip.destinations.join(" · ")}</p>
         <h1 className="font-display plan-title">{trip.title}</h1>
         <p className="font-ui plan-meta">{meta}</p>
-        {trip.summary && <p className="plan-summary">{trip.summary}</p>}
+        <p className="plan-summary">{t.plans.description.replace("{title}", trip.title)}</p>
         <p>
           <Link
             href={`/?dest=${encodeURIComponent(trip.destinations.join(", "))}${langSuffix}`}

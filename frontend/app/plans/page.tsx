@@ -43,7 +43,6 @@ export default async function PlansIndexPage({ searchParams }: { searchParams: P
                   <span className="font-ui plan-card-meta">
                     {(trip.party ? t.plans.metaParty.replace("{party}", trip.party) : t.plans.meta).replace("{days}", String(trip.dayCount))}
                   </span>
-                  {trip.summary && <span className="plan-card-summary">{trip.summary}</span>}
                 </Link>
               </li>
             ))}

@@ -2,6 +2,7 @@
 
 import { getDb } from "@/lib/db";
 import { getPublished } from "@/lib/tripsQuery";
+import { TRANSLATIONS } from "@/lib/i18n";
 import { OG_SIZE, tripOgJpeg } from "@/lib/tripOgImage";
 
 export const runtime = "nodejs";
@@ -16,6 +17,7 @@ export default async function PublishedTripOgImage({ params }: { params: Promise
   return tripOgJpeg({
     destinations: trip?.destinations ?? [],
     title: trip?.title ?? "decide",
-    summary: trip?.summary ?? "",
+    // Not the stored summary, which can be personal (lib/publicPlan.ts).
+    summary: trip ? TRANSLATIONS[trip.language].plans.description.replace("{title}", trip.title) : "",
   });
 }

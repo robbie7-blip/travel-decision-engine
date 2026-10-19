@@ -4,7 +4,12 @@
 // itinerary is model output written FOR this traveller, and several parts
 // of it are about them rather than about the place - whether their budget
 // is enough, the decisions made around their constraints, their flight
-// from home. Those are left out; the days and the places in them stay.
+// from home, and every sentence the model wrote to this traveller - the
+// trip summary and each line's "why", which can say "fits your EUR 900
+// budget" or "step-free for your wheelchair". Those are left out; the days
+// and the places in them stay. (Rewriting the "why" lines into a public-
+// safe version on publish is a possible later step; it costs a model call
+// per published trip.)
 // Lodging lines stay too: they are always decide's own suggestion (a
 // traveller who already has somewhere to stay gets no lodging lines at
 // all, see needs_lodging in lib/types.ts), so they are part of the guide.
@@ -21,7 +26,6 @@ const ITEM_FIELDS = [
   "venue_name",
   "location",
   "cost_estimate_eur",
-  "reasoning",
   "confidence_tier",
   "source_confidence",
   "google_maps_url",
@@ -55,8 +59,5 @@ export function publicItinerary(itinerary: unknown): Itinerary {
       items: (Array.isArray(d.items) ? d.items : []).filter(isPublicItem).map(publicItem),
     } as unknown as ItineraryDay;
   });
-  return {
-    ...(typeof src.trip_summary === "string" ? { trip_summary: src.trip_summary } : {}),
-    days,
-  } as unknown as Itinerary;
+  return { days } as unknown as Itinerary;
 }
