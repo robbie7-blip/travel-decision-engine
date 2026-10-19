@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "tsx src/index.ts",
+    "start": "exec tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "lint": "eslint .",
     "test:pipeline": "WORKER_NO_AUTOSTART=1 tsx src/pipeline.test.ts",

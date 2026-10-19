@@ -124,6 +124,7 @@ import {
   type ModelUsage,
 } from "./costBudget";
 import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "./types";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 12000;
@@ -930,15 +931,22 @@ async function callModel(
  * include_lodging shipped a multi-night trip with no accommodation - but it
  * now costs a full extra plan call whenever the model omits one field, and
  * it did so without saying a word. */
-const retryCounts = new Map<string, number>();
+/** Per job, not per process. This worker runs several jobs at once, and
+ * a single shared map meant each job's reset wiped the counts of the
+ * others in flight, and their retries landed on each other's diagnostics.
+ * processJob runs each job inside its own store; the shared map is only
+ * for code called outside a job (the test suites). */
+const retryScope = new AsyncLocalStorage<Map<string, number>>();
+const sharedRetryCounts = new Map<string, number>();
+const retryCountsNow = (): Map<string, number> => retryScope.getStore() ?? sharedRetryCounts;
 
 /** Retries counted for `label` since the last reset. */
 export function retriesFor(label: string): number {
-  return retryCounts.get(label) ?? 0;
+  return retryCountsNow().get(label) ?? 0;
 }
 
 export function resetRetryCounts(): void {
-  retryCounts.clear();
+  retryCountsNow().clear();
 }
 
 /** Generic over the call's result type so the two-phase generator's skeleton
@@ -953,7 +961,7 @@ async function withOneRetryOf<T>(fn: () => Promise<T>, label = "model call"): Pr
       // Model occasionally returns malformed JSON - non-deterministic,
       // one retry usually succeeds. Counted and logged, because the retry
       // doubles this stage and used to do it in silence.
-      retryCounts.set(label, (retryCounts.get(label) ?? 0) + 1);
+      retryCountsNow().set(label, (retryCountsNow().get(label) ?? 0) + 1);
       console.warn(`[worker] ${label} came back unusable (${e.message}) - retrying once, which doubles this stage`);
       return await fn();
     }
@@ -2895,7 +2903,11 @@ async function recordWorkerFailure(redis: Redis, failure: WorkerFailure): Promis
   }
 }
 
-export async function processJob(redis: Redis, client: Anthropic, id: string): Promise<void> {
+export function processJob(redis: Redis, client: Anthropic, id: string): Promise<void> {
+  return retryScope.run(new Map(), () => processJobInScope(redis, client, id));
+}
+
+async function processJobInScope(redis: Redis, client: Anthropic, id: string): Promise<void> {
   const raw = await redis.get(jobKey(id));
   if (!raw) {
     console.error(`[worker] job ${id} not found (expired?), skipping`);
@@ -2950,6 +2962,14 @@ export async function processJob(redis: Redis, client: Anthropic, id: string): P
   // See briefShape.ts for what is coerced and what is fatal. The repairs
   // are logged loudly: a job that only ran because of this gate should not
   // look like an ordinary one.
+  // Already finished: a job put back on the queue by a shutting-down
+  // worker (see shutDown) may have completed in the moment before it was.
+  // Generating it again would only pay for the same trip twice.
+  if (job.status === "done") {
+    console.warn(`[worker] job ${id} is already done - skipping`);
+    return;
+  }
+
   const checked = checkBrief(job.brief);
   if (!checked.ok) {
     console.error(`[worker] job ${id} has an unusable brief (${checked.problem.reason}) - refusing before any model call`);
@@ -3945,18 +3965,75 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
   // scoped to this connection so the shared one keeps its bounded retries
   // and can't hang a job forever on a transient Redis error (see redis.ts).
   const queueConn = sharedRedis.duplicate({ maxRetriesPerRequest: null });
+  listening++;
   try {
-    for (;;) {
-      const popped = await queueConn.brpop(JOBS_QUEUE_KEY, 0); // blocks until a job arrives
+    while (!stopping) {
+      // A few seconds at a time rather than forever, so a shutdown is
+      // noticed between waits instead of by cutting the connection - which
+      // could lose a job Redis had already handed over.
+      const popped = await queueConn.brpop(JOBS_QUEUE_KEY, QUEUE_WAIT_SECONDS);
       if (!popped) continue;
       const [, id] = popped;
-      await processJob(sharedRedis, client, id).catch((e) => {
-        console.error(`[worker ${consumerId}] unhandled error processing ${id}:`, e);
-      });
+      if (stopping) {
+        // Handed over mid-shutdown: straight back, for the next worker.
+        await sharedRedis.rpush(JOBS_QUEUE_KEY, id).catch((e) => console.error(`[worker] could not put ${id} back:`, e));
+        break;
+      }
+      inFlight.add(id);
+      await processJob(sharedRedis, client, id)
+        .catch((e) => {
+          console.error(`[worker ${consumerId}] unhandled error processing ${id}:`, e);
+        })
+        .finally(() => inFlight.delete(id));
     }
   } finally {
+    listening--;
     queueConn.disconnect();
   }
+}
+
+/** A deploy or restart, handled without dropping anyone's trip.
+ *
+ * Railway stops the old worker with SIGTERM when a new one is up. Before
+ * this, a trip being generated at that moment simply died with the
+ * process: its record said "running" until the page called it stalled,
+ * four minutes later. Now the worker stops taking new jobs, gives the ones
+ * in flight time to finish (a generation is about thirty seconds), and
+ * puts any that did not back at the FRONT of the queue for the new worker
+ * to start again. Restarted, a trip costs a second generation; dropped, it
+ * cost the traveller four minutes and a retry.
+ *
+ * The wait only helps if Railway waits too: RAILWAY_DEPLOYMENT_DRAINING_SECONDS
+ * on the worker service sets how long it does before killing the process. */
+let stopping = false;
+const inFlight = new Set<string>();
+/** Consumers still waiting on the queue. Jobs are put back only once this
+ * is zero: while any consumer is mid-wait, a job pushed back would be
+ * handed straight to it - in this process, which is about to exit. */
+let listening = 0;
+const QUEUE_WAIT_SECONDS = 5;
+const SHUTDOWN_GRACE_MS = Number(process.env.WORKER_SHUTDOWN_GRACE_MS) > 0 ? Number(process.env.WORKER_SHUTDOWN_GRACE_MS) : 40_000;
+
+export async function shutDown(redis: Redis, signal: string): Promise<void> {
+  if (stopping) return;
+  stopping = true;
+  console.log(`[worker] ${signal}: taking no new jobs, waiting up to ${SHUTDOWN_GRACE_MS / 1000}s for ${inFlight.size} in flight`);
+  const deadline = Date.now() + SHUTDOWN_GRACE_MS;
+  while (inFlight.size > 0 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 250));
+  // Every consumer's current wait ends within QUEUE_WAIT_SECONDS; a
+  // consumer still inside a job never listens again (stopping is set).
+  const listenDeadline = Date.now() + QUEUE_WAIT_SECONDS * 1000 + 2000;
+  while (listening > inFlight.size && Date.now() < listenDeadline) await new Promise((r) => setTimeout(r, 100));
+  const unfinished = [...inFlight];
+  if (unfinished.length > 0) {
+    // RPUSH: BRPOP takes from the right, so these are the next jobs any
+    // worker picks up, ahead of trips queued after them.
+    await redis.rpush(JOBS_QUEUE_KEY, ...unfinished).catch((e) => {
+      console.error(`[worker] could not put ${unfinished.join(", ")} back on the queue:`, e);
+    });
+    console.warn(`[worker] put ${unfinished.length} unfinished job(s) back on the queue: ${unfinished.join(", ")}`);
+  }
+  process.exit(0);
 }
 
 /** Environment variables the health page asks about by name. Listing them
@@ -4041,6 +4118,11 @@ async function main() {
   startHeartbeat(redis);
   // Postgres schema and the expiry sweep; a no-op without DATABASE_URL.
   startDbMaintenance();
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.on(signal, () => {
+      void shutDown(redis, signal);
+    });
+  }
   await Promise.all(
     Array.from({ length: WORKER_CONCURRENCY }, (_, i) => runConsumer(i, redis, client))
   );
