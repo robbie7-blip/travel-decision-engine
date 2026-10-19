@@ -46,13 +46,13 @@ async function main() {
   section("taking and finishing");
   await markAlive(redis, "a");
   await redis.lpush(JOBS_QUEUE_KEY, "j1", "j2"); // queue: [j2, j1], j1 at the front (right)
-  check("the oldest job is taken first", (await takeJob(blocking, "a", 1)) === "j1");
+  check("the oldest job is taken first", (await takeJob(blocking, redis, "a", 1)) === "j1");
   check("and moved, not removed: it is in the worker's list", JSON.stringify(await redis.lrange(processingKey("a"), 0, -1)) === '["j1"]');
   check("and no longer in the queue", JSON.stringify(await redis.lrange(JOBS_QUEUE_KEY, 0, -1)) === '["j2"]');
   await finishJob(redis, "a", "j1");
   check("finished: out of the worker's list", (await redis.llen(processingKey("a"))) === 0);
-  check("then the next", (await takeJob(blocking, "a", 1)) === "j2");
-  check("an empty queue waits, then gives nothing", (await takeJob(blocking, "a", 1)) === null);
+  check("then the next", (await takeJob(blocking, redis, "a", 1)) === "j2");
+  check("an empty queue waits, then gives nothing", (await takeJob(blocking, redis, "a", 1)) === null);
 
   section("a job taken during shutdown goes straight back to the front");
   await redis.lpush(JOBS_QUEUE_KEY, "j3");
@@ -71,7 +71,7 @@ async function main() {
   await redis.set(jobKey("done1"), job("done1", "done"));
   await redis.set(jobKey("err1"), job("err1", "error"));
   await redis.lpush(JOBS_QUEUE_KEY, "run1", "run2", "wrapped", "done1", "err1", "queued");
-  for (let i = 0; i < 5; i++) await takeJob(blocking, "dead", 1);
+  for (let i = 0; i < 5; i++) await takeJob(blocking, redis, "dead", 1);
   check("the dead worker held five", (await redis.llen(processingKey("dead"))) === 5);
   check("nothing is recovered while it is alive", (await recoverDeadWorkers(redis, "live")).length === 0);
   await redis.del(aliveKey("dead"));
@@ -97,7 +97,7 @@ async function main() {
   await markAlive(redis, "gone");
   await redis.set(jobKey("x"), job("x", "running"));
   await redis.lpush(JOBS_QUEUE_KEY, "x");
-  await takeJob(blocking, "gone", 1);
+  await takeJob(blocking, redis, "gone", 1);
   await redis.del(aliveKey("gone"));
   const [r1, r2] = await Promise.all([recoverDeadWorkers(redis, "live"), recoverDeadWorkers(redis, "other")]);
   check("the job is put back once, not twice", r1.length + r2.length === 1 && (await redis.lrange(JOBS_QUEUE_KEY, 0, -1)).filter((v) => v === "x").length === 1);

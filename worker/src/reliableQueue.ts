@@ -3,9 +3,9 @@
 // BRPOP removes a job from the queue the moment a worker takes it, so a
 // worker that died mid-generation - a deploy, a crash, running out of
 // memory - took the job with it: its record said "running" until the page
-// called it stalled four minutes later. Here a job is MOVED, atomically,
-// into this worker's own processing list (BLMOVE) and only removed from it
-// once its final record is written. Each worker keeps a short-lived
+// called it stalled four minutes later. Here a job is recorded in this
+// worker's own processing list the moment it is taken (see takeJob) and
+// only removed from it once its final record is written. Each worker keeps a short-lived
 // "alive" key; any other worker that finds a registered worker with no
 // alive key puts that worker's unfinished jobs back on the queue.
 //
@@ -47,12 +47,24 @@ export async function markAlive(redis: Redis, worker: string): Promise<void> {
   await redis.multi().set(aliveKey(worker), String(Date.now()), "EX", ALIVE_TTL_SECONDS).sadd(WORKERS_KEY, worker).exec();
 }
 
-/** The next job, moved into this worker's processing list in the same
- * step it leaves the queue. Blocks until one arrives (`timeoutSeconds` 0)
- * or the connection is closed. `conn` must allow blocking
- * (maxRetriesPerRequest: null). */
-export async function takeJob(conn: Redis, worker: string, timeoutSeconds = 0): Promise<string | null> {
-  return conn.blmove(JOBS_QUEUE_KEY, processingKey(worker), "RIGHT", "LEFT", timeoutSeconds);
+/** The next job, recorded in this worker's processing list as soon as it
+ * leaves the queue. Blocks until one arrives (`timeoutSeconds` 0) or the
+ * connection is closed. `conn` must allow blocking
+ * (maxRetriesPerRequest: null); `redis` is the ordinary connection.
+ *
+ * BRPOP then LPUSH, not BLMOVE. BLMOVE does the move in one step and was
+ * the first version of this - and the production Upstash database
+ * refused it (an error on every attempt, in the worker's deploy log),
+ * although Upstash's documentation lists it. BRPOP is what this worker
+ * has always run on that database. The cost is a gap of one round trip
+ * between taking the job and recording it, in which a crash would lose it
+ * as before; everything after that is recovered. */
+export async function takeJob(conn: Redis, redis: Redis, worker: string, timeoutSeconds = 0): Promise<string | null> {
+  const popped = await conn.brpop(JOBS_QUEUE_KEY, timeoutSeconds);
+  if (!popped) return null;
+  const id = popped[1];
+  await redis.lpush(processingKey(worker), id);
+  return id;
 }
 
 /** The job's final record is written: it is no longer this worker's to
@@ -61,7 +73,7 @@ export async function finishJob(redis: Redis, worker: string, id: string): Promi
   await redis.lrem(processingKey(worker), 1, id);
 }
 
-/** Straight back to the FRONT of the queue (BLMOVE takes from the right),
+/** Straight back to the FRONT of the queue (BRPOP takes from the right),
  * in one step, for a job taken but not started. */
 export async function returnJob(redis: Redis, worker: string, id: string): Promise<void> {
   await redis.multi().lrem(processingKey(worker), 1, id).rpush(JOBS_QUEUE_KEY, id).exec();
@@ -72,8 +84,8 @@ export async function returnJob(redis: Redis, worker: string, id: string): Promi
  * to the front of the queue (oldest first), finished ones are dropped, and
  * it leaves the registry.
  *
- * Atomic so nothing can happen in between: no BLMOVE can land a job in
- * the list after it was read and before it was deleted, no second sweeper
+ * Atomic so nothing can happen in between: no job can land in the list
+ * after it was read and before it was deleted, no second sweeper
  * can put the same jobs back, and a job whose "done" record lands at the
  * same moment stays done - either this sees "done", or the worker that
  * picks it up reads "done" and skips it.
@@ -111,7 +123,7 @@ end
 return recovered
 `;
 
-/** See SWEEP_SCRIPT. The processing list is newest-first (BLMOVE pushes
+/** See SWEEP_SCRIPT. The processing list is newest-first (takeJob pushes
  * on the left), and each RPUSH lands at the front of the queue, so the
  * oldest ends up first in line. */
 export async function recoverDeadWorkers(redis: Redis, self: string): Promise<string[]> {

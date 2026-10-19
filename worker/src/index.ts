@@ -3974,16 +3974,20 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
   queueConns.add(queueConn);
   try {
     while (!stopping) {
-      // Moved into this worker's processing list in the same step it
-      // leaves the queue (reliableQueue.ts), so a worker that dies with it
-      // does not lose it. Blocks until a job comes; a shutdown closes the
+      // Recorded in this worker's processing list as it leaves the queue
+      // (reliableQueue.ts), so a worker that dies with it does not lose it. Blocks until a job comes; a shutdown closes the
       // connection, which ends the wait.
       let id: string | null;
       try {
-        id = await takeJob(queueConn, WORKER_ID);
+        id = await takeJob(queueConn, sharedRedis, WORKER_ID);
       } catch (e) {
         if (stopping) break;
-        throw e;
+        // Logged and retried, never fatal. An error here used to end the
+        // consumer, which ended the process, which Railway restarted into
+        // the same error - a worker that never takes a single job.
+        console.error(`[worker ${consumerId}] could not take a job from the queue, retrying in 5s:`, e);
+        await new Promise((r) => setTimeout(r, 5000));
+        continue;
       }
       if (!id) continue;
       if (stopping) {
