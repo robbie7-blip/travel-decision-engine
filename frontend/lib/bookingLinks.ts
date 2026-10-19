@@ -22,6 +22,17 @@
 //   CJ wins if both are set. GetYourGuide still runs its own programme:
 //   NEXT_PUBLIC_GYG_PARTNER_ID.
 //
+//   BOOKING.COM BY COUNTRY. On CJ Booking.com is several programmes, each
+//   paying only for travellers in its own countries (North America is the
+//   US and Canada). NEXT_PUBLIC_CJ_BOOKING_AIDS names a link id per
+//   country, e.g. "US:111,CA:111,EU:222,*:333" - ISO country codes, "EU"
+//   for the 27 EU countries, "*" for everyone else. With it set, a hotel
+//   link goes through /go/booking (app/go/booking/route.ts), which picks
+//   the programme by the traveller's country when they click - so it is
+//   right in an email opened abroad too. A country with no programme gets
+//   the plain Booking.com search. The single NEXT_PUBLIC_CJ_BOOKING_AID
+//   still works, for everyone, when the list is not set.
+//
 // Run: npm run test:booking-links
 
 import type { ItineraryDay, ItineraryItem } from "./types";
@@ -29,6 +40,9 @@ import type { ItineraryDay, ItineraryItem } from "./types";
 export interface AffiliateIds {
   /** Both or neither: a CJ deep link needs the property and the ad. */
   cj?: { pid: string; bookingAid: string };
+  /** A Booking.com link id per country (see the header), with the CJ
+   * property id. Wins over `cj`: the link goes through /go/booking. */
+  cjRegional?: { pid: string; aids: Record<string, string> };
   /** Both or neither: an Awin link needs the publisher and the advertiser. */
   awin?: { publisherId: string; bookingMid: string };
   gygPartnerId?: string;
@@ -48,6 +62,35 @@ const ID = /^[A-Za-z0-9_-]{1,40}$/;
 const str = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
+/** The 27 EU member states, for "EU" in NEXT_PUBLIC_CJ_BOOKING_AIDS. */
+export const EU_COUNTRIES = [
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+  "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+];
+
+/** "US:111,CA:111,EU:222,*:333" -> { US: "111", CA: "111", AT: "222", ..., "*": "333" }.
+ * Entries that do not look right are dropped, not guessed at. A country
+ * named on its own beats the same country inside "EU", wherever it is
+ * written. */
+export function parseBookingAids(raw: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  const explicit: Record<string, string> = {};
+  for (const part of (raw ?? "").split(",")) {
+    const [rawKey, rawAid] = part.split(":").map((x) => x?.trim() ?? "");
+    const key = rawKey.toUpperCase();
+    if (!/^\d{1,12}$/.test(rawAid)) continue;
+    if (key === "EU") for (const c of EU_COUNTRIES) out[c] ??= rawAid;
+    else if (key === "*" || /^[A-Z]{2}$/.test(key)) explicit[key] = rawAid;
+  }
+  return { ...out, ...explicit };
+}
+
+/** The Booking.com link id for a traveller in `country`, or null. */
+export function bookingAidFor(aids: Record<string, string>, country: string | null | undefined): string | null {
+  const code = (country ?? "").trim().toUpperCase();
+  return (/^[A-Z]{2}$/.test(code) ? aids[code] : undefined) ?? aids["*"] ?? null;
+}
+
 /** The configured ids, each only if it looks like an id. Read at build
  * time (NEXT_PUBLIC_), which is when Next inlines them. */
 export function affiliateIds(): AffiliateIds {
@@ -56,7 +99,9 @@ export function affiliateIds(): AffiliateIds {
   const cjPid = process.env.NEXT_PUBLIC_CJ_PID?.trim();
   const cjAid = process.env.NEXT_PUBLIC_CJ_BOOKING_AID?.trim();
   const gyg = process.env.NEXT_PUBLIC_GYG_PARTNER_ID?.trim();
+  const aids = parseBookingAids(process.env.NEXT_PUBLIC_CJ_BOOKING_AIDS);
   return {
+    ...(cjPid && /^\d{1,12}$/.test(cjPid) && Object.keys(aids).length > 0 ? { cjRegional: { pid: cjPid, aids } } : {}),
     ...(cjPid && cjAid && /^\d{1,12}$/.test(cjPid) && /^\d{1,12}$/.test(cjAid) ? { cj: { pid: cjPid, bookingAid: cjAid } } : {}),
     ...(publisherId && bookingMid && ID.test(publisherId) && ID.test(bookingMid)
       ? { awin: { publisherId, bookingMid } }
@@ -66,7 +111,39 @@ export function affiliateIds(): AffiliateIds {
 }
 
 export function hasAffiliates(ids: AffiliateIds): boolean {
-  return Boolean(ids.cj || ids.awin || ids.gygPartnerId);
+  return Boolean(ids.cjRegional || ids.cj || ids.awin || ids.gygPartnerId);
+}
+
+/** Where /go/booking sends a traveller: the CJ programme for their
+ * country, else Awin, else the plain search. `target` must be a
+ * Booking.com search - anything else is refused (null), so the route can
+ * never be used to send someone to another site. */
+export function bookingRedirectFor(target: string, country: string | null | undefined, ids: AffiliateIds): string | null {
+  let url: URL;
+  try {
+    url = new URL(target);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.hostname !== "www.booking.com" || url.username || url.password || url.port) return null;
+  const clean = url.toString();
+  const aid = ids.cjRegional ? bookingAidFor(ids.cjRegional.aids, country) : null;
+  if (ids.cjRegional && aid) return cjLink(ids.cjRegional.pid, aid, clean);
+  if (ids.cj) return cjLink(ids.cj.pid, ids.cj.bookingAid, clean);
+  if (ids.awin) return awinLink(ids.awin, clean);
+  return clean;
+}
+
+/** CJ's deep link: the click is recorded against the ad, then the
+ * traveller lands on exactly this search. */
+function cjLink(pid: string, aid: string, url: string): string {
+  return `https://www.anrdoezrs.net/click-${pid}-${aid}?url=${encodeURIComponent(url)}`;
+}
+
+/** Awin's deep link: their redirect records the click, then sends the
+ * traveller on to exactly this search. */
+function awinLink(awin: { publisherId: string; bookingMid: string }, url: string): string {
+  return `https://www.awin1.com/cread.php?${new URLSearchParams({ awinmid: awin.bookingMid, awinaffid: awin.publisherId, ued: url })}`;
 }
 
 /** Check-in and check-out for each stay, keyed "day:index". A hotel that
@@ -101,7 +178,8 @@ export function stayDates(days: ItineraryDay[], endDate: string | undefined): Ma
 export function bookingLinkFor(
   item: ItineraryItem,
   stay: { checkIn: string; checkOut?: string } | undefined,
-  ids: AffiliateIds
+  ids: AffiliateIds,
+  options: { site?: string } = {}
 ): BookingLink | null {
   const place = str(item.venue_name);
   const where = str(item.location);
@@ -117,20 +195,15 @@ export function bookingLinkFor(
       params.set("checkout", stay.checkOut);
     }
     const url = `https://www.booking.com/searchresults.html?${params}`;
-    if (ids.cj) {
-      // CJ's deep link: the click is recorded against the ad, then the
-      // traveller lands on exactly this search.
-      return {
-        kind: "stay",
-        url: `https://www.anrdoezrs.net/click-${ids.cj.pid}-${ids.cj.bookingAid}?url=${encodeURIComponent(url)}`,
-        affiliate: true,
-      };
+    if (ids.cjRegional) {
+      // Through our own redirect, which knows the traveller's country.
+      // Absolute when a site is given (an email), relative on the site.
+      const go = `/go/booking?${new URLSearchParams({ u: url })}`;
+      return { kind: "stay", url: `${(options.site ?? "").replace(/\/$/, "")}${go}`, affiliate: true };
     }
-    if (!ids.awin) return { kind: "stay", url, affiliate: false };
-    // Awin's deep link: their redirect records the click, then sends the
-    // traveller on to exactly this search.
-    const awin = new URLSearchParams({ awinmid: ids.awin.bookingMid, awinaffid: ids.awin.publisherId, ued: url });
-    return { kind: "stay", url: `https://www.awin1.com/cread.php?${awin}`, affiliate: true };
+    if (ids.cj) return { kind: "stay", url: cjLink(ids.cj.pid, ids.cj.bookingAid, url), affiliate: true };
+    if (ids.awin) return { kind: "stay", url: awinLink(ids.awin, url), affiliate: true };
+    return { kind: "stay", url, affiliate: false };
   }
 
   // Tickets only for a named place that costs something: a free park or a

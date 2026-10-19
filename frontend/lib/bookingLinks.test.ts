@@ -1,7 +1,7 @@
 // Run: npm run test:booking-links
 
 import assert from "node:assert/strict";
-import { bookingLinkFor, groundLinkFor, hasAffiliates, stayDates } from "./bookingLinks";
+import { bookingAidFor, bookingLinkFor, bookingRedirectFor, groundLinkFor, hasAffiliates, parseBookingAids, stayDates } from "./bookingLinks";
 import type { ItineraryDay } from "./types";
 
 const item = (type: string, extra: Record<string, unknown> = {}) =>
@@ -48,6 +48,40 @@ assert.equal(c.hostname, "www.anrdoezrs.net");
 assert.equal(c.pathname, "/click-1234567-7654321");
 assert.equal(c.searchParams.get("url"), stay.url, "the traveller lands on the same search");
 assert.ok(viaCj.affiliate);
+
+// Booking.com by country: one CJ programme per region.
+const aids = parseBookingAids(" us:111, CA:111 ,EU:222, DE:999, *:333, XX, FR:abc, nonsense ");
+assert.equal(bookingAidFor(aids, "US"), "111");
+assert.equal(bookingAidFor(aids, "ca"), "111", "country codes in any case");
+assert.equal(bookingAidFor(aids, "BG"), "222", "EU covers Bulgaria");
+assert.equal(bookingAidFor(aids, "DE"), "999", "a country named on its own beats EU");
+assert.equal(bookingAidFor(aids, "FR"), "222", "a malformed entry is dropped, EU still covers France");
+assert.equal(bookingAidFor(aids, "JP"), "333", "everyone else gets the default");
+assert.equal(bookingAidFor(aids, null), "333", "no country known: the default");
+assert.equal(bookingAidFor(parseBookingAids("US:111"), "BG"), null, "no default: nothing");
+assert.deepEqual(parseBookingAids(undefined), {});
+
+const regional = { cjRegional: { pid: "1234567", aids }, cj: { pid: "1234567", bookingAid: "7654321" } };
+const viaGo = bookingLinkFor(days[0].items[0], stays.get("1:0"), regional)!;
+assert.ok(viaGo.url.startsWith("/go/booking?"), "with countries set, a stay goes through our redirect");
+assert.equal(new URLSearchParams(viaGo.url.split("?")[1]).get("u"), stay.url, "carrying the same search");
+assert.ok(viaGo.affiliate);
+const inEmail = bookingLinkFor(days[0].items[0], stays.get("1:0"), regional, { site: "https://yourdecide.com/" })!;
+assert.ok(inEmail.url.startsWith("https://yourdecide.com/go/booking?"), "absolute in an email");
+assert.ok(hasAffiliates({ cjRegional: { pid: "1", aids: { "*": "2" } } }));
+
+// The redirect itself.
+const us = new URL(bookingRedirectFor(stay.url, "US", regional)!);
+assert.equal(us.pathname, "/click-1234567-111", "a US traveller gets the North America programme");
+assert.equal(us.searchParams.get("url"), stay.url);
+assert.equal(new URL(bookingRedirectFor(stay.url, "BG", regional)!).pathname, "/click-1234567-222");
+const noDefault = { cjRegional: { pid: "1234567", aids: parseBookingAids("US:111") } };
+assert.equal(bookingRedirectFor(stay.url, "BG", noDefault), stay.url, "a country with no programme gets the plain search");
+assert.equal(new URL(bookingRedirectFor(stay.url, "BG", { ...noDefault, awin: { publisherId: "9", bookingMid: "8" } })!).hostname, "www.awin1.com", "or Awin, if set");
+// Never anywhere but Booking.com.
+for (const bad of ["https://evil.example/x", "http://www.booking.com/x", "https://www.booking.com.evil.example/", "https://user@www.booking.com/", "javascript:alert(1)", "", "/relative"]) {
+  assert.equal(bookingRedirectFor(bad, "US", regional), null, `refused: ${bad}`);
+}
 
 const tickets = bookingLinkFor(days[3].items[0], undefined, { gygPartnerId: "ABC" })!;
 assert.equal(tickets.kind, "tickets");

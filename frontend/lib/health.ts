@@ -127,6 +127,11 @@ export const FRONTEND_ENV: readonly EnvCheck[] = [
     what: "The id of a deep-linkable Booking.com link in CJ, once approved (needs a redeploy)",
   },
   {
+    name: "NEXT_PUBLIC_CJ_BOOKING_AIDS",
+    criticality: "optional",
+    what: "A Booking.com link id per country, e.g. US:111,CA:111,EU:222,*:333 - each CJ programme pays only in its own countries (needs a redeploy)",
+  },
+  {
     name: "NEXT_PUBLIC_AWIN_PUBLISHER_ID",
     criticality: "optional",
     what: "Your Awin publisher id, for Booking.com hotel links (needs a redeploy)",

@@ -93,6 +93,13 @@ export function dayAheadEmailFor(input: {
   const subject = copy.subject.replace("{day}", String(day.day)).replace("{places}", places);
   const ids = affiliateIds();
   const stays = stayDates(days, input.endDate);
+  const siteOf = (url: string) => {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return "";
+    }
+  };
 
   const rows = day.items
     .map((item, i) => {
@@ -100,7 +107,9 @@ export function dayAheadEmailFor(input: {
       const time = typeof item.time === "string" ? item.time : "";
       const where = typeof item.location === "string" ? item.location : "";
       const maps = safeHref(item.google_maps_url ?? "");
-      const booking = bookingLinkFor(item, stays.get(`${day.day}:${i}`), ids);
+      // The site's own address for a link through /go/booking: an email
+      // has no page to be relative to.
+      const booking = bookingLinkFor(item, stays.get(`${day.day}:${i}`), ids, { site: siteOf(input.tripUrl) });
       const links = [
         maps ? `<a href="${escapeHtml(maps)}" style="color:${TEAL}">${escapeHtml(t.result.viewOnGoogleMaps)}</a>` : "",
         booking
