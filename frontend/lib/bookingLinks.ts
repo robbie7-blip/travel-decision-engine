@@ -127,9 +127,16 @@ export function bookingRedirectFor(target: string, country: string | null | unde
   }
   if (url.protocol !== "https:" || url.hostname !== "www.booking.com" || url.username || url.password || url.port) return null;
   const clean = url.toString();
-  const aid = ids.cjRegional ? bookingAidFor(ids.cjRegional.aids, country) : null;
-  if (ids.cjRegional && aid) return cjLink(ids.cjRegional.pid, aid, clean);
-  if (ids.cj) return cjLink(ids.cj.pid, ids.cj.bookingAid, clean);
+  if (ids.cjRegional) {
+    const aid = bookingAidFor(ids.cjRegional.aids, country);
+    if (aid) return cjLink(ids.cjRegional.pid, aid, clean);
+    // A country the per-country list leaves out. The single
+    // NEXT_PUBLIC_CJ_BOOKING_AID is NOT a fallback here: it belongs to one
+    // of those same regional programmes, which would not pay for this
+    // traveller. Awin, or the plain search.
+  } else if (ids.cj) {
+    return cjLink(ids.cj.pid, ids.cj.bookingAid, clean);
+  }
   if (ids.awin) return awinLink(ids.awin, clean);
   return clean;
 }

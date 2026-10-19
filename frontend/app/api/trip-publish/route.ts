@@ -17,6 +17,7 @@ import { allowedOriginsFor, isCrossOriginRequest } from "@/lib/sameOrigin";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getDb } from "@/lib/db";
 import { publicBrief } from "@/lib/publicBrief";
+import { publicItinerary } from "@/lib/publicPlan";
 import { publishedForJob, publishedSlug, publishedTitle, publishTrip, unpublishTrip } from "@/lib/tripsQuery";
 
 export const runtime = "nodejs";
@@ -81,9 +82,9 @@ export async function POST(request: NextRequest) {
       destinations: brief.destinations,
       dayCount,
       party: brief.party_composition || null,
-      // The plan as the page shows it; the last pushback's answer is a
-      // reply to this traveller, not part of a guide.
-      itinerary: { ...itinerary, pushback_response: undefined },
+      // The plan as the page shows it, without the parts that are about
+      // this traveller rather than the place (lib/publicPlan.ts).
+      itinerary: publicItinerary(itinerary),
     });
     return NextResponse.json({ available: true, slug }, { headers: NO_STORE });
   } catch (e) {

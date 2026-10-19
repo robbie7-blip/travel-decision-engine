@@ -94,6 +94,20 @@ async function main() {
     check("remove takes the line out", removed.itinerary.days[0].items.length === 1 && removed.itinerary.days[0].items[0].title === verifiedLunch.title);
     check("an added line is sorted into the day", applyRefinePatch(base(), parseRefinePatch({ pushback_response: "x", changes: [{ op: "add", day: 1, item: { ...newCoffee, time: "10:00" } }] })!)!.itinerary.days[0].items[1].time === "10:00");
     check("an invented ref refuses the whole patch", applyRefinePatch(base(), parseRefinePatch({ pushback_response: "x", changes: [{ op: "remove", ref: "d9.9" }] })!) === null);
+    {
+      // A day with parts of the day for times: a change elsewhere on it
+      // must not send the morning to the end.
+      const parts = base();
+      parts.days[1].items = [
+        { ...coffee, time: "morning", title: "Vatican Museums" },
+        { ...coffee, time: "13:00", title: "Lunch" },
+        { ...coffee, time: "afternoon", title: "Trastevere walk" },
+        { ...coffee, time: "20:00", title: "Dinner" },
+      ] as never;
+      const swapped = applyRefinePatch(parts, parseRefinePatch({ pushback_response: "x", changes: [{ op: "replace", ref: "d2.2", item: { ...newCoffee, time: "13:00", title: "Other lunch" } }] })!)!;
+      const order = swapped.itinerary.days[1].items.map((i) => i.title).join(" | ");
+      check("morning and afternoon keep their place", order === "Vatican Museums | Other lunch | Trastevere walk | Dinner", order);
+    }
     check("a day the trip does not have refuses it", applyRefinePatch(base(), parseRefinePatch({ pushback_response: "x", changes: [{ op: "add", day: 7, item: newCoffee }] })!) === null);
     check("the same line twice refuses it", applyRefinePatch(base(), parseRefinePatch({ pushback_response: "x", changes: [{ op: "remove", ref: "d1.1" }, { op: "replace", ref: "d1.1", item: newCoffee }] })!) === null);
   }

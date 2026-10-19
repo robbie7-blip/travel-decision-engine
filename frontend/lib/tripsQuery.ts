@@ -394,15 +394,24 @@ export interface HowWasItCandidate {
  * the same "a revision replaces its original" rule as My trips. Test runs
  * are left out: nobody travelled on them. */
 export async function tripsEndedOn(db: Queryable, endDate: string): Promise<HowWasItCandidate[]> {
+  return tripsEndedBetween(db, endDate, endDate);
+}
+
+/** The same, for trips that ended on any day from `from` to `to`: the
+ * evening run looks back a few days, so a trip it ran out of time for is
+ * asked the next evening rather than never. Oldest first, so those go
+ * before today's. */
+export async function tripsEndedBetween(db: Queryable, from: string, to: string): Promise<HowWasItCandidate[]> {
   const { rows } = await db.query<{ id: string; owner_email: string; destinations: string[]; language: string }>(
     `select t.id, t.owner_email, t.destinations, t.language
      from trips t
      where t.owner_email is not null and t.status = 'done' and not t.test_mode
-       and t.end_date = $1::date and t.expires_at > now()
+       and t.end_date between $1::date and $2::date and t.expires_at > now()
        and not exists (
          select 1 from trips r where r.replaces = t.id and r.owner_email = t.owner_email and r.status = 'done'
-       )`,
-    [endDate]
+       )
+     order by t.end_date, t.id`,
+    [from, to]
   );
   return rows.map((r) => ({
     jobId: r.id,

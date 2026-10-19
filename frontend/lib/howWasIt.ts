@@ -34,6 +34,13 @@ export function yesterdayIso(now = new Date(), timeZone = "Europe/Sofia"): strin
   return d.toISOString().slice(0, 10);
 }
 
+/** `iso` minus `days` days, as YYYY-MM-DD. */
+export function daysBefore(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 function secret(): string {
   const s = process.env.SESSION_SECRET;
   if (!s) throw new Error("SESSION_SECRET is not set");

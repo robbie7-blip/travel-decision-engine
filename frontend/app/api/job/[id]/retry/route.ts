@@ -115,7 +115,11 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
     createdAt: now,
     updatedAt: now,
     ttlSeconds,
-    replaces: sourceJobId,
+    // What the failed job was replacing, if anything: a retried pushback
+    // is still a newer version of the trip the pushback was about, and
+    // pointing at the failed attempt instead left that trip listed twice
+    // in My trips.
+    replaces: original.replaces || sourceJobId,
     ...(ownerEmail ? { ownerEmail } : {}),
     // Inherited deliberately: a test-mode generation that the server drops
     // has to be retryable without the owner's key being re-sent, and a

@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 
 process.env.SESSION_SECRET = "y".repeat(40);
-const { feedbackToken, feedbackUrl, howWasItEmailFor, isRating, verifyFeedbackToken, yesterdayIso } =
+const { daysBefore, feedbackToken, feedbackUrl, howWasItEmailFor, isRating, verifyFeedbackToken, yesterdayIso } =
   require("./howWasIt") as typeof import("./howWasIt");
 
 assert.equal(yesterdayIso(new Date("2026-11-10T16:00:00Z")), "2026-11-09");
@@ -28,5 +28,7 @@ assert.ok(!email.html.includes("<b>x</b>"), "city names are escaped in the body"
 assert.equal((email.html.match(/api\/trip-feedback/g) ?? []).length, 3, "three buttons");
 const bg = howWasItEmailFor({ site: "https://yourdecide.com", jobId: "job-1", destinations: ["Рим"], language: "bg" });
 assert.equal(bg.subject, "Как мина Рим?");
+
+assert.equal(daysBefore("2026-03-01", 2), "2026-02-27", "back across a month end");
 
 console.log("howWasIt: all assertions passed");

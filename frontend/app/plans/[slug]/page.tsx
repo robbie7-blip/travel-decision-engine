@@ -10,10 +10,10 @@ import { getPublished } from "@/lib/tripsQuery";
 import { TRANSLATIONS } from "@/lib/i18n";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { affiliateIds, hasAffiliates } from "@/lib/bookingLinks";
-import type { Itinerary } from "@/lib/types";
 import { RoutedSiteHeader } from "@/components/RoutedSiteHeader";
 import { PublishedPlan } from "@/components/PublishedPlan";
 import { TripMap } from "@/components/TripMap";
+import { publicItinerary } from "@/lib/publicPlan";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,7 +49,9 @@ export default async function PublishedTripPage({ params }: { params: Promise<{ 
   const trip = await load(slug);
   if (!trip) notFound();
   const t = TRANSLATIONS[trip.language];
-  const itinerary = trip.itinerary as Itinerary;
+  // Cleaned on the way out too, for pages published before the cleaning
+  // existed (lib/publicPlan.ts).
+  const itinerary = publicItinerary(trip.itinerary);
   const langSuffix = trip.language === "bg" ? "&lang=bg" : "";
   const meta = (trip.party ? t.plans.metaParty.replace("{party}", trip.party) : t.plans.meta).replace("{days}", String(trip.dayCount));
 

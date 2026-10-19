@@ -185,6 +185,15 @@ export async function getQuotaStatus(redis: Redis, email: string, plan: Plan): P
   return { allowed: used < limit || bonus > 0, plan, limit, used, bonus };
 }
 
+/** Whether this address generated anything last month. The monthly
+ * counters live about forty days, so last month's is the furthest back
+ * Redis can see - which matters for invites (lib/referral.ts): an account
+ * whose trips predate the archive's owner column still has a counter. */
+export async function usedLastMonth(redis: Redis, email: string, now = new Date()): Promise<boolean> {
+  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 15));
+  return (Number(await redis.get<number>(quotaKey(email, monthKey(last)))) || 0) > 0;
+}
+
 // ~40 days: comfortably outlives the calendar month the key is scoped to
 // (handles a request landing right at a month boundary) without keeping
 // stale counters forever.

@@ -96,10 +96,18 @@ export function parseRefinePatch(raw: unknown): RefinePatch | null {
   return patch;
 }
 
+/** The schema allows a part of the day instead of a clock time. Placed
+ * where that part of the day starts, the same as frontend/lib/tripEdits.ts
+ * does for hand edits: sorted as "unknown, last", a morning museum on a
+ * day the patch touched went after dinner. */
+const PART_OF_DAY: Record<string, number> = { morning: 9 * 60, afternoon: 14 * 60, evening: 19 * 60 };
+
 /** Minutes since midnight for sorting, unknown times last. */
-function sortKey(time: string | undefined): number {
-  const m = /^(\d{1,2}):(\d{2})/.exec((time ?? "").trim());
-  return m ? Number(m[1]) * 60 + Number(m[2]) : 24 * 60 + 1;
+export function sortKey(time: string | undefined): number {
+  const text = (time ?? "").trim().toLowerCase();
+  const m = /^(\d{1,2}):(\d{2})/.exec(text);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  return PART_OF_DAY[text] ?? 24 * 60 + 1;
 }
 
 /** A fresh item from the model: no verification it has not earned. Every

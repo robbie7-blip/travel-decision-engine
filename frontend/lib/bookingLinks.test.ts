@@ -78,6 +78,11 @@ assert.equal(new URL(bookingRedirectFor(stay.url, "BG", regional)!).pathname, "/
 const noDefault = { cjRegional: { pid: "1234567", aids: parseBookingAids("US:111") } };
 assert.equal(bookingRedirectFor(stay.url, "BG", noDefault), stay.url, "a country with no programme gets the plain search");
 assert.equal(new URL(bookingRedirectFor(stay.url, "BG", { ...noDefault, awin: { publisherId: "9", bookingMid: "8" } })!).hostname, "www.awin1.com", "or Awin, if set");
+assert.equal(
+  bookingRedirectFor(stay.url, "GB", { cjRegional: { pid: "1234567", aids: parseBookingAids("US:111") }, cj: { pid: "1234567", bookingAid: "999" } }),
+  stay.url,
+  "the single CJ id is not a fallback for a country the list leaves out"
+);
 // Never anywhere but Booking.com.
 for (const bad of ["https://evil.example/x", "http://www.booking.com/x", "https://www.booking.com.evil.example/", "https://user@www.booking.com/", "javascript:alert(1)", "", "/relative"]) {
   assert.equal(bookingRedirectFor(bad, "US", regional), null, `refused: ${bad}`);

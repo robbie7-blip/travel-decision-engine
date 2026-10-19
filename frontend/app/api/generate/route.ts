@@ -15,7 +15,7 @@ import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent, recordFunnelEvent } from "@/lib/analytics";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
-import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan, type QuotaResult } from "@/lib/account";
+import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan, usedLastMonth, type QuotaResult } from "@/lib/account";
 import { REFERRAL_COOKIE_NAME, isReferralCode, rewardReferral } from "@/lib/referral";
 import { getDb } from "@/lib/db";
 import { hasOwnedTrips } from "@/lib/tripsQuery";
@@ -237,11 +237,12 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
-/** A first trip is one with nothing used this month and nothing of theirs
- * in the archive. Without a database (or with one that is down), this
+/** A first trip is one with nothing used this month or last, and nothing
+ * of theirs in the archive. Without a database (or with one that is down), this
  * month's count is all there is to go on. */
 async function settleReferral(redis: ReturnType<typeof getRedis>, email: string, code: string, quota: QuotaResult): Promise<void> {
   let firstTrip = quota.used === 0;
+  if (firstTrip) firstTrip = !(await usedLastMonth(redis, email).catch(() => false));
   const db = getDb();
   if (firstTrip && db) {
     // A database that cannot answer falls back to the month's count

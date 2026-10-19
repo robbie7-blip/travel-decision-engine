@@ -16,8 +16,8 @@ import { dayAheadEmailFor, dayAheadKey, dayAheadSentKey, stopToken, tomorrowIso 
 import { sendItineraryEmail } from "@/lib/email";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { getDb } from "@/lib/db";
-import { tripsEndedOn } from "@/lib/tripsQuery";
-import { howWasItEmailFor, howWasItSentKey, yesterdayIso } from "@/lib/howWasIt";
+import { tripsEndedBetween } from "@/lib/tripsQuery";
+import { daysBefore, howWasItEmailFor, howWasItSentKey, yesterdayIso } from "@/lib/howWasIt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,12 +40,42 @@ export async function GET(request: NextRequest) {
     for (const key of batch) if (!key.startsWith("dayahead:sent:")) keys.push(key);
   } while (cursor !== "0" && keys.length < 5000);
 
+  // Every trip with the switch on, read in batches rather than one round
+  // trip each: this run has a minute, and Upstash is HTTP.
+  const jobs = new Map<string, Job | null>();
+  const ids = keys.map((key) => key.slice("dayahead:".length));
+  for (let i = 0; i < ids.length; i += 100) {
+    const batch = ids.slice(i, i + 100);
+    const records = await redis.mget<(string | Job | null)[]>(...batch.map((id) => jobKey(id)));
+    batch.forEach((id, j) => jobs.set(id, readJobRecord(records[j] ?? null)));
+  }
+  // A trip whose newer version (a pushback, a hand edit) also has the
+  // switch on is superseded: the email follows the newest version only.
+  // Decided here rather than when the revision is made, because a pushback
+  // is carried over when it is asked for and may still fail - turning the
+  // original off then would have stopped the emails for nothing.
+  const superseded = new Set<string>();
+  for (const job of jobs.values()) {
+    if (!job || job.status !== "done" || !job.replaces) continue;
+    const older = jobs.get(job.replaces);
+    const sameOwner = older?.ownerEmail && job.ownerEmail && older.ownerEmail.trim().toLowerCase() === job.ownerEmail.trim().toLowerCase();
+    if (sameOwner) superseded.add(job.replaces);
+  }
+
   let sent = 0;
   let failed = 0;
-  for (const key of keys) {
-    const jobId = key.slice("dayahead:".length);
+  let skipped = 0;
+  for (const jobId of ids) {
+    if (Date.now() - startedAt > DAY_AHEAD_BUDGET_MS) {
+      skipped++;
+      continue;
+    }
     try {
-      const job = readJobRecord(await redis.get<string | Job>(jobKey(jobId)));
+      const job = jobs.get(jobId) ?? null;
+      if (superseded.has(jobId)) {
+        await redis.del(dayAheadKey(jobId));
+        continue;
+      }
       if (!job || job.status !== "done" || !job.result || !job.ownerEmail) {
         // The trip is gone or never was the owner's: nothing will ever be
         // sent for it, so the switch goes too.
@@ -78,23 +108,29 @@ export async function GET(request: NextRequest) {
       console.error(`[day-ahead] ${jobId}:`, e instanceof Error ? e.message : e);
     }
   }
+  if (skipped) console.warn(`[day-ahead] out of time: ${skipped} trips not sent`);
 
   const howWasIt = await sendHowWasIt(redis, site, startedAt);
-  return NextResponse.json({ date, candidates: keys.length, sent, failed, howWasIt });
+  return NextResponse.json({ date, candidates: keys.length, sent, failed, skipped, howWasIt });
 }
 
-/** Stops starting new sends this long into the run. The function is
- * killed at maxDuration (60s), and one killed between claiming a trip and
- * sending its email would leave that trip claimed and never asked. */
-const SEND_BUDGET_MS = 45_000;
+/** When each part stops starting new sends. The function is killed at
+ * maxDuration (60s), and one killed between claiming a trip and sending
+ * its email would leave that trip claimed and never emailed. The evening
+ * email gets the first 30 seconds; "How was your trip?" runs until 50
+ * whatever the first part used, and a trip it runs out of time for is
+ * asked the next evening (tripsEndedBetween looks back three days). */
+const DAY_AHEAD_BUDGET_MS = 30_000;
+const SEND_BUDGET_MS = 50_000;
 
 async function sendHowWasIt(redis: ReturnType<typeof getRedis>, site: string, startedAt: number) {
   const db = getDb();
   const ended = yesterdayIso();
+  const since = daysBefore(ended, 2);
   if (!db) return { ended, candidates: 0, sent: 0, failed: 0 };
-  let candidates: Awaited<ReturnType<typeof tripsEndedOn>> = [];
+  let candidates: Awaited<ReturnType<typeof tripsEndedBetween>> = [];
   try {
-    candidates = await tripsEndedOn(db, ended);
+    candidates = await tripsEndedBetween(db, since, ended);
   } catch (e) {
     console.error("[how-was-it] could not list trips:", e instanceof Error ? e.message.slice(0, 200) : e);
     return { ended, candidates: 0, sent: 0, failed: 1 };
