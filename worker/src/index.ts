@@ -4185,7 +4185,12 @@ async function main() {
     workspaceId() ? `- workspace ${workspaceId()}` : "- no ANTHROPIC_WORKSPACE_ID set"
   );
   startHeartbeat(redis);
-  await startReliableQueue(redis);
+  // Never fatal: a worker that cannot register still takes and runs jobs.
+  // It only loses crash recovery until it can, and says so loudly.
+  await startReliableQueue(redis).catch((e) => {
+    console.error("[worker] RELIABLE QUEUE SETUP FAILED - jobs still run, but a crash will not be recovered:", e);
+  });
+  console.log(`[worker] ready: taking jobs as ${WORKER_ID}`);
   // Postgres schema and the expiry sweep; a no-op without DATABASE_URL.
   startDbMaintenance();
   for (const signal of ["SIGTERM", "SIGINT"] as const) {
