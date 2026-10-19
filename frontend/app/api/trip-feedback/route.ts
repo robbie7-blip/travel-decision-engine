@@ -4,7 +4,9 @@
 // optional note. The answer itself is saved by a POST the page makes as it
 // loads, not by the GET: mail scanners open every link in an email before
 // the reader does, and a GET that recorded the rating would have all three
-// buttons "tapped", the last one winning. Without JavaScript the Send
+// buttons "tapped", the last one winning. The POST waits a second and a
+// half on a visible page, because some scanners run the page's script too
+// and leave as soon as it has loaded; a person is still reading. Without JavaScript the Send
 // button posts the rating and the note together.
 //
 // Every request carries the per-trip signature from the email, so a link
@@ -76,7 +78,7 @@ ${hidden("jobId", jobId)}${hidden("r", rating)}${hidden("t", token)}
 <textarea id="note" name="note" rows="5" maxlength="2000" style="box-sizing:border-box;width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid #c9bfae;border-radius:8px;background:#fff;color:inherit"></textarea>
 <button type="submit" style="margin-top:12px;min-height:44px;padding:10px 22px;border:0;border-radius:8px;background:#2c6a4c;color:#fff;font:inherit;font-weight:700;cursor:pointer">${escapeHtml(t.send)}</button>
 </form>
-<script>(function(){var p=${payload};var b=new URLSearchParams(p);fetch("/api/trip-feedback",{method:"POST",body:b,headers:{"Accept":"application/json"}}).catch(function(){});})();</script>`
+<script>(function(){var p=${payload},sent=false;function send(){if(sent||document.visibilityState!=="visible")return;sent=true;fetch("/api/trip-feedback",{method:"POST",body:new URLSearchParams(p),headers:{"Accept":"application/json"}}).catch(function(){});}setTimeout(send,1500);document.addEventListener("visibilitychange",function(){setTimeout(send,1500);});})();</script>`
   );
 }
 

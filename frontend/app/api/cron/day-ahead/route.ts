@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
   if (!isCronRequest(request.headers.get("authorization"))) {
     return NextResponse.json({ detail: "Not allowed." }, { status: 401 });
   }
+  const startedAt = Date.now();
   const redis = getRedis();
   const site = getSiteUrl().replace(/\/$/, "");
   const date = tomorrowIso();
@@ -78,11 +79,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const howWasIt = await sendHowWasIt(redis, site);
+  const howWasIt = await sendHowWasIt(redis, site, startedAt);
   return NextResponse.json({ date, candidates: keys.length, sent, failed, howWasIt });
 }
 
-async function sendHowWasIt(redis: ReturnType<typeof getRedis>, site: string) {
+/** Stops starting new sends this long into the run. The function is
+ * killed at maxDuration (60s), and one killed between claiming a trip and
+ * sending its email would leave that trip claimed and never asked. */
+const SEND_BUDGET_MS = 45_000;
+
+async function sendHowWasIt(redis: ReturnType<typeof getRedis>, site: string, startedAt: number) {
   const db = getDb();
   const ended = yesterdayIso();
   if (!db) return { ended, candidates: 0, sent: 0, failed: 0 };
@@ -98,8 +104,13 @@ async function sendHowWasIt(redis: ReturnType<typeof getRedis>, site: string) {
   // One email per address per evening, however many trips ended: the
   // first one asks, a second would be nagging.
   const asked = new Set<string>();
+  let skipped = 0;
   for (const trip of candidates.slice(0, 500)) {
     if (asked.has(trip.ownerEmail)) continue;
+    if (Date.now() - startedAt > SEND_BUDGET_MS) {
+      skipped++;
+      continue;
+    }
     try {
       const claimed = await redis.set(howWasItSentKey(trip.jobId), "1", { nx: true, ex: 30 * 24 * 3600 });
       if (claimed !== "OK") continue;
@@ -117,5 +128,6 @@ async function sendHowWasIt(redis: ReturnType<typeof getRedis>, site: string) {
       console.error(`[how-was-it] ${trip.jobId}:`, e instanceof Error ? e.message : e);
     }
   }
-  return { ended, candidates: candidates.length, sent, failed };
+  if (skipped) console.warn(`[how-was-it] out of time: ${skipped} trips not asked`);
+  return { ended, candidates: candidates.length, sent, failed, skipped };
 }
