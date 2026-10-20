@@ -40,14 +40,21 @@ export async function GET(request: NextRequest) {
     for (const key of batch) if (!key.startsWith("dayahead:sent:")) keys.push(key);
   } while (cursor !== "0" && keys.length < 5000);
 
-  // Every trip with the switch on, read in batches rather than one round
-  // trip each: this run has a minute, and Upstash is HTTP.
+  // Every trip with the switch on, read ten at a time rather than one round
+  // trip each (this run has a minute, and Upstash is HTTP) - but each read
+  // on its own, so one failed or oversized record skips that trip only,
+  // not the whole evening's emails. Unread trips are left out of this run
+  // and keep their switch.
   const jobs = new Map<string, Job | null>();
+  const unread = new Set<string>();
   const ids = keys.map((key) => key.slice("dayahead:".length));
-  for (let i = 0; i < ids.length; i += 100) {
-    const batch = ids.slice(i, i + 100);
-    const records = await redis.mget<(string | Job | null)[]>(...batch.map((id) => jobKey(id)));
-    batch.forEach((id, j) => jobs.set(id, readJobRecord(records[j] ?? null)));
+  for (let i = 0; i < ids.length; i += 10) {
+    const batch = ids.slice(i, i + 10);
+    const results = await Promise.allSettled(batch.map((id) => redis.get<string | Job>(jobKey(id))));
+    results.forEach((r, j) => {
+      if (r.status === "fulfilled") jobs.set(batch[j], readJobRecord(r.value ?? null));
+      else unread.add(batch[j]);
+    });
   }
   // A trip whose newer version (a pushback, a hand edit) also has the
   // switch on is superseded: the email follows the newest version only.
@@ -68,6 +75,10 @@ export async function GET(request: NextRequest) {
   for (const jobId of ids) {
     if (Date.now() - startedAt > DAY_AHEAD_BUDGET_MS) {
       skipped++;
+      continue;
+    }
+    if (unread.has(jobId)) {
+      failed++;
       continue;
     }
     try {

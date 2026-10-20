@@ -37,18 +37,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-      # A real, throwaway Redis for test:reliable-queue: jobs move between
-      # lists with BLMOVE and are checked by a Lua script, neither of which
-      # a fake can be trusted to do the way Redis does.
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     defaults:
       run:
         working-directory: worker
@@ -153,12 +141,6 @@ jobs:
       - run: npm run test:db
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/decide_test
-      # The job queue: a job taken by a worker that stops is put back, a
-      # finished one is not, and two workers recovering at once put it back
-      # once.
-      - run: npm run test:reliable-queue
-        env:
-          REDIS_URL: redis://localhost:6379/5
       # The failure diagnostics, driven through the real processJob.
       #
       # A failed generation tells the traveler one of seven sentences and

@@ -125,17 +125,6 @@ import {
 } from "./costBudget";
 import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "./types";
 import { AsyncLocalStorage } from "node:async_hooks";
-import {
-  ALIVE_REFRESH_MS,
-  SWEEP_MS,
-  aliveKey,
-  finishJob,
-  markAlive,
-  newWorkerId,
-  recoverDeadWorkers,
-  returnJob,
-  takeJob,
-} from "./reliableQueue";
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 12000;
@@ -2947,10 +2936,10 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
     return;
   }
 
-  // Already finished: a job recovered from a worker that stopped (see
-  // reliableQueue.ts) may have written its final record in the moment
-  // before. Running it again would only pay for the same trip twice - or,
-  // for one that failed, replace the error the traveller already saw.
+  // Already finished: a job can reach the queue twice (a worker that took
+  // it during a shutdown puts it back, see runConsumer) after its final
+  // record was written. Running it again would only pay for the same trip
+  // twice - or, for one that failed, replace the error the traveller saw.
   if (job.status === "done" || job.status === "error") {
     console.warn(`[worker] job ${id} is already ${job.status} - skipping`);
     return;
@@ -3966,22 +3955,17 @@ const WORKER_CONCURRENCY = readPositiveInt("WORKER_CONCURRENCY", 4);
  * one shared non-blocking `sharedRedis` connection instead, which is safe
  * to use concurrently since none of those calls block. */
 async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthropic): Promise<void> {
-  // null is required for blocking commands - ioredis refuses to run one on
-  // a connection with a bounded per-request retry. It's scoped to this
-  // connection so the shared one keeps its bounded retries and can't hang
-  // a job forever on a transient Redis error (see redis.ts).
+  // null is required for BRPOP specifically - ioredis refuses to run a
+  // blocking command on a connection with a bounded per-request retry. It's
+  // scoped to this connection so the shared one keeps its bounded retries
+  // and can't hang a job forever on a transient Redis error (see redis.ts).
   const queueConn = sharedRedis.duplicate({ maxRetriesPerRequest: null });
-  queueConns.add(queueConn);
   try {
     while (!stopping) {
-      // Recorded in this worker's processing list as it leaves the queue
-      // (reliableQueue.ts), so a worker that dies with it does not lose it. Blocks until a job comes; a shutdown closes the
-      // connection, which ends the wait.
-      let id: string | null;
+      let popped: [string, string] | null;
       try {
-        id = await takeJob(queueConn, sharedRedis, WORKER_ID);
+        popped = await queueConn.brpop(JOBS_QUEUE_KEY, 0); // blocks until a job arrives
       } catch (e) {
-        if (stopping) break;
         // Logged and retried, never fatal. An error here used to end the
         // consumer, which ended the process, which Railway restarted into
         // the same error - a worker that never takes a single job.
@@ -3989,12 +3973,15 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
         await new Promise((r) => setTimeout(r, 5000));
         continue;
       }
-      if (!id) continue;
+      if (!popped) continue;
+      const [, id] = popped;
       if (stopping) {
-        // Taken mid-shutdown: straight back to the front, for the next
-        // worker. If even that fails it is still in this worker's
-        // processing list, and the next sweep recovers it.
-        await returnJob(sharedRedis, WORKER_ID, id).catch((e) => console.error(`[worker] could not put ${id} back:`, e));
+        // Taken while this worker is shutting down: straight back to the
+        // front of the queue (BRPOP takes from the right) for the worker
+        // that is replacing this one - and this consumer stops listening.
+        // If it went on, it and this process's other idle consumers would
+        // pass the job between them until the process exited holding it.
+        await sharedRedis.rpush(JOBS_QUEUE_KEY, id).catch((e) => console.error(`[worker] could not put ${id} back:`, e));
         break;
       }
       inFlight.add(id);
@@ -4005,48 +3992,33 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
       } finally {
         inFlight.delete(id);
       }
-      // Its final record is written (or it was refused before any work):
-      // no longer this worker's to finish.
-      await finishJob(sharedRedis, WORKER_ID, id).catch((e) => console.warn(`[worker] could not clear ${id} from processing:`, e));
     }
   } finally {
-    queueConns.delete(queueConn);
     queueConn.disconnect();
   }
 }
 
-/** A deploy, a restart or a crash, without dropping anyone's trip.
+/** A deploy without cutting off anyone's trip.
  *
- * Jobs a worker is running sit in its own processing list until they are
- * finished (reliableQueue.ts). A worker that stops for ANY reason - SIGTERM
- * on a deploy, a crash, running out of memory - stops refreshing its
- * "alive" key, and another worker's sweep puts its unfinished jobs back at
- * the front of the queue. Before, a trip being generated at that moment
- * died with the process, and the traveller found out four minutes later.
+ * Railway stops the old worker with SIGTERM once the new one is running.
+ * Before, a trip being generated at that moment died with the process and
+ * the traveller found out four minutes later. Now the worker takes no new
+ * jobs (one that arrives anyway goes back on the queue for the new
+ * worker), and waits for the ones in flight to finish - a generation is
+ * about thirty seconds - and for the work a finished job starts afterwards
+ * (the archive copy, the "it's ready" email, the spend counter). That only
+ * helps if Railway waits too: RAILWAY_DEPLOYMENT_DRAINING_SECONDS on the
+ * worker service.
  *
- * On SIGTERM this worker also stops taking jobs and gives the ones in
- * flight time to finish (a generation is about thirty seconds), plus the
- * work a finished job starts afterwards (the archive copy, the "it's
- * ready" email, the spend counter), still marked alive the whole time so
- * no other worker starts its jobs again underneath it. That only helps if
- * Railway waits too: RAILWAY_DEPLOYMENT_DRAINING_SECONDS on the worker
- * service. If it does not, nothing is lost - the jobs are recovered once
- * the alive key lapses.
- *
- * Unfinished jobs are NOT put back by this process: it closes its queue
- * connections and deletes its alive key as the last thing it does, and the
- * next sweep by another worker recovers them. */
+ * A crash (or a kill before the wait is over) still loses the job in
+ * hand, as it always has: the page then says the generation was
+ * interrupted and offers the one free retry. Recovering those
+ * automatically was tried and taken back out - see the commit that removed
+ * it for why it was not worth its risk. */
 let stopping = false;
 let stoppingAt = 0;
 const inFlight = new Set<string>();
-const queueConns = new Set<Redis>();
 const SHUTDOWN_GRACE_MS = readPositiveInt("WORKER_SHUTDOWN_GRACE_MS", 40_000);
-const WORKER_ID = newWorkerId();
-/** The alive refresh in progress, if any - awaited before the key is
- * deleted, so a refresh already on the wire cannot land after the delete
- * and make this worker look alive for another minute. */
-let aliveRefresh: Promise<unknown> = Promise.resolve();
-let aliveTimer: NodeJS.Timeout | undefined;
 
 /** Work a finished job starts without the traveller waiting on it. Kept
  * so a shutdown can wait for it rather than cut it off mid-request. */
@@ -4057,7 +4029,7 @@ function background(work: Promise<unknown>): void {
   void tracked.finally(() => backgroundWork.delete(tracked));
 }
 
-export async function shutDown(redis: Redis, signal: string): Promise<void> {
+export async function shutDown(signal: string): Promise<void> {
   if (stopping) {
     // The same signal often arrives twice at once (a terminal sends Ctrl+C
     // to the whole process group, and tsx forwards it too). A second one
@@ -4069,44 +4041,14 @@ export async function shutDown(redis: Redis, signal: string): Promise<void> {
   stopping = true;
   stoppingAt = Date.now();
   console.log(`[worker] ${signal}: taking no new jobs, waiting up to ${SHUTDOWN_GRACE_MS / 1000}s for ${inFlight.size} in flight`);
-  // Ends every consumer's wait for a job. A job Redis had already moved
-  // when the connection closed is in this worker's processing list, where
-  // the next sweep finds it.
-  for (const conn of queueConns) conn.disconnect();
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const deadline = Date.now() + SHUTDOWN_GRACE_MS;
-  while ((inFlight.size > 0 || backgroundWork.size > 0) && Date.now() < deadline) await sleep(250);
-  if (inFlight.size > 0) {
-    console.warn(`[worker] exiting with ${inFlight.size} unfinished job(s), left for the next worker: ${[...inFlight].join(", ")}`);
+  while ((inFlight.size > 0 || backgroundWork.size > 0) && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 250));
   }
-  // Last: no longer alive. Another worker's next sweep recovers whatever
-  // is still in this worker's list and takes it off the registry.
-  if (aliveTimer) clearInterval(aliveTimer);
-  await aliveRefresh.catch(() => {});
-  await redis.del(aliveKey(WORKER_ID)).catch(() => {});
+  if (inFlight.size > 0) {
+    console.warn(`[worker] exiting with ${inFlight.size} job(s) unfinished: ${[...inFlight].join(", ")}`);
+  }
   process.exit(0);
-}
-
-/** Registers this worker, keeps it marked alive (through a shutdown's
- * wait too), and sweeps for workers that are not: at start, for a crashed
- * predecessor's jobs, and then on a clock. */
-async function startReliableQueue(redis: Redis): Promise<void> {
-  await markAlive(redis, WORKER_ID);
-  aliveTimer = setInterval(() => {
-    aliveRefresh = markAlive(redis, WORKER_ID).catch((e) => console.error("[worker] alive refresh failed:", e));
-  }, ALIVE_REFRESH_MS);
-  aliveTimer.unref();
-  const sweep = async () => {
-    if (stopping) return;
-    try {
-      const recovered = await recoverDeadWorkers(redis, WORKER_ID);
-      if (recovered.length > 0) console.warn(`[worker] recovered ${recovered.length} job(s) from a worker that stopped: ${recovered.join(", ")}`);
-    } catch (e) {
-      console.error("[worker] recovery sweep failed:", e);
-    }
-  };
-  await sweep();
-  setInterval(() => void sweep(), SWEEP_MS).unref();
 }
 
 /** Environment variables the health page asks about by name. Listing them
@@ -4189,17 +4131,12 @@ async function main() {
     workspaceId() ? `- workspace ${workspaceId()}` : "- no ANTHROPIC_WORKSPACE_ID set"
   );
   startHeartbeat(redis);
-  // Never fatal: a worker that cannot register still takes and runs jobs.
-  // It only loses crash recovery until it can, and says so loudly.
-  await startReliableQueue(redis).catch((e) => {
-    console.error("[worker] RELIABLE QUEUE SETUP FAILED - jobs still run, but a crash will not be recovered:", e);
-  });
-  console.log(`[worker] ready: taking jobs as ${WORKER_ID}`);
+  console.log("[worker] ready: taking jobs");
   // Postgres schema and the expiry sweep; a no-op without DATABASE_URL.
   startDbMaintenance();
   for (const signal of ["SIGTERM", "SIGINT"] as const) {
     process.on(signal, () => {
-      void shutDown(redis, signal);
+      void shutDown(signal);
     });
   }
   await Promise.all(
