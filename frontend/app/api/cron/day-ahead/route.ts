@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
   const unread = new Set<string>();
   const ids = keys.map((key) => key.slice("dayahead:".length));
   for (let i = 0; i < ids.length; i += 10) {
+    if (Date.now() - startedAt > READ_BUDGET_MS) {
+      // Out of reading time: the rest wait for tomorrow's run, as unread.
+      for (const id of ids.slice(i)) unread.add(id);
+      break;
+    }
     const batch = ids.slice(i, i + 10);
     const results = await Promise.allSettled(batch.map((id) => redis.get<string | Job>(jobKey(id))));
     results.forEach((r, j) => {
@@ -84,6 +89,12 @@ export async function GET(request: NextRequest) {
     try {
       const job = jobs.get(jobId) ?? null;
       if (superseded.has(jobId)) {
+        await redis.del(dayAheadKey(jobId));
+        continue;
+      }
+      // A trip already over will never have a "tomorrow" again: its switch
+      // goes, so the set read above stays the size of trips still ahead.
+      if (job && typeof job.brief?.end_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(job.brief.end_date) && job.brief.end_date < date) {
         await redis.del(dayAheadKey(jobId));
         continue;
       }
@@ -125,14 +136,17 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ date, candidates: keys.length, sent, failed, skipped, howWasIt });
 }
 
-/** When each part stops starting new sends. The function is killed at
+/** When each part stops starting new work. The function is killed at
  * maxDuration (60s), and one killed between claiming a trip and sending
- * its email would leave that trip claimed and never emailed. The evening
- * email gets the first 30 seconds; "How was your trip?" runs until 50
+ * its email would leave that trip claimed and never emailed - so the last
+ * send starts with room for a slow one (Resend's 8s timeout) and a cold
+ * start. Reading the trips stops at 15 seconds, the evening email at 25;
+ * "How was your trip?" runs until 45
  * whatever the first part used, and a trip it runs out of time for is
  * asked the next evening (tripsEndedBetween looks back three days). */
-const DAY_AHEAD_BUDGET_MS = 30_000;
-const SEND_BUDGET_MS = 50_000;
+const READ_BUDGET_MS = 15_000;
+const DAY_AHEAD_BUDGET_MS = 25_000;
+const SEND_BUDGET_MS = 45_000;
 
 async function sendHowWasIt(redis: ReturnType<typeof getRedis>, site: string, startedAt: number) {
   const db = getDb();

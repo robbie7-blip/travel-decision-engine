@@ -242,7 +242,8 @@ export async function POST(request: NextRequest) {
  * month's count is all there is to go on. */
 async function settleReferral(redis: ReturnType<typeof getRedis>, email: string, code: string, quota: QuotaResult): Promise<void> {
   let firstTrip = quota.used === 0;
-  if (firstTrip) firstTrip = !(await usedLastMonth(redis, email).catch(() => false));
+  // A failed read counts as "used": when unsure, no reward.
+  if (firstTrip) firstTrip = !(await usedLastMonth(redis, email).catch(() => true));
   const db = getDb();
   if (firstTrip && db) {
     // A database that cannot answer falls back to the month's count

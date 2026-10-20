@@ -3960,12 +3960,14 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
   // scoped to this connection so the shared one keeps its bounded retries
   // and can't hang a job forever on a transient Redis error (see redis.ts).
   const queueConn = sharedRedis.duplicate({ maxRetriesPerRequest: null });
+  idleConns.add(queueConn);
   try {
     while (!stopping) {
       let popped: [string, string] | null;
       try {
         popped = await queueConn.brpop(JOBS_QUEUE_KEY, 0); // blocks until a job arrives
       } catch (e) {
+        if (stopping) break;
         // Logged and retried, never fatal. An error here used to end the
         // consumer, which ended the process, which Railway restarted into
         // the same error - a worker that never takes a single job.
@@ -3975,6 +3977,7 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
       }
       if (!popped) continue;
       const [, id] = popped;
+      idleConns.delete(queueConn);
       if (stopping) {
         // Taken while this worker is shutting down: straight back to the
         // front of the queue (BRPOP takes from the right) for the worker
@@ -3992,8 +3995,13 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
       } finally {
         inFlight.delete(id);
       }
+      idleConns.add(queueConn);
     }
+  } catch (e) {
+    // The connection closed under a shutdown (see shutDown): expected.
+    if (!stopping) throw e;
   } finally {
+    idleConns.delete(queueConn);
     queueConn.disconnect();
   }
 }
@@ -4018,6 +4026,10 @@ async function runConsumer(consumerId: number, sharedRedis: Redis, client: Anthr
 let stopping = false;
 let stoppingAt = 0;
 const inFlight = new Set<string>();
+/** Queue connections whose consumer is waiting for a job, not running one.
+ * Closed the moment a shutdown starts, so jobs pushed from then on go to
+ * the new worker instead of being taken here and handed back. */
+const idleConns = new Set<Redis>();
 const SHUTDOWN_GRACE_MS = readPositiveInt("WORKER_SHUTDOWN_GRACE_MS", 40_000);
 
 /** Work a finished job starts without the traveller waiting on it. Kept
@@ -4029,7 +4041,23 @@ function background(work: Promise<unknown>): void {
   void tracked.finally(() => backgroundWork.delete(tracked));
 }
 
-export async function shutDown(signal: string): Promise<void> {
+/** A job this worker is abandoning, recorded as failed - only if it is
+ * still "running", so a job that finished in the meantime stays done. */
+async function markInterrupted(redis: Redis, id: string): Promise<void> {
+  try {
+    const job = readJobRecord(await redis.get(jobKey(id)));
+    if (!job || job.status !== "running") return;
+    job.status = "error";
+    job.error = "This generation stopped because the server restarted while it was running. Please try again.";
+    job.updatedAt = Date.now();
+    delete job.progress;
+    await writeJob(redis, job);
+  } catch (e) {
+    console.error(`[worker] could not mark ${id} as interrupted:`, e);
+  }
+}
+
+export async function shutDown(redis: Redis, signal: string): Promise<void> {
   if (stopping) {
     // The same signal often arrives twice at once (a terminal sends Ctrl+C
     // to the whole process group, and tsx forwards it too). A second one
@@ -4041,12 +4069,16 @@ export async function shutDown(signal: string): Promise<void> {
   stopping = true;
   stoppingAt = Date.now();
   console.log(`[worker] ${signal}: taking no new jobs, waiting up to ${SHUTDOWN_GRACE_MS / 1000}s for ${inFlight.size} in flight`);
+  for (const conn of idleConns) conn.disconnect();
   const deadline = Date.now() + SHUTDOWN_GRACE_MS;
   while ((inFlight.size > 0 || backgroundWork.size > 0) && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 250));
   }
   if (inFlight.size > 0) {
     console.warn(`[worker] exiting with ${inFlight.size} job(s) unfinished: ${[...inFlight].join(", ")}`);
+    // Said now rather than discovered four minutes from now: the page
+    // shows the error, and the one free retry, on its next poll.
+    await Promise.all([...inFlight].map((id) => markInterrupted(redis, id)));
   }
   process.exit(0);
 }
@@ -4136,7 +4168,7 @@ async function main() {
   startDbMaintenance();
   for (const signal of ["SIGTERM", "SIGINT"] as const) {
     process.on(signal, () => {
-      void shutDown(signal);
+      void shutDown(redis, signal);
     });
   }
   await Promise.all(
