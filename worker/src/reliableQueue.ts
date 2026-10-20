@@ -125,7 +125,63 @@ return recovered
 
 /** See SWEEP_SCRIPT. The processing list is newest-first (takeJob pushes
  * on the left), and each RPUSH lands at the front of the queue, so the
- * oldest ends up first in line. */
+ * oldest ends up first in line.
+ *
+ * If the database refuses scripts - production's Upstash refused BLMOVE,
+ * which its documentation also lists, so nothing here is assumed - the
+ * same sweep runs as plain commands instead (sweepWithoutScript). */
 export async function recoverDeadWorkers(redis: Redis, self: string): Promise<string[]> {
-  return (await redis.eval(SWEEP_SCRIPT, 2, WORKERS_KEY, JOBS_QUEUE_KEY, self)) as string[];
+  if (!scriptRefused) {
+    try {
+      return (await redis.eval(SWEEP_SCRIPT, 2, WORKERS_KEY, JOBS_QUEUE_KEY, self)) as string[];
+    } catch (e) {
+      if (!isRefusal(e)) throw e;
+      scriptRefused = true;
+      console.warn(`[worker] this Redis refuses Lua scripts (${(e as Error).message.split("\n")[0].slice(0, 120)}) - recovering stopped workers with plain commands instead`);
+    }
+  }
+  return sweepWithoutScript(redis, self);
+}
+
+let scriptRefused = false;
+
+/** An error from Redis itself about the command (unknown, disabled, not
+ * allowed), as opposed to a connection problem worth just retrying. */
+function isRefusal(e: unknown): boolean {
+  return e instanceof Error && e.name === "ReplyError";
+}
+
+/** The sweep without a script: the same steps, one command at a time. Not
+ * atomic, so a lock keeps two workers from doing it at once; a dead
+ * worker writes nothing more, so its list cannot change underneath. */
+export async function sweepWithoutScript(redis: Redis, self: string): Promise<string[]> {
+  const recovered: string[] = [];
+  for (const worker of await redis.smembers(WORKERS_KEY)) {
+    if (worker === self) continue;
+    if (await redis.exists(aliveKey(worker))) continue;
+    if ((await redis.set(`worker:recovering:${worker}`, self, "EX", 60, "NX")) !== "OK") continue;
+    for (const id of await redis.lrange(processingKey(worker), 0, -1)) {
+      if (isUnfinished(await redis.get(`job:${id}`))) {
+        await redis.rpush(JOBS_QUEUE_KEY, id);
+        recovered.push(id);
+      }
+    }
+    await redis.del(processingKey(worker));
+    await redis.srem(WORKERS_KEY, worker);
+  }
+  return recovered;
+}
+
+/** "running" or "pending", read the way SWEEP_SCRIPT reads it - including
+ * a record stored as a JSON string holding the JSON. */
+export function isUnfinished(raw: string | null): boolean {
+  if (!raw) return false;
+  try {
+    let job: unknown = JSON.parse(raw);
+    if (typeof job === "string") job = JSON.parse(job);
+    const status = (job as { status?: unknown } | null)?.status;
+    return status === "running" || status === "pending";
+  } catch {
+    return false;
+  }
 }

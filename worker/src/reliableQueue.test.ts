@@ -15,7 +15,9 @@ import {
   aliveKey,
   finishJob,
   processingKey,
+  isUnfinished,
   recoverDeadWorkers,
+  sweepWithoutScript,
   markAlive,
   returnJob,
   takeJob,
@@ -101,6 +103,22 @@ async function main() {
   await redis.del(aliveKey("gone"));
   const [r1, r2] = await Promise.all([recoverDeadWorkers(redis, "live"), recoverDeadWorkers(redis, "other")]);
   check("the job is put back once, not twice", r1.length + r2.length === 1 && (await redis.lrange(JOBS_QUEUE_KEY, 0, -1)).filter((v) => v === "x").length === 1);
+
+  section("the same sweep without Lua scripts");
+  await redis.flushdb();
+  await markAlive(redis, "dead2");
+  await redis.set(jobKey("p1"), job("p1", "running"));
+  await redis.set(jobKey("p2"), JSON.stringify(job("p2", "pending")));
+  await redis.set(jobKey("p3"), job("p3", "done"));
+  await redis.lpush(JOBS_QUEUE_KEY, "p1", "p2", "p3");
+  for (let i = 0; i < 3; i++) await takeJob(blocking, redis, "dead2", 1);
+  await redis.del(aliveKey("dead2"));
+  const plain = await sweepWithoutScript(redis, "live");
+  check("recovers the same jobs", JSON.stringify(plain) === '["p2","p1"]' || JSON.stringify([...plain].sort()) === '["p1","p2"]', JSON.stringify(plain));
+  const q2 = await redis.lrange(JOBS_QUEUE_KEY, 0, -1);
+  check("oldest first at the front, finished one dropped", q2.at(-1) === "p1" && !q2.includes("p3"), JSON.stringify(q2));
+  check("and cleans up the same way", (await redis.exists(processingKey("dead2"))) === 0 && !(await redis.smembers(WORKERS_KEY)).includes("dead2"));
+  check("unfinished is read like the script reads it", isUnfinished(job("a", "running")) && isUnfinished(JSON.stringify(job("a", "pending"))) && !isUnfinished(job("a", "error")) && !isUnfinished("not json") && !isUnfinished(null));
 
   await redis.flushdb();
   redis.disconnect();
