@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { listAllPosts, type BlogPost } from "@/lib/blogQuery";
 import { blogPath } from "@/lib/blogPaths";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
+import { StarterPostsButton } from "@/components/blog/StarterPostsButton";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,6 +39,7 @@ export default async function AdminBlogPage() {
         <Link href="/admin/blog/new" className="font-ui btn-primary" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 18px", fontSize: 13 }}>
           New post
         </Link>
+        {db && <StarterPostsButton />}
       </p>
       {!db ? (
         <p style={{ color: "var(--ink-dim)" }}>No database on this deployment (DATABASE_URL is not set).</p>

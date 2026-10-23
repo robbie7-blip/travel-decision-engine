@@ -41,6 +41,7 @@ import {
   savePost,
   setPostStatus,
 } from "../../frontend/lib/blogQuery";
+import { STARTER_POSTS, addStarterPosts } from "../../frontend/lib/blogStarter";
 
 heading("trips in Postgres");
 
@@ -317,6 +318,13 @@ async function main() {
     const again = await getPublishedPost(db, "en", "matera-the-cave-city");
     check("edits land, and republishing keeps the first date", again?.excerpt === "Edited" && again?.publishedAt === firstPublished);
     check("deleted, it is gone", (await deletePost(db, id)) && (await getPost(db, id)) === null);
+
+    const first = await addStarterPosts(db);
+    check("the starter posts are added and published", first.added === STARTER_POSTS.length && (await listPublishedPosts(db, "en")).length >= 4 && (await listPublishedPosts(db, "bg")).length >= 4);
+    const edited = (await listAllPosts(db)).find((p) => p.slug === STARTER_POSTS[0].slug && p.language === STARTER_POSTS[0].language);
+    if (edited) await setPostStatus(db, edited.id, "draft");
+    const second = await addStarterPosts(db);
+    check("pressing again adds nothing, and a post taken back to draft stays a draft", second.added === 0 && second.skipped === STARTER_POSTS.length && (await getPost(db, edited?.id ?? ""))?.status === "draft");
   }
 
   // Tidy up the throwaway database.

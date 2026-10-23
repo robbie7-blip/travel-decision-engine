@@ -9,6 +9,9 @@ import { blogSlug, isAllowedCoverUrl, parseBlogInput } from "./blogQuery";
 import { MiniMarkdown, parseBlocks, plainText, readingMinutes } from "./miniMarkdown";
 import { parseDraft } from "./blogDraft";
 import { blogPath, sizedCover } from "./blogPaths";
+import { STARTER_POSTS } from "./blogStarter";
+import { existsSync } from "node:fs";
+import { listDestinationSlugs } from "./destinations";
 
 // Addresses.
 assert.equal(blogSlug("Lisbon's New Night Trams!"), "lisbons-new-night-trams");
@@ -89,5 +92,29 @@ if (draft) {
 }
 assert.equal(parseDraft("no json here"), null);
 assert.equal(parseDraft('{"title":"x","body":"too short"}'), null, "a stub is not a draft");
+
+// The starter posts.
+assert.equal(STARTER_POSTS.length, 8);
+const addresses = new Set<string>();
+for (const post of STARTER_POSTS) {
+  const name = `${post.language}/${post.slug}`;
+  assert.ok(!addresses.has(name), `${name} is unique`);
+  addresses.add(name);
+  const parsed = parseBlogInput(post);
+  assert.ok(parsed.ok, `${name} passes the editor's checks`);
+  if (parsed.ok) assert.equal(parsed.post.slug, post.slug, `${name} keeps its address`);
+  assert.ok(post.body.length >= 200, `${name} is long enough to publish`);
+  assert.ok(post.coverUrl && isAllowedCoverUrl(post.coverUrl) && existsSync(`public${post.coverUrl}`), `${name} has a real cover`);
+  assert.ok(post.coverCredit && post.coverCreditUrl?.startsWith("https://commons.wikimedia.org/"), `${name} credits its photo`);
+  assert.ok(post.sources.length > 0 && post.sources.every((s) => s.url.startsWith("https://")), `${name} names its sources`);
+  assert.ok(!/[\u2013\u2014]/.test(post.title + post.excerpt + post.body), `${name} has no dashes`);
+  const links = [...post.body.matchAll(/\]\((\/[^)]*)\)/g)].map((m) => m[1]);
+  assert.ok(links.length > 0, `${name} links to a guide`);
+  for (const href of links) {
+    const city = /^(?:\/bg)?\/destinations\/([a-z_]+)$/.exec(href)?.[1];
+    assert.ok(city && listDestinationSlugs().includes(city), `${name} links to a real guide: ${href}`);
+    assert.equal(href.startsWith("/bg/"), post.language === "bg", `${name} links in its own language`);
+  }
+}
 
 console.log("blog: all assertions passed");
