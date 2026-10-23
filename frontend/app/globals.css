@@ -1032,6 +1032,43 @@ a {
   background: color-mix(in srgb, var(--color-blue) 85%, black);
 }
 
+/* Nine links (Blog was the ninth) need about 1250px in one row at full
+   padding, and a link that does not fit drops alone onto a second line,
+   which reported as "Pricing on the 2nd row". Above the 1040px menu
+   breakpoint the row is tightened in steps instead, measured in Chromium
+   in English and Bulgarian (the longer one) on every page with this
+   header: one row from 1041px up, with at least 40px to spare.
+   - Narrower pills and a 2px gap everywhere.
+   - Below 1500px the header's side padding (8% of the width) gives way.
+   - Below 1300px the icons go, and the letter spacing with them. */
+@media (min-width: 1041px) {
+  .nav-links-row {
+    gap: 2px !important;
+  }
+  .nav-link {
+    padding: 7px 10px;
+  }
+}
+
+@media (min-width: 1041px) and (max-width: 1499px) {
+  .nav-link {
+    padding: 7px 8px;
+  }
+  .site-header {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+}
+
+@media (min-width: 1041px) and (max-width: 1299px) {
+  .nav-link svg {
+    display: none;
+  }
+  .nav-link {
+    letter-spacing: 0 !important;
+  }
+}
+
 /* Language (EN/BG) segmented toggle - solid teal (brand/primary), not a
    teal-into-purple gradient, with a hover state on the inactive option
    so the control doesn't feel dead. Covers both the client-side
