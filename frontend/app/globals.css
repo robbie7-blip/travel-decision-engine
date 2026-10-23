@@ -1037,10 +1037,13 @@ a {
    which reported as "Pricing on the 2nd row". Above the 1040px menu
    breakpoint the row is tightened in steps instead, measured in Chromium
    in English and Bulgarian (the longer one) on every page with this
-   header: one row from 1041px up, with at least 40px to spare.
-   - Narrower pills and a 2px gap everywhere.
-   - Below 1500px the header's side padding (8% of the width) gives way.
-   - Below 1300px the icons go, and the letter spacing with them. */
+   header: one row from 1041px up. The header keeps its usual side margin
+   (8% of the width) down to 1130px; taking it away earlier pushed the
+   logo and links against the left edge on a laptop.
+   - Narrower pills and a 2px gap everywhere, narrower still below 1500px.
+   - Below 1415px the icons go.
+   - Below 1210px the letter spacing goes too.
+   - Below 1130px the side margin narrows. */
 @media (min-width: 1041px) {
   .nav-links-row {
     gap: 2px !important;
@@ -1054,18 +1057,24 @@ a {
   .nav-link {
     padding: 7px 8px;
   }
-  .site-header {
-    padding-left: 24px !important;
-    padding-right: 24px !important;
-  }
 }
 
-@media (min-width: 1041px) and (max-width: 1299px) {
+@media (min-width: 1041px) and (max-width: 1414px) {
   .nav-link svg {
     display: none;
   }
+}
+
+@media (min-width: 1041px) and (max-width: 1209px) {
   .nav-link {
     letter-spacing: 0 !important;
+  }
+}
+
+@media (min-width: 1041px) and (max-width: 1129px) {
+  .site-header {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
   }
 }
 
