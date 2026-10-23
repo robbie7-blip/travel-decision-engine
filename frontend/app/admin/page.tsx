@@ -35,6 +35,11 @@ const TOOLS: { href: string; name: string; blurb: string }[] = [
     blurb: "Recent trips from the database: where, how long, what it cost, and what the quality check found.",
   },
   {
+    href: "/admin/blog",
+    name: "Blog",
+    blurb: "Write, draft with Claude, and publish posts for /blog and /bg/blog.",
+  },
+  {
     href: "/admin/feedback",
     name: "Feedback",
     blurb: "Every line item a traveler flagged as right or wrong.",

@@ -5937,3 +5937,191 @@ a.trip-notify-note {
     min-height: 44px;
   }
 }
+
+/* ---------------------------------------------------------------- blog
+   /blog, /bg/blog and their posts (components/blog). Built on the
+   published-plan page (.plan-page and friends) and adds the article. */
+.blog-grid {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.blog-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-panel);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.blog-card:hover {
+  border-color: var(--brand-teal);
+}
+
+.blog-card-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--bg-panel-raised);
+}
+
+.blog-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 18px;
+}
+
+.blog-card-date {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.blog-card-title {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--brand-teal);
+}
+
+.blog-card-excerpt {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.blog-cover {
+  margin: 4px 0 28px;
+}
+
+.blog-cover img,
+.blog-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  background: var(--bg-panel-raised);
+}
+
+.blog-cover img {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.blog-cover figcaption,
+.blog-figure figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.blog-cover figcaption a {
+  color: inherit;
+}
+
+.blog-body {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.blog-body p {
+  margin: 0 0 18px;
+}
+
+.blog-body a {
+  color: var(--grounded);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.blog-h2 {
+  margin: 34px 0 12px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.blog-h3 {
+  margin: 26px 0 10px;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.blog-list {
+  margin: 0 0 18px;
+  padding-left: 22px;
+}
+
+.blog-list li {
+  margin-bottom: 6px;
+}
+
+.blog-quote {
+  margin: 0 0 18px;
+  padding: 4px 0 4px 16px;
+  border-left: 3px solid var(--brand-teal);
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.blog-figure {
+  margin: 8px 0 24px;
+}
+
+.blog-sources {
+  margin: 32px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.blog-sources h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.blog-sources ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.blog-sources a {
+  color: var(--grounded);
+}
+
+.blog-more {
+  margin: 44px 0 0;
+}
+
+.blog-more h2 {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+@media (pointer: coarse) {
+  /* Lines of their own, so controls: a phone gets a finger-sized target. */
+  .blog-sources a,
+  .blog-cover figcaption a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}

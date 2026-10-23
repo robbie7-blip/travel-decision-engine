@@ -30,6 +30,17 @@ import {
   tripsEndedOn,
   unpublishTrip,
 } from "../../frontend/lib/tripsQuery";
+import {
+  deletePost,
+  getPost,
+  getPublishedPost,
+  listAllPosts,
+  listPublishedPosts,
+  parseBlogInput,
+  resetBlogSchemaCache,
+  savePost,
+  setPostStatus,
+} from "../../frontend/lib/blogQuery";
 
 heading("trips in Postgres");
 
@@ -277,8 +288,39 @@ async function main() {
     check("a new address has none", !(await hasOwnedTrips(db, "new@example.com")));
   }
 
+  section("the blog");
+  {
+    await db.query("drop table if exists blog_posts");
+    resetBlogSchemaCache();
+    const input = (over: Record<string, unknown> = {}) => {
+      const parsed = parseBlogInput({ language: "en", title: "Matera, the cave city", body: "B".repeat(300), destinations: ["Matera"], ...over });
+      if (!parsed.ok) throw new Error(parsed.detail);
+      return parsed.post;
+    };
+    check("the table is created on first use", (await listPublishedPosts(db, "en")).length === 0);
+    const created = await savePost(db, input());
+    check("a post is saved as a draft", created.ok && (await getPost(db, (created as { id: string }).id))?.status === "draft");
+    const id = (created as { id: string }).id;
+    check("a draft is not public", (await listPublishedPosts(db, "en")).length === 0 && (await getPublishedPost(db, "en", "matera-the-cave-city")) === null);
+    check("but the admin sees it", (await listAllPosts(db)).some((p) => p.id === id));
+    await setPostStatus(db, id, "published");
+    const live = await getPublishedPost(db, "en", "matera-the-cave-city");
+    check("published, it is public at its address", live?.title === "Matera, the cave city" && live.destinations[0] === "Matera");
+    const firstPublished = live?.publishedAt;
+    check("not in the other language's blog", (await listPublishedPosts(db, "bg")).length === 0);
+    const clash = await savePost(db, input());
+    check("a second post cannot take the same address", !clash.ok);
+    check("the same address in the other language is fine", (await savePost(db, input({ language: "bg" }))).ok);
+    await savePost(db, input({ title: "Matera, the cave city", excerpt: "Edited" }), id);
+    await setPostStatus(db, id, "draft");
+    await setPostStatus(db, id, "published");
+    const again = await getPublishedPost(db, "en", "matera-the-cave-city");
+    check("edits land, and republishing keeps the first date", again?.excerpt === "Edited" && again?.publishedAt === firstPublished);
+    check("deleted, it is gone", (await deletePost(db, id)) && (await getPost(db, id)) === null);
+  }
+
   // Tidy up the throwaway database.
-  await db.query("drop table if exists trips; drop table if exists published_trips; drop table if exists trip_feedback; drop table if exists schema_migrations");
+  await db.query("drop table if exists trips; drop table if exists published_trips; drop table if exists trip_feedback; drop table if exists blog_posts; drop table if exists schema_migrations");
   await closeDb();
 
   section("an unreachable database never breaks a trip");

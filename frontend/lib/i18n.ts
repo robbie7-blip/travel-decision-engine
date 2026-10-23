@@ -521,6 +521,20 @@ export interface Dictionary {
     notSaved: string;
     invalid: string;
   };
+  /** The blog: /blog, /bg/blog and their posts (lib/blogQuery.ts). */
+  blog: {
+    navLink: string;
+    indexTitle: string;
+    indexIntro: string;
+    empty: string;
+    minutesRead: string; // "{n}"
+    sources: string;
+    photo: string;
+    planCta: string; // "{place}"
+    planGeneric: string;
+    more: string;
+    all: string;
+  };
   /** Published trips: /plans and /plans/<slug>. */
   plans: {
     indexTitle: string;
@@ -1388,6 +1402,19 @@ const en: Dictionary = {
     notSaved: "We could not save that just now. Please try the link again later.",
     invalid: "This link is not valid.",
   },
+  blog: {
+    navLink: "Blog",
+    indexTitle: "Travel stories and news",
+    indexIntro: "New places worth the trip, stories behind famous ones, and what is changing in travel right now.",
+    empty: "No posts yet. Check back soon.",
+    minutesRead: "{n} min read",
+    sources: "Sources",
+    photo: "Photo:",
+    planCta: "Plan a trip to {place}",
+    planGeneric: "Plan your own trip",
+    more: "More stories",
+    all: "All posts",
+  },
   plans: {
     indexTitle: "Trips travellers planned with decide",
     indexIntro: "Real itineraries their travellers chose to share: every hotel, meal and sight decided, with how sure we are of each.",
@@ -2234,6 +2261,19 @@ const bg: Dictionary = {
     sent: "Благодарим. Четем всяко.",
     notSaved: "Не успяхме да го запазим точно сега. Опитай линка отново по-късно.",
     invalid: "Този линк не е валиден.",
+  },
+  blog: {
+    navLink: "Блог",
+    indexTitle: "Истории и новини за пътувания",
+    indexIntro: "Нови места, които си струват пътя, истории зад известните и какво се променя в пътуванията точно сега.",
+    empty: "Още няма публикации. Провери отново скоро.",
+    minutesRead: "{n} мин четене",
+    sources: "Източници",
+    photo: "Снимка:",
+    planCta: "Планирай пътуване до {place}",
+    planGeneric: "Планирай своето пътуване",
+    more: "Още истории",
+    all: "Всички публикации",
   },
   plans: {
     indexTitle: "Пътувания, планирани с decide",

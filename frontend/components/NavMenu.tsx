@@ -13,6 +13,7 @@ import { HouseGlyph } from "./HouseGlyph";
 import type { Dictionary } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 import { destinationsPath } from "@/lib/destinationPaths";
+import { blogPath } from "@/lib/blogPaths";
 
 // One small monoline glyph per nav item - the plain-text pills read as flat
 // and generic on the pages where nothing is "active" yet. (That used to
@@ -68,6 +69,12 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <path {...STROKE} d="M12 4.5v16M4 12.5h16M6.3 6.8l11.4 11.4M17.7 6.8 6.3 18.2" />
     </svg>
   ),
+  blog: (
+    <svg {...ICON_PROPS}>
+      <rect {...STROKE} x="4" y="4" width="16" height="16" rx="1.5" />
+      <path {...STROKE} d="M8 8.5h8M8 12h8M8 15.5h5" />
+    </svg>
+  ),
   pricing: (
     <svg {...ICON_PROPS}>
       <path {...STROKE} d="M12.5 3.5H19a1 1 0 0 1 1 1v6.5a1 1 0 0 1-.3.7l-8 8a1 1 0 0 1-1.4 0l-6.5-6.5a1 1 0 0 1 0-1.4l8-8a1 1 0 0 1 .7-.3Z" />
@@ -106,6 +113,7 @@ export function NavMenu({
     { href: `/why-decide${langSuffix}`, label: t.whyDecide.navLink, icon: NAV_ICONS.whyDecide },
     { href: destinationsPath(language), label: t.browseDestinations, icon: NAV_ICONS.destinations },
     { href: `/showcase${langSuffix}`, label: t.showcase.navLabel, icon: NAV_ICONS.showcase },
+    { href: blogPath(language), label: t.blog.navLink, icon: NAV_ICONS.blog },
     { href: "/ask", label: t.tripQA.navLink, icon: NAV_ICONS.ask },
     { href: `/decide-for-me${langSuffix}`, label: t.spin.navLink, icon: NAV_ICONS.spin },
     { href: "/account/visited", label: t.visited.homeNavLink, icon: NAV_ICONS.visited },

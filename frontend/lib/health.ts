@@ -127,6 +127,11 @@ export const FRONTEND_ENV: readonly EnvCheck[] = [
     what: "The id of a deep-linkable Booking.com link in CJ, once approved (needs a redeploy)",
   },
   {
+    name: "PEXELS_API_KEY",
+    criticality: "optional",
+    what: "Lets \"Draft with Claude\" on /admin/blog pick a royalty-free cover photo, with its photographer's credit",
+  },
+  {
     name: "NEXT_PUBLIC_CJ_BOOKING_AIDS",
     criticality: "optional",
     what: "A Booking.com link id per country, e.g. US:111,CA:111,EU:222,*:333 - each CJ programme pays only in its own countries (needs a redeploy)",

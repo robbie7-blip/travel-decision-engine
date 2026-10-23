@@ -124,6 +124,8 @@ const PAGES = [
   "/compare",
   "/compare-stats",
   "/plans",
+  "/blog",
+  "/bg/blog",
   /* Not a page.tsx, so the route sweep below cannot find it: this is a
      deliberately missing URL, served by app/not-found.tsx. Its links are
      the only way off a dead end and were added at 17px high, so the one
@@ -140,6 +142,8 @@ const ROUTES_NOT_CHECKED = {
   "/admin/stats": "see /admin",
   "/admin/test-mode": "see /admin",
   "/admin/trips": "see /admin",
+  "/admin/blog": "see /admin",
+  "/admin/blog/[id]": "see /admin",
   // Needs a generated trip in Redis, which means a real model call and
   // real money. Its controls come from ItineraryResult and TripQA, and
   // TripQA's are measured on /ask, which renders the same component.
@@ -153,6 +157,11 @@ const ROUTES_NOT_CHECKED = {
   // The same component as the English guide (components/destinations/
   // DestinationGuide.tsx), only the words differ.
   "/bg/destinations/[slug]": "same component as /destinations/[slug], measured there",
+  // Need a published post in Postgres. Their controls: the "Plan a trip"
+  // button (.plan-cta, 44px), source links and the photo credit (44px on
+  // a phone, see .blog-sources in globals.css), "More stories" cards.
+  "/blog/[slug]": "needs a published post in Postgres",
+  "/bg/blog/[slug]": "needs a published post in Postgres",
 };
 
 /** One real city guide, resolved from the destination list rather than

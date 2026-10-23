@@ -4,6 +4,7 @@ import { getSiteUrl } from "@/lib/siteUrl";
 import { destinationAlternates } from "@/lib/destinationPaths";
 import { getDb } from "@/lib/db";
 import { listPublished } from "@/lib/tripsQuery";
+import { listPublishedPosts } from "@/lib/blogQuery";
 
 // Read on each request: published trips come and go, and a sitemap built
 // once at deploy time would miss every trip published after it.
@@ -52,5 +53,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  return [...staticRoutes, ...destinationRoutes, ...planRoutes];
+  // The blog, in each language: posts are written per language, so each
+  // index lists its own and a post has no alternate.
+  const [postsEn, postsBg] = db
+    ? await Promise.all([listPublishedPosts(db, "en", 1000).catch(() => []), listPublishedPosts(db, "bg", 1000).catch(() => [])])
+    : [[], []];
+  const blogRoutes: MetadataRoute.Sitemap = [
+    { url: `${siteUrl}/blog`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    { url: `${siteUrl}/bg/blog`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    ...[...postsEn, ...postsBg].map((post) => ({
+      url: `${siteUrl}${post.language === "bg" ? "/bg/blog" : "/blog"}/${post.slug}`,
+      lastModified: post.publishedAt ? new Date(post.publishedAt) : now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+  ];
+
+  return [...staticRoutes, ...destinationRoutes, ...planRoutes, ...blogRoutes];
 }
