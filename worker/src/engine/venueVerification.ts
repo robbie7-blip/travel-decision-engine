@@ -931,3 +931,101 @@ export async function checkVenues(
 
   return itinerary;
 }
+
+/** The kind of place to search for, in Google's own words, for a meal
+ * slot: breakfast is a café as often as a restaurant, and a dietary need
+ * goes into the search so the first results already serve it. */
+export function fallbackMealQuery(item: Pick<ItineraryItem, "title" | "time">, dietary: string[]): string {
+  const diet = dietary
+    .map((d) => d.toLowerCase())
+    .find((d) => /vegan|vegetarian|halal|kosher|gluten/.test(d));
+  const dietWord = diet
+    ? /vegan/.test(diet)
+      ? "vegan"
+      : /vegetarian/.test(diet)
+        ? "vegetarian"
+        : /halal/.test(diet)
+          ? "halal"
+          : /kosher/.test(diet)
+            ? "kosher"
+            : "gluten free"
+    : "";
+  const hour = Number.parseInt((item.time ?? "").split(":")[0] ?? "", 10);
+  const breakfast = /breakfast|закуска|brunch/i.test(item.title) || (Number.isFinite(hour) && hour < 11);
+  return [dietWord, breakfast ? "breakfast cafe" : "restaurant"].filter(Boolean).join(" ");
+}
+
+/** Names a real restaurant for every meal that ended the run without one.
+ *
+ * The meals that reach here already lost twice: the model's own pick did
+ * not pass verification, and the repair's replacement did not either -
+ * usually in a small town, at an awkward hour, or with a dietary need,
+ * where the model's memory of good places runs thin. Until now the line
+ * shipped as just "Dinner", which is the one thing a traveller cannot act
+ * on. Google knows what is actually there, so it is asked directly: one
+ * search per meal, near where the meal is, and the first result that
+ * clears every bar the verified venues clear (open then, operating,
+ * rated at least MIN_RATING_MEAL on enough reviews, not already in the
+ * trip, not across town) takes the slot. If none does, the line stays as
+ * it was. No model call, all in parallel, so it adds about one Places
+ * round trip to the run. */
+export async function fillUnnamedMeals(
+  itinerary: Itinerary,
+  dietary: string[],
+  options: { geoCache?: Map<string, Promise<GeoPoint | null>> } = {}
+): Promise<number> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) return 0;
+  const targets = (itinerary.days ?? []).flatMap((day) =>
+    day.items.filter((item) => item.type === "meal" && !item.venue_name?.trim()).map((item) => ({ item, date: day.date }))
+  );
+  if (targets.length === 0) return 0;
+
+  const used = new Set(
+    (itinerary.days ?? []).flatMap((day) => day.items.map((i) => i.venue_name?.trim()).filter((n): n is string => !!n)).map(normalizeName)
+  );
+  const geoCache = options.geoCache ?? new Map<string, Promise<GeoPoint | null>>();
+  let filled = 0;
+
+  await runWithLimit(targets, MAX_PARALLEL_PLACES, async ({ item, date }) => {
+    try {
+      const bias = await geocode(item.location, geoCache);
+      const res = await fetch(PLACES_SEARCH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": FIELD_MASK },
+        body: JSON.stringify({
+          textQuery: `${fallbackMealQuery(item, dietary)} ${item.location}`.trim(),
+          maxResultCount: 10,
+          ...(bias && { locationBias: { circle: { center: bias, radius: 5000 } } }),
+        }),
+        signal: AbortSignal.timeout(PLACES_TIMEOUT_MS),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as PlacesApiResponse;
+      const pick = (data.places ?? []).find((place) => {
+        const name = place.displayName?.text;
+        if (typeof name !== "string" || !name.trim() || used.has(normalizeName(name))) return false;
+        if (place.businessStatus && place.businessStatus !== "OPERATIONAL") return false;
+        if (!hasReliableRating(place) || place.rating! < MIN_RATING_MEAL) return false;
+        if (bias && place.location && distanceKm(bias, place.location) > 10) return false;
+        return isOpenAt(place, date, item.time) === true;
+      });
+      if (!pick?.displayName?.text) return;
+      const name = pick.displayName.text.trim();
+      // Taken at once, before the next await, so two meals searching the
+      // same street cannot both land on the same place.
+      used.add(normalizeName(name));
+      item.venue_name = name;
+      item.title = `${item.title.trim()}: ${name}`;
+      applyPlaceData(item, pick);
+      item.google_open_on_visit = true;
+      item.google_opening_hours = pick.regularOpeningHours?.weekdayDescriptions;
+      item.google_minutes_until_close = minutesUntilClose(pick, date, item.time) ?? undefined;
+      filled++;
+    } catch (e) {
+      // A failed search leaves the meal as it was; it never costs the trip.
+      console.warn(`[worker] restaurant search for "${item.title}" failed:`, e instanceof Error ? e.message : String(e));
+    }
+  });
+  return filled;
+}

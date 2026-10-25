@@ -52,7 +52,7 @@ import {
   normalizeLodgingPrices,
   summarizeQuality,
 } from "./engine/quality";
-import { checkVenues, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
+import { checkVenues, fillUnnamedMeals, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
 import {
   assertUsableItinerary,
   describeShapeRepairs,
@@ -3629,6 +3629,19 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
       }
     }
 
+    // Any meal still without a named place - its first pick and its
+    // replacement both failed verification, or it was never named - gets
+    // one direct Google search for a real, open, well-rated restaurant
+    // nearby (fillUnnamedMeals). Counted in the re-verify time, which is
+    // the stage it finishes: the timing audit's stages stay exhaustive.
+    const mealsFilled = await timed("fillMeals", () =>
+      fillUnnamedMeals(itinerary, job.brief.dietary_constraints ?? [], { geoCache })
+    );
+    if (mealsFilled > 0) {
+      jobTimings.mealsFilledFromPlaces = mealsFilled;
+      console.log(`[worker] named ${mealsFilled} meal(s) from a direct Places search`);
+    }
+
     setStage("finishing");
 
     // THE SHAPE, ESTABLISHED ONCE - AGAIN, because the repairs run after
@@ -3821,7 +3834,7 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
   // and has never said which one it was.
   jobTimings.venuesMs = timings.venues;
   jobTimings.mealRepairMs = timings.mealRepair;
-  jobTimings.verifyRepairsMs = timings.verifyRepairs;
+  jobTimings.verifyRepairsMs = (timings.verifyRepairs ?? 0) + (timings.fillMeals ?? 0) || undefined;
 
   // Does the timing line add up?
   //

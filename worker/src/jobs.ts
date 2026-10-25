@@ -398,6 +398,8 @@ export interface JobTimings {
    * added. Near-zero on a clean generation, since it's skipped entirely
    * when nothing was repaired. */
   verifyRepairsMs?: number;
+  /** Meals named by fillUnnamedMeals' direct Places search. */
+  mealsFilledFromPlaces?: number;
   /** True when two-phase generation failed and the entire itinerary was
    * regenerated through the original single-call path - the single most
    * expensive thing that can happen to a job, and previously invisible

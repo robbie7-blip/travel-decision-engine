@@ -449,6 +449,9 @@ jobs:
       # abandoned verification for every remaining item AND marked a fully
       # generated, fully paid itinerary "Unexpected error". Reverting makes
       # 3 red, one of them "no item is lost to the failure - 0".)
+      # A meal whose pick and replacement both failed verification gets one
+      # direct Places search for a real, open, well-rated place nearby.
+      - run: npm run test:meal-fill
       # The accommodation cache - the highest-leverage write in the
       # pipeline. What it stores is handed to the next ~20 hours of
       # generations for that city as fact, with "do not perform a new
