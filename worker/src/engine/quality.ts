@@ -342,6 +342,33 @@ function mentions(haystack: string, wanted: string): boolean {
   return matched >= needed;
 }
 
+/** The places in one must-see line, without the requests around them.
+ *
+ * People type must-sees as sentences. A real Friedrichshafen run asked for
+ * "Neuschwanstein Castle and also want to rent a car", got a day driving
+ * to Neuschwanstein Castle in a rental car, and the gate reported the
+ * whole line as dropped: "want to rent a car" is a request, not a place,
+ * and its words are not in any item. So a line is split where people join
+ * separate things ("also", "plus", "as well as", ";", "и също"), and a
+ * part that reads as a request ("want to...", "need a...", "rent...")
+ * is left to the prompt, which already has it, rather than looked for as
+ * a place. Plain "and" is NOT a split: "Colosseum and Roman Forum" is how
+ * one ticket is written. */
+export function requestedPlaces(wanted: string): string[] {
+  const parts = wanted
+    // Letter lookarounds, not \b: \b only knows Latin letters, so it
+    // never matched "също" in a Bulgarian line.
+    .split(/\s*(?:;|(?<!\p{L})(?:and also|also|plus|as well as|и също|също|както и)(?!\p{L}))\s*/iu)
+    .map((part) => part.replace(/^(?:and|и)\s+|\s+(?:and|и)$/giu, "").trim())
+    .filter((part) => part.replace(/[^\p{L}\p{N}]/gu, "").length > 0);
+  const request =
+    /^(?:i\s+|we\s+|i'd\s+|we'd\s+)?(?:want|need|would like|like to|rent|hire|book|get|have|take|try|go|do|make|искам|искаме|бих|наем|да\s)/iu;
+  const places = parts.filter((part) => !request.test(part));
+  // Never nothing: a line that is only a request is still checked as it
+  // was, so this can make the check quieter only where it was wrong.
+  return places.length > 0 ? places : [wanted];
+}
+
 function isNamedVenueSlot(item: ItineraryItem): boolean {
   return item.type === "meal" || item.type === "activity";
 }
@@ -935,7 +962,7 @@ export function assessQuality(
   const itemText = days
     .flatMap((d) => d.items.flatMap((i) => [i.title, i.venue_name ?? "", i.location, i.reasoning]))
     .join(" ");
-  for (const wanted of brief.must_see ?? []) {
+  for (const wanted of (brief.must_see ?? []).flatMap(requestedPlaces)) {
     if (mentions(itemText, wanted)) continue;
     if (mentions(narrative, wanted)) {
       // In the narrative but not in the days: it was asked for, and what

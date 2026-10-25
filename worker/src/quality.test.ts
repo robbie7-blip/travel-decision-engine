@@ -10,7 +10,7 @@
 //
 // Run: npm run test:quality
 
-import { assessQuality, normalizeLodgingPrices, type QualityReport } from "./engine/quality";
+import { assessQuality, normalizeLodgingPrices, requestedPlaces, type QualityReport } from "./engine/quality";
 import type { SkeletonAccommodation, SkeletonDay } from "./engine/twoPhase";
 import { check, finish, heading, section } from "./testutil";
 import type { Itinerary, ItineraryDay, ItineraryItem, TripBriefInput } from "./types";
@@ -322,6 +322,30 @@ section("the things the traveler actually asked for");
   check(
     "a must-see written into the days is covered",
     !firedChecks2(withTrevi, wantsTrevi).includes("must_see_covered")
+  );
+
+  // A must-see written as a sentence. A real Friedrichshafen run asked for
+  // "Neuschwanstein Castle and also want to rent a car", drove there in a
+  // rental car, and the whole line was reported dropped: the request half
+  // is not a place and its words are in no item.
+  const sentence: TripBriefInput = { ...BRIEF, must_see: ["Neuschwanstein Castle and also want to rent a car"] };
+  const withCastle = baseline();
+  withCastle[1].items.push(item({ title: "Drive to Neuschwanstein Castle by rental car", time: "10:00" }));
+  check(
+    "a place plus a request in one line: the place is what is checked",
+    !firedChecks2(withCastle, sentence).includes("must_see_covered")
+  );
+  check(
+    "and it is still reported when the place really is missing",
+    firedChecks2(baseline(), sentence).includes("must_see_covered")
+  );
+  check(
+    "a Bulgarian line splits the same way",
+    JSON.stringify(requestedPlaces("Рилски манастир и също искам да карам ски")) === JSON.stringify(["Рилски манастир"])
+  );
+  check(
+    "plain 'and' is one place, as a ticket is written",
+    requestedPlaces("Colosseum and Roman Forum").length === 1
   );
 
   // Explained away in the skip list. Still not a silent drop, so still not
