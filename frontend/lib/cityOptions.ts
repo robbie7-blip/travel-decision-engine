@@ -39,6 +39,10 @@ export interface CityOption {
    * value. "Venice" and "Venice, Italy" would be two different destination
    * strings to the engine. */
   country: string;
+  /** What goes into the brief when it is not just the name: a suggestion
+   * from the full world list (lib/worldCities.ts) for a smaller place that
+   * shares its name with a bigger one, e.g. "Paris, United States". */
+  value?: string;
 }
 
 /** The cities with curated facts files, by the slug those files use, so the
@@ -474,4 +478,17 @@ export function addCity(cities: string[], city: string): string[] {
   if (!trimmed) return cities;
   if (cities.some((existing) => fold(existing) === fold(trimmed))) return cities;
   return [...cities, trimmed];
+}
+
+/** The short list's suggestions, then the full world list's underneath,
+ * without repeating a city or offering one already chosen. */
+export function mergeCitySuggestions(local: CityOption[], remote: CityOption[], chosen: string[] = [], limit = 8): CityOption[] {
+  const seen = new Set([...chosen, ...local.map((o) => o.value ?? o.name)].map(fold));
+  const extra = remote.filter((o) => {
+    const key = fold(o.value ?? o.name);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return [...local, ...extra].slice(0, limit);
 }

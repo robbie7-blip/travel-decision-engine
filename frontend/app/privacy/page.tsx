@@ -225,6 +225,14 @@ export default async function PrivacyPage({
               also be queried for destination, venue, flight, or weather information - these receive search terms
               about places, not information that identifies you personally.
             </p>
+            <p style={{ margin: "10px 0 0" }}>
+              City suggestions in the trip form come from{" "}
+              <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--grounded)" }}>
+                GeoNames
+              </a>
+              , licensed under CC BY 4.0. What you type there is looked up on our own server and is not sent to
+              GeoNames.
+            </p>
           </LegalSection>
 
           <LegalSection heading="How long we keep it">

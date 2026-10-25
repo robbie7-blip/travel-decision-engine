@@ -21,7 +21,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { inputStyle } from "./ui";
-import { cityLabel, filterCityOptions } from "@/lib/cityOptions";
+import { cityLabel, filterCityOptions, mergeCitySuggestions } from "@/lib/cityOptions";
+import { useCitySearch } from "@/lib/useCitySearch";
 import type { Language } from "@/lib/types";
 
 interface OriginComboboxProps {
@@ -43,7 +44,10 @@ export function OriginCombobox({ value, onChange, language, placeholder, freeTex
   // No `chosen` exclusion: this field holds one city, and excluding the
   // current value would empty the list the moment a suggestion is picked -
   // so reopening it to change your mind would show nothing.
-  const suggestions = filterCityOptions(value, language);
+  // The short list, then the whole world's cities underneath, as in the
+  // destinations field (CityCombobox).
+  const remote = useCitySearch(value, language);
+  const suggestions = mergeCitySuggestions(filterCityOptions(value, language, [], value.trim() ? 5 : 8), remote.results);
 
   useEffect(() => {
     if (!open) return;
@@ -64,7 +68,7 @@ export function OriginCombobox({ value, onChange, language, placeholder, freeTex
   // An exact match is not "nothing matched", even when the suggestion list
   // is empty for some other reason - so the hint keys off there being a
   // query with no candidates rather than off the list length alone.
-  const showHint = value.trim().length > 0 && suggestions.length === 0;
+  const showHint = value.trim().length > 0 && suggestions.length === 0 && !remote.loading;
 
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
@@ -121,19 +125,22 @@ export function OriginCombobox({ value, onChange, language, placeholder, freeTex
             overflowY: "auto",
           }}
         >
-          {suggestions.map((option) => (
+          {suggestions.map((option) => {
+            const optionValue = option.value ?? option.name;
+            const selected = optionValue === value.trim();
+            return (
             <button
-              key={option.name}
+              key={optionValue}
               type="button"
               // onMouseDown, not onClick - same reason as the destinations
               // field: on a click the input's own handlers fire first, and
               // aiming at an option should land on the option.
               onMouseDown={(e) => {
                 e.preventDefault();
-                commit(option.name);
+                commit(optionValue);
               }}
               role="option"
-              aria-selected={option.name === value.trim()}
+              aria-selected={selected}
               className="font-ui cal-day"
               style={{
                 display: "flex",
@@ -146,21 +153,22 @@ export function OriginCombobox({ value, onChange, language, placeholder, freeTex
                 padding: "7px 10px",
                 fontSize: 13,
                 cursor: "pointer",
-                background: option.name === value.trim() ? "var(--accent-green)" : "transparent",
-                color: option.name === value.trim() ? "var(--bg-panel)" : "var(--ink)",
+                background: selected ? "var(--accent-green)" : "transparent",
+                color: selected ? "var(--bg-panel)" : "var(--ink)",
               }}
             >
               <span>{cityLabel(option, language)}</span>
               <span
                 style={{
-                  color: option.name === value.trim() ? "var(--bg-panel)" : "var(--ink-dim)",
+                  color: selected ? "var(--bg-panel)" : "var(--ink-dim)",
                   fontSize: 12,
                 }}
               >
                 {option.country}
               </span>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

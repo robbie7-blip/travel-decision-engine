@@ -21,7 +21,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { inputStyle } from "./ui";
-import { addCity, cityLabel, filterCityOptions, joinCities, splitCities } from "@/lib/cityOptions";
+import { addCity, cityLabel, filterCityOptions, joinCities, mergeCitySuggestions, splitCities } from "@/lib/cityOptions";
+import { useCitySearch } from "@/lib/useCitySearch";
 import type { Language } from "@/lib/types";
 
 interface CityComboboxProps {
@@ -73,7 +74,16 @@ export function CityCombobox({
   const listId = useId();
 
   const cities = splitCities(value);
-  const suggestions = filterCityOptions(draft, language, cities);
+  // The short list first, instantly, then the whole world's cities from
+  // the server underneath (lib/useCitySearch.ts). The short list gets five
+  // places once something is typed, so a town only the full list knows is
+  // not pushed out by loose matches.
+  const remote = useCitySearch(draft, language);
+  const suggestions = mergeCitySuggestions(
+    filterCityOptions(draft, language, cities, draft.trim() ? 5 : 8),
+    remote.results,
+    cities
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -132,7 +142,9 @@ export function CityCombobox({
     setDraft("");
   }
 
-  const showHint = draft.trim().length > 0 && suggestions.length === 0;
+  // Only once the full list has answered too: "not on the list" while it
+  // is still looking would be wrong half a second later.
+  const showHint = draft.trim().length > 0 && suggestions.length === 0 && !remote.loading;
 
   const chipElements = cities.map((city) => (
     <span
@@ -270,14 +282,14 @@ export function CityCombobox({
         >
           {suggestions.map((option) => (
             <button
-              key={option.name}
+              key={option.value ?? option.name}
               type="button"
               // onMouseDown, not onClick: the input's onBlur fires first on
               // a click and would commit the half-typed draft instead of the
               // option that was actually aimed at.
               onMouseDown={(e) => {
                 e.preventDefault();
-                commit(option.name);
+                commit(option.value ?? option.name);
               }}
               role="option"
               aria-selected={false}

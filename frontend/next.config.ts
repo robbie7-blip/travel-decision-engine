@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The world city list is read from disk by /api/cities (lib/worldCities
+  // .ts), which file tracing cannot see through a computed path, so it is
+  // named here or the deployed function would not have it.
+  outputFileTracingIncludes: {
+    "/api/cities": ["./data/worldCities.json"],
+  },
   // /spin moved to /decide-for-me.
   //
   // The old path was named after the wheel, back when the wheel was the
