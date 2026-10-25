@@ -492,6 +492,22 @@ export function ItineraryResult({
           <EmailTripButton jobId={jobId} t={t} language={language} />
         )}
 
+        {/* The way to ask for a different plan, at the top where people
+            look, not only at the bottom of a long page. Jumps to the push
+            back card and puts the cursor in it. */}
+        {onRefine && !refining && !editing && result.days && result.days.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              document.getElementById("pushback")?.scrollIntoView({ behavior: "smooth", block: "center" });
+              questionRef.current?.focus({ preventScroll: true });
+            }}
+            className="font-ui no-print trip-action trip-action--accent"
+          >
+            <span aria-hidden>↺</span> {t.result.pushbackJump}
+          </button>
+        )}
+
         {/* Hand edits: free and instant, unlike a pushback. */}
         {onSaveEdits && !editing && result.days && result.days.length > 0 && (
           <button type="button" onClick={() => setEditing(true)} className="font-ui no-print trip-action">
@@ -990,8 +1006,12 @@ export function ItineraryResult({
       )}
 
       {onRefine && (
-      <div className="no-print" style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
+      <section id="pushback" className="no-print pushback-card" aria-labelledby="pushback-heading">
         <SectionLabel>{t.result.pushbackLabel}</SectionLabel>
+        <h2 id="pushback-heading" className="font-display pushback-heading">
+          {t.result.pushbackHeading}
+        </h2>
+        <p className="pushback-intro">{t.result.pushbackIntro}</p>
         {/* Fills the box, does not send: a pushback costs a generation,
             so the traveller still presses "ask" - and can adjust the
             wording first. */}
@@ -1092,7 +1112,7 @@ export function ItineraryResult({
             <div style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6 }}>{result.pushback_response}</div>
           </div>
         )}
-      </div>
+      </section>
       )}
 
       <div className="no-print" style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--line)" }}>

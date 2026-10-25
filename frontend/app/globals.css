@@ -5489,6 +5489,56 @@ a.trip-notify-note {
   color: var(--ink-dim);
 }
 
+/* The push back card (ItineraryResult): the one place a traveller can ask
+   for a different plan, so it reads as an invitation rather than one more
+   labelled row at the bottom of a long page. Tinted with the brand colour,
+   a real heading, and the button says what happens. */
+.pushback-card {
+  margin-top: 36px;
+  padding: 24px 24px 22px;
+  border: 1px solid color-mix(in srgb, var(--brand-teal) 35%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--brand-teal) 7%, var(--bg-panel));
+  scroll-margin-top: 24px;
+}
+
+.pushback-heading {
+  margin: 4px 0 6px;
+  font-size: 24px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.pushback-intro {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+@media (max-width: 640px) {
+  .pushback-card {
+    padding: 18px 16px;
+  }
+  .pushback-heading {
+    font-size: 20px;
+  }
+}
+
+/* The jump to it at the top of the trip, filled so it stands out from the
+   keep-this-page actions beside it. */
+.trip-action--accent {
+  background: var(--brand-teal);
+  border-color: var(--brand-teal);
+  color: var(--bg-panel);
+}
+
+.trip-action--accent:hover {
+  background: color-mix(in srgb, var(--brand-teal) 85%, black);
+  color: var(--bg-panel);
+}
+
 /* Ready-made pushbacks (ItineraryResult). Fill the box, never send. */
 .pushback-chips {
   display: flex;

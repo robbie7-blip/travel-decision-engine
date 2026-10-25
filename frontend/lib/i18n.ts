@@ -410,6 +410,11 @@ export interface Dictionary {
     feedbackThanks: string;
     feedbackFailed: string;
     pushbackLabel: string;
+    /** The push back card's heading and invitation, and the button at the
+     * top of the trip that jumps to it. */
+    pushbackHeading: string;
+    pushbackIntro: string;
+    pushbackJump: string;
     pushbackPlaceholder: string;
     /** Ready-made pushbacks above the box. A tap fills the box rather
      * than sending, so nothing is spent until "ask" is pressed. */
@@ -1298,6 +1303,10 @@ const en: Dictionary = {
     feedbackThanks: "thanks - noted",
     feedbackFailed: "failed - try again",
     pushbackLabel: "Push back on this",
+    pushbackHeading: "Not quite right? Tell decide what to change.",
+    pushbackIntro:
+      "Cheaper, slower, better food, closer to your hotel: say it in your own words and the whole plan is reworked around it. This version stays saved.",
+    pushbackJump: "Change something",
     pushbackPlaceholder: "e.g. \"why not the cheaper hotel near the station?\"",
     edit: {
       start: "Edit plan",
@@ -1370,7 +1379,7 @@ const en: Dictionary = {
       { label: "Closer to my hotel", question: "Keep meals and activities closer to my hotel." },
       { label: "Better food", question: "Swap in more memorable places to eat." },
     ],
-    pushbackSubmit: "ask",
+    pushbackSubmit: "Rework my plan",
     pushbackSubmitting: "thinking…",
     pushbackYouAsked: "You asked",
     refine: {
@@ -2158,6 +2167,10 @@ const bg: Dictionary = {
     feedbackThanks: "благодарим - отбелязано",
     feedbackFailed: "неуспешно - опитай отново",
     pushbackLabel: "Оспори това",
+    pushbackHeading: "Нещо не е както искаш? Кажи какво да променим.",
+    pushbackIntro:
+      "По-евтино, по-спокойно, по-хубава храна, по-близо до хотела: напиши го с твои думи и целият план се преработва. Тази версия остава запазена.",
+    pushbackJump: "Промени нещо",
     pushbackPlaceholder: "напр. „защо не по-евтиния хотел до гарата?“",
     edit: {
       start: "Редактирай плана",
@@ -2230,7 +2243,7 @@ const bg: Dictionary = {
       { label: "По-близо до хотела", question: "Дръж храненията и забележителностите по-близо до хотела ми." },
       { label: "По-добра храна", question: "Смени местата за хранене с по-запомнящи се." },
     ],
-    pushbackSubmit: "попитай",
+    pushbackSubmit: "Преработи плана",
     pushbackSubmitting: "обмисля…",
     pushbackYouAsked: "Попита",
     refine: {
