@@ -2,7 +2,7 @@
 //
 // Run: npm run test:world-cities
 
-import { latinise, searchCities, worldCities } from "./worldCities";
+import { latinise, locateCity, searchCities, worldCities } from "./worldCities";
 import { mergeCitySuggestions } from "./cityOptions";
 import { check, finish, heading, section } from "./testutil";
 
@@ -55,6 +55,16 @@ section("Bulgarian");
   check("Cyrillic spelled the same way works", first("Тбилиси", "bg")?.name === "Tbilisi");
   check("country names in Bulgarian", first("Friedrichshaf", "bg")?.country === "Германия");
   check("transliteration", latinise("Щъркел") === "shtarkel");
+}
+
+section("where a destination is, for the hotel search");
+{
+  const rome = locateCity(index, "Rome");
+  check("Rome is in Italy", !!rome && Math.abs(rome.lat - 41.9) < 0.2 && Math.abs(rome.lng - 12.5) < 0.2, JSON.stringify(rome));
+  const texas = locateCity(index, "Paris, United States");
+  check("Paris, United States is not in France", !!texas && texas.lng < -60, JSON.stringify(texas));
+  check("Köln finds Cologne", !!locateCity(index, "Köln"));
+  check("a region is not a city", locateCity(index, "Tuscany") === null);
 }
 
 section("merged under the short list without repeats");

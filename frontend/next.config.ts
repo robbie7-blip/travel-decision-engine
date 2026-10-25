@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   // named here or the deployed function would not have it.
   outputFileTracingIncludes: {
     "/api/cities": ["./data/worldCities.json"],
+    "/api/lodging-search": ["./data/worldCities.json"],
   },
   // /spin moved to /decide-for-me.
   //

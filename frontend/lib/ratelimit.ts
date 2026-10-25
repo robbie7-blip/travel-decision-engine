@@ -125,6 +125,16 @@ export const TRIP_VOTE_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:trip-vote",
 };
 
+// Hotel suggestions as "Where are you staying?" is typed (/api/lodging-
+// search). Each one is a paid Google call, so this is the ceiling that
+// keeps a script from running up the bill; a person typing a hotel name
+// uses a handful.
+export const LODGING_SEARCH_RATE_LIMIT: RateLimitConfig = {
+  perHour: envInt("LODGING_SEARCH_RATE_LIMIT_PER_HOUR", 60),
+  perDay: envInt("LODGING_SEARCH_RATE_LIMIT_PER_DAY", 200),
+  prefix: "ratelimit:lodging-search",
+};
+
 export interface RateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;

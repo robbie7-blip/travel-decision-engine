@@ -4,12 +4,14 @@ import { DateRangePicker } from "./DateRangePicker";
 import { OriginCombobox } from "./OriginCombobox";
 import { SingleDatePicker } from "./SingleDatePicker";
 import { CityCombobox } from "./CityCombobox";
+import { LodgingCombobox } from "./LodgingCombobox";
 import { TimePicker } from "./TimePicker";
 import { Field, inputStyle } from "./ui";
 import type { Dictionary } from "@/lib/i18n";
 import { MAX_TRIP_DAYS, tripDayCount } from "@/lib/validation";
 import type { Language, TripBriefInput } from "@/lib/types";
 import { airportLabel, airportsFor } from "@/lib/airports";
+import { splitCities } from "@/lib/cityOptions";
 
 // Form-local shape: comma-separated fields stay strings while being typed;
 // they're split into arrays only at submit time (see toTripBriefInput).
@@ -425,10 +427,12 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
         {!value.needs_lodging && (
           <div style={{ gridColumn: "1 / -1" }}>
             <Field label={t.form.accommodationLocation}>
-              <input
-                style={inputStyle}
-                value={value.accommodation_location}
-                onChange={(e) => update("accommodation_location", e.target.value)}
+              <LodgingCombobox
+                inputStyle={inputStyle}
+                value={value.accommodation_location ?? ""}
+                onChange={(next) => update("accommodation_location", next)}
+                near={splitCities(value.destinations ?? "")[0] ?? ""}
+                language={value.language}
                 placeholder={t.form.accommodationLocationPlaceholder}
               />
             </Field>

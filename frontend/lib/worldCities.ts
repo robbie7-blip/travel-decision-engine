@@ -15,9 +15,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-/** [name, country code, population] or [..., GeoNames name] when the
- * English name differs from it. */
-export type WorldCityRow = [string, string, number] | [string, string, number, string];
+/** [name, country code, population, latitude, longitude], then the
+ * GeoNames name when the English name differs from it. */
+export type WorldCityRow = [string, string, number, number, number] | [string, string, number, number, number, string];
 
 export interface WorldCityMatch {
   /** What to show. */
@@ -62,7 +62,7 @@ interface Indexed {
 }
 
 export function indexCities(rows: WorldCityRow[]): Indexed[] {
-  return rows.map((row) => ({ row, keys: row[3] ? [fold(row[0]), fold(row[3])] : [fold(row[0])] }));
+  return rows.map((row) => ({ row, keys: row[5] ? [fold(row[0]), fold(row[5])] : [fold(row[0])] }));
 }
 
 /** The best matches for what has been typed, largest place first within
@@ -117,6 +117,19 @@ function regionNames(language: "en" | "bg"): (code: string) => string {
       return code;
     }
   };
+}
+
+/** Where a destination as written in a brief is: "Rome" is the largest
+ * Rome, "Paris, United States" the largest Paris there. Null for anything
+ * the list does not know (a region, an island, a typo). */
+export function locateCity(index: Indexed[], destination: string): { lat: number; lng: number } | null {
+  const [rawName, rawCountry] = destination.split(",").map((part) => part.trim());
+  if (!rawName) return null;
+  const name = fold(rawName);
+  const country = rawCountry ? fold(rawCountry) : null;
+  const countryEn = regionNames("en");
+  const hit = index.find((entry) => entry.keys.includes(name) && (!country || fold(countryEn(entry.row[1])) === country));
+  return hit ? { lat: hit.row[3], lng: hit.row[4] } : null;
 }
 
 let loaded: Indexed[] | null = null;

@@ -8,10 +8,11 @@
 //
 //   npm i --no-save all-the-cities@3.1.0 && node scripts/buildWorldCities.mjs
 //
-// Each row is [name, country code, population] or, where the English name
-// differs from the GeoNames one, [English name, country code, population,
-// GeoNames name] so typing either finds it. Sorted largest first, which is
-// the order search results come back in. One row per name and country:
+// Each row is [name, country code, population, latitude, longitude] and,
+// where the English name differs from the GeoNames one, the GeoNames name
+// after that, so typing either finds it. The coordinates (to 2 decimals,
+// about a kilometre) centre the hotel search on the trip's city. Sorted
+// largest first, which is the order search results come back in. One row per name and country:
 // GeoNames lists a few towns twice (a city and its district), and the
 // larger one is the place a traveller means.
 
@@ -57,7 +58,9 @@ const rows = [...best.values()]
   .sort((a, b) => b.population - a.population)
   .map((c) => {
     const english = ENGLISH[`${c.name}|${c.country}`];
-    return english ? [english, c.country, c.population, c.name] : [c.name, c.country, c.population];
+    const [lng, lat] = c.loc.coordinates.map((v) => Math.round(v * 100) / 100);
+    const row = [english ?? c.name, c.country, c.population, lat, lng];
+    return english ? [...row, c.name] : row;
   });
 
 const missing = Object.keys(ENGLISH).filter((key) => !best.has(key));
