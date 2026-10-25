@@ -73,6 +73,7 @@ export function TripBuilding({
             ? t.trip.buildingFor.replace("{places}", destinations.join(" · "))
             : t.trip.loading}
         </div>
+        <div className="font-ui trip-building-patience">{t.trip.buildingPatience}</div>
         {!steps && <div className="font-ui trip-building-status">{message}</div>}
       </div>
 

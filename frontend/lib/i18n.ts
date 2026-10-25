@@ -610,6 +610,9 @@ export interface Dictionary {
     /** The live build during generation. "{places}", "{done}", "{total}". */
     buildingFor: string;
     buildingProgress: string;
+    /** Under the heading while a trip is being built: how long, and why
+     * that is worth it. */
+    buildingPatience: string;
     didYouKnow: string; // label above the rotating city-fact shown on the loading screen
     /** The wait screen's step list, one line per GenerationStage (see
      * lib/jobs.ts). Each is shown only as the worker actually reaches it. */
@@ -1085,7 +1088,7 @@ const en: Dictionary = {
     missingWhere: "Add at least one city to plan.",
     missingWhen: "Pick the dates of the trip.",
     missingWho: "Tell us how many are going.",
-    timing: "Takes about a minute",
+    timing: "A minute or so. Good trips take time.",
     moreDetails: "Add budget, pace, interests and more",
     fullForm: "Full form",
     nudgeTitle: "Want it sharper?",
@@ -1162,7 +1165,7 @@ const en: Dictionary = {
     groupTaste: "What you're into",
     submit: "Generate itinerary",
     submitting: "Deciding…",
-    reassurance: "Takes about a minute - we check live prices as we plan, not guesses.",
+    reassurance: "A minute or so, because good things take time: we check live prices and real places as we plan, so nothing is guessed.",
     notSurePrompt: "Not sure where to go yet? Browse destination guides →",
     spinPrompt: "Or throw a dart at the globe and let it decide →",
   },
@@ -1447,7 +1450,7 @@ const en: Dictionary = {
     failed: {
       expired: {
         heading: "This trip link has expired",
-        body: "Trips are kept for thirty days after they are planned, and longer if you are signed in. This one is past that, so there is nothing left to open. Planning it again takes about a minute.",
+        body: "Trips are kept for thirty days after they are planned, and longer if you are signed in. This one is past that, so there is nothing left to open. Planning it again takes a minute or so.",
       },
       interrupted: {
         heading: "This trip stopped halfway",
@@ -1484,6 +1487,7 @@ const en: Dictionary = {
     loading: "Loading your trip…",
     buildingFor: "Building {places}",
     buildingProgress: "{done} of {total} days written",
+    buildingPatience: "A minute or so. Good things take time, and every place in your plan is being checked for real.",
     didYouKnow: "Did you know?",
     stages: {
       label: "Progress",
@@ -1955,7 +1959,7 @@ const bg: Dictionary = {
     missingWhere: "Добави поне един град.",
     missingWhen: "Избери датите на пътуването.",
     missingWho: "Кажи ни колко души пътувате.",
-    timing: "Отнема около минута",
+    timing: "Минута-две. Хубавите пътувания отнемат време.",
     moreDetails: "Добави бюджет, темпо, интереси и още",
     fullForm: "Пълна форма",
     nudgeTitle: "Искаш ли по-точен план?",
@@ -2033,7 +2037,7 @@ const bg: Dictionary = {
     groupTaste: "Какво харесваш",
     submit: "Генерирай маршрут",
     submitting: "Решаваме…",
-    reassurance: "Отнема около минута - проверяваме актуални цени, докато планираме, не гадаем.",
+    reassurance: "Минута-две, защото хубавите неща отнемат време: проверяваме актуални цени и реални места, докато планираме, без гадаене.",
     notSurePrompt: "Все още не знаеш къде? Разгледай пътеводителите →",
     spinPrompt: "Или хвърли стрела по глобуса и я остави да реши →",
   },
@@ -2311,7 +2315,7 @@ const bg: Dictionary = {
     failed: {
       expired: {
         heading: "Връзката към това пътуване е изтекла",
-        body: "Пътуванията се пазят тридесет дни след планирането, а по-дълго, ако го планираш в профила си. Това е извън този срок, така че няма какво да се отвори. Повторното планиране отнема около минута.",
+        body: "Пътуванията се пазят тридесет дни след планирането, а по-дълго, ако го планираш в профила си. Това е извън този срок, така че няма какво да се отвори. Повторното планиране отнема минута-две.",
       },
       interrupted: {
         heading: "Това пътуване спря по средата",
@@ -2348,6 +2352,7 @@ const bg: Dictionary = {
     loading: "Зареждане на пътуването…",
     buildingFor: "Подготвяме плана за {places}",
     buildingProgress: "{done} от {total} дни са готови",
+    buildingPatience: "Минута-две. Хубавите неща отнемат време, а всяко място в плана ти се проверява наистина.",
     didYouKnow: "Знаеш ли, че?",
     stages: {
       label: "Напредък",

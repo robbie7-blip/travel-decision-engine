@@ -2037,6 +2037,13 @@ p {
   box-shadow: var(--shadow-panel);
 }
 
+.trip-building-patience {
+  margin-top: 6px;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
 .trip-building-head {
   margin-bottom: 18px;
 }
