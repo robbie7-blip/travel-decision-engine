@@ -89,6 +89,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title,
   description,
+  // Every page names its own address, without the query string, as the one
+  // to index. Search Console reported "Duplicate without user-selected
+  // canonical": the same page reached as /pricing and /pricing?lang=bg (and
+  // with tracking parameters) looked like copies with no say in which one
+  // counts. "./" resolves to each page's own path. Pages with a real
+  // Bulgarian address of their own (the guides, the blog, published plans)
+  // set their own alternates and override this.
+  alternates: { canonical: "./" },
   appleWebApp: {
     capable: true,
     title: "decide",
