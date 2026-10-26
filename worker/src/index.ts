@@ -3416,7 +3416,7 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
             }
 
             const startedAt = Date.now();
-            const verifying = checkVenues({ days: [generated] } as Itinerary, { geoCache })
+            const verifying = checkVenues({ days: [generated] } as Itinerary, { geoCache, mustSee: job.brief.must_see ?? [] })
               .then(() => {
                 // When the last of these finishes relative to when the last
                 // day landed is the whole measurement: if verification is
@@ -3547,7 +3547,7 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
           // and after the overlapped passes there are none.
           await Promise.all(pendingDayVerify);
           const [verified, fare] = await Promise.all([
-            checkVenues(itinerary, { geoCache, only: unverifiedVenueItems(itinerary) }),
+            checkVenues(itinerary, { geoCache, only: unverifiedVenueItems(itinerary), mustSee: job.brief.must_see ?? [] }),
             pendingFare,
           ]);
           return applyFlightPricing(verified, job.brief, fare, (obs) => {
@@ -3645,7 +3645,7 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
         // downgraded to a generic item rather than deleted. Deleting it
         // would reopen the hole the repair had just closed, and there is no
         // third attempt coming.
-        checkVenues(itinerary, { only: new Set(repaired), keepUnverified: true, geoCache })
+        checkVenues(itinerary, { only: new Set(repaired), keepUnverified: true, geoCache, mustSee: job.brief.must_see ?? [] })
       );
       // How many replacements Places then could NOT confirm.
       //

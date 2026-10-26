@@ -154,6 +154,34 @@ async function main() {
     check("a venue shut that day is removed", out.days[0].items.length === 0);
   }
 
+  section("a must-see shut on the day is kept, not deleted");
+
+  {
+    // A real Rome trip asked for the Vatican and came back with five empty
+    // hours: the museum was shut on the day planned, so verification
+    // removed it. The traveller's own requirement is kept, with the
+    // closure recorded on it for the page to show.
+    const sundayOnly = place({
+      displayName: { text: "Vatican Museums" },
+      regularOpeningHours: {
+        periods: [{ open: { day: 0, hour: 9, minute: 0 }, close: { day: 0, hour: 18, minute: 0 } }],
+        weekdayDescriptions: ["Sunday: 9:00 AM - 6:00 PM"],
+      },
+    });
+    const vatican = meal({ type: "activity", title: "Vatican Museums and the Sistine Chapel", venue_name: "Vatican Museums", time: "09:00" });
+    const f = stubFetch(() => ({ body: { places: [sundayOnly] } }));
+    const out = await checkVenues(trip([vatican]), { mustSee: ["wants to go to Vatican"] });
+    f.restore();
+    check("the must-see is still in the day", out.days[0].items.length === 1);
+    check("with its name", out.days[0].items[0].venue_name === "Vatican Museums");
+    check("and the closure recorded for the page", out.days[0].items[0].google_open_on_visit === false);
+
+    const f2 = stubFetch(() => ({ body: { places: [sundayOnly] } }));
+    const other = await checkVenues(trip([meal({ type: "activity", title: "Vatican Museums", venue_name: "Vatican Museums", time: "09:00" })]), { mustSee: ["Trevi Fountain"] });
+    f2.restore();
+    check("an item that is not a must-see is still removed when shut", other.days[0].items.length === 0);
+  }
+
   section("the verifier being down must NOT delete anything");
 
   {

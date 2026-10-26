@@ -32,6 +32,7 @@
 // the name lined up.
 
 import { runWithLimit } from "./concurrency";
+import { isMustSeeItem } from "./mustSee";
 import type { GoogleBusinessStatus, GooglePriceLevel, Itinerary, ItineraryItem } from "../types";
 
 // Below this, a venue is dropped rather than shown.
@@ -761,6 +762,13 @@ export interface CheckVenuesOptions {
   /** A cache pre-warmed by prewarmGeocodes, so the lookups don't have to
    * wait on a geocode round-trip that could have happened at job start. */
   geoCache?: Map<string, Promise<GeoPoint | null>>;
+  /** The traveller's must-sees. An item that is one of them is never
+   * deleted or stripped by this pass, whatever the check found: it is
+   * their own requirement, and removing it because it is shut that day
+   * left a real Rome trip with five empty hours where the Vatican was.
+   * It stays, carrying what was found (closed that day, no match), so the
+   * page can say so and the traveller can push back. */
+  mustSee?: string[];
 }
 
 export async function checkVenues(
@@ -856,6 +864,13 @@ export async function checkVenues(
       // Lodging is downgraded to unnamed instead of dropped - see
       // isLodging/stripToUnverified for why removal isn't an option.
       const reject = (target: ItineraryItem) => {
+        if (options.mustSee?.length && isMustSeeItem(target, options.mustSee)) {
+          console.warn(
+            `[worker] must-see "${target.title}" failed verification (open on the day: ${String(target.google_open_on_visit)}) - ` +
+              `kept, not removed, because the traveller asked for it by name`
+          );
+          return;
+        }
         if (isLodging(target) || options.keepUnverified) stripToUnverified(target);
         else toRemove.add(target);
       };

@@ -344,6 +344,23 @@ section("the things the traveler actually asked for");
     JSON.stringify(requestedPlaces("Рилски манастир и също искам да карам ски")) === JSON.stringify(["Рилски манастир"])
   );
   check(
+    "a wish is read as the place in it",
+    JSON.stringify(requestedPlaces("wants to go to Vatican")) === JSON.stringify(["Vatican"]) &&
+      JSON.stringify(requestedPlaces("I would like to see the Sistine Chapel")) === JSON.stringify(["Sistine Chapel"]) &&
+      JSON.stringify(requestedPlaces("искам да отида до Ватикана")) === JSON.stringify(["Ватикана"])
+  );
+  const vaticanWish: TripBriefInput = { ...BRIEF, must_see: ["wants to go to Vatican"] };
+  const withVatican = baseline();
+  withVatican[1].items.push(item({ title: "Vatican Museums and the Sistine Chapel", venue_name: "Vatican Museums", time: "09:00" }));
+  check(
+    "\"wants to go to Vatican\" is covered by a Vatican Museums visit",
+    !firedChecks2(withVatican, vaticanWish).includes("must_see_covered")
+  );
+  check(
+    "and still reported when the Vatican is not in the trip",
+    firedChecks2(baseline(), vaticanWish).includes("must_see_covered")
+  );
+  check(
     "plain 'and' is one place, as a ticket is written",
     requestedPlaces("Colosseum and Roman Forum").length === 1
   );
