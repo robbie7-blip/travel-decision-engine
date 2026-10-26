@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TripView } from "@/components/TripView";
 import { loadJob } from "@/lib/loadJob";
+import { citiesInPlan } from "@/lib/tripCities";
 
 const MAX_DESCRIPTION_LENGTH = 160;
 
@@ -16,7 +17,8 @@ export async function generateMetadata({
   // generic site metadata rather than describing a trip that isn't there.
   if (!job || job.status !== "done" || !job.result) return {};
 
-  const title = `${job.brief.destinations.join(" · ")} - decide`;
+  // The plan's cities, not the brief's: see lib/tripCities.
+  const title = `${(citiesInPlan(job.brief.destinations, job.result.days) ?? []).join(" · ")} - decide`;
   const summary = job.result.trip_summary;
   const description =
     summary.length > MAX_DESCRIPTION_LENGTH ? `${summary.slice(0, MAX_DESCRIPTION_LENGTH - 1)}…` : summary;

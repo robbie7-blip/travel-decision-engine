@@ -1,5 +1,6 @@
 // The share card for a trip link - see lib/tripOgImage.tsx.
 
+import { citiesInPlan } from "@/lib/tripCities";
 import { loadJob } from "@/lib/loadJob";
 import { computeTrustScore } from "@/lib/trustScore";
 import { TRANSLATIONS } from "@/lib/i18n";
@@ -22,7 +23,9 @@ export default async function TripOgImage({ params }: { params: Promise<{ jobId:
   const job = await loadJob(jobId);
   const language = job?.brief?.language === "bg" ? "bg" : "en";
   const t = TRANSLATIONS[language];
-  const destinations = (job?.brief?.destinations ?? []).filter((d): d is string => typeof d === "string");
+  // The plan's cities, not the brief's: see lib/tripCities.
+  const destinations =
+    citiesInPlan((job?.brief?.destinations ?? []).filter((d): d is string => typeof d === "string"), job?.result?.days) ?? [];
   const days = job?.result?.days?.length ?? 0;
 
   const stamps: { text: string; color: string }[] = [];

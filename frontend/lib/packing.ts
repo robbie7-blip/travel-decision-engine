@@ -121,8 +121,12 @@ export function packingListFor(input: {
   // day that starts at 4C and reaches 20C is a layering problem, and two
   // different cities being different is not.
   const widestSwing = temps.reduce((worst, d) => Math.max(worst, d.tempMaxC - d.tempMinC), 0);
-  const rainyDays = forecast.filter(isWetDay).length;
-  const snowyDays = forecast.filter(isSnowDay).length;
+  // Calendar days, not forecast rows. The weather holds one row per city
+  // per date, so a three-city, three-day trip has nine rows, and counting
+  // rows told a family on a 48-hour trip "rain forecast on 5 of your
+  // days". A date is rainy if it rains anywhere the trip goes that day.
+  const rainyDays = new Set(forecast.filter(isWetDay).map((d) => d.date)).size;
+  const snowyDays = new Set(forecast.filter(isSnowDay).map((d) => d.date)).size;
   const nights = nightsBetween(input.startDate, input.endDate);
 
   const hasFlight = (input.days ?? []).some((day) =>

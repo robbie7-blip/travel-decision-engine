@@ -16,6 +16,7 @@ import { PublishToggle } from "./PublishToggle";
 import { SpendInput, SpendingSummaryBar, useSpending } from "./SpendingTracker";
 import { spendRef } from "@/lib/spending";
 import { TripCover } from "./TripCover";
+import { citiesInPlan } from "@/lib/tripCities";
 import { DayPhoto } from "./DayPhoto";
 import { TravelLegRow } from "./TravelLeg";
 import { OfflineReady } from "./OfflineReady";
@@ -327,13 +328,18 @@ export function ItineraryResult({
   lastQuestion,
   currency = "EUR",
   rates = null,
-  destinations,
+  destinations: requestedDestinations,
   startDate,
   endDate,
   partyComposition,
   interests,
   language = "en",
 }: ItineraryResultProps) {
+  // The cities this plan goes to, not every city the brief asked for: a
+  // push back that drops one leaves it in the brief (see lib/tripCities).
+  // Everything below - the title, the weather, the packing list - follows
+  // the plan.
+  const destinations = citiesInPlan(requestedDestinations, result.days);
   // Fetched ONCE here and handed to both readers: the outlook strip and
   // the packing list derived from it. It used to live privately inside
   // WeatherStrip, which would have meant two /api/weather calls for one
@@ -613,7 +619,10 @@ export function ItineraryResult({
       )}
 
       {result.key_decisions && result.key_decisions.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
+        // The same gap above as below: the packing list ends flush on its
+        // last rule, and with nothing above this heading it sat right on
+        // that line.
+        <div style={{ marginTop: 36, marginBottom: 32 }}>
           <SectionLabel>{t.result.keyDecisions}</SectionLabel>
           {result.key_decisions.map((d, i) => (
             <div

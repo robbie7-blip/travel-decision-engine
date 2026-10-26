@@ -32,7 +32,11 @@ const day = (over: Partial<DayWeather> = {}): DayWeather => ({
   ...over,
 });
 
-const weatherOf = (...days: DayWeather[]): DestinationWeather => ({ Rome: days });
+// One row per date, as lib/weather.ts returns them: consecutive dates from
+// the trip's start, since rain is now counted per calendar day.
+const weatherOf = (...days: DayWeather[]): DestinationWeather => ({
+  Rome: days.map((d, i) => ({ ...d, date: `2027-05-${String(i + 1).padStart(2, "0")}` })),
+});
 
 const ids = (input: Parameters<typeof packingListFor>[0]) => packingListFor(input).entries.map((e) => e.id);
 
@@ -205,6 +209,25 @@ section("nothing throws on a malformed itinerary");
     threw = true;
   }
   check("a half-written day record is survivable", threw === false);
+}
+
+{
+  // A three-city, three-day trip: one weather row per city per date. Rain
+  // in two cities on the same date is one rainy day, not two, and the
+  // count can never exceed the trip's own days.
+  const row = (date: string, mm: number) => ({
+    date, isForecast: true, tempMaxC: 5, tempMinC: -3, precipitationChance: null, precipitationMm: mm, condition: mm > 0 ? "rain" : "cloudy",
+  });
+  const multi = packingListFor({
+    weather: {
+      Friedrichshafen: [row("2027-01-15", 3), row("2027-01-16", 0), row("2027-01-17", 2)],
+      Munich: [row("2027-01-15", 4), row("2027-01-16", 0), row("2027-01-17", 3)],
+      Vaduz: [row("2027-01-15", 2), row("2027-01-16", 1), row("2027-01-17", 2)],
+    } as never,
+    startDate: "2027-01-15",
+    endDate: "2027-01-17",
+  });
+  check("rain is counted in calendar days, not one per city", multi.rainyDays === 3, String(multi.rainyDays));
 }
 
 finish();
