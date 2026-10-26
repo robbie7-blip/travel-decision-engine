@@ -3116,6 +3116,14 @@ a.trip-notify-note {
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* The button keeps its own height when the destination row wraps onto
+   a second line of chips. The bar stretches its cells to the tallest one,
+   which is right for the fields and made the button a tall slab beside
+   three cities. Centred on the row instead. */
+.hero-search > .hero-search-cta {
+  align-self: center;
+}
+
 .hero-search-cta:hover:not(:disabled) {
   background: var(--brand-red);
   box-shadow: 0 10px 22px -8px rgba(110, 36, 20, 0.8);
