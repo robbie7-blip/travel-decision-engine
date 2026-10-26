@@ -437,6 +437,16 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
         "longer hop use public transit (metro, tram, bus) rather than a taxi; arrival and departure " +
         "transfers (airport, station) by train or bus where one exists, a taxi only where it is the only " +
         "realistic option",
+      // The rental line itself is priced by a live search afterwards
+      // (engine/rentalCar.ts), so the model writes exactly one for it to
+      // find, and keeps fuel, tolls and parking on the drives.
+      rental_car:
+        "a rental car, picked up on arrival and kept for the whole trip: drive between towns and to sights " +
+        "outside the centres, with realistic driving times; in a dense old town park once and walk rather " +
+        "than driving between nearby sights. Include exactly ONE line for the rental itself on the first day, " +
+        "titled \"Pick up the rental car\" (type transport), with your estimate of the whole rental's cost " +
+        "for a car that fits the party and their luggage. Put fuel, tolls, vignettes and parking on the " +
+        "driving legs and parking stops where they are spent, not on the rental line",
     };
     lines.push(`Preferred local transport: ${TRANSPORT_PREFERENCE_LABEL[brief.transport_preference]}.`);
   }

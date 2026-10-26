@@ -515,6 +515,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
             <option value="public_transit">{t.form.transportPublicTransit}</option>
             <option value="taxi_rideshare">{t.form.transportTaxiRideshare}</option>
             <option value="walking">{t.form.transportWalking}</option>
+            <option value="rental_car">{t.form.transportRentalCar}</option>
           </select>
         </Field>
         <div className="form-group-label">{t.form.groupTaste}</div>

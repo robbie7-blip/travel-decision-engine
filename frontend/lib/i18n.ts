@@ -181,6 +181,7 @@ export interface Dictionary {
     transportPublicTransit: string;
     transportTaxiRideshare: string;
     transportWalking: string;
+    transportRentalCar: string;
     // A single combined start/end date picker (see components/
     // DateRangePicker.tsx) rather than two separate date fields.
     dates: string;
@@ -1133,6 +1134,7 @@ const en: Dictionary = {
     transportPublicTransit: "Public transit (metro/bus/train)",
     transportTaxiRideshare: "Taxi / rideshare",
     transportWalking: "Walking where possible",
+    transportRentalCar: "Rental car",
     dates: "Dates",
     datesPlaceholder: "Select start and end dates",
     datesPickEnd: "Now pick the end date",
@@ -2005,6 +2007,7 @@ const bg: Dictionary = {
     transportPublicTransit: "Градски транспорт (метро/автобус/влак)",
     transportTaxiRideshare: "Такси / рийдшеър",
     transportWalking: "Пеша, когато е възможно",
+    transportRentalCar: "Кола под наем",
     dates: "Дати",
     datesPlaceholder: "Избери начална и крайна дата",
     datesPickEnd: "Сега избери крайната дата",

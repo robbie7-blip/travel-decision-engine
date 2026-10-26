@@ -452,6 +452,9 @@ jobs:
       # A meal whose pick and replacement both failed verification gets one
       # direct Places search for a real, open, well-rated place nearby.
       - run: npm run test:meal-fill
+      # "Rental car" as the way to get around: one rental line, priced from
+      # a live search when it found a rate, added if the plan forgot it.
+      - run: npm run test:rental-car
       # The accommodation cache - the highest-leverage write in the
       # pipeline. What it stores is handed to the next ~20 hours of
       # generations for that city as fact, with "do not perform a new

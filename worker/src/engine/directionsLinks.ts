@@ -39,6 +39,7 @@ const TRAVEL_MODE: Record<NonNullable<TripBriefInput["transport_preference"]>, s
   public_transit: "transit",
   taxi_rideshare: "driving",
   walking: "walking",
+  rental_car: "driving",
 };
 
 /** How an item should be named to Google Maps, or null if it is not

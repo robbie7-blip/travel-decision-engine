@@ -53,6 +53,7 @@ import {
   summarizeQuality,
 } from "./engine/quality";
 import { checkVenues, fillUnnamedMeals, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
+import { applyRentalCar, carClassFor, readRentalReply, RENTAL_SYSTEM, rentalUserMessage, type RentalQuote } from "./engine/rentalCar";
 import {
   assertUsableItinerary,
   describeShapeRepairs,
@@ -611,6 +612,37 @@ function estimateMaxSearchUses(brief: TripBriefInput): number {
 // "name": null is a first-class, expected outcome - plenty of searches
 // surface a credible rate without a single property worth committing to,
 // and lodgingCache falls back to the original generic wording for those.
+/** The daily price of a rental car for the trip, from a web search, when
+ * the traveller picked "Rental car" (engine/rentalCar.ts). Runs from the
+ * start of the job alongside everything else and is only collected at the
+ * end, so it costs the traveller no time. One attempt, no retry: a missed
+ * price leaves the plan's own estimate on the line, labelled as one. */
+async function prefetchRentalCar(
+  client: Anthropic,
+  brief: TripBriefInput,
+  onUsage?: (usage: ModelUsage, model?: string) => void
+): Promise<RentalQuote | null> {
+  try {
+    const response = await client.messages.create(
+      {
+        model: MODEL,
+        max_tokens: LODGING_MAX_TOKENS,
+        system: RENTAL_SYSTEM,
+        output_config: { effort: EXTRACT_EFFORT },
+        tools: [{ type: "web_search_20260209" as const, name: "web_search", max_uses: 2 }],
+        messages: [{ role: "user", content: rentalUserMessage(brief) }],
+      },
+      { timeout: LODGING_ATTEMPT_MS }
+    );
+    onUsage?.(response.usage, response.model);
+    if (response.stop_reason === "max_tokens") return null;
+    return readRentalReply(JSON.parse(extractJson(lastTextOf(response))), carClassFor(brief.party_size));
+  } catch (e) {
+    console.error(`[worker] rental car price search failed: ${describeModelError(e).line}`);
+    return null;
+  }
+}
+
 const LODGING_RATE_SYSTEM = `Find the current typical price per night for a mid-range hotel in the given city, \
 using web search.
 
@@ -1812,6 +1844,9 @@ async function screenStatedConstraints(
       "walk between places in the city wherever the walk is realistic, rather than taking a taxi or " +
       "rideshare for a distance that is easy to walk (getting to or from an airport or station is not " +
       "part of this)",
+    rental_car:
+      "drive the rental car between towns and to sights outside the centres, rather than taking trains, " +
+      "buses or taxis for those trips (walking within a town is fine)",
   };
   const stated = [
     ...brief.dietary_constraints,
@@ -3162,6 +3197,12 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
     efforts: { frame: FRAME_EFFORT, plan: PLAN_EFFORT, day: DAY_EFFORT },
     dayModel: DAY_MODEL,
   };
+  // The rental car's price, searched from the start so it is ready long
+  // before the plan is (see prefetchRentalCar). Never rejects.
+  const pendingRental: Promise<RentalQuote | null> =
+    job.brief.transport_preference === "rental_car"
+      ? prefetchRentalCar(client, job.brief, onUsage).catch(() => null)
+      : Promise.resolve(null);
   async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
     const t0 = Date.now();
     try {
@@ -3669,6 +3710,18 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
         // guard them. A quiet repair is a defect nobody learns about.
         console.warn(`[worker] shape repairs on ${id}: ${repairSummary} - model-written fields of the wrong type`);
       }
+    }
+
+    // The rental car, priced from the search when it found a rate, so the
+    // trip's total includes it. Waited for only briefly: it started with
+    // the job and is almost always long finished by now.
+    if (job.brief.transport_preference === "rental_car") {
+      const quote = await Promise.race([
+        pendingRental,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+      ]);
+      const outcome = applyRentalCar(itinerary, job.brief, quote);
+      console.log(`[worker] rental car: ${outcome}${quote ? ` at EUR ${quote.dailyEur}/day (${quote.carClass})` : ""}`);
     }
 
     itinerary = checkFeasibility(itinerary);

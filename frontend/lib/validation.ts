@@ -16,7 +16,7 @@ export class ValidationError extends Error {}
 
 const VALID_PACES = new Set(["relaxed", "moderate", "packed"]);
 const VALID_LANGUAGES = new Set(["en", "bg"]);
-const VALID_TRANSPORT_PREFERENCES = new Set(["public_transit", "taxi_rideshare", "walking"]);
+const VALID_TRANSPORT_PREFERENCES = new Set(["public_transit", "taxi_rideshare", "walking", "rental_car"]);
 
 /** Cap on a single free-text list entry, in characters.
  *

@@ -45,7 +45,7 @@ const MAX_LIST_ENTRY_CHARS = 200;
  * dropped rather than passed through: these go straight into the prompt,
  * and every reader downstream switches on them. */
 const PACES = new Set(["relaxed", "moderate", "packed"]);
-const TRANSPORT_PREFERENCES = new Set(["public_transit", "taxi_rideshare", "walking"]);
+const TRANSPORT_PREFERENCES = new Set(["public_transit", "taxi_rideshare", "walking", "rental_car"]);
 const LANGUAGES = new Set(["en", "bg"]);
 
 /** A list of non-empty strings, whatever arrived.

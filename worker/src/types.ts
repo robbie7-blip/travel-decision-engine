@@ -45,7 +45,7 @@ export interface TripBriefInput {
   // Optional - how the traveler wants to get around locally (e.g. taxi/
   // rideshare over public transit for safety/convenience reasons). Absent
   // means no preference stated; the engine picks whatever's sensible.
-  transport_preference?: "public_transit" | "taxi_rideshare" | "walking";
+  transport_preference?: "public_transit" | "taxi_rideshare" | "walking" | "rental_car";
   // Only meaningful when needs_flight is false - the traveler's actual
   // arrival date (YYYY-MM-DD) and, optionally, a free-text time (e.g.
   // "20:00" or "evening"), so the engine doesn't presume day 1 must be a
