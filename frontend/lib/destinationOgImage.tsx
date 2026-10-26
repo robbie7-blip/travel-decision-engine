@@ -169,3 +169,39 @@ export async function destinationOgImage(slug: string, language: Language): Prom
     }
   );
 }
+
+/** The share image for a guide, never an error.
+ *
+ * Search Console reported 11 guide share images as server errors (5xx).
+ * A crawler that gets an error for a page's image drops the image from
+ * the preview, and a person sharing the guide gets a bare link. Whatever
+ * goes wrong drawing the full card, the plain brand card below is drawn
+ * instead and the response is still a picture. */
+export async function safeDestinationOgImage(slug: string, language: Language): Promise<Response> {
+  const { asJpeg } = await import("./tripOgImage");
+  try {
+    return await asJpeg(await destinationOgImage(slug, language));
+  } catch (e) {
+    console.warn(`[og] guide image for ${slug} (${language}) failed, sending the plain card:`, e instanceof Error ? e.message : e);
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#1b3a2c",
+            color: "#f1efe4",
+            fontSize: 96,
+            fontWeight: 600,
+          }}
+        >
+          decide
+        </div>
+      ),
+      DESTINATION_OG_SIZE
+    );
+  }
+}

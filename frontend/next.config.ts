@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/cities": ["./data/worldCities.json"],
     "/api/lodging-search": ["./data/worldCities.json"],
+    // The share images read the city photo, the headline font and the
+    // guide's facts from disk (lib/destinationOgImage.tsx,
+    // lib/tripOgImage.tsx). Through a computed path tracing cannot see
+    // them, and public/ is served by the CDN rather than bundled, so on
+    // Vercel every share card was drawn without its photo or font.
+    "/**/opengraph-image*": ["./public/destinations/**/*", "./lib/fonts/**/*", "./facts/**/*"],
   },
   // /spin moved to /decide-for-me.
   //
