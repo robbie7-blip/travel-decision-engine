@@ -117,6 +117,28 @@ async function main() {
     check("no throw, meal unchanged", !threw && dinner.title === "Dinner");
   }
 
+  section("malformed fields from the model are skipped, never thrown on");
+  {
+    const s = stub([place("Gasthaus Krone"), place("Zum Löwen")]);
+    const dinner = meal("Dinner", "20:30");
+    const itinerary = {
+      days: [
+        null,
+        { day: 1, date: "2027-01-15", items: [null, meal("Lunch", "12:30", { venue_name: 42 as never }), dinner] },
+        { day: 2, date: "2027-01-16" },
+      ],
+    } as unknown as Itinerary;
+    let threw = false;
+    try {
+      await fillUnnamedMeals(itinerary, []);
+    } catch {
+      threw = true;
+    }
+    s.restore();
+    check("no throw", !threw);
+    check("and the good meal still gets its place", !!dinner.venue_name);
+  }
+
   section("no key, no search");
   {
     delete process.env.GOOGLE_PLACES_API_KEY;

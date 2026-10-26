@@ -12,9 +12,9 @@
 // where the English name differs from the GeoNames one, the GeoNames name
 // after that, so typing either finds it. The coordinates (to 2 decimals,
 // about a kilometre) centre the hotel search on the trip's city. Sorted
-// largest first, which is the order search results come back in. One row per name and country:
-// GeoNames lists a few towns twice (a city and its district), and the
-// larger one is the place a traveller means.
+// largest first, which is the order search results come back in. One row
+// per name and country: GeoNames lists a few towns twice (a city and its
+// district), and the larger one is the place a traveller means.
 
 import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";

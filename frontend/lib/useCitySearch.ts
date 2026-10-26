@@ -36,8 +36,14 @@ export function useCitySearch(query: string, language: Language): { results: Cit
           cache.set(key, results);
           setState({ key, results });
         })
-        // Offline or aborted: the short list and typing a name still work.
-        .catch(() => undefined);
+        // Offline or a server error: answered as "nothing found" rather than
+        // left loading, so the "press Enter to add it anyway" hint can show
+        // and the field still works. An abort is the next keystroke, not a
+        // failure, and is left alone. Not cached, so the next try asks again.
+        .catch((e: unknown) => {
+          if (e instanceof DOMException && e.name === "AbortError") return;
+          setState({ key, results: [] });
+        });
     }, 150);
     return () => {
       clearTimeout(timer);
@@ -47,6 +53,7 @@ export function useCitySearch(query: string, language: Language): { results: Cit
 
   if (q.length < 2) return { results: [], loading: false };
   const remote = cache.get(key) ?? (state.key === key ? state.results : null);
+  // state.results is [] after a failed lookup: done, with nothing to add.
   return {
     results: (remote ?? []).map((r) => ({ name: r.name, country: r.country, value: r.value })),
     loading: remote === null,

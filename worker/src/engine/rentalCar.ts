@@ -80,7 +80,9 @@ export function findRentalLine(itinerary: Itinerary): ItineraryItem | null {
     for (const item of day?.items ?? []) {
       if (!item || item.type !== "transport" || typeof item.title !== "string") continue;
       if (!RENTAL_LINE.test(item.title)) continue;
-      if (/^(?:drive|driving|return|шофиране|път)\b/iu.test(item.title.trim())) continue;
+      // A letter lookahead, not \b: \b only knows Latin letters, so it never
+      // ended a Bulgarian word and "Шофиране до..." was not recognised.
+      if (/^(?:drive|driving|return|шофиране|път)(?!\p{L})/iu.test(item.title.trim())) continue;
       return item;
     }
   }
@@ -120,10 +122,19 @@ export function applyRentalCar(
   // Right after arriving when the day opens with the arrival (the car is
   // collected at the airport or station), otherwise first thing. Same
   // time as the item it follows; the day's stable sort keeps the order.
-  const opener = first.items[0];
+  // The earliest item by time, not the first in the list: the day is not
+  // sorted yet when this runs.
+  const minutes = (t: unknown) => {
+    const m = typeof t === "string" ? /^(\d{1,2}):(\d{2})$/.exec(t) : null;
+    return m ? Number(m[1]) * 60 + Number(m[2]) : Number.POSITIVE_INFINITY;
+  };
+  const opener = first.items
+    .filter((i) => !!i && typeof i === "object")
+    .reduce<ItineraryItem | undefined>((best, i) => (!best || minutes(i.time) < minutes(best.time) ? i : best), undefined);
   const afterArrival = opener?.type === "transport";
   const at = typeof opener?.time === "string" && /^\d{1,2}:\d{2}$/.test(opener.time) ? opener.time : "10:00";
-  first.items.splice(afterArrival ? 1 : 0, 0, {
+  const openerIndex = opener ? first.items.indexOf(opener) : -1;
+  first.items.splice(afterArrival ? openerIndex + 1 : 0, 0, {
     time: at,
     type: "transport",
     title: bg ? "Вземане на колата под наем" : "Pick up the rental car",

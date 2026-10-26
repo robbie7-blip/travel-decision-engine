@@ -976,25 +976,36 @@ export async function fillUnnamedMeals(
 ): Promise<number> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return 0;
-  const targets = (itinerary.days ?? []).flatMap((day) =>
-    day.items.filter((item) => item.type === "meal" && !item.venue_name?.trim()).map((item) => ({ item, date: day.date }))
+  // Read defensively: this runs after the repairs, which write
+  // model-made fields, and before the shape is re-established. A day that
+  // is not an object or a venue_name that is not a string must be skipped,
+  // not thrown on - a throw here would fail a fully generated trip.
+  const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+  const days = (Array.isArray(itinerary.days) ? itinerary.days : []).filter(
+    (day): day is typeof day => !!day && typeof day === "object" && Array.isArray(day.items)
+  );
+  const items = (day: (typeof days)[number]) =>
+    day.items.filter((item): item is ItineraryItem => !!item && typeof item === "object");
+  const targets = days.flatMap((day) =>
+    items(day)
+      .filter((item) => item.type === "meal" && !text(item.venue_name))
+      .map((item) => ({ item, date: text(day.date) }))
   );
   if (targets.length === 0) return 0;
 
-  const used = new Set(
-    (itinerary.days ?? []).flatMap((day) => day.items.map((i) => i.venue_name?.trim()).filter((n): n is string => !!n)).map(normalizeName)
-  );
+  const used = new Set(days.flatMap((day) => items(day).map((i) => text(i.venue_name)).filter(Boolean)).map(normalizeName));
   const geoCache = options.geoCache ?? new Map<string, Promise<GeoPoint | null>>();
   let filled = 0;
 
   await runWithLimit(targets, MAX_PARALLEL_PLACES, async ({ item, date }) => {
     try {
-      const bias = await geocode(item.location, geoCache);
+      const location = text(item.location);
+      const bias = location ? await geocode(location, geoCache) : null;
       const res = await fetch(PLACES_SEARCH_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": FIELD_MASK },
         body: JSON.stringify({
-          textQuery: `${fallbackMealQuery(item, dietary)} ${item.location}`.trim(),
+          textQuery: `${fallbackMealQuery(item, dietary)} ${location}`.trim(),
           maxResultCount: 10,
           ...(bias && { locationBias: { circle: { center: bias, radius: 5000 } } }),
         }),
@@ -1016,7 +1027,7 @@ export async function fillUnnamedMeals(
       // same street cannot both land on the same place.
       used.add(normalizeName(name));
       item.venue_name = name;
-      item.title = `${item.title.trim()}: ${name}`;
+      item.title = text(item.title) ? `${text(item.title)}: ${name}` : name;
       applyPlaceData(item, pick);
       item.google_open_on_visit = true;
       item.google_opening_hours = pick.regularOpeningHours?.weekdayDescriptions;

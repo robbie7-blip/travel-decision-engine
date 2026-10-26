@@ -587,31 +587,6 @@ function estimateMaxSearchUses(brief: TripBriefInput): number {
   return Math.min(brief.destinations.length * 3, 12);
 }
 
-// A single destination's lodging price, fetched on its own rather than as
-// part of the main itinerary-writing call. The old design had the model do
-// this search INLINE, mid-conversation, once per destination - for an
-// N-destination trip that's N sequential search pauses stacked in front of
-// (and adding straight onto) the time it separately takes to write the
-// whole itinerary, all inside one linear call. Firing one of these per
-// missing destination via Promise.all (see the prefetch step in
-// processJob) turns that into max(N parallel lookups) instead of their
-// sum, then hands the main call a fully-cached brief so it can always take
-// the fast NO_SEARCH_INSTRUCTIONS path - no tool-use turn in the critical
-// generation call at all. The prompt/output here is deliberately tiny
-// (a handful of tokens, not a whole schema) so this call's own non-search
-// portion is as close to free as possible; the wall-clock cost is close to
-// pure search latency.
-// Asks for a real, specific property AND its nightly rate in the same
-// search, rather than a city-wide average. That pairing matters for
-// honesty, not just usefulness: a city-average rate is a fair thing to
-// print next to "a mid-range hotel", but bolting a named property onto an
-// average would quietly claim to be quoting THAT hotel's price when it
-// isn't. One lookup that returns both keeps the name and the number
-// describing the same thing.
-//
-// "name": null is a first-class, expected outcome - plenty of searches
-// surface a credible rate without a single property worth committing to,
-// and lodgingCache falls back to the original generic wording for those.
 /** The daily price of a rental car for the trip, from a web search, when
  * the traveller picked "Rental car" (engine/rentalCar.ts). Runs from the
  * start of the job alongside everything else and is only collected at the
@@ -643,6 +618,31 @@ async function prefetchRentalCar(
   }
 }
 
+// A single destination's lodging price, fetched on its own rather than as
+// part of the main itinerary-writing call. The old design had the model do
+// this search INLINE, mid-conversation, once per destination - for an
+// N-destination trip that's N sequential search pauses stacked in front of
+// (and adding straight onto) the time it separately takes to write the
+// whole itinerary, all inside one linear call. Firing one of these per
+// missing destination via Promise.all (see the prefetch step in
+// processJob) turns that into max(N parallel lookups) instead of their
+// sum, then hands the main call a fully-cached brief so it can always take
+// the fast NO_SEARCH_INSTRUCTIONS path - no tool-use turn in the critical
+// generation call at all. The prompt/output here is deliberately tiny
+// (a handful of tokens, not a whole schema) so this call's own non-search
+// portion is as close to free as possible; the wall-clock cost is close to
+// pure search latency.
+// Asks for a real, specific property AND its nightly rate in the same
+// search, rather than a city-wide average. That pairing matters for
+// honesty, not just usefulness: a city-average rate is a fair thing to
+// print next to "a mid-range hotel", but bolting a named property onto an
+// average would quietly claim to be quoting THAT hotel's price when it
+// isn't. One lookup that returns both keeps the name and the number
+// describing the same thing.
+//
+// "name": null is a first-class, expected outcome - plenty of searches
+// surface a credible rate without a single property worth committing to,
+// and lodgingCache falls back to the original generic wording for those.
 const LODGING_RATE_SYSTEM = `Find the current typical price per night for a mid-range hotel in the given city, \
 using web search.
 

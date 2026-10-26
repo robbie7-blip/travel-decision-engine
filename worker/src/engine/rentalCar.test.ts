@@ -69,6 +69,16 @@ section("added when the plan forgot it");
   check("in Bulgarian on a Bulgarian trip", bg.days[0].items[0].title === "Вземане на колата под наем");
 }
 
+section("the arrival is found by time, and Bulgarian drives are not the rental");
+{
+  const t = trip(item({ title: "Lunch", time: "13:00" }), item({ type: "transport", title: "Arrive at the airport", time: "11:00" }));
+  applyRentalCar(t, brief, quote);
+  const order = t.days[0].items.map((i) => i.title);
+  check("placed right after the 11:00 arrival, not after the first line in the list", order[2] === "Pick up the rental car" && t.days[0].items[2].time === "11:00", JSON.stringify(order));
+  const bgDrive = trip(item({ type: "transport", title: "Шофиране до Линдау с кола под наем" }));
+  check("a Bulgarian drive is not taken for the rental line", findRentalLine(bgDrive) === null);
+}
+
 section("no price found: the plan's estimate stays, nothing invented");
 {
   const pickup = item({ type: "transport", title: "Pick up the rental car", cost_estimate_eur: 160 });
