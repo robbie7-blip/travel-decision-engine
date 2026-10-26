@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { TripView } from "@/components/TripView";
 import { loadJob } from "@/lib/loadJob";
 import { citiesInPlan } from "@/lib/tripCities";
+import { latestRevision } from "@/lib/latestRevision";
+import { getRedis } from "@/lib/redis";
+import { getDb } from "@/lib/db";
+import { newestVersionOf } from "@/lib/tripsQuery";
+import { redirect } from "next/navigation";
 
 const MAX_DESCRIPTION_LENGTH = 160;
 
@@ -31,7 +36,43 @@ export async function generateMetadata({
   };
 }
 
-export default async function TripPage({ params }: { params: Promise<{ jobId: string }> }) {
+export default async function TripPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ jobId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { jobId } = await params;
+  const query = await searchParams;
+  // A link shared before the owner pushed back or edited the trip opens
+  // the newest version (lib/latestRevision). ?version=this keeps the one
+  // asked for, for anyone who wants to compare. Redis being unreachable
+  // just shows the link as it is.
+  if (query.version !== "this") {
+    let latest = jobId;
+    try {
+      latest = await latestRevision(getRedis(), jobId);
+    } catch {
+      latest = jobId;
+    }
+    // Revisions made before the pointer existed are in the archive.
+    const db = getDb();
+    if (db) {
+      try {
+        latest = await newestVersionOf(db, latest);
+      } catch {
+        // The archive being down just leaves the link where Redis put it.
+      }
+    }
+    if (latest !== jobId) {
+      const rest = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) {
+        if (typeof value === "string") rest.set(key, value);
+      }
+      const suffix = rest.toString();
+      redirect(`/trip/${encodeURIComponent(latest)}${suffix ? `?${suffix}` : ""}`);
+    }
+  }
   return <TripView jobId={jobId} />;
 }

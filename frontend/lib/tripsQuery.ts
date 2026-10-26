@@ -41,6 +41,26 @@ export const MY_TRIPS_SQL = `
 
 export const MY_TRIPS_LIMIT = 50;
 
+/** The newest finished, unexpired version of a trip by the same account,
+ * following `replaces` forward - or the id itself. The archive's half of
+ * lib/latestRevision: revisions made before that pointer existed are
+ * still found here, so a link shared before then follows them too. */
+export async function newestVersionOf(db: Queryable, id: string, maxHops = 20): Promise<string> {
+  let current = id;
+  for (let hop = 0; hop < maxHops; hop++) {
+    const { rows } = await db.query<{ id: string }>(
+      `select r.id from trips r join trips t on t.id = $1
+       where r.replaces = t.id and t.owner_email is not null and r.owner_email = t.owner_email
+         and r.status = 'done' and r.expires_at > now() and r.id <> t.id
+       order by r.finished_at desc limit 1`,
+      [current]
+    );
+    if (!rows[0]) break;
+    current = rows[0].id;
+  }
+  return current;
+}
+
 export async function listMyTrips(db: Queryable, email: string, limit = MY_TRIPS_LIMIT): Promise<MyTrip[]> {
   const owner = email.trim().toLowerCase();
   if (!owner) return [];

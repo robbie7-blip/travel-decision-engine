@@ -35,6 +35,7 @@ import { checkDailyBudget } from "@/lib/spendCheck";
 import { ValidationError } from "@/lib/validation";
 import { refineSource } from "@/lib/refineSource";
 import { carryDayAhead } from "@/lib/dayAhead";
+import { recordRevision } from "@/lib/latestRevision";
 import { recordEvent } from "@/lib/analytics";
 
 export const runtime = "nodejs";
@@ -159,6 +160,9 @@ export async function POST(request: NextRequest) {
 
   await redis.set(jobKey(id), JSON.stringify(job), { ex: ttlSeconds });
   await carryDayAhead(redis, { id: sourceJobId, ownerEmail: source.job.ownerEmail }, { id, ownerEmail: ownerEmail ?? undefined, ttlSeconds });
+  // So a link already shared keeps showing the newest version once this
+  // one finishes - the owner's own revisions only. See lib/latestRevision.
+  await recordRevision(redis, { id: sourceJobId, ownerEmail: source.job.ownerEmail }, { id, ownerEmail: ownerEmail ?? undefined, ttlSeconds });
   await redis.lpush(JOBS_QUEUE_KEY, id);
 
   try {

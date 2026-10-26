@@ -16,6 +16,7 @@ import {
   adminUnpublish,
   getPublished,
   hasOwnedTrips,
+  newestVersionOf,
   listAdminTrips,
   listMyTrips,
   listPublished,
@@ -287,6 +288,23 @@ async function main() {
   {
     check("an address with a trip has one", await hasOwnedTrips(db, " A@Example.com "));
     check("a new address has none", !(await hasOwnedTrips(db, "new@example.com")));
+  }
+
+  section("a shared link finds the owner's newest version");
+  {
+    const now = Date.now();
+    const at = { createdAt: now, updatedAt: now };
+    await saveTripRecord(job({ id: "v-1", ownerEmail: "me@example.com", ...at }), 0);
+    await saveTripRecord(job({ id: "v-2", ownerEmail: "me@example.com", replaces: "v-1", createdAt: now + 1000, updatedAt: now + 1000 }), 0);
+    await saveTripRecord(job({ id: "v-3", ownerEmail: "me@example.com", replaces: "v-2", createdAt: now + 2000, updatedAt: now + 2000 }), 0);
+    await saveTripRecord(job({ id: "v-friend", ownerEmail: "friend@example.com", replaces: "v-3", createdAt: now + 3000, updatedAt: now + 3000 }), 0);
+    await saveTripRecord(job({ id: "v-failed", ownerEmail: "me@example.com", replaces: "v-3", status: "error", error: "x", result: undefined, createdAt: now + 4000, updatedAt: now + 4000 }), 0);
+    check("follows every revision by the same account", (await newestVersionOf(db, "v-1")) === "v-3");
+    check("not a friend's, not a failed one", (await newestVersionOf(db, "v-3")) === "v-3");
+    await saveTripRecord(job({ id: "anon-1", ...at }), 0);
+    await saveTripRecord(job({ id: "anon-2", replaces: "anon-1", ...at }), 0);
+    check("a trip made signed out stays where it is", (await newestVersionOf(db, "anon-1")) === "anon-1");
+    check("an unknown id is itself", (await newestVersionOf(db, "nope")) === "nope");
   }
 
   section("the blog");

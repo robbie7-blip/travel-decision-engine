@@ -21,6 +21,7 @@ import { getDb } from "@/lib/db";
 import { saveEditedTrip } from "@/lib/tripsQuery";
 import { publicBrief } from "@/lib/publicBrief";
 import { carryDayAhead } from "@/lib/dayAhead";
+import { recordRevision } from "@/lib/latestRevision";
 
 export const runtime = "nodejs";
 
@@ -88,6 +89,8 @@ export async function POST(request: NextRequest) {
   };
   await redis.set(jobKey(id), JSON.stringify(job), { ex: ttlSeconds });
   await carryDayAhead(redis, { id: sourceJobId, ownerEmail: source.job.ownerEmail }, { id, ownerEmail: ownerEmail ?? undefined, ttlSeconds });
+  // A link already shared follows the owner's edits. See lib/latestRevision.
+  await recordRevision(redis, { id: sourceJobId, ownerEmail: source.job.ownerEmail }, { id, ownerEmail: ownerEmail ?? undefined, ttlSeconds });
 
   // The archive copy is best effort, like every write to it: a trip must
   // never fail to save because Postgres is down.

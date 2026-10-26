@@ -30,12 +30,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
+import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, readJobRecord, type Job } from "@/lib/jobs";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget } from "@/lib/spendCheck";
 import { retrySource } from "@/lib/retrySource";
 import { recordEvent } from "@/lib/analytics";
+import { recordRevision } from "@/lib/latestRevision";
 
 export const runtime = "nodejs";
 
@@ -128,6 +129,13 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
   };
 
   await redis.set(jobKey(id), JSON.stringify(retry), { ex: ttlSeconds });
+  // A retried push back is still the newest version of the trip it was
+  // about, so that trip's shared link should follow it. See
+  // lib/latestRevision.
+  if (retry.replaces) {
+    const replaced = readJobRecord(await redis.get<string | Job>(jobKey(retry.replaces)));
+    if (replaced) await recordRevision(redis, { id: replaced.id, ownerEmail: replaced.ownerEmail }, { id, ownerEmail: ownerEmail ?? undefined, ttlSeconds });
+  }
   await redis.lpush(JOBS_QUEUE_KEY, id);
 
   try {

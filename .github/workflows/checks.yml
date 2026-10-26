@@ -1385,6 +1385,7 @@ jobs:
       # and it is gone, single use, one address's code never signs in
       # another.
       - run: npm run test:signin-code
+      - run: npm run test:latest-revision
       - run: npm run test:trip-cities
       - run: npm run test:world-cities
       - run: npm run test:blog
