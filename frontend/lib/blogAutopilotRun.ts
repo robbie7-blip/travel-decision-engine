@@ -10,6 +10,7 @@ import { createAnthropicClient } from "./anthropicClient";
 import { blogPath } from "./blogPaths";
 import { getPost } from "./blogQuery";
 import { instagramPackage, runBlogAutopilot, type AutopilotResult } from "./blogAutopilot";
+import { markChecked } from "./blogProofread";
 import { getDb } from "./db";
 import { sendItineraryEmail } from "./email";
 import { getRedis } from "./redis";
@@ -36,6 +37,9 @@ export async function runAutopilotAndNotify(opts: { scheduled: boolean; now?: Da
 
   const client = createAnthropicClient({ apiKey, timeout: 55_000, maxRetries: 0 });
   const result = await runBlogAutopilot(db, client, now);
+
+  // Proofread before it went live: the catch-up check can skip it.
+  if (result.ok && result.status === "published") await markChecked(result.post.id);
 
   const to = process.env.ADMIN_REPORT_EMAIL?.trim();
   if (to) {

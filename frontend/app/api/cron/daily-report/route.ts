@@ -9,6 +9,7 @@ import { runDailyReport } from "@/lib/dailyReportRun";
 import { isCronRequest } from "@/lib/cronAuth";
 import { isAutopilotDay } from "@/lib/blogAutopilot";
 import { runAutopilotAndNotify } from "@/lib/blogAutopilotRun";
+import { proofreadPublishedPosts } from "@/lib/blogProofread";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,11 @@ export async function GET(request: NextRequest) {
       console.log("[blog-autopilot]", result.ok ? `published ${result.post.slug}` : result.detail);
     });
   }
+  // Any published post the copy check has not seen yet (lib/blogProofread.ts).
+  after(async () => {
+    const proofread = await proofreadPublishedPosts();
+    if (proofread.corrected.length > 0) console.log("[blog-proofread] corrected:", proofread.corrected.join("; "));
+  });
   const run = await runDailyReport({ send: true });
   if (!run.ok) {
     console.error("[daily-report]", run.detail);
