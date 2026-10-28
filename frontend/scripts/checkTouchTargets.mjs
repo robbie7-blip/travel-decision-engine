@@ -141,6 +141,7 @@ const ROUTES_NOT_CHECKED = {
   "/admin/showcase": "see /admin",
   "/admin/stats": "see /admin",
   "/admin/test-mode": "see /admin",
+  "/admin/testers": "see /admin",
   "/admin/trips": "see /admin",
   "/admin/blog": "see /admin",
   "/admin/blog/[id]": "see /admin",

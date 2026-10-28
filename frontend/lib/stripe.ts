@@ -16,13 +16,16 @@ export function getStripe(): Stripe {
   return client;
 }
 
-/** The recurring Price ID for the paid plan - created once in the Stripe
- * dashboard (Product catalog -> add a recurring price) and referenced here
- * rather than constructed in code, so pricing changes don't need a deploy. */
-export function getSubscriptionPriceId(): string {
-  const priceId = process.env.STRIPE_PRICE_ID;
-  if (!priceId) {
-    throw new Error("STRIPE_PRICE_ID is not set - subscriptions are unconfigured.");
-  }
+export type CheckoutPlan = "annual" | "trip_pass";
+
+/** The Stripe Price behind each thing the pricing page sells, created in
+ * the Stripe dashboard (Product catalog) and set on Vercel:
+ *   STRIPE_ANNUAL_PRICE_ID     the yearly Traveller plan (recurring, yearly)
+ *   STRIPE_TRIP_PASS_PRICE_ID  the Trip Pass (one-off)
+ * Never falls back to STRIPE_PRICE_ID, the old monthly plan: selling that
+ * under the yearly plan's name would charge people the wrong amount. */
+export function getPlanPriceId(plan: CheckoutPlan): string {
+  const priceId = plan === "annual" ? process.env.STRIPE_ANNUAL_PRICE_ID : process.env.STRIPE_TRIP_PASS_PRICE_ID;
+  if (!priceId) throw new Error(`The Stripe price for ${plan} is not set.`);
   return priceId;
 }

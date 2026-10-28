@@ -51,7 +51,9 @@ export type FunnelEventType =
   | "checkout_completed"
   | "subscription_canceled"
   | "quota_blocked_free"
-  | "quota_blocked_paid";
+  | "quota_blocked_paid"
+  | "quota_blocked_anon"
+  | "trip_pass_bought";
 
 const FUNNEL_EVENT_TYPES: FunnelEventType[] = [
   "pricing_view",
@@ -60,6 +62,8 @@ const FUNNEL_EVENT_TYPES: FunnelEventType[] = [
   "subscription_canceled",
   "quota_blocked_free",
   "quota_blocked_paid",
+  "quota_blocked_anon",
+  "trip_pass_bought",
 ];
 
 const funnelTotalKey = (type: FunnelEventType) => `analytics:funnel:${type}:total`;

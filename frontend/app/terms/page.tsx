@@ -21,7 +21,7 @@ import { OPERATOR_NAME, CONTACT_EMAIL } from "@/lib/legal";
 import type { Language } from "@/lib/types";
 import { SHARE_CARD } from "@/lib/shareCard";
 
-const LAST_UPDATED = "10 August 2026";
+const LAST_UPDATED = "28 October 2026";
 
 function resolveLanguage(lang?: string): Language {
   return lang === "bg" ? "bg" : "en";
@@ -159,29 +159,30 @@ export default async function TermsPage({
             </p>
           </LegalSection>
 
-          <LegalSection heading="4. Subscriptions and billing">
+          <LegalSection heading="4. Payments, subscriptions and billing">
             <p style={{ margin: "0 0 10px" }}>
-              The Pro plan is a recurring monthly subscription, billed through Stripe, that renews automatically
-              until cancelled. decide never sees or stores your card number - Stripe handles payment collection
-              directly.
+              A Trip Pass is a one-off payment that adds one trip to your account, kept until you use it. The
+              Traveller plan is a yearly subscription that renews automatically until cancelled. Both are paid
+              through Stripe: decide never sees or stores your card number.
             </p>
             <p style={{ margin: "0 0 10px" }}>
               Cancel anytime from the "Manage subscription" button on your Account page, which opens Stripe&apos;s
               secure billing portal - or email {CONTACT_EMAIL} if you&apos;d rather we do it for you. Either way,
-              you&apos;ll keep Pro access through the end of the billing period you already paid for.
+              you&apos;ll keep the plan through the end of the year you already paid for.
             </p>
             <p style={{ margin: 0 }}>
               We don&apos;t offer refunds for partial billing periods, except where required by law. If you&apos;re
-              an EU consumer: digital subscription access begins immediately upon payment at your request, which
-              under EU consumer law means the standard 14-day right of withdrawal doesn&apos;t apply once the
-              service has started.
+              an EU consumer: access to a Trip Pass or the Traveller plan begins immediately upon payment at your
+              request, which under EU consumer law means the standard 14-day right of withdrawal doesn&apos;t apply
+              once the service has started.
             </p>
           </LegalSection>
 
-          <LegalSection heading="5. Free and Pro plan limits">
+          <LegalSection heading="5. Plan limits">
             <p style={{ margin: 0 }}>
-              Both plans include a monthly cap on full itinerary generations (see the current numbers on the
-              Pricing page) and unlimited Ask a Local questions. We may change these limits going forward.
+              Without an account, and on the Free and Traveller plans, there is a monthly limit on full trips
+              (see the current numbers on the Pricing page). Ask a Local questions are unlimited. We may change
+              these limits going forward.
             </p>
           </LegalSection>
 

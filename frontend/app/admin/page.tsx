@@ -55,6 +55,11 @@ const TOOLS: { href: string; name: string; blurb: string }[] = [
     blurb: "Point the homepage's “see a real example” link at a real generated trip.",
   },
   {
+    href: "/admin/testers",
+    name: "Testers",
+    blurb: "Friends and family: add their email and they get the yearly plan free.",
+  },
+  {
     href: "/admin/test-mode",
     name: "Test mode",
     blurb: "Generate without burning rate limits, quotas, or the daily spend cap.",

@@ -25,5 +25,16 @@
 // on positiveIntOr.
 import { positiveIntOr } from "./envNumber";
 
-export const FREE_MONTHLY_GENERATIONS = positiveIntOr(process.env.NEXT_PUBLIC_FREE_MONTHLY_GENERATIONS, 5);
-export const PAID_MONTHLY_GENERATIONS = positiveIntOr(process.env.NEXT_PUBLIC_PAID_MONTHLY_GENERATIONS, 60);
+// The plans (app/pricing): a trip without an account, a few more a month
+// signed in for free, then a Trip Pass (one more trip, paid once) or the
+// yearly Traveller plan. Most people plan a handful of trips a year, so a
+// big monthly allowance sold nothing anyone needed.
+export const FREE_MONTHLY_GENERATIONS = positiveIntOr(process.env.NEXT_PUBLIC_FREE_MONTHLY_GENERATIONS, 2);
+export const PAID_MONTHLY_GENERATIONS = positiveIntOr(process.env.NEXT_PUBLIC_PAID_MONTHLY_GENERATIONS, 10);
+/** Trips a month from one connection without signing in. */
+export const ANON_MONTHLY_GENERATIONS = positiveIntOr(process.env.NEXT_PUBLIC_ANON_MONTHLY_GENERATIONS, 1);
+
+/** What the pricing page shows; Stripe charges what its prices say, so
+ * these must match the prices created there. */
+export const TRIP_PASS_PRICE = { en: "€4.99", bg: "4,99 €" } as const;
+export const ANNUAL_PRICE = { en: "€29", bg: "29 €" } as const;

@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
   }
 
   const user = await getUserRecord(redis, email);
-  const plan = resolvePlan(email, user?.subscriptionStatus ?? null);
+  const plan = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester);
   const quota = await getQuotaStatus(redis, email, plan);
 
   return withRenewedSession(

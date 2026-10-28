@@ -11,10 +11,10 @@
 // (see costBudget.ts) once there's usage to look at.
 
 import type { Redis } from "@upstash/redis";
-import { FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS } from "./planLimits";
+import { ANON_MONTHLY_GENERATIONS, FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS } from "./planLimits";
 import { bonusKey } from "./referral";
 
-export { FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS };
+export { ANON_MONTHLY_GENERATIONS, FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS };
 
 export type Plan = "free" | "paid";
 
@@ -42,6 +42,9 @@ export interface UserRecord {
    * So an event older than the newest one already applied is dropped. See
    * decideSubscriptionUpdate in lib/subscriptionEvent.ts. */
   lastEventAt: number | null;
+  /** Friends and family testing the site, added on /admin/testers: the
+   * paid plan without paying. */
+  tester?: boolean;
 }
 
 /** A hash field as a string, or null.
@@ -127,8 +130,8 @@ const PRO_OVERRIDE_EMAILS = new Set(
 /** The plan every route should actually gate features on - layers the
  * owner override on top of isPaidStatus rather than each call site
  * checking both separately. */
-export function resolvePlan(email: string, subscriptionStatus: string | null): Plan {
-  if (PRO_OVERRIDE_EMAILS.has(email.toLowerCase().trim())) return "paid";
+export function resolvePlan(email: string, subscriptionStatus: string | null, tester = false): Plan {
+  if (tester || PRO_OVERRIDE_EMAILS.has(email.toLowerCase().trim())) return "paid";
   return isPaidStatus(subscriptionStatus) ? "paid" : "free";
 }
 
@@ -142,7 +145,47 @@ export async function getUserRecord(redis: Redis, email: string): Promise<UserRe
     subscriptionStatus: text(data.subscriptionStatus),
     currentPeriodEnd: epochSeconds(data.currentPeriodEnd),
     lastEventAt: epochSeconds(data.lastEventAt),
+    tester: text(data.tester) === "1" || text(data.tester) === "true",
   };
+}
+
+const TESTERS_KEY = "testers";
+
+/** Adds or removes a tester (/admin/testers). The flag lives on the
+ * account record, which the plan is read from anyway; the set is only
+ * there so the admin page can list them. */
+export async function setTester(redis: Redis, email: string, on: boolean): Promise<void> {
+  const normal = email.toLowerCase().trim();
+  await redis.hset(userKey(normal), { tester: on ? "1" : "" });
+  if (on) await redis.sadd(TESTERS_KEY, normal);
+  else await redis.srem(TESTERS_KEY, normal);
+}
+
+export async function listTesters(redis: Redis): Promise<string[]> {
+  return ((await redis.smembers(TESTERS_KEY)) as string[]).sort();
+}
+
+/** One more trip, paid once (the Trip Pass): the same kept-until-used
+ * extra trip an invite gives. Once per checkout session, however often
+ * Stripe delivers the event. Returns whether this call granted it. */
+export async function grantTripPass(redis: Redis, email: string, checkoutSessionId: string): Promise<boolean> {
+  const first = await redis.set(`trippass:${checkoutSessionId}`, email.toLowerCase().trim(), { nx: true });
+  if (first !== "OK") return false;
+  await redis.incrby(bonusKey(email), 1);
+  return true;
+}
+
+/** Trips without an account, counted per connection per month. Counted
+ * when asked, so a refused request does not use one up. */
+export async function takeAnonymousTrip(redis: Redis, ip: string, now = new Date()): Promise<boolean> {
+  const key = `anontrips:${ip}:${monthKey(now)}`;
+  const used = await redis.incr(key);
+  if (used === 1) await redis.expire(key, 60 * 60 * 24 * 40);
+  if (used > ANON_MONTHLY_GENERATIONS) {
+    await redis.decr(key);
+    return false;
+  }
+  return true;
 }
 
 /** Merges fields into a user's record (creates it if it doesn't exist yet).

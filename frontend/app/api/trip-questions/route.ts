@@ -481,7 +481,7 @@ export async function POST(request: NextRequest) {
   let isPaid = false;
   if (email) {
     const user = await getUserRecord(redis, email);
-    isPaid = resolvePlan(email, user?.subscriptionStatus ?? null) === "paid";
+    isPaid = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester) === "paid";
   }
 
   // Photo questions are Pro, on the same footing as live web search: an

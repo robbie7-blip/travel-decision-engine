@@ -21,6 +21,7 @@ import {
   linkStripeCustomerToEmail,
   getEmailForStripeCustomer,
   getUserRecord,
+  grantTripPass,
   upsertUserRecord,
 } from "@/lib/account";
 import { advancedEventClock, decideSubscriptionUpdate } from "@/lib/subscriptionEvent";
@@ -126,6 +127,28 @@ async function handleCheckoutCompleted(
   });
 }
 
+/** A Trip Pass (a one-off payment, app/api/checkout): one more trip on
+ * the account. Only once the money is in: a delayed payment method
+ * completes the session unpaid, and those are left alone (no access is
+ * granted for a payment that has not arrived). */
+async function handleTripPass(session: Stripe.Checkout.Session) {
+  const fromMetadata = session.metadata?.email;
+  const email = (typeof fromMetadata === "string" ? fromMetadata : null) ?? session.customer_details?.email;
+  if (!email) {
+    console.error(`[stripe] Trip Pass ${session.id} has no email - THE TRIP WAS NOT ADDED. Add it by hand.`);
+    return;
+  }
+  if (session.payment_status !== "paid") {
+    console.warn(`[stripe] Trip Pass ${session.id} completed with payment ${session.payment_status}; not added.`);
+    return;
+  }
+  const redis = getRedis();
+  if (await grantTripPass(redis, email, session.id)) {
+    await recordFunnelEvent(redis, "checkout_completed").catch(() => {});
+    await recordFunnelEvent(redis, "trip_pass_bought").catch(() => {});
+  }
+}
+
 async function handleSubscriptionChange(subscription: Stripe.Subscription, eventCreatedAt: number) {
   const redis = getRedis();
   const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
@@ -180,14 +203,20 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed":
-        await handleCheckoutCompleted(stripe, event.data.object as Stripe.Checkout.Session, event.created);
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.mode === "payment") {
+          await handleTripPass(session);
+          break;
+        }
+        await handleCheckoutCompleted(stripe, session, event.created);
         // Funnel visibility (see lib/analytics.ts) - the actual conversion
         // event, not just a checkout attempt. Deliberately after the real
         // work above, not before: never counted if granting access itself
         // failed and this handler threw.
         await recordFunnelEvent(getRedis(), "checkout_completed").catch(() => {});
         break;
+      }
       case "customer.subscription.updated":
         await handleSubscriptionChange(event.data.object as Stripe.Subscription, event.created);
         break;

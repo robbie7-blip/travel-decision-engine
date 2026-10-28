@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
-import { FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS } from "@/lib/planLimits";
+import { ANNUAL_PRICE, FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS, TRIP_PASS_PRICE } from "@/lib/planLimits";
 import type { Language } from "@/lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** What the checkout route sells (app/api/checkout). */
+type CheckoutPlan = "trip_pass" | "annual";
 
 // Small checkmark used in both plans' feature checklists - one shared glyph
 // (colored per-card via `color`) instead of a plain "•" or "-", so the list
@@ -18,6 +21,87 @@ function CheckIcon({ color }: { color: string }) {
       <circle cx="8" cy="8" r="7.25" fill="none" stroke={color} strokeWidth="1.4" />
       <path d="M4.8 8.2 L7 10.4 L11.3 5.8" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/** One plan: its name, price, what it includes, and a buy button for the
+ * paid ones. The highlighted card is the one most people should pick. */
+function PlanCard(props: {
+  name: string;
+  price: string;
+  per?: string;
+  blurb: string;
+  featuresIntro?: string;
+  features: string[];
+  color: string;
+  highlight?: boolean;
+  action?: { label: string; onClick: () => void; disabled: boolean };
+  error?: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg-panel)",
+        border: props.highlight ? `2px solid ${props.color}` : "1px solid var(--line)",
+        borderRadius: 10,
+        padding: 26,
+        boxShadow: "var(--shadow-panel)",
+      }}
+    >
+      <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: props.highlight ? props.color : "var(--ink-dim)", marginBottom: 6 }}>
+        {props.name}
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+        <span className="font-display" style={{ fontSize: 30, fontWeight: 600 }}>
+          {props.price}
+        </span>
+        {props.per && <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>{props.per}</span>}
+      </div>
+      <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5, margin: "0 0 16px" }}>{props.blurb}</p>
+      {props.featuresIntro && (
+        <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.04em", color: props.color, fontWeight: 700, marginBottom: 8 }}>
+          {props.featuresIntro}
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: props.action ? 20 : 0 }}>
+        {props.features.map((f, i) => (
+          <div key={i} style={{ display: "flex", gap: 9 }}>
+            <CheckIcon color={props.color} />
+            <span style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.45 }}>{f}</span>
+          </div>
+        ))}
+      </div>
+      {props.action && (
+        <div style={{ marginTop: "auto" }}>
+          <button
+            type="button"
+            onClick={props.action.onClick}
+            disabled={props.action.disabled}
+            className={props.highlight ? "font-ui btn-primary" : "font-ui"}
+            style={{
+              width: "100%",
+              minHeight: 44,
+              padding: "12px 16px",
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              cursor: props.action.disabled ? "default" : "pointer",
+              ...(props.highlight ? {} : { background: "transparent", color: "var(--ink)", border: "1px solid var(--line-strong)", borderRadius: 8 }),
+            }}
+          >
+            {props.action.label}
+          </button>
+          {props.error && (
+            <div role="alert" className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
+              {props.error}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -36,8 +120,9 @@ function CheckIcon({ color }: { color: string }) {
 export default function PricingPage() {
   const [language, setLanguageState] = useState<Language>("en");
   const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState<CheckoutPlan | null>(null);
+  const [error, setError] = useState<{ plan: CheckoutPlan; message: string } | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -61,19 +146,20 @@ export default function PricingPage() {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
   }
 
-  async function subscribe() {
+  async function buy(plan: CheckoutPlan) {
     const trimmed = email.trim();
     if (!EMAIL_RE.test(trimmed)) {
-      setError(t.account.genericError);
+      setError({ plan, message: t.account.emailFirst });
+      emailRef.current?.focus();
       return;
     }
-    setSubmitting(true);
-    setError("");
+    setSubmitting(plan);
+    setError(null);
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: trimmed, plan }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.url) {
@@ -81,8 +167,8 @@ export default function PricingPage() {
       }
       window.location.href = data.url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.account.genericError);
-      setSubmitting(false);
+      setError({ plan, message: e instanceof Error ? e.message : t.account.genericError });
+      setSubmitting(null);
     }
   }
 
@@ -196,132 +282,81 @@ export default function PricingPage() {
               it and to the container's width when there is not, so the
               floor never exceeds the box. Nothing changes at or above
               364px, where 300px fits. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 20 }}>
-            <div style={{ background: "var(--bg-panel)", border: "1px solid var(--line)", borderRadius: 10, padding: 26, boxShadow: "var(--shadow-panel)" }}>
-              <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}>
-                {t.account.freePlanName}
-              </div>
-              <div className="font-display" style={{ fontSize: 30, fontWeight: 600, marginBottom: 4 }}>
-                €0
-              </div>
-              <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5, margin: "0 0 18px" }}>
-                {t.account.freePlanBlurb.replace("{count}", String(FREE_MONTHLY_GENERATIONS))}
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {t.account.freePlanFeatures.map((f, i) => (
-                  <div key={i} style={{ display: "flex", gap: 9 }}>
-                    <CheckIcon color="var(--brand-teal)" />
-                    <span style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.45 }}>
-                      {i === 0 ? f.replace("{count}", String(FREE_MONTHLY_GENERATIONS)) : f}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div
+          <div style={{ maxWidth: 520, marginBottom: 24 }}>
+            <label htmlFor="pricing-email" className="font-ui" style={{ display: "block", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}>
+              {t.account.emailLabel}
+            </label>
+            <input
+              id="pricing-email"
+              ref={emailRef}
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t.account.emailPlaceholder}
               style={{
-                position: "relative",
-                background: "var(--bg-panel)",
-                border: "2px solid var(--accent-green)",
-                borderRadius: 10,
-                padding: 26,
-                boxShadow: "var(--shadow-panel)",
+                width: "100%",
+                background: "var(--bg-panel-raised)",
+                border: "1px solid var(--line-strong)",
+                borderRadius: 8,
+                padding: "10px 13px",
+                color: "var(--ink)",
+                fontSize: 14,
+                boxSizing: "border-box",
+                boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
               }}
-            >
-              <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent-green)", marginBottom: 6 }}>
-                {t.account.paidPlanName}
-              </div>
-              <div className="font-display" style={{ fontSize: 30, fontWeight: 600, marginBottom: 4 }}>
-                {t.account.paidPlanPrice}
-              </div>
-              <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5, margin: "0 0 14px" }}>
-                {t.account.paidPlanBlurb.replace("{count}", String(PAID_MONTHLY_GENERATIONS))}
-              </p>
-              <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.04em", color: "var(--accent-green)", fontWeight: 700, marginBottom: 8 }}>
-                {t.account.paidPlanFeaturesIntro}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-                {t.account.paidPlanFeatures.map((f, i) => (
-                  <div key={i} style={{ display: "flex", gap: 9 }}>
-                    <CheckIcon color="var(--accent-green)" />
-                    <span style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.45 }}>
-                      {i === 0
-                        ? f
-                            .replace("{count}", String(PAID_MONTHLY_GENERATIONS))
-                            .replace("{multiplier}", String(Math.round(PAID_MONTHLY_GENERATIONS / FREE_MONTHLY_GENERATIONS)))
-                        : f}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 6 }}>
-                  {t.account.emailLabel}
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t.account.emailPlaceholder}
-                  // The visible label above is a <div>, so nothing connects
-                  // the two: with a screen reader this was an unnamed edit
-                  // field at the point money changes hands. aria-label
-                  // rather than htmlFor because the label is not a <label>
-                  // and making it one would put a click target around text
-                  // that is doing a heading's job here.
-                  aria-label={t.account.emailLabel}
-                  style={{
-                    width: "100%",
-                    background: "var(--bg-panel-raised)",
-                    border: "1px solid var(--line-strong)",
-                    borderRadius: 8,
-                    padding: "10px 13px",
-                    color: "var(--ink)",
-                    fontSize: 14,
-                    boxSizing: "border-box",
-                    boxShadow: "inset 0 1px 3px rgba(43, 36, 28, 0.08)",
-                  }}
-                />
-                <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 6, lineHeight: 1.4 }}>
-                  {t.account.emailMismatchNote}
-                </div>
-              </div>
-              <button
-                onClick={subscribe}
-                disabled={submitting || !email.trim()}
-                className="font-ui btn-primary"
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  cursor: submitting || !email.trim() ? "default" : "pointer",
-                }}
-              >
-                {submitting ? t.account.subscribing : t.account.subscribeButton}
-              </button>
-              {error && (
-                <div className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)", marginTop: 10 }}>
-                  {error}
-                </div>
-              )}
-              {/* Right at the point money changes hands - the one place on
-                  the site these links genuinely need to be, not buried in a
-                  footer no one scrolls to before paying. */}
-              <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 12, lineHeight: 1.5, textAlign: "center" }}>
-                By subscribing, you agree to our{" "}
-                <Link href="/terms" style={{ color: "var(--ink-dim)" }}>
-                  Terms
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" style={{ color: "var(--ink-dim)" }}>
-                  Privacy Policy
-                </Link>
-                .
-              </div>
+            />
+            <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 6, lineHeight: 1.4 }}>
+              {t.account.emailMismatchNote}
             </div>
+          </div>
+          {/* min(280px, 100%), not a bare 280px: the floor must never be
+              wider than the box, or a 320px phone scrolls sideways (the
+              reasoning is on the same fix in five other grids). */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 20, alignItems: "stretch" }}>
+            <PlanCard
+              name={t.account.freePlanName}
+              price="€0"
+              blurb={t.account.freePlanBlurb}
+              features={t.account.freePlanFeatures.map((f) => f.replace("{count}", String(FREE_MONTHLY_GENERATIONS)))}
+              color="var(--brand-teal)"
+            />
+            <PlanCard
+              name={t.account.tripPassName}
+              price={TRIP_PASS_PRICE[language]}
+              per={t.account.tripPassPer}
+              blurb={t.account.tripPassBlurb}
+              features={t.account.tripPassFeatures}
+              color="var(--accent-2)"
+              action={{ label: submitting === "trip_pass" ? t.account.subscribing : t.account.tripPassButton, onClick: () => void buy("trip_pass"), disabled: submitting !== null }}
+              error={error?.plan === "trip_pass" ? error.message : ""}
+            />
+            <PlanCard
+              highlight
+              name={t.account.paidPlanName}
+              price={ANNUAL_PRICE[language]}
+              per={t.account.paidPlanPer}
+              blurb={t.account.paidPlanBlurb.replace("{count}", String(PAID_MONTHLY_GENERATIONS))}
+              featuresIntro={t.account.paidPlanFeaturesIntro}
+              features={t.account.paidPlanFeatures.map((f) => f.replace("{count}", String(PAID_MONTHLY_GENERATIONS)))}
+              color="var(--accent-green)"
+              action={{ label: submitting === "annual" ? t.account.subscribing : t.account.paidPlanButton, onClick: () => void buy("annual"), disabled: submitting !== null }}
+              error={error?.plan === "annual" ? error.message : ""}
+            />
+          </div>
+          {/* Right at the point money changes hands - the one place on
+              the site these links genuinely need to be, not buried in a
+              footer no one scrolls to before paying. */}
+          <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 16, lineHeight: 1.5 }}>
+            {language === "bg" ? "С покупка приемаш нашите " : "By buying, you agree to our "}
+            <Link href="/terms" style={{ color: "var(--ink-dim)" }}>
+              {language === "bg" ? "Общи условия" : "Terms"}
+            </Link>
+            {language === "bg" ? " и " : " and "}
+            <Link href="/privacy" style={{ color: "var(--ink-dim)" }}>
+              {language === "bg" ? "Политика за поверителност" : "Privacy Policy"}
+            </Link>
+            .
           </div>
         </div>
         </div>
