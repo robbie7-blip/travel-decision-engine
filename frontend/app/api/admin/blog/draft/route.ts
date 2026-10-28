@@ -9,9 +9,9 @@ import { getSiteUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 180;
 
-const KINDS = new Set<DraftKind>(["news", "destination", "story"]);
+const KINDS = new Set<DraftKind>(["news", "destination", "story", "tip", "mistakes"]);
 
 export async function POST(request: NextRequest) {
   if (isCrossOriginRequest(request.headers, allowedOriginsFor(request.url, getSiteUrl()))) {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   try {
     // 55s: inside the function's own 60, so a slow draft fails with a
     // sentence rather than a cut connection.
-    const client = createAnthropicClient({ apiKey, timeout: 55_000, maxRetries: 0 });
+    const client = createAnthropicClient({ apiKey, timeout: 170_000, maxRetries: 0 });
     const draft = await writeDraft(client, { kind, topic, language, today: new Date().toISOString().slice(0, 10) });
     if (!draft) return NextResponse.json({ detail: "The draft came back unusable. Try again, or a narrower topic." }, { status: 502 });
     const cover = await findCoverPhoto(draft.imageQuery || draft.destinations[0] || topic, process.env.PEXELS_API_KEY);

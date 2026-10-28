@@ -207,11 +207,13 @@ export function BlogEditor({ initial, hasPexels }: { initial: BlogPost | null; h
           <select aria-label="Kind of post" style={{ ...field, width: "auto" }} value={kind} onChange={(e) => setKind(e.target.value as DraftKind)}>
             <option value="destination">Destination</option>
             <option value="story">Story</option>
+            <option value="tip">Travel tip (searches the web, cites sources)</option>
+            <option value="mistakes">Mistakes to avoid (searches the web, cites sources)</option>
             <option value="news">News (searches the web, cites sources)</option>
           </select>
           <span style={{ fontSize: 12, color: "var(--ink-dim)" }}>in {f.language === "bg" ? "Bulgarian" : "English"} (set below)</span>
           <button type="button" style={button} onClick={draft} disabled={!topic.trim() || busy !== null}>
-            {busy === "draft" ? "Writing… (up to a minute)" : "Write draft"}
+            {busy === "draft" ? "Writing… (up to three minutes)" : "Write draft"}
           </button>
         </div>
         <p style={{ fontSize: 11, color: "var(--ink-dim)", margin: "8px 0 0" }}>

@@ -35,7 +35,7 @@ export async function runAutopilotAndNotify(opts: { scheduled: boolean; now?: Da
     }
   }
 
-  const client = createAnthropicClient({ apiKey, timeout: 55_000, maxRetries: 0 });
+  const client = createAnthropicClient({ apiKey, timeout: 150_000, maxRetries: 0 });
   const result = await runBlogAutopilot(db, client, now);
 
   // Proofread before it went live: the catch-up check can skip it.

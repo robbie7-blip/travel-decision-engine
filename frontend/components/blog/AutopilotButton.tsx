@@ -2,7 +2,8 @@
 
 // "Write a post now" on /admin/blog: runs the blog autopilot once
 // (app/api/admin/blog/autopilot), the same thing Mondays and Thursdays do
-// on their own. Takes most of a minute: the model writes the whole post.
+// on their own. Takes up to three minutes: the model may search the web,
+// writes the whole post, and a second one proofreads it.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -43,7 +44,7 @@ export function AutopilotButton() {
         className="font-ui"
         style={{ minHeight: 44, padding: "0 18px", fontSize: 13, marginLeft: 10, border: "1px solid var(--line)", borderRadius: 999, background: "transparent", color: "var(--ink)", cursor: busy ? "wait" : "pointer" }}
       >
-        {busy ? "Writing… (up to a minute)" : "Write a post now"}
+        {busy ? "Writing… (up to three minutes)" : "Write a post now"}
       </button>
       {note && <span style={{ fontSize: 12, color: "var(--ink-dim)", marginLeft: 10 }}>{note}</span>}
     </>

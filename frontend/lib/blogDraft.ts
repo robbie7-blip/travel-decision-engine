@@ -16,7 +16,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { blogSlug, type BlogLanguage, type BlogSource } from "./blogQuery";
 
-export type DraftKind = "news" | "destination" | "story";
+export type DraftKind = "news" | "destination" | "story" | "tip" | "mistakes";
+
+/** The kinds whose facts must come from sources found on the web, listed
+ * under the post. */
+export const SOURCED_KINDS: ReadonlySet<DraftKind> = new Set(["news", "tip", "mistakes"]);
 
 export interface BlogDraft {
   title: string;
@@ -33,6 +37,8 @@ export const DRAFT_MODEL = "claude-sonnet-5";
 const KIND_BRIEF: Record<DraftKind, string> = {
   news: `A NEWS post: something that is new or changing in travel right now (a new route, a rule, an opening, a festival, a closure). Use web search to find current, reliable reporting. Every fact must come from a source you found; list those sources. If you cannot confirm something, leave it out.`,
   destination: `A DESTINATION post: one place worth the trip that most travellers overlook, written so a reader can picture going. Concrete specifics (neighbourhoods, a dish, a walk, the best season), not generic praise. Leave out prices, opening hours and other details that change, unless you are sure.`,
+  tip: `A TRAVEL TIP post: one practical trick or rule that saves European travellers money, time or hassle (airport security, airline bag rules, rail tickets, passenger rights, entry rules, card and roaming fees). The kind of thing people save and send to a friend before a trip. Use web search to confirm it from official or reliable sources (the airline, airport, rail company, EU or government page); list those sources. Say exactly who and where it applies to, and what to check before relying on it. If you cannot confirm the trick, write about a related one you can confirm instead; never present a rumour as fact.`,
+  mistakes: `A MISTAKES post: the mistakes visitors to one place most often make, and what to do instead (tickets, scams, transport, etiquette, timing, money). Concrete and useful, never sneering at travellers or locals. Use web search to confirm any rule, fine, fee or official advice from reliable sources and list them; leave out anything you cannot confirm.`,
   story: `A STORY post: a fascinating, true story behind a place (history, a legend, an odd fact) told so it is hard to stop reading. Only what is well established; where something is legend rather than fact, say so.`,
 };
 
@@ -46,7 +52,7 @@ export function draftSystemPrompt(language: BlogLanguage): string {
 ${lang}
 
 Style:
-- A headline that makes people want to read, without clickbait or exaggeration. It must be grammatical, plain English a native speaker would say out loud: a full phrase or sentence, not a clipped or puzzling one (not "The Amsterdam the canal boats never reach", but "The side of Amsterdam the canal boats never reach").
+- A headline that makes people curious enough to click, and is completely true: no exaggeration, and nothing the post does not deliver ("The airport rule most Europeans still get wrong" is fine if the post shows it). It must be grammatical, plain English a native speaker would say out loud: a full phrase or sentence, not a clipped or puzzling one (not "The Amsterdam the canal boats never reach", but "The side of Amsterdam the canal boats never reach").
 - 600 to 900 words. Short paragraphs. Two to four "## " section headings. One list where it helps.
 - Never use em dashes or en dashes: use commas, colons or full stops.
 - No filler ("nestled", "hidden gem", "bucket list", "a feast for the senses").
@@ -95,14 +101,14 @@ export function parseDraft(text: string): BlogDraft | null {
   };
 }
 
-/** Asks Claude for the draft. News may search the web (a few searches, so
+/** Asks Claude for the draft. Sourced kinds may search the web (a few searches, so
  * the request fits the function's time limit); the rest do not need to. */
 export async function writeDraft(
   client: Anthropic,
   input: { kind: DraftKind; topic: string; language: BlogLanguage; today: string }
 ): Promise<BlogDraft | null> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: draftUserPrompt(input.kind, input.topic, input.today) }];
-  const tools = input.kind === "news" ? [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 3 }] : undefined;
+  const tools = SOURCED_KINDS.has(input.kind) ? [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 3 }] : undefined;
   let text = "";
   // A response with server-side tools can pause mid-turn; it is continued
   // by sending it back, a bounded number of times.

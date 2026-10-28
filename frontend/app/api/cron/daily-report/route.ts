@@ -14,10 +14,10 @@ import { proofreadPublishedPosts } from "@/lib/blogProofread";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // The report takes seconds; on Mondays and Thursdays the blog autopilot
-// runs after it (lib/blogAutopilotRun.ts) and needs most of a minute for
-// the model to write the post. Riding on this cron rather than adding one
+// runs after it (lib/blogAutopilotRun.ts) and needs up to a few minutes:
+// a tip or mistakes post searches the web, then is proofread. Riding on this cron rather than adding one
 // keeps the project inside the plan's cron limit.
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 export async function GET(request: NextRequest) {
   if (!isCronRequest(request.headers.get("authorization"))) {

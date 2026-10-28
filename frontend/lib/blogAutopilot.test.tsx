@@ -2,7 +2,7 @@
 //
 // Run: npm run test:blog-autopilot
 
-import { applyReview, instagramPackage, isAutopilotDay, pickTopic, postFromDraft } from "./blogAutopilot";
+import { applyReview, instagramPackage, isAutopilotDay, kindFor, pickTopic, postFromDraft, TIP_THEMES } from "./blogAutopilot";
 import { parseReview, reviewSystemPrompt } from "./blogDraft";
 import { parseBlogInput } from "./blogQuery";
 import { STARTER_POSTS } from "./blogStarter";
@@ -22,12 +22,19 @@ section("the city the blog has said least about");
   const slugs = ["lisbon", "porto", "rome"];
   const cities = { lisbon: "Lisbon", porto: "Porto", rome: "Rome" };
   const posts = [{ destinations: ["Lisbon"] }, { destinations: ["Rome"] }, { destinations: ["rome"] }];
+  // 2026-11-02 is in an even Monday-to-Sunday week since 1970: a rotation start.
   const monday = pickTopic(slugs, cities, posts, new Date("2026-11-02T06:00:00Z"));
   check("Porto, never written about", monday?.slug === "porto", JSON.stringify(monday));
-  check("a destination piece on Monday", monday?.kind === "destination" && monday.topic.includes("Porto"));
+  check("a tip on the first Monday, sourced", monday?.kind === "tip" && /official sources/.test(monday.topic), JSON.stringify(monday));
   const thursday = pickTopic(slugs, cities, posts, new Date("2026-11-05T06:00:00Z"));
-  check("a story on Thursday", thursday?.kind === "story");
-  check("never news", ![monday?.kind, thursday?.kind].includes("news"));
+  check("a destination piece that Thursday", thursday?.kind === "destination" && thursday.topic.includes("Porto"));
+  const nextMonday = pickTopic(slugs, cities, posts, new Date("2026-11-09T06:00:00Z"));
+  check("mistakes in a city the next Monday", nextMonday?.kind === "mistakes" && nextMonday.topic.includes("Porto"));
+  check("a story the next Thursday", kindFor(new Date("2026-11-12T06:00:00Z")) === "story");
+  check("back to a tip after four posts", kindFor(new Date("2026-11-16T06:00:00Z")) === "tip");
+  const tips = new Set([0, 2, 4, 6].map((w) => pickTopic(slugs, cities, posts, new Date(Date.parse("2026-11-02T06:00:00Z") + w * 7 * 86_400_000))?.topic));
+  check("a different tip each time", tips.size === 4 && TIP_THEMES.length >= 4);
+  check("never news", ![0, 1, 2, 3, 4, 5, 6, 7].some((d) => kindFor(new Date(Date.parse("2026-11-02T06:00:00Z") + d * 86_400_000)) === "news"));
   check("no guides, nothing", pickTopic([], {}, [], new Date()) === null);
 }
 
@@ -79,6 +86,28 @@ section("the copy check before anything goes live");
   const dashed = parseReview(reply({ title: "Amsterdam \u2014 beyond the canals" }), original);
   check("dashes are taken out", dashed !== null && !/[\u2013\u2014]/.test(dashed.title));
   check("the editor is told not to add facts", /add, remove or change any fact/.test(reviewSystemPrompt("en")));
+}
+
+section("a tip is not dressed up as a city piece");
+{
+  const draft = {
+    title: "The airport rule most Europeans still get wrong",
+    slug: "the-airport-rule",
+    excerpt: "Liquids.",
+    body: "## The rule\n\n" + "It depends on the scanner. ".repeat(20),
+    destinations: [],
+    sources: [{ title: "Airport", url: "https://example.com" }],
+    imageQuery: "airport security",
+  };
+  const topic = { slug: "porto", city: "Porto", kind: "tip" as const, topic: "t" };
+  const cover = { url: "https://images.pexels.com/photos/1/a.jpeg", alt: "A tray", credit: "Ann on Pexels", creditUrl: "https://www.pexels.com/@ann" };
+  const post = postFromDraft(draft, topic, "/destinations/porto.jpg", cover);
+  check("no city guide line", !post.body.includes("/destinations/porto"));
+  check("the Pexels photo and its photographer, not the city's", post.coverUrl === cover.url && post.coverCredit === "Ann on Pexels");
+  check("not filed under the city", post.destinations.length === 0);
+  check("its sources kept", post.sources.length === 1);
+  check("passes the editor's checks", parseBlogInput(post).ok);
+  check("no photo, no cover", postFromDraft(draft, topic, "/destinations/porto.jpg").coverUrl === null);
 }
 
 section("the Instagram package, from a real post");
