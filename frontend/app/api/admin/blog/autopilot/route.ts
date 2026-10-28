@@ -17,5 +17,5 @@ export async function POST(request: NextRequest) {
   }
   const result = await runAutopilotAndNotify({ scheduled: false });
   if (!result.ok) return NextResponse.json({ detail: result.detail }, { status: 502 });
-  return NextResponse.json({ id: result.post.id, slug: result.post.slug, title: result.post.title });
+  return NextResponse.json({ id: result.post.id, slug: result.post.slug, title: result.post.title, status: result.status, issues: result.issues });
 }

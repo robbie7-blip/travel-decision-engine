@@ -10,8 +10,11 @@
 // guide, publishes it, and emails the owner the post and its Instagram
 // package (app/admin/instagram).
 //
-// Published straight away rather than left as a draft, because that is
-// what was asked for; the email exists so a post that reads wrong can be
+// Before anything is published a second, fast model copy edits it
+// (reviewDraft): grammar, spelling, awkward phrasing, the headline. Only a
+// post that editor passed goes live by itself; one it doubted, or that it
+// could not finish in time, is saved as a draft and the email says it
+// needs a look. A published post that still reads wrong can be
 // unpublished from /admin/blog the same morning. Only destination and
 // story pieces, never news: news needs fresh sources, which a scheduled
 // run cannot check, and the guide cities are the ones the site already
@@ -20,8 +23,8 @@
 // Run: npm run test:blog-autopilot (the choices and the package, no model)
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { writeDraft, type BlogDraft, type DraftKind } from "./blogDraft";
-import { listAllPosts, parseBlogInput, savePost, setPostStatus, type BlogPost } from "./blogQuery";
+import { reviewDraft, writeDraft, type BlogDraft, type DraftKind, type DraftReview } from "./blogDraft";
+import { blogSlug, listAllPosts, parseBlogInput, savePost, setPostStatus, type BlogPost } from "./blogQuery";
 import { DESTINATION_PHOTO_CREDITS } from "./destinationPhotoCredits";
 import { getDestinationPhoto, getLocalizedCityName, listDestinationSlugs, loadDestination } from "./destinations";
 import { parseBlocks } from "./miniMarkdown";
@@ -82,11 +85,37 @@ export function postFromDraft(draft: BlogDraft, topic: AutopilotTopic, coverSrc:
 }
 
 export type AutopilotResult =
-  | { ok: true; post: { id: string; slug: string; title: string }; topic: AutopilotTopic }
+  | {
+      ok: true;
+      post: { id: string; slug: string; title: string };
+      topic: AutopilotTopic;
+      /** "draft" when the copy editor did not pass it: saved, not live. */
+      status: "published" | "draft";
+      issues: string[];
+    }
   | { ok: false; detail: string };
 
-/** Writes, saves and publishes one post. Never throws. */
+/** The draft with the copy editor's corrections, and whether it may go
+ * live unattended. No review (timed out, unusable) means it may not. */
+export function applyReview(draft: BlogDraft, review: DraftReview | null): { draft: BlogDraft; publish: boolean; issues: string[] } {
+  if (!review) return { draft, publish: false, issues: ["The copy check did not finish, so it was not published."] };
+  return {
+    draft: { ...draft, title: review.title, slug: blogSlug(review.title), excerpt: review.excerpt || draft.excerpt, body: review.body },
+    publish: review.publishable,
+    issues: review.issues,
+  };
+}
+
+/** The whole run fits the function's 60 seconds; the copy check gets what
+ * the draft left of it. */
+const RUN_BUDGET_MS = 52_000;
+const REVIEW_MAX_MS = 25_000;
+const REVIEW_MIN_MS = 5_000;
+
+/** Writes, checks, saves and (when the check passed) publishes one post.
+ * Never throws. */
 export async function runBlogAutopilot(db: Queryable, client: Anthropic, now = new Date()): Promise<AutopilotResult> {
+  const deadline = Date.now() + RUN_BUDGET_MS;
   try {
     const slugs = listDestinationSlugs();
     const cities = Object.fromEntries(slugs.map((s) => [s, getLocalizedCityName(s, "en", loadDestination(s)?.city ?? s)]));
@@ -96,7 +125,10 @@ export async function runBlogAutopilot(db: Queryable, client: Anthropic, now = n
     const draft = await writeDraft(client, { kind: topic.kind, topic: topic.topic, language: "en", today: now.toISOString().slice(0, 10) });
     if (!draft) return { ok: false, detail: `The draft about ${topic.city} came back unusable.` };
 
-    const raw = postFromDraft(draft, topic, getDestinationPhoto(topic.slug)?.src ?? null);
+    const left = Math.min(REVIEW_MAX_MS, deadline - Date.now());
+    const checked = applyReview(draft, left >= REVIEW_MIN_MS ? await reviewDraft(client, draft, "en", left) : null);
+
+    const raw = postFromDraft(checked.draft, topic, getDestinationPhoto(topic.slug)?.src ?? null);
     // Through the editor's own checks, so an automatic post meets exactly
     // the bar a hand-made one does.
     const parsed = parseBlogInput(raw);
@@ -108,8 +140,14 @@ export async function runBlogAutopilot(db: Queryable, client: Anthropic, now = n
       saved = await savePost(db, { ...parsed.post, slug: `${parsed.post.slug}-${now.toISOString().slice(0, 10)}`.slice(0, 80) });
     }
     if (!saved.ok) return { ok: false, detail: saved.detail };
-    await setPostStatus(db, saved.id, "published");
-    return { ok: true, post: { id: saved.id, slug: parsed.post.slug, title: parsed.post.title }, topic };
+    if (checked.publish) await setPostStatus(db, saved.id, "published");
+    return {
+      ok: true,
+      post: { id: saved.id, slug: parsed.post.slug, title: parsed.post.title },
+      topic,
+      status: checked.publish ? "published" : "draft",
+      issues: checked.issues,
+    };
   } catch (e) {
     return { ok: false, detail: e instanceof Error ? e.message.slice(0, 300) : String(e) };
   }

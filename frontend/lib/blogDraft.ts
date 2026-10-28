@@ -46,7 +46,7 @@ export function draftSystemPrompt(language: BlogLanguage): string {
 ${lang}
 
 Style:
-- A headline that makes people want to read, without clickbait or exaggeration.
+- A headline that makes people want to read, without clickbait or exaggeration. It must be grammatical, plain English a native speaker would say out loud: a full phrase or sentence, not a clipped or puzzling one (not "The Amsterdam the canal boats never reach", but "The side of Amsterdam the canal boats never reach").
 - 600 to 900 words. Short paragraphs. Two to four "## " section headings. One list where it helps.
 - Never use em dashes or en dashes: use commas, colons or full stops.
 - No filler ("nestled", "hidden gem", "bucket list", "a feast for the senses").
@@ -122,6 +122,102 @@ export async function writeDraft(
     messages.push({ role: "assistant", content: response.content });
   }
   return parseDraft(text);
+}
+
+export const REVIEW_MODEL = "claude-haiku-5-5";
+
+export interface DraftReview {
+  title: string;
+  excerpt: string;
+  body: string;
+  /** False when the editor found something it could not fix by editing,
+   * or a claim that looks wrong: the post then waits as a draft. */
+  publishable: boolean;
+  issues: string[];
+}
+
+export function reviewSystemPrompt(language: BlogLanguage): string {
+  const lang = language === "bg" ? "Bulgarian" : "British English";
+  return `You are a meticulous copy editor for a travel blog written in ${lang}. You are given a post that is about to be published.
+
+Fix, with the lightest touch that works:
+- grammar, spelling, punctuation and agreement;
+- awkward, clipped or unnatural phrasing, including in the headline and the section headings. The headline must read as plain, grammatical ${lang} a native speaker would say out loud.
+
+Do not:
+- add, remove or change any fact, name, number, date or claim;
+- change the meaning, the tone or the order of the sections;
+- add, remove or change links, or the number of "## " section headings;
+- use em dashes or en dashes.
+
+Set "publishable" to false only if something cannot be fixed by light editing, or a claim reads as likely untrue. List what you changed, and anything you doubt, in "issues" (short phrases).
+
+Reply with ONLY a JSON object, no other text:
+{"title": "...", "excerpt": "...", "body": "the full corrected article in the same Markdown", "publishable": true, "issues": ["..."]}`;
+}
+
+function links(markdown: string): string[] {
+  return [...markdown.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]).sort();
+}
+
+function headingCount(markdown: string): number {
+  return markdown.split("\n").filter((line) => /^##\s/.test(line)).length;
+}
+
+/** The editor's reply, or null when it is not usable: not JSON, or an edit
+ * that went further than copy editing (the length moved a lot, a section
+ * heading or a link appeared or went). A null review means the post is not
+ * published unattended. */
+export function parseReview(text: string, original: Pick<BlogDraft, "body">): DraftReview | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+  const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const undash = (v: string) => v.replace(/\s*[\u2013\u2014]\s*/g, ", ");
+  const title = undash(str(raw.title));
+  const body = undash(str(raw.body));
+  if (!title || !body) return null;
+  const ratio = body.length / Math.max(1, original.body.length);
+  if (ratio < 0.8 || ratio > 1.2) return null;
+  if (headingCount(body) !== headingCount(original.body)) return null;
+  if (links(body).join(" ") !== links(original.body).join(" ")) return null;
+  return {
+    title: title.slice(0, 160),
+    excerpt: undash(str(raw.excerpt)).slice(0, 400),
+    body,
+    publishable: raw.publishable === true,
+    issues: (Array.isArray(raw.issues) ? raw.issues : []).map(str).filter(Boolean).slice(0, 12),
+  };
+}
+
+/** A copy edit of the draft by a second, fast model, within `timeoutMs`.
+ * Null when it could not be done in time or came back unusable. */
+export async function reviewDraft(client: Anthropic, draft: BlogDraft, language: BlogLanguage, timeoutMs: number): Promise<DraftReview | null> {
+  try {
+    const response = await client.messages.create(
+      {
+        model: REVIEW_MODEL,
+        max_tokens: 8000,
+        output_config: { effort: "low" },
+        system: reviewSystemPrompt(language),
+        messages: [{ role: "user", content: JSON.stringify({ title: draft.title, excerpt: draft.excerpt, body: draft.body }) }],
+      },
+      { timeout: timeoutMs, maxRetries: 0 }
+    );
+    const text = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    return parseReview(text, draft);
+  } catch {
+    return null;
+  }
 }
 
 export interface CoverPhoto {

@@ -2,7 +2,8 @@
 //
 // Run: npm run test:blog-autopilot
 
-import { instagramPackage, isAutopilotDay, pickTopic, postFromDraft } from "./blogAutopilot";
+import { applyReview, instagramPackage, isAutopilotDay, pickTopic, postFromDraft } from "./blogAutopilot";
+import { parseReview, reviewSystemPrompt } from "./blogDraft";
 import { parseBlogInput } from "./blogQuery";
 import { STARTER_POSTS } from "./blogStarter";
 import { check, finish, heading, section } from "./testutil";
@@ -47,6 +48,37 @@ section("the post it saves meets the editor's own bar");
   check("passes the editor's checks", parseBlogInput(post).ok);
   const linked = postFromDraft({ ...draft, body: draft.body + " See [the guide](/destinations/porto)." }, { slug: "porto", city: "Porto", kind: "destination", topic: "t" }, null);
   check("no second link when the draft already has one", linked.body.split("/destinations/porto").length === 2);
+}
+
+section("the copy check before anything goes live");
+{
+  const original = {
+    title: "The Amsterdam the canal boats never reach",
+    slug: "x",
+    excerpt: "Noord is a ferry ride away.",
+    body: "## Across the IJ\n\n" + "Noord are a short ferry ride from the station. ".repeat(10) + "\n\n## Where to eat\n\nSee [the guide](/destinations/amsterdam).",
+    destinations: ["Amsterdam"],
+    sources: [],
+    imageQuery: "amsterdam",
+  };
+  const fixedBody = original.body.replaceAll("Noord are", "Noord is");
+  const reply = (over: Record<string, unknown>) =>
+    JSON.stringify({ title: "The side of Amsterdam the canal boats never reach", excerpt: original.excerpt, body: fixedBody, publishable: true, issues: ["headline"], ...over });
+
+  const review = parseReview(`Here it is: ${reply({})}`, original);
+  check("a clean copy edit is read", review?.publishable === true && review.body.includes("Noord is"), JSON.stringify(review));
+  const applied = applyReview(original, review);
+  check("its headline and body are used, with a new address", applied.publish && applied.draft.title.startsWith("The side of") && applied.draft.slug.startsWith("the-side-of") && applied.draft.body === fixedBody);
+
+  check("an editor in doubt keeps it a draft", applyReview(original, parseReview(reply({ publishable: false }), original)).publish === false);
+  check("no answer keeps it a draft", applyReview(original, null).publish === false && applyReview(original, null).draft === original);
+  check("not JSON is no answer", parseReview("sorry", original) === null);
+  check("a rewrite, not an edit, is refused", parseReview(reply({ body: fixedBody + " Extra paragraph.".repeat(40) }), original) === null);
+  check("a dropped section is refused", parseReview(reply({ body: fixedBody.replace("## Where to eat", "Where to eat") }), original) === null);
+  check("a changed link is refused", parseReview(reply({ body: fixedBody.replace("/destinations/amsterdam", "https://example.com/x") }), original) === null);
+  const dashed = parseReview(reply({ title: "Amsterdam \u2014 beyond the canals" }), original);
+  check("dashes are taken out", dashed !== null && !/[\u2013\u2014]/.test(dashed.title));
+  check("the editor is told not to add facts", /add, remove or change any fact/.test(reviewSystemPrompt("en")));
 }
 
 section("the Instagram package, from a real post");

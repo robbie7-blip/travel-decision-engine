@@ -17,8 +17,15 @@ export function AutopilotButton() {
     setNote(null);
     try {
       const res = await fetch("/api/admin/blog/autopilot", { method: "POST" });
-      const data = (await res.json().catch(() => ({}))) as { title?: string; detail?: string };
-      setNote(res.ok ? `Published: ${data.title ?? "a new post"}. The Instagram post is in your email.` : data.detail ?? "It did not post.");
+      const data = (await res.json().catch(() => ({}))) as { title?: string; detail?: string; status?: string };
+      const title = data.title ?? "a new post";
+      setNote(
+        !res.ok
+          ? data.detail ?? "It did not post."
+          : data.status === "draft"
+            ? `Saved as a draft, not published: ${title}. The copy check wants a look; open it below.`
+            : `Published: ${title}. The Instagram post is in your email.`
+      );
       if (res.ok) router.refresh();
     } catch {
       setNote("Could not reach the site.");

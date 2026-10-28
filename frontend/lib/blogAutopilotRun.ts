@@ -41,7 +41,16 @@ export async function runAutopilotAndNotify(opts: { scheduled: boolean; now?: Da
   if (to) {
     const site = getSiteUrl();
     try {
-      if (result.ok) {
+      if (result.ok && result.status === "draft") {
+        const issues = result.issues.length > 0 ? `<ul>${result.issues.map((i) => `<li>${escape(i)}</li>`).join("")}</ul>` : "";
+        await sendItineraryEmail(
+          to,
+          `Blog post saved as a draft: ${result.post.title}`,
+          `<p>Today's post (${escape(result.topic.city)}, ${escape(result.topic.kind)}) was written but <strong>not published</strong>: the copy check was not happy with it, or did not finish in time.</p>` +
+            issues +
+            `<p>Read it in <a href="${site}/admin/blog">/admin/blog</a>, fix anything that reads wrong, and publish it from there. The Instagram post is at <a href="${site}/admin/instagram/${result.post.id}">/admin/instagram</a> once it is live.</p>`
+        );
+      } else if (result.ok) {
         const post = await getPost(db, result.post.id);
         const pkg = post ? instagramPackage(post) : null;
         const postUrl = `${site}${blogPath("en", result.post.slug)}`;
