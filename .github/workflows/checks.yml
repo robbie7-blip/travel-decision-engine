@@ -452,6 +452,9 @@ jobs:
       # A meal whose pick and replacement both failed verification gets one
       # direct Places search for a real, open, well-rated place nearby.
       - run: npm run test:meal-fill
+      # A meal the plan owes, still missing after the repairs, is filled from
+      # Places near where the traveller is, or left out if nothing qualifies.
+      - run: npm run test:meal-gaps
       # "Rental car" as the way to get around: one rental line, priced from
       # a live search when it found a rate, added if the plan forgot it.
       - run: npm run test:rental-car

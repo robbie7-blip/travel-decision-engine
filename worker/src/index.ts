@@ -53,6 +53,7 @@ import {
   summarizeQuality,
 } from "./engine/quality";
 import { checkVenues, fillUnnamedMeals, prewarmGeocodes, stripToUnverified } from "./engine/venueVerification";
+import { addMealPlaceholders, removeUnfilledPlaceholders } from "./engine/mealGaps";
 import { applyRentalCar, carClassFor, readRentalReply, RENTAL_SYSTEM, rentalUserMessage, type RentalQuote } from "./engine/rentalCar";
 import {
   assertUsableItinerary,
@@ -3675,9 +3676,18 @@ async function processJobInScope(redis: Redis, client: Anthropic, id: string): P
     // one direct Google search for a real, open, well-rated restaurant
     // nearby (fillUnnamedMeals). Counted in the re-verify time, which is
     // the stage it finishes: the timing audit's stages stay exhaustive.
+    // And any meal the plan said a day owes that is still missing gets a
+    // placeholder near where the traveller is then, for the same search to
+    // name (engine/mealGaps.ts). Placeholders it could not name are taken
+    // out again, so this never adds an unnamed meal.
+    const mealPlaceholders = planDays.length > 0 ? addMealPlaceholders(itinerary, planDays, job.brief) : [];
     const mealsFilled = await timed("fillMeals", () =>
       fillUnnamedMeals(itinerary, job.brief.dietary_constraints ?? [], { geoCache })
     );
+    if (mealPlaceholders.length > 0) {
+      const kept = removeUnfilledPlaceholders(itinerary, mealPlaceholders);
+      console.log(`[worker] ${mealPlaceholders.length} missing meal(s): ${kept} filled from Places, the rest left out`);
+    }
     if (mealsFilled > 0) {
       jobTimings.mealsFilledFromPlaces = mealsFilled;
       console.log(`[worker] named ${mealsFilled} meal(s) from a direct Places search`);
