@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
     // them, and public/ is served by the CDN rather than bundled, so on
     // Vercel every share card was drawn without its photo or font.
     "/**/opengraph-image*": ["./public/destinations/**/*", "./lib/fonts/**/*", "./facts/**/*"],
+    // The Instagram slides draw the same photo and font (lib/instagramSlides.tsx).
+    "/api/admin/instagram/**": ["./public/destinations/**/*", "./lib/fonts/**/*"],
   },
   // /spin moved to /decide-for-me.
   //

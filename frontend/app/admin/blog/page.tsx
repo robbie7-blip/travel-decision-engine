@@ -8,6 +8,7 @@ import { listAllPosts, type BlogPost } from "@/lib/blogQuery";
 import { blogPath } from "@/lib/blogPaths";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
 import { StarterPostsButton } from "@/components/blog/StarterPostsButton";
+import { AutopilotButton } from "@/components/blog/AutopilotButton";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,6 +33,9 @@ export default async function AdminBlogPage() {
       <h1 className="font-display" style={{ fontSize: 24, margin: "10px 0 8px" }}>
         Blog
       </h1>
+      <p style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 6px" }}>
+        A new post is written and published automatically every Monday and Thursday morning, and its Instagram post is emailed to you.
+      </p>
       <p style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 18px" }}>
         Public at <Link href="/blog" style={{ color: "var(--grounded)" }}>/blog</Link> and <Link href="/bg/blog" style={{ color: "var(--grounded)" }}>/bg/blog</Link>. Drafts are visible only here.
       </p>
@@ -40,6 +44,7 @@ export default async function AdminBlogPage() {
           New post
         </Link>
         {db && <StarterPostsButton />}
+        {db && <AutopilotButton />}
       </p>
       {!db ? (
         <p style={{ color: "var(--ink-dim)" }}>No database on this deployment (DATABASE_URL is not set).</p>
@@ -73,9 +78,14 @@ export default async function AdminBlogPage() {
                 <td style={{ padding: 8, borderBottom: "1px solid var(--line)", whiteSpace: "nowrap" }}>{p.updatedAt.slice(0, 10)}</td>
                 <td style={{ padding: 8, borderBottom: "1px solid var(--line)", whiteSpace: "nowrap" }}>
                   {p.status === "published" && (
-                    <a href={blogPath(p.language, p.slug)} style={{ color: "var(--grounded)" }}>
-                      view →
-                    </a>
+                    <>
+                      <a href={blogPath(p.language, p.slug)} style={{ color: "var(--grounded)" }}>
+                        view →
+                      </a>{" "}
+                      <Link href={`/admin/instagram/${p.id}`} style={{ color: "var(--grounded)", marginLeft: 8 }}>
+                        Instagram →
+                      </Link>
+                    </>
                   )}
                 </td>
               </tr>

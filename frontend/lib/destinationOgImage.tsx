@@ -119,14 +119,20 @@ export async function destinationOgImage(slug: string, language: Language): Prom
             alt=""
             width={1200}
             height={630}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
           />
         )}
         <div
           style={{
+            // Explicit edges, not inset: next/og does not read the inset
+            // shorthand, so this overlay was never drawn and the title sat
+            // straight on the photo.
             position: "absolute",
-            inset: 0,
-            background: "linear-gradient(to bottom, rgba(20,16,10,0.55) 0%, rgba(20,16,10,0.15) 40%, rgba(20,16,10,0.75) 100%)",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundImage: "linear-gradient(to bottom, rgba(20,16,10,0.55) 0%, rgba(20,16,10,0.15) 40%, rgba(20,16,10,0.75) 100%)",
           }}
         />
         <div
