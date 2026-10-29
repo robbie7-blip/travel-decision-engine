@@ -55,8 +55,8 @@ export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
 /** Ask a Local on the free plan, and without an account. Its own counter,
  * so subscribing starts the paid one fresh. */
 export const TRIP_QUESTIONS_FREE_RATE_LIMIT: RateLimitConfig = {
-  perHour: envInt("TRIP_QUESTIONS_FREE_RATE_LIMIT_PER_HOUR", 5),
-  perDay: envInt("TRIP_QUESTIONS_FREE_RATE_LIMIT_PER_DAY", 5),
+  perHour: envInt("TRIP_QUESTIONS_FREE_RATE_LIMIT_PER_HOUR", 10),
+  perDay: envInt("TRIP_QUESTIONS_FREE_RATE_LIMIT_PER_DAY", 10),
   prefix: "ratelimit:trip-questions-free",
 };
 

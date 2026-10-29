@@ -464,7 +464,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Same session cookie /api/generate reads for quota. The plan decides
-  // web_search and photos, and how many questions a day (free 5, paid 20).
+  // web_search and photos, and how many questions a day (free 10, paid 20).
   const email = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   // The tester link (lib/testerPass.ts) gives the paid Ask a Local too.
   let isPaid = await hasTesterPass(redis, request.cookies.get(TESTER_COOKIE_NAME)?.value);
