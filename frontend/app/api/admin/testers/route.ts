@@ -13,8 +13,10 @@ export const runtime = "nodejs";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** The link on the address the admin page itself is open on, so it is
+ * the site friends should land on whatever SITE_URL says. */
 function linkFor(request: NextRequest, code: string | null): string | null {
-  return code ? new URL(`/tester/${code}`, getSiteUrl() || request.url).toString() : null;
+  return code ? new URL(`/tester/${code}`, request.nextUrl.origin).toString() : null;
 }
 
 export async function GET(request: NextRequest) {
