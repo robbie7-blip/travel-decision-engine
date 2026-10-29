@@ -70,6 +70,31 @@ export default function TestersAdminPage() {
     }
   }
 
+  // Safari can refuse the clipboard API without saying so, and then a
+  // paste gives whatever was copied before. The old select-and-copy way
+  // as a fallback, and a plain message when neither worked.
+  async function copyLink(text: string) {
+    setError("");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      return;
+    } catch {
+      // Fall through to the older way.
+    }
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    if (ok) setCopied(true);
+    else setError("Could not copy. Select the link above and copy it by hand.");
+  }
+
   const button = { minHeight: 44, padding: "0 16px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "transparent", color: "var(--ink)", cursor: "pointer" } as const;
 
   return (
@@ -85,13 +110,11 @@ export default function TestersAdminPage() {
       </p>
       {link ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <code style={{ flex: "1 1 260px", fontSize: 13, padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, overflowWrap: "anywhere" }}>{link}</code>
+          <code style={{ flex: "1 1 260px", fontSize: 13, padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, overflowWrap: "anywhere", userSelect: "all" }}>{link}</code>
           <button
             type="button"
             style={button}
-            onClick={() => {
-              void navigator.clipboard.writeText(link).then(() => setCopied(true));
-            }}
+            onClick={() => void copyLink(link)}
           >
             {copied ? "Copied" : "Copy"}
           </button>
