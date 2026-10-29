@@ -10,7 +10,7 @@ import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
-import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
+import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT, TESTER_GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent, recordFunnelEvent } from "@/lib/analytics";
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       // picks it up (each generation runs 1-2 live web searches per
       // destination), so this is checked before any job is created - not
       // just cosmetically.
-      const rateLimit = await checkRateLimit(redis, getClientIp(request), GENERATE_RATE_LIMIT);
+      const rateLimit = await checkRateLimit(redis, getClientIp(request), tester ? TESTER_GENERATE_RATE_LIMIT : GENERATE_RATE_LIMIT);
       if (!rateLimit.allowed) {
         const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
         return NextResponse.json(

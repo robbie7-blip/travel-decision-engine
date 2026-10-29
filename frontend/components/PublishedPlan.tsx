@@ -10,6 +10,7 @@ import type { Itinerary } from "@/lib/types";
 import { affiliateIds, bookingLinkFor, groundLinkFor, stayDates } from "@/lib/bookingLinks";
 import { safeHref } from "@/lib/linkify";
 import { ConfidenceTag } from "./ui";
+import { itemTitle } from "@/lib/itemTitle";
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
@@ -33,7 +34,7 @@ export function PublishedPlan({ itinerary, destinations, t }: { itinerary: Itine
               <div key={i} className="plan-item">
                 <ConfidenceTag tier={tier} label={t.tierTag[tier]} />
                 <div className="plan-item-body">
-                  <div className="plan-item-title">{str(item.title)}</div>
+                  <div className="plan-item-title">{itemTitle(item)}</div>
                   <div className="font-ui plan-item-meta">
                     {[str(item.location), str(item.time)].filter(Boolean).join(" · ")}
                     {typeof item.google_rating === "number" && ` · ★ ${item.google_rating.toFixed(1)}`}

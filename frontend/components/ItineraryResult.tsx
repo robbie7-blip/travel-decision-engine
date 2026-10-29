@@ -28,6 +28,7 @@ import { voteRef } from "@/lib/tripVotes";
 import { affiliateIds, bookingLinkFor, groundLinkFor, hasAffiliates, stayDates } from "@/lib/bookingLinks";
 import { editKey, ItemEditRow, TripEditBar, withEdit } from "./TripEditControls";
 import type { TripEdit } from "@/lib/tripEdits";
+import { itemTitle } from "@/lib/itemTitle";
 import { travelLegsFor, type TravelLeg } from "@/lib/engine/travel";
 import { submitFeedback } from "@/lib/api";
 import { computeTrustScore } from "@/lib/trustScore";
@@ -755,7 +756,7 @@ export function ItineraryResult({
                   </button>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>{itemTitle(item)}</span>
                       <span className="font-ui" style={{ fontSize: 12, color: "var(--ink-dim)" }}>
                         {item.flight_search_url && item.cost_estimate_eur > 0 && item.source_confidence !== "grounded" ? (
                           // A flight's own guessed fare has repeatedly turned out badly wrong

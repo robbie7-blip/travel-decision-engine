@@ -34,6 +34,16 @@ export const GENERATE_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:generate",
 };
 
+/** Trips and push-backs from a browser with the tester link
+ * (lib/testerPass.ts). Family testing together share one home connection,
+ * and five an hour between them, push-backs included, ran out in minutes.
+ * The daily spend cap still bounds the whole site. */
+export const TESTER_GENERATE_RATE_LIMIT: RateLimitConfig = {
+  perHour: envInt("TESTER_GENERATE_RATE_LIMIT_PER_HOUR", 20),
+  perDay: envInt("TESTER_GENERATE_RATE_LIMIT_PER_DAY", 40),
+  prefix: "ratelimit:generate-tester",
+};
+
 export const FEEDBACK_RATE_LIMIT: RateLimitConfig = {
   perHour: envInt("FEEDBACK_RATE_LIMIT_PER_HOUR", 30),
   perDay: envInt("FEEDBACK_RATE_LIMIT_PER_DAY", 100),

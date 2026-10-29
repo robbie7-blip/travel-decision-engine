@@ -30,7 +30,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
-import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
+import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT, TESTER_GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
+import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 import { checkDailyBudget } from "@/lib/spendCheck";
 import { ValidationError } from "@/lib/validation";
 import { refineSource } from "@/lib/refineSource";
@@ -111,7 +112,9 @@ export async function POST(request: NextRequest) {
   // A refinement costs the same as a fresh generation (one model call, same
   // search-tool access), so it draws from the exact same rate-limit budget -
   // otherwise pushback would be a free way around the /api/generate cap.
-  const rateLimit = await checkRateLimit(redis, getClientIp(request), GENERATE_RATE_LIMIT);
+  // The tester link's own, roomier limit (lib/ratelimit.ts).
+  const tester = await hasTesterPass(redis, request.cookies.get(TESTER_COOKIE_NAME)?.value);
+  const rateLimit = await checkRateLimit(redis, getClientIp(request), tester ? TESTER_GENERATE_RATE_LIMIT : GENERATE_RATE_LIMIT);
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
     return NextResponse.json(

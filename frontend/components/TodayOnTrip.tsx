@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 import type { Dictionary } from "@/lib/i18n";
 import { localDateOf, minutesOfDay, todayOnTrip } from "@/lib/today";
 import type { ItineraryDay, ItineraryItem } from "@/lib/types";
+import { itemTitle } from "@/lib/itemTitle";
 
 /** Re-read the clock every minute, so "next" stops being whatever it was
  * when the page happened to load. A minute is the granularity of the
@@ -42,7 +43,7 @@ function Line({ item, lead }: { item: ItineraryItem; lead?: boolean }) {
     <li className="today-item" data-lead={lead ? "true" : undefined}>
       <span className="today-time font-mono">{item.time || ""}</span>
       <span className="today-what">
-        <span className="today-title">{item.title}</span>
+        <span className="today-title">{itemTitle(item)}</span>
         {item.location && <span className="today-where font-ui">{item.location}</span>}
       </span>
     </li>
