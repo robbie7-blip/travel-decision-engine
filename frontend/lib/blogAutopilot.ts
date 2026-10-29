@@ -25,7 +25,7 @@
 // Run: npm run test:blog-autopilot (the choices and the package, no model)
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { findCoverPhoto, reviewDraft, SOURCED_KINDS, writeDraft, type BlogDraft, type CoverPhoto, type DraftKind, type DraftReview } from "./blogDraft";
+import { findCoverPhoto, reviewDraft, SOURCED_KINDS, writeDraftWithReason, type BlogDraft, type CoverPhoto, type DraftKind, type DraftReview } from "./blogDraft";
 import { blogSlug, listAllPosts, parseBlogInput, savePost, setPostStatus, type BlogPost } from "./blogQuery";
 import { DESTINATION_PHOTO_CREDITS } from "./destinationPhotoCredits";
 import { getDestinationPhoto, getLocalizedCityName, listDestinationSlugs, loadDestination } from "./destinations";
@@ -155,6 +155,8 @@ export function applyReview(draft: BlogDraft, review: DraftReview | null): { dra
 const RUN_BUDGET_MS = 170_000;
 const REVIEW_MAX_MS = 40_000;
 const REVIEW_MIN_MS = 5_000;
+/** Enough for a second draft and its copy check. */
+const RETRY_MIN_MS = 100_000;
 
 /** Writes, checks, saves and (when the check passed) publishes one post.
  * Never throws. */
@@ -166,8 +168,13 @@ export async function runBlogAutopilot(db: Queryable, client: Anthropic, now = n
     const topic = pickTopic(slugs, cities, await listAllPosts(db), now);
     if (!topic) return { ok: false, detail: "No destination guides to write about." };
 
-    const draft = await writeDraft(client, { kind: topic.kind, topic: topic.topic, language: "en", today: now.toISOString().slice(0, 10) });
-    if (!draft) return { ok: false, detail: `The draft about ${topic.city} came back unusable.` };
+    const request = { kind: topic.kind, topic: topic.topic, language: "en" as const, today: now.toISOString().slice(0, 10) };
+    let written = await writeDraftWithReason(client, request);
+    // One more go when there is time for a whole second draft: a bad
+    // reply is usually a one-off.
+    if (!written.draft && deadline - Date.now() > RETRY_MIN_MS) written = await writeDraftWithReason(client, request);
+    const draft = written.draft;
+    if (!draft) return { ok: false, detail: `The ${topic.kind} piece about ${topic.city} could not be used: ${written.problem}.` };
 
     const left = Math.min(REVIEW_MAX_MS, deadline - Date.now());
     const checked = applyReview(draft, left >= REVIEW_MIN_MS ? await reviewDraft(client, draft, "en", left) : null);

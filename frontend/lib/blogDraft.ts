@@ -68,18 +68,44 @@ export function draftUserPrompt(kind: DraftKind, topic: string, today: string): 
   return `${KIND_BRIEF[kind]}\n\nToday is ${today}.\n\nTopic: ${topic}`;
 }
 
-/** The model's reply as a draft, or null when it is not one. Lenient about
- * text around the JSON; strict about what the JSON holds. */
-export function parseDraft(text: string): BlogDraft | null {
+/** The JSON object in a model reply, or null. Models sometimes put real
+ * line breaks or tabs inside a string (the article body, mostly), which is
+ * not valid JSON and used to throw the whole post away; those are escaped
+ * before parsing. */
+export function readJsonObject(text: string): Record<string, unknown> | null {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
-  let raw: Record<string, unknown>;
+  const slice = text.slice(start, end + 1);
   try {
-    raw = JSON.parse(text.slice(start, end + 1));
+    return JSON.parse(slice);
+  } catch {
+    // Escape control characters inside strings, and try once more.
+  }
+  let fixed = "";
+  let inString = false;
+  let escaped = false;
+  for (const ch of slice) {
+    if (inString && !escaped && ch === "\n") fixed += "\\n";
+    else if (inString && !escaped && ch === "\r") fixed += "\\r";
+    else if (inString && !escaped && ch === "\t") fixed += "\\t";
+    else fixed += ch;
+    if (escaped) escaped = false;
+    else if (ch === "\\") escaped = inString;
+    else if (ch === '"') inString = !inString;
+  }
+  try {
+    return JSON.parse(fixed);
   } catch {
     return null;
   }
+}
+
+/** The model's reply as a draft, or null when it is not one. Lenient about
+ * text around the JSON; strict about what the JSON holds. */
+export function parseDraft(text: string): BlogDraft | null {
+  const raw = readJsonObject(text);
+  if (!raw) return null;
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
   const title = str(raw.title);
   const body = str(raw.body);
@@ -107,15 +133,27 @@ export async function writeDraft(
   client: Anthropic,
   input: { kind: DraftKind; topic: string; language: BlogLanguage; today: string }
 ): Promise<BlogDraft | null> {
+  return (await writeDraftWithReason(client, input)).draft;
+}
+
+/** writeDraft, saying why when there is no draft, for the owner's email. */
+export async function writeDraftWithReason(
+  client: Anthropic,
+  input: { kind: DraftKind; topic: string; language: BlogLanguage; today: string }
+): Promise<{ draft: BlogDraft | null; problem: string }> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: draftUserPrompt(input.kind, input.topic, input.today) }];
   const tools = SOURCED_KINDS.has(input.kind) ? [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 3 }] : undefined;
   let text = "";
+  let stop: string | null = null;
   // A response with server-side tools can pause mid-turn; it is continued
   // by sending it back, a bounded number of times.
   for (let round = 0; round < 3; round++) {
     const response = await client.messages.create({
       model: DRAFT_MODEL,
-      max_tokens: 4096,
+      // The model thinks before it writes, and the thinking counts against
+      // this. At 4096 a long story ran out partway through the article and
+      // came back as half a JSON object (an Athens story, October 2026).
+      max_tokens: 16000,
       system: draftSystemPrompt(input.language),
       messages,
       ...(tools ? { tools } : {}),
@@ -124,10 +162,23 @@ export async function writeDraft(
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
+    stop = response.stop_reason;
     if (response.stop_reason !== "pause_turn") break;
     messages.push({ role: "assistant", content: response.content });
   }
-  return parseDraft(text);
+  const draft = parseDraft(text);
+  if (draft) return { draft, problem: "" };
+  const problem =
+    stop === "max_tokens"
+      ? "it ran out of room before finishing the article"
+      : stop === "refusal"
+        ? "the model declined the topic"
+        : !text.trim()
+          ? "it came back empty"
+          : readJsonObject(text)
+            ? "the article was missing or too short"
+            : "it was not in the expected format";
+  return { draft: null, problem };
 }
 
 export const REVIEW_MODEL = "claude-haiku-5-5";
@@ -175,15 +226,8 @@ function headingCount(markdown: string): number {
  * heading or a link appeared or went). A null review means the post is not
  * published unattended. */
 export function parseReview(text: string, original: Pick<BlogDraft, "body">): DraftReview | null {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  let raw: Record<string, unknown>;
-  try {
-    raw = JSON.parse(text.slice(start, end + 1));
-  } catch {
-    return null;
-  }
+  const raw = readJsonObject(text);
+  if (!raw) return null;
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
   const undash = (v: string) => v.replace(/\s*[\u2013\u2014]\s*/g, ", ");
   const title = undash(str(raw.title));
@@ -209,7 +253,7 @@ export async function reviewDraft(client: Anthropic, draft: BlogDraft, language:
     const response = await client.messages.create(
       {
         model: REVIEW_MODEL,
-        max_tokens: 8000,
+        max_tokens: 16000,
         output_config: { effort: "low" },
         system: reviewSystemPrompt(language),
         messages: [{ role: "user", content: JSON.stringify({ title: draft.title, excerpt: draft.excerpt, body: draft.body }) }],

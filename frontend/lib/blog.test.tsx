@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import { blogSlug, isAllowedCoverUrl, parseBlogInput } from "./blogQuery";
 import { MiniMarkdown, parseBlocks, plainText, readingMinutes } from "./miniMarkdown";
-import { parseDraft } from "./blogDraft";
+import { parseDraft, readJsonObject } from "./blogDraft";
 import { blogPath, sizedCover } from "./blogPaths";
 import { STARTER_POSTS } from "./blogStarter";
 import { existsSync } from "node:fs";
@@ -91,6 +91,13 @@ if (draft) {
   assert.equal(draft.imageQuery, "matera italy");
 }
 assert.equal(parseDraft("no json here"), null);
+// A real line break inside the article string is not valid JSON; the post
+// used to be thrown away for it.
+const broken = parseDraft(`{"title":"Athens after dark","excerpt":"x","body":"## First\n\n${"A line. ".repeat(40)}\nSecond paragraph with a \\"quote\\".","destinations":["Athens"]}`);
+assert.ok(broken, "a draft with raw line breaks in its body is still read");
+assert.ok(broken!.body.includes("\n\nA line."), "and keeps its paragraphs");
+assert.ok(broken!.body.includes('"quote"'), "and its escaped quotes");
+assert.equal(readJsonObject('{"title": "cut off half way'), null, "a reply cut off part way is still refused");
 assert.equal(parseDraft('{"title":"x","body":"too short"}'), null, "a stub is not a draft");
 
 // The starter posts.
