@@ -25,6 +25,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createAnthropicClient, isMissingWorkspaceIdError } from "@/lib/anthropicClient";
 import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
+import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 import { contextBlock, readTripQAContext } from "@/lib/tripQAContext";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
 import { estimateCostUsd } from "@/lib/costBudget";
@@ -483,8 +484,9 @@ export async function POST(request: NextRequest) {
   // web_search access, not whether the question can be asked at all (see
   // WEB_SEARCH_MAX_USES's comment above).
   const email = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
-  let isPaid = false;
-  if (email) {
+  // The tester link (lib/testerPass.ts) gives the paid Ask a Local too.
+  let isPaid = await hasTesterPass(redis, request.cookies.get(TESTER_COOKIE_NAME)?.value);
+  if (email && !isPaid) {
     const user = await getUserRecord(redis, email);
     isPaid = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester) === "paid";
   }

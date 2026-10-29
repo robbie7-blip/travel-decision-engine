@@ -120,6 +120,7 @@ const PAGES = [
   "/why-decide",
   "/terms",
   "/privacy",
+  "/tester/welcome",
   "/cookies",
   "/compare",
   "/compare-stats",

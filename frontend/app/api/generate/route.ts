@@ -16,6 +16,7 @@ import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent, recordFunnelEvent } from "@/lib/analytics";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan, usedLastMonth, takeAnonymousTrip, ANON_MONTHLY_GENERATIONS, FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS, type QuotaResult } from "@/lib/account";
+import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 import { REFERRAL_COOKIE_NAME, isReferralCode, rewardReferral } from "@/lib/referral";
 import { getDb } from "@/lib/db";
 import { hasOwnedTrips } from "@/lib/tripsQuery";
@@ -74,6 +75,8 @@ export async function POST(request: NextRequest) {
   // for test-mode jobs in the worker), just not gated by guardrails meant
   // for the public.
   const email = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+  // Friends and family from the tester link (lib/testerPass.ts).
+  const tester = await hasTesterPass(redis, request.cookies.get(TESTER_COOKIE_NAME)?.value);
   let quotaPlan: "free" | "paid" | null = null;
   let quotaStatus: QuotaResult | null = null;
   // Read alongside the account record below, rather than in its own
@@ -109,7 +112,7 @@ export async function POST(request: NextRequest) {
         getVisitedCodes(redis, email).catch(() => [] as string[]),
       ]);
       visitedCodes = visited;
-      const plan = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester);
+      const plan = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester || tester);
       const quota = await getQuotaStatus(redis, email, plan);
       if (!quota.allowed) {
         const detail =
@@ -142,7 +145,7 @@ export async function POST(request: NextRequest) {
       }
       // The trial without an account (lib/planLimits.ts): after it, signing
       // in is free and gives more, which is the point of asking.
-      if (!(await takeAnonymousTrip(redis, getClientIp(request)))) {
+      if (!tester && !(await takeAnonymousTrip(redis, getClientIp(request)))) {
         await recordFunnelEvent(redis, "quota_blocked_anon").catch(() => {});
         const trips = ANON_MONTHLY_GENERATIONS === 1 ? "your free trip" : `your ${ANON_MONTHLY_GENERATIONS} free trips`;
         return NextResponse.json(

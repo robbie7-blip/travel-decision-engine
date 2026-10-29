@@ -13,6 +13,7 @@ import {
   SESSION_COOKIE_NAME,
 } from "@/lib/session";
 import { getUserRecord, getQuotaStatus, resolvePlan } from "@/lib/account";
+import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 
 export const runtime = "nodejs";
 
@@ -47,7 +48,8 @@ export async function GET(request: NextRequest) {
   }
 
   const user = await getUserRecord(redis, email);
-  const plan = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester);
+  const tester = await hasTesterPass(redis, request.cookies.get(TESTER_COOKIE_NAME)?.value);
+  const plan = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester || tester);
   const quota = await getQuotaStatus(redis, email, plan);
 
   return withRenewedSession(
