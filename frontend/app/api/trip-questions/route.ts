@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAnthropicClient, isMissingWorkspaceIdError } from "@/lib/anthropicClient";
 import { getRedis } from "@/lib/redis";
-import { checkRateLimit, getClientIp, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
+import { checkRateLimit, getClientIp, TRIP_QUESTIONS_FREE_RATE_LIMIT, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
 import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 import { contextBlock, readTripQAContext } from "@/lib/tripQAContext";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
@@ -463,26 +463,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rateLimit = await checkRateLimit(redis, getClientIp(request), TRIP_QUESTIONS_RATE_LIMIT);
-  if (!rateLimit.allowed) {
-    const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
-    return NextResponse.json(
-      {
-        detail:
-          minutes > 60
-            ? `That's today's ${TRIP_QUESTIONS_RATE_LIMIT.perDay} questions. Ask again tomorrow.`
-            : `That's ${TRIP_QUESTIONS_RATE_LIMIT.perHour} questions this hour. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`,
-      },
-      {
-        status: 429,
-        headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,
-      }
-    );
-  }
-
-  // Same session cookie /api/generate reads for quota - here it only gates
-  // web_search access, not whether the question can be asked at all (see
-  // WEB_SEARCH_MAX_USES's comment above).
+  // Same session cookie /api/generate reads for quota. The plan decides
+  // web_search and photos, and how many questions a day (free 5, paid 20).
   const email = verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   // The tester link (lib/testerPass.ts) gives the paid Ask a Local too.
   let isPaid = await hasTesterPass(redis, request.cookies.get(TESTER_COOKIE_NAME)?.value);
@@ -491,8 +473,26 @@ export async function POST(request: NextRequest) {
     isPaid = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester) === "paid";
   }
 
+  const limits = isPaid ? TRIP_QUESTIONS_RATE_LIMIT : TRIP_QUESTIONS_FREE_RATE_LIMIT;
+  const rateLimit = await checkRateLimit(redis, getClientIp(request), limits);
+  if (!rateLimit.allowed) {
+    const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
+    return NextResponse.json(
+      {
+        detail:
+          minutes > 60
+            ? `That's today's ${limits.perDay} questions. Ask again tomorrow.${isPaid ? "" : " The Traveller plan gives you 20 a day."}`
+            : `That's ${limits.perHour} questions this hour. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+      },
+      {
+        status: 429,
+        headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,
+      }
+    );
+  }
+
   // Photo questions are Pro, on the same footing as live web search: an
-  // additional capability, never a restriction on the unlimited text Q&A
+  // additional capability, never a restriction on the text Q&A
   // both plans have always had (see the pricing page copy). Checked here
   // and not only in the UI, since the UI's Pro check is a convenience.
   const carriesImages = trimmedMessages.some((m) => (m.images?.length ?? 0) > 0);

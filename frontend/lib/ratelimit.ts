@@ -52,6 +52,14 @@ export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
   prefix: "ratelimit:trip-questions",
 };
 
+/** Ask a Local on the free plan, and without an account. Its own counter,
+ * so subscribing starts the paid one fresh. */
+export const TRIP_QUESTIONS_FREE_RATE_LIMIT: RateLimitConfig = {
+  perHour: envInt("TRIP_QUESTIONS_FREE_RATE_LIMIT_PER_HOUR", 5),
+  perDay: envInt("TRIP_QUESTIONS_FREE_RATE_LIMIT_PER_DAY", 5),
+  prefix: "ratelimit:trip-questions-free",
+};
+
 // Flight-history import is one Anthropic call per pasted confirmation, with
 // a bounded input and a small structured output - closer in cost to a trip
 // question than a full generation. Someone importing a backlog will
