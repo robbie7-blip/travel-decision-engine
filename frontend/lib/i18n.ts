@@ -1721,14 +1721,14 @@ const en: Dictionary = {
     valueProps: [
       { title: "Budget feasibility, checked", body: "Every trip is checked against real, live costs - not numbers invented mid-conversation." },
       { title: "Confidence you can see", body: "Each recommendation is tagged grounded, inferred, or unverified, so you know what to double-check." },
-      { title: "Ask a Local, anytime", body: "Packing, safety, local customs: unlimited questions, on every plan." },
+      { title: "Ask a Local, anytime", body: "Packing, safety, local customs: up to 20 questions a day, on every plan." },
     ],
     freePlanName: "Free",
     freePlanBlurb: "Try a trip without an account, then sign in with just your email for more. No card needed.",
     freePlanFeatures: [
       "{count} full trips a month when you sign in",
       "Push back and change your plan as often as you like",
-      "Unlimited Ask a Local questions",
+      "Up to 20 Ask a Local questions a day",
       "Budget check and a trust score on every trip",
     ],
     paidPlanName: "Traveller",
@@ -2584,14 +2584,14 @@ const bg: Dictionary = {
     valueProps: [
       { title: "Проверена изпълнимост на бюджета", body: "Всяко пътуване се проверява спрямо реални, актуални цени - не измислени по средата на разговора числа." },
       { title: "Увереност, която виждаш", body: "Всяка препоръка е обозначена като обоснована, изведена или непроверена, за да знаеш какво да провериш допълнително." },
-      { title: "Питай местен, по всяко време", body: "Багаж, безопасност, местни обичаи: неограничен брой въпроси, на всеки план." },
+      { title: "Питай местен, по всяко време", body: "Багаж, безопасност, местни обичаи: до 20 въпроса на ден, на всеки план." },
     ],
     freePlanName: "Безплатен",
     freePlanBlurb: "Пробвай едно пътуване без акаунт, после влез само с имейла си за още. Без карта.",
     freePlanFeatures: [
       "{count} пълни пътувания на месец, когато влезеш",
       "Променяй плана си колкото пъти искаш",
-      "Неограничени въпроси към Питай местен",
+      "До 20 въпроса на ден към Питай местен",
       "Проверка на бюджета и ниво на доверие за всяко пътуване",
     ],
     paidPlanName: "Пътешественик",

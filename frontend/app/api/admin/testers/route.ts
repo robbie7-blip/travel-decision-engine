@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listTesters, setTester } from "@/lib/account";
 import { getRedis } from "@/lib/redis";
+import { allowedOriginsFor, isCrossOriginRequest } from "@/lib/sameOrigin";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
@@ -20,6 +22,12 @@ export async function GET() {
 
 /** { email, on }: on true adds them, false takes them off. */
 export async function POST(request: NextRequest) {
+  // The browser sends the admin password with any request to this site,
+  // even one another page started; only the site itself may change who
+  // gets the paid plan for free.
+  if (isCrossOriginRequest(request.headers, allowedOriginsFor(request.url, getSiteUrl()))) {
+    return NextResponse.json({ detail: "Request must come from the site itself." }, { status: 403 });
+  }
   const body = (await request.json().catch(() => null)) as { email?: unknown; on?: unknown } | null;
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!EMAIL_RE.test(email) || email.length > 254) {

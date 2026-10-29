@@ -466,7 +466,12 @@ export async function POST(request: NextRequest) {
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
     return NextResponse.json(
-      { detail: `Too many requests - ${rateLimit.reason}. Try again in ~${minutes} minute(s).` },
+      {
+        detail:
+          minutes > 60
+            ? `That's today's ${TRIP_QUESTIONS_RATE_LIMIT.perDay} questions. Ask again tomorrow.`
+            : `That's ${TRIP_QUESTIONS_RATE_LIMIT.perHour} questions this hour. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+      },
       {
         status: 429,
         headers: rateLimit.retryAfterSeconds ? { "Retry-After": String(rateLimit.retryAfterSeconds) } : undefined,
@@ -491,7 +496,7 @@ export async function POST(request: NextRequest) {
   const carriesImages = trimmedMessages.some((m) => (m.images?.length ?? 0) > 0);
   if (carriesImages && !isPaid) {
     return NextResponse.json(
-      { detail: "Photo questions are a Pro feature. Text questions stay unlimited on Free." },
+      { detail: "Photo questions come with the Traveller plan. Text questions are included on Free." },
       { status: 403 }
     );
   }

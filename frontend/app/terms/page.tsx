@@ -180,7 +180,7 @@ export default async function TermsPage({
           <LegalSection heading="5. Plan limits">
             <p style={{ margin: 0 }}>
               Without an account, and on the Free and Traveller plans, there is a monthly limit on full trips
-              (see the current numbers on the Pricing page). Ask a Local questions are unlimited. We may change
+              (see the current numbers on the Pricing page). Ask a Local takes up to 20 questions a day. We may change
               these limits going forward.
             </p>
           </LegalSection>

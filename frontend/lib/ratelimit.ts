@@ -45,8 +45,10 @@ export const FEEDBACK_RATE_LIMIT: RateLimitConfig = {
 // fill) - a more generous limit reflects that real per-call cost, not a
 // looser attitude toward abuse.
 export const TRIP_QUESTIONS_RATE_LIMIT: RateLimitConfig = {
-  perHour: envInt("TRIP_QUESTIONS_RATE_LIMIT_PER_HOUR", 20),
-  perDay: envInt("TRIP_QUESTIONS_RATE_LIMIT_PER_DAY", 60),
+  // 20 a day is far more than a trip needs; each question is a paid model
+  // call. The pricing page and terms quote this number.
+  perHour: envInt("TRIP_QUESTIONS_RATE_LIMIT_PER_HOUR", 10),
+  perDay: envInt("TRIP_QUESTIONS_RATE_LIMIT_PER_DAY", 20),
   prefix: "ratelimit:trip-questions",
 };
 
