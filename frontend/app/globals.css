@@ -6236,3 +6236,21 @@ a.trip-notify-note {
     min-height: 44px;
   }
 }
+
+/* The splash's logo and word (components/AppSplash.tsx) appear together. */
+@keyframes splash-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.splash-lockup {
+  animation: splash-in 250ms ease 180ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-lockup {
+    animation: none;
+  }
+}

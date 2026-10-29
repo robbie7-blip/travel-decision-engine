@@ -5,6 +5,41 @@ import { useEffect, useState } from "react";
 const MIN_VISIBLE_MS = 1650;
 const FADE_MS = 300;
 
+/** The logo mark, drawn in the page rather than fetched as
+ * /logo-icon.svg: as a separate file it arrived on its own schedule, and
+ * on a phone the mark and the word appeared a beat apart. Same drawing as
+ * that file; the ids are prefixed so they cannot clash with the page's. */
+function SplashMark() {
+  return (
+    <svg width={76} height={76} viewBox="0 0 100 100" aria-hidden>
+      <defs>
+        <radialGradient id="splashDotGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stopColor="#d9643f" stopOpacity="0.4" />
+          <stop offset="70%" stopColor="#d9643f" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="#d9643f" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="splashLeft" x1="18" y1="15" x2="50" y2="72" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#e8a23f" />
+          <stop offset="1" stopColor="#8a7d68" />
+        </linearGradient>
+        <linearGradient id="splashRight" x1="82" y1="15" x2="50" y2="72" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#e8a23f" />
+          <stop offset="1" stopColor="#8a7d68" />
+        </linearGradient>
+        <linearGradient id="splashMid" x1="50" y1="10" x2="50" y2="72" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#4f9a72" />
+          <stop offset="1" stopColor="#2c6a4c" />
+        </linearGradient>
+      </defs>
+      <path d="M18 15 Q 34 40 50 72" fill="none" stroke="url(#splashLeft)" strokeWidth="3.5" strokeLinecap="round" opacity="0.65" />
+      <path d="M82 15 Q 66 40 50 72" fill="none" stroke="url(#splashRight)" strokeWidth="3.5" strokeLinecap="round" opacity="0.65" />
+      <path d="M50 10 L 50 72" fill="none" stroke="url(#splashMid)" strokeWidth="4.5" strokeLinecap="round" opacity="0.85" />
+      <circle cx="50" cy="78" r="13" fill="url(#splashDotGlow)" />
+      <circle cx="50" cy="78" r="8" fill="#d9643f" />
+    </svg>
+  );
+}
+
 /** Brief branded overlay shown once when the app is first opened in a
  * browser tab - mounts in the root layout, so client-side navigations
  * within the app never re-trigger it. Purely cosmetic: fades itself out
@@ -12,7 +47,6 @@ const FADE_MS = 300;
 export function AppSplash() {
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
-
   useEffect(() => {
     const fadeTimer = setTimeout(() => setFading(true), MIN_VISIBLE_MS);
     const removeTimer = setTimeout(() => setVisible(false), MIN_VISIBLE_MS + FADE_MS);
@@ -64,9 +98,13 @@ export function AppSplash() {
         pointerEvents: fading ? "none" : "auto",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-icon.svg" alt="" width={76} height={76} />
+      {/* .splash-lockup (globals.css) fades the mark and the word in
+          together a moment after first paint. CSS, not a state change:
+          the page's script can arrive well after the font on a slow
+          phone, and waiting for it left the splash blank. The headline
+          font is preloaded, so the delay is usually enough for it. */}
+      <div className="splash-lockup" style={{ display: "flex", alignItems: "center", gap: 18 }}>
+        <SplashMark />
         <span className="font-display" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--logo-teal)" }}>
           decide
         </span>
