@@ -1,12 +1,11 @@
-// The plans (app/pricing): the trial without an account, testers, and the
-// Trip Pass. Against an in-memory stand-in for Redis.
+// The plans (app/pricing): the trial without an account, testers, and which
+// Stripe price each subscription uses. Against an in-memory stand-in for
+// Redis.
 //
 // Run: npm run test:plans
 
 import {
-  getQuotaStatus,
   getUserRecord,
-  grantTripPass,
   listTesters,
   resolvePlan,
   setTester,
@@ -17,6 +16,7 @@ import {
   FREE_MONTHLY_GENERATIONS,
   PAID_MONTHLY_GENERATIONS,
 } from "./planLimits";
+import { getPlanPriceId } from "./stripe";
 import { check, finish, heading, section } from "./testutil";
 
 heading("plans");
@@ -141,28 +141,21 @@ async function main() {
     );
   }
 
-  section("the Trip Pass");
+  section("the subscription prices");
   {
-    const redis = memoryRedis();
-    check(
-      "a payment adds one trip",
-      await grantTripPass(redis, "ann@example.com", "cs_1"),
-    );
-    check(
-      "the same payment delivered again adds nothing",
-      !(await grantTripPass(redis, "ann@example.com", "cs_1")),
-    );
-    check(
-      "a second payment adds another",
-      await grantTripPass(redis, "ann@example.com", "cs_2"),
-    );
-    const quota = await getQuotaStatus(redis, "ann@example.com", "free");
-    check(
-      "two extra trips on the account",
-      quota.bonus === 2,
-      JSON.stringify(quota),
-    );
-    check("usable once the month's free trips are gone", quota.allowed);
+    process.env.STRIPE_MONTHLY_PRICE_ID = "price_month";
+    process.env.STRIPE_ANNUAL_PRICE_ID = "price_year";
+    process.env.STRIPE_PRICE_ID = "price_old_9";
+    check("monthly uses the monthly price", getPlanPriceId("monthly") === "price_month");
+    check("yearly uses the yearly price", getPlanPriceId("annual") === "price_year");
+    delete process.env.STRIPE_MONTHLY_PRICE_ID;
+    let threw = false;
+    try {
+      getPlanPriceId("monthly");
+    } catch {
+      threw = true;
+    }
+    check("never falls back to the old €9 price", threw);
   }
 
   finish();

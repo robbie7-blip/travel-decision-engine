@@ -1,5 +1,5 @@
-// Creates a Stripe Checkout session for the yearly plan (a subscription)
-// or the Trip Pass (a one-off payment). Stripe collects
+// Creates a Stripe Checkout session for the Traveller subscription, billed
+// monthly or yearly. Stripe collects
 // payment details itself (this app never touches a card number) and the
 // checkout.session.completed webhook (see app/api/stripe/webhook) is what
 // actually grants paid access - the redirect back here is just where the
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     email = typeof body?.email === "string" ? body.email.trim() : "";
-    plan = body?.plan === "trip_pass" ? "trip_pass" : "annual";
+    plan = body?.plan === "monthly" ? "monthly" : "annual";
   } catch {
     return NextResponse.json({ detail: "Request body must be valid JSON." }, { status: 400 });
   }
@@ -45,13 +45,11 @@ export async function POST(request: NextRequest) {
   const site = getSiteUrl();
   try {
     const session = await stripe.checkout.sessions.create({
-      mode: plan === "trip_pass" ? "payment" : "subscription",
+      mode: "subscription",
       customer_email: email,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${site}/account?checkout=success`,
       cancel_url: `${site}/pricing?checkout=cancelled`,
-      // `plan` tells the webhook what was bought: a Trip Pass adds one
-      // trip, the yearly plan sets the subscription.
       metadata: { email, plan },
     });
 

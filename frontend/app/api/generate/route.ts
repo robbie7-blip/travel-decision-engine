@@ -15,7 +15,7 @@ import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent, recordFunnelEvent } from "@/lib/analytics";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
-import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan, usedLastMonth, takeAnonymousTrip, ANON_MONTHLY_GENERATIONS, FREE_MONTHLY_GENERATIONS, type QuotaResult } from "@/lib/account";
+import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan, usedLastMonth, takeAnonymousTrip, ANON_MONTHLY_GENERATIONS, FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS, type QuotaResult } from "@/lib/account";
 import { REFERRAL_COOKIE_NAME, isReferralCode, rewardReferral } from "@/lib/referral";
 import { getDb } from "@/lib/db";
 import { hasOwnedTrips } from "@/lib/tripsQuery";
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         const detail =
           plan === "paid"
             ? `You've used all ${quota.limit} generations included this month. It resets at the start of next month.`
-            : `You've used your ${quota.limit} free trips this month. A Trip Pass adds one more, or the yearly plan gives you more every month: see /pricing.`;
+            : `You've used your ${quota.limit} free trips this month. The Traveller plan gives you ${PAID_MONTHLY_GENERATIONS} a month: see /pricing.`;
         // Funnel visibility - a Free account hitting its cap is exactly
         // the moment an upgrade would make sense; worth knowing how often
         // that actually happens vs. how many people ever reach checkout.

@@ -425,7 +425,6 @@ export default async function StatsAdminPage() {
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", gap: 20, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Free quota hit: {funnel.quota_blocked_free}</span>
           <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>No-account trial used up: {funnel.quota_blocked_anon}</span>
-          <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Trip Passes bought: {funnel.trip_pass_bought}</span>
           <span style={{ fontSize: 13, color: "var(--ink-dim)" }}>Pro quota hit: {funnel.quota_blocked_paid}</span>
         </div>
       </div>

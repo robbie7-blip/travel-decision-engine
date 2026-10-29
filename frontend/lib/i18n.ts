@@ -851,12 +851,15 @@ export interface Dictionary {
     /** After the yearly plan's price: "a year". */
     paidPlanPer: string;
     paidPlanButton: string;
-    /** The Trip Pass: one more trip, paid once (lib/planLimits.ts). */
-    tripPassName: string;
-    tripPassPer: string;
-    tripPassBlurb: string;
-    tripPassFeatures: string[];
-    tripPassButton: string;
+    /** The yearly card: its label, the saving badge and its own list. */
+    yearlyName: string;
+    yearlySave: string;
+    yearlyFeatures: string[];
+    /** The same plan billed monthly (lib/planLimits.ts). */
+    monthlyName: string;
+    monthlyPer: string;
+    monthlyBlurb: string;
+    monthlyButton: string;
     /** Shown when a buy button is pressed with no email typed. */
     emailFirst: string;
     emailLabel: string;
@@ -1713,7 +1716,7 @@ const en: Dictionary = {
     loadingAccount: "Loading your account",
     pricingHeading: "Plans",
     pricingSubheading:
-      "Try a trip without an account. Sign in with your email for more, free. When you need extra, buy one trip at a time or a whole year of them.",
+      "Try a trip without an account. Sign in with your email for more, free. Travel often? Subscribe monthly, or yearly for less than half the price.",
     valuePropsHeading: "Every plan gets the real thing",
     valueProps: [
       { title: "Budget feasibility, checked", body: "Every trip is checked against real, live costs - not numbers invented mid-conversation." },
@@ -1729,27 +1732,24 @@ const en: Dictionary = {
       "Budget check and a trust score on every trip",
     ],
     paidPlanName: "Traveller",
-    paidPlanBlurb: "For people who travel often: up to {count} trips every month, all year.",
+    paidPlanBlurb: "The same plan for less than half the price: up to {count} trips every month, all year.",
     paidPlanFeaturesIntro: "Everything in Free, plus:",
     paidPlanFeatures: [
       "Up to {count} trips a month",
       "Ask a Local searches the live web for current answers: weather, opening hours, travel advisories",
       "Ask a Local with photos: snap a menu, a sign or a minibar card and ask what it says",
-      "Less than €2.50 a month",
+      "Cancel any time",
     ],
     paidPlanPrice: "€29",
     paidPlanPer: "a year",
-    paidPlanButton: "Get the yearly plan",
-    tripPassName: "Trip Pass",
-    tripPassPer: "once",
-    tripPassBlurb: "One more full trip, whenever you need it. Paid once, with nothing to cancel.",
-    tripPassFeatures: [
-      "One more full trip, kept until you use it",
-      "Push back and edit it as often as you like",
-      "Sharing, voting, the trip map and day-ahead emails",
-      "No subscription",
-    ],
-    tripPassButton: "Buy a Trip Pass",
+    paidPlanButton: "Subscribe yearly",
+    yearlyName: "Yearly",
+    yearlySave: "Save over 50%",
+    yearlyFeatures: ["Everything in Monthly", "Less than €2.50 a month", "Billed once a year, renews until you cancel"],
+    monthlyName: "Monthly",
+    monthlyPer: "a month",
+    monthlyBlurb: "For people who travel often: up to {count} trips every month.",
+    monthlyButton: "Subscribe monthly",
     emailFirst: "Type your email above first.",
     emailLabel: "EMAIL",
     signInCode: {
@@ -1763,14 +1763,14 @@ const en: Dictionary = {
       tooMany: "Too many tries from here. Wait a few minutes and try again.",
     },
     emailPlaceholder: "you@example.com",
-    emailMismatchNote: "Use the email you sign in with. That is how your purchase gets linked to your account.",
+    emailMismatchNote: "Use the email you sign in with. That is how your subscription gets linked to your account.",
     subscribeButton: "Subscribe",
     subscribing: "Starting checkout...",
     signInButton: "Email me a sign-in code",
     signInSent: "Sent. Type the code from the email below, or tap the link in it.",
     accountHeading: "Your account",
     quotaUsed: "{used} of {limit} trips used this month",
-    bonusTrips: "Extra trips (Trip Passes and invites): {count}",
+    bonusTrips: "Bonus trips from invites: {count}",
     inviteHeading: "Invite a friend, you both get a free trip",
     inviteBody: "When a friend signs in through your link and plans their first trip, you each get one extra trip, kept until you use it. Up to {cap} a month.",
     inviteCopy: "Copy link",
@@ -2579,7 +2579,7 @@ const bg: Dictionary = {
     loadingAccount: "Акаунтът се зарежда",
     pricingHeading: "Планове",
     pricingSubheading:
-      "Пробвай едно пътуване без акаунт. Влез с имейла си и получаваш още, безплатно. Когато ти трябват повече, купи едно пътуване или цяла година.",
+      "Пробвай едно пътуване без акаунт. Влез с имейла си и получаваш още, безплатно. Пътуваш често? Абонирай се месечно или годишно на по-малко от половин цена.",
     valuePropsHeading: "Всеки план получава истинското нещо",
     valueProps: [
       { title: "Проверена изпълнимост на бюджета", body: "Всяко пътуване се проверява спрямо реални, актуални цени - не измислени по средата на разговора числа." },
@@ -2595,27 +2595,24 @@ const bg: Dictionary = {
       "Проверка на бюджета и ниво на доверие за всяко пътуване",
     ],
     paidPlanName: "Пътешественик",
-    paidPlanBlurb: "За хора, които пътуват често: до {count} пътувания всеки месец, цяла година.",
+    paidPlanBlurb: "Същият план на по-малко от половин цена: до {count} пътувания всеки месец, цяла година.",
     paidPlanFeaturesIntro: "Всичко от Безплатния план, плюс:",
     paidPlanFeatures: [
       "До {count} пътувания на месец",
       "Питай местен търси на живо в мрежата за актуални отговори: времето, работно време, предупреждения за пътуване",
       "Питай местен със снимки: снимай меню, табела или карта на минибар и питай какво пише",
-      "По-малко от 2,50 € на месец",
+      "Можеш да се откажеш по всяко време",
     ],
     paidPlanPrice: "29 €",
     paidPlanPer: "на година",
-    paidPlanButton: "Вземи годишния план",
-    tripPassName: "Едно пътуване",
-    tripPassPer: "еднократно",
-    tripPassBlurb: "Още едно пълно пътуване, когато ти потрябва. Плащаш веднъж и няма нищо за отказване.",
-    tripPassFeatures: [
-      "Още едно пълно пътуване, което остава, докато не го използваш",
-      "Променяй и редактирай го колкото пъти искаш",
-      "Споделяне, гласуване, карта на пътуването и имейли за следващия ден",
-      "Без абонамент",
-    ],
-    tripPassButton: "Купи едно пътуване",
+    paidPlanButton: "Абонирай се годишно",
+    yearlyName: "Годишен",
+    yearlySave: "Спестяваш над 50%",
+    yearlyFeatures: ["Всичко от Месечния", "По-малко от 2,50 € на месец", "Плащаш веднъж годишно, подновява се, докато не се откажеш"],
+    monthlyName: "Месечен",
+    monthlyPer: "на месец",
+    monthlyBlurb: "За хора, които пътуват често: до {count} пътувания всеки месец.",
+    monthlyButton: "Абонирай се месечно",
     emailFirst: "Първо въведи имейла си по-горе.",
     emailLabel: "ИМЕЙЛ",
     signInCode: {
@@ -2629,14 +2626,14 @@ const bg: Dictionary = {
       tooMany: "Твърде много опити от това устройство. Изчакай няколко минути и опитай отново.",
     },
     emailPlaceholder: "you@example.com",
-    emailMismatchNote: "Използвай имейла, с който влизаш. Така покупката се свързва с акаунта ти.",
+    emailMismatchNote: "Използвай имейла, с който влизаш. Така абонаментът се свързва с акаунта ти.",
     subscribeButton: "Абонирай се",
     subscribing: "Стартиране на плащане...",
     signInButton: "Изпрати ми код за вход",
     signInSent: "Изпратено. Въведи кода от имейла по-долу или натисни линка в него.",
     accountHeading: "Твоят акаунт",
     quotaUsed: "Използвани пътувания този месец: {used} от {limit}",
-    bonusTrips: "Допълнителни пътувания (покупки и покани): {count}",
+    bonusTrips: "Бонус пътувания от покани: {count}",
     inviteHeading: "Покани приятел и двамата получавате безплатно пътуване",
     inviteBody: "Когато приятел влезе през твоя линк и планира първото си пътуване, всеки от вас получава по едно допълнително, което остава, докато не го използваш. До {cap} на месец.",
     inviteCopy: "Копирай линка",

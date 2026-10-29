@@ -161,18 +161,17 @@ export default async function TermsPage({
 
           <LegalSection heading="4. Payments, subscriptions and billing">
             <p style={{ margin: "0 0 10px" }}>
-              A Trip Pass is a one-off payment that adds one trip to your account, kept until you use it. The
-              Traveller plan is a yearly subscription that renews automatically until cancelled. Both are paid
-              through Stripe: decide never sees or stores your card number.
+              The Traveller plan is a subscription, billed monthly or yearly, that renews automatically until
+              cancelled. It is paid through Stripe: decide never sees or stores your card number.
             </p>
             <p style={{ margin: "0 0 10px" }}>
               Cancel anytime from the "Manage subscription" button on your Account page, which opens Stripe&apos;s
               secure billing portal - or email {CONTACT_EMAIL} if you&apos;d rather we do it for you. Either way,
-              you&apos;ll keep the plan through the end of the year you already paid for.
+              you&apos;ll keep the plan through the end of the month or year you already paid for.
             </p>
             <p style={{ margin: 0 }}>
               We don&apos;t offer refunds for partial billing periods, except where required by law. If you&apos;re
-              an EU consumer: access to a Trip Pass or the Traveller plan begins immediately upon payment at your
+              an EU consumer: access to the Traveller plan begins immediately upon payment at your
               request, which under EU consumer law means the standard 14-day right of withdrawal doesn&apos;t apply
               once the service has started.
             </p>

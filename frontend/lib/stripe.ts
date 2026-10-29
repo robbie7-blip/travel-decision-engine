@@ -16,16 +16,17 @@ export function getStripe(): Stripe {
   return client;
 }
 
-export type CheckoutPlan = "annual" | "trip_pass";
+export type CheckoutPlan = "monthly" | "annual";
 
 /** The Stripe Price behind each thing the pricing page sells, created in
  * the Stripe dashboard (Product catalog) and set on Vercel:
- *   STRIPE_ANNUAL_PRICE_ID     the yearly Traveller plan (recurring, yearly)
- *   STRIPE_TRIP_PASS_PRICE_ID  the Trip Pass (one-off)
- * Never falls back to STRIPE_PRICE_ID, the old monthly plan: selling that
- * under the yearly plan's name would charge people the wrong amount. */
+ *   STRIPE_MONTHLY_PRICE_ID  the Traveller plan, billed monthly
+ *   STRIPE_ANNUAL_PRICE_ID   the Traveller plan, billed yearly
+ * Both are subscriptions to the same plan; only the billing differs. Never
+ * falls back to STRIPE_PRICE_ID, the old €9 plan: charging that under the
+ * new plan's name would charge people the wrong amount. */
 export function getPlanPriceId(plan: CheckoutPlan): string {
-  const priceId = plan === "annual" ? process.env.STRIPE_ANNUAL_PRICE_ID : process.env.STRIPE_TRIP_PASS_PRICE_ID;
+  const priceId = plan === "annual" ? process.env.STRIPE_ANNUAL_PRICE_ID : process.env.STRIPE_MONTHLY_PRICE_ID;
   if (!priceId) throw new Error(`The Stripe price for ${plan} is not set.`);
   return priceId;
 }

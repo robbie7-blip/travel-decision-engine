@@ -97,9 +97,9 @@ export const FRONTEND_ENV: readonly EnvCheck[] = [
     what: "Buying the yearly plan",
   },
   {
-    name: "STRIPE_TRIP_PASS_PRICE_ID",
+    name: "STRIPE_MONTHLY_PRICE_ID",
     criticality: "degrades",
-    what: "Buying a Trip Pass",
+    what: "Buying the monthly plan",
   },
   {
     name: "STRIPE_WEBHOOK_SECRET",

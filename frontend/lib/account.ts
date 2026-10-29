@@ -165,16 +165,6 @@ export async function listTesters(redis: Redis): Promise<string[]> {
   return ((await redis.smembers(TESTERS_KEY)) as string[]).sort();
 }
 
-/** One more trip, paid once (the Trip Pass): the same kept-until-used
- * extra trip an invite gives. Once per checkout session, however often
- * Stripe delivers the event. Returns whether this call granted it. */
-export async function grantTripPass(redis: Redis, email: string, checkoutSessionId: string): Promise<boolean> {
-  const first = await redis.set(`trippass:${checkoutSessionId}`, email.toLowerCase().trim(), { nx: true });
-  if (first !== "OK") return false;
-  await redis.incrby(bonusKey(email), 1);
-  return true;
-}
-
 /** Trips without an account, counted per connection per month. Counted
  * when asked, so a refused request does not use one up. */
 export async function takeAnonymousTrip(redis: Redis, ip: string, now = new Date()): Promise<boolean> {

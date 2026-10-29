@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LANGUAGE_STORAGE_KEY, TRANSLATIONS } from "@/lib/i18n";
-import { ANNUAL_PRICE, FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS, TRIP_PASS_PRICE } from "@/lib/planLimits";
+import { ANNUAL_PRICE, FREE_MONTHLY_GENERATIONS, MONTHLY_PRICE, PAID_MONTHLY_GENERATIONS } from "@/lib/planLimits";
 import type { Language } from "@/lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** What the checkout route sells (app/api/checkout). */
-type CheckoutPlan = "trip_pass" | "annual";
+type CheckoutPlan = "monthly" | "annual";
 
 // Small checkmark used in both plans' feature checklists - one shared glyph
 // (colored per-card via `color`) instead of a plain "•" or "-", so the list
@@ -28,6 +28,8 @@ function CheckIcon({ color }: { color: string }) {
  * paid ones. The highlighted card is the one most people should pick. */
 function PlanCard(props: {
   name: string;
+  /** A short tag beside the name, such as the yearly saving. */
+  badge?: string;
   price: string;
   per?: string;
   blurb: string;
@@ -50,8 +52,15 @@ function PlanCard(props: {
         boxShadow: "var(--shadow-panel)",
       }}
     >
-      <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: props.highlight ? props.color : "var(--ink-dim)", marginBottom: 6 }}>
-        {props.name}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+        <span className="font-ui" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: props.highlight ? props.color : "var(--ink-dim)" }}>
+          {props.name}
+        </span>
+        {props.badge && (
+          <span className="font-ui" style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: props.color, borderRadius: 999, padding: "3px 10px" }}>
+            {props.badge}
+          </span>
+        )}
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
         <span className="font-display" style={{ fontSize: 30, fontWeight: 600 }}>
@@ -61,7 +70,7 @@ function PlanCard(props: {
       </div>
       <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.5, margin: "0 0 16px" }}>{props.blurb}</p>
       {props.featuresIntro && (
-        <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.04em", color: props.color, fontWeight: 700, marginBottom: 8 }}>
+        <div className="font-ui" style={{ fontSize: 11, letterSpacing: "0.04em", color: props.highlight ? props.color : "var(--ink-soft)", fontWeight: 700, marginBottom: 8 }}>
           {props.featuresIntro}
         </div>
       )}
@@ -322,23 +331,24 @@ export default function PricingPage() {
               color="var(--brand-teal)"
             />
             <PlanCard
-              name={t.account.tripPassName}
-              price={TRIP_PASS_PRICE[language]}
-              per={t.account.tripPassPer}
-              blurb={t.account.tripPassBlurb}
-              features={t.account.tripPassFeatures}
+              name={t.account.monthlyName}
+              price={MONTHLY_PRICE[language]}
+              per={t.account.monthlyPer}
+              blurb={t.account.monthlyBlurb.replace("{count}", String(PAID_MONTHLY_GENERATIONS))}
+              featuresIntro={t.account.paidPlanFeaturesIntro}
+              features={t.account.paidPlanFeatures.map((f) => f.replace("{count}", String(PAID_MONTHLY_GENERATIONS)))}
               color="var(--accent-2)"
-              action={{ label: submitting === "trip_pass" ? t.account.subscribing : t.account.tripPassButton, onClick: () => void buy("trip_pass"), disabled: submitting !== null }}
-              error={error?.plan === "trip_pass" ? error.message : ""}
+              action={{ label: submitting === "monthly" ? t.account.subscribing : t.account.monthlyButton, onClick: () => void buy("monthly"), disabled: submitting !== null }}
+              error={error?.plan === "monthly" ? error.message : ""}
             />
             <PlanCard
               highlight
-              name={t.account.paidPlanName}
+              name={t.account.yearlyName}
+              badge={t.account.yearlySave}
               price={ANNUAL_PRICE[language]}
               per={t.account.paidPlanPer}
               blurb={t.account.paidPlanBlurb.replace("{count}", String(PAID_MONTHLY_GENERATIONS))}
-              featuresIntro={t.account.paidPlanFeaturesIntro}
-              features={t.account.paidPlanFeatures.map((f) => f.replace("{count}", String(PAID_MONTHLY_GENERATIONS)))}
+              features={t.account.yearlyFeatures}
               color="var(--accent-green)"
               action={{ label: submitting === "annual" ? t.account.subscribing : t.account.paidPlanButton, onClick: () => void buy("annual"), disabled: submitting !== null }}
               error={error?.plan === "annual" ? error.message : ""}
@@ -348,7 +358,7 @@ export default function PricingPage() {
               the site these links genuinely need to be, not buried in a
               footer no one scrolls to before paying. */}
           <div className="font-ui" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 16, lineHeight: 1.5 }}>
-            {language === "bg" ? "С покупка приемаш нашите " : "By buying, you agree to our "}
+            {language === "bg" ? "С абонамента приемаш нашите " : "By subscribing, you agree to our "}
             <Link href="/terms" style={{ color: "var(--ink-dim)" }}>
               {language === "bg" ? "Общи условия" : "Terms"}
             </Link>

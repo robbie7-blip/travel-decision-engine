@@ -721,9 +721,9 @@ to write a subscription status.
 
 **Setup:**
 1. **Stripe** - [dashboard.stripe.com](https://dashboard.stripe.com). Create
-   two Prices under Product catalog: a yearly recurring one for the
-   Traveller plan (`STRIPE_ANNUAL_PRICE_ID`) and a one-off one for the Trip
-   Pass (`STRIPE_TRIP_PASS_PRICE_ID`). The amounts shown on /pricing are in
+   two recurring Prices for the Traveller plan under Product catalog: a
+   monthly one (`STRIPE_MONTHLY_PRICE_ID`) and a yearly one
+   (`STRIPE_ANNUAL_PRICE_ID`). The amounts shown on /pricing are in
    `lib/planLimits.ts` and must match them. Grab a
    secret key for `STRIPE_SECRET_KEY`, then add a webhook endpoint at
    `{your-site}/api/stripe/webhook` listening for `checkout.session.completed`,
