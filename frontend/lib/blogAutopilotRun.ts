@@ -16,6 +16,38 @@ import { sendItineraryEmail } from "./email";
 import { getRedis } from "./redis";
 import { getSiteUrl } from "./siteUrl";
 
+/** What the last run did, for /admin/blog: written when a run starts and
+ * again when it ends, so a run the platform cut off shows as one that
+ * started and never finished rather than as nothing at all. */
+export const LAST_RUN_KEY = "blog:autopilot:last";
+
+export interface AutopilotRunRecord {
+  startedAt: number;
+  finishedAt?: number;
+  scheduled: boolean;
+  outcome?: "published" | "draft" | "failed";
+  title?: string;
+  detail?: string;
+}
+
+async function recordRun(record: AutopilotRunRecord): Promise<void> {
+  try {
+    await getRedis().set(LAST_RUN_KEY, JSON.stringify(record), { ex: 30 * 86_400 });
+  } catch {
+    // Visibility only; a run never fails for want of it.
+  }
+}
+
+export async function readLastRun(): Promise<AutopilotRunRecord | null> {
+  try {
+    const raw = await getRedis().get<string | AutopilotRunRecord>(LAST_RUN_KEY);
+    if (!raw) return null;
+    return typeof raw === "string" ? (JSON.parse(raw) as AutopilotRunRecord) : raw;
+  } catch {
+    return null;
+  }
+}
+
 const escape = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -35,8 +67,19 @@ export async function runAutopilotAndNotify(opts: { scheduled: boolean; now?: Da
     }
   }
 
-  const client = createAnthropicClient({ apiKey, timeout: 150_000, maxRetries: 0 });
+  const startedAt = Date.now();
+  await recordRun({ startedAt, scheduled: opts.scheduled });
+  // Each call is also held to the run's own deadline (lib/blogDraft.ts).
+  const client = createAnthropicClient({ apiKey, timeout: 170_000, maxRetries: 0 });
   const result = await runBlogAutopilot(db, client, now);
+  await recordRun({
+    startedAt,
+    finishedAt: Date.now(),
+    scheduled: opts.scheduled,
+    outcome: result.ok ? result.status : "failed",
+    title: result.ok ? result.post.title : undefined,
+    detail: result.ok ? result.issues.join(" ") || undefined : result.detail,
+  });
 
   // Proofread before it went live: the catch-up check can skip it.
   if (result.ok && result.status === "published") await markChecked(result.post.id);

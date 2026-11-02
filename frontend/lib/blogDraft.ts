@@ -136,10 +136,14 @@ export async function writeDraft(
   return (await writeDraftWithReason(client, input)).draft;
 }
 
-/** writeDraft, saying why when there is no draft, for the owner's email. */
+/** writeDraft, saying why when there is no draft, for the owner's email.
+ * With a `deadline` (epoch ms) every model call is held to the time left,
+ * so a slow web search cannot run past the function's limit and take the
+ * run, and the email saying what happened, down with it. */
 export async function writeDraftWithReason(
   client: Anthropic,
-  input: { kind: DraftKind; topic: string; language: BlogLanguage; today: string }
+  input: { kind: DraftKind; topic: string; language: BlogLanguage; today: string },
+  deadline?: number
 ): Promise<{ draft: BlogDraft | null; problem: string }> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: draftUserPrompt(input.kind, input.topic, input.today) }];
   const tools = SOURCED_KINDS.has(input.kind) ? [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 3 }] : undefined;
@@ -148,16 +152,27 @@ export async function writeDraftWithReason(
   // A response with server-side tools can pause mid-turn; it is continued
   // by sending it back, a bounded number of times.
   for (let round = 0; round < 3; round++) {
-    const response = await client.messages.create({
-      model: DRAFT_MODEL,
-      // The model thinks before it writes, and the thinking counts against
-      // this. At 4096 a long story ran out partway through the article and
-      // came back as half a JSON object (an Athens story, October 2026).
-      max_tokens: 16000,
-      system: draftSystemPrompt(input.language),
-      messages,
-      ...(tools ? { tools } : {}),
-    });
+    const left = deadline === undefined ? undefined : deadline - Date.now();
+    if (left !== undefined && left < MIN_CALL_MS) return { draft: null, problem: "it ran out of time" };
+    let response: Anthropic.Message;
+    try {
+      response = await client.messages.create(
+        {
+          model: DRAFT_MODEL,
+          // The model thinks before it writes, and the thinking counts against
+          // this. At 4096 a long story ran out partway through the article and
+          // came back as half a JSON object (an Athens story, October 2026).
+          max_tokens: 16000,
+          system: draftSystemPrompt(input.language),
+          messages,
+          ...(tools ? { tools } : {}),
+        },
+        left === undefined ? undefined : { timeout: left, maxRetries: 0 }
+      );
+    } catch (e) {
+      const timedOut = e instanceof Error && /timed? ?out|timeout|abort/i.test(`${e.name} ${e.message}`);
+      return { draft: null, problem: timedOut ? "it took too long" : `the model call failed (${e instanceof Error ? e.message.slice(0, 120) : "unknown error"})` };
+    }
     text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
@@ -182,6 +197,9 @@ export async function writeDraftWithReason(
 }
 
 export const REVIEW_MODEL = "claude-haiku-5-5";
+
+/** A draft call with less time than this is not started. */
+const MIN_CALL_MS = 25_000;
 
 export interface DraftReview {
   title: string;

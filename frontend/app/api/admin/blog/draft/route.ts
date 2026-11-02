@@ -9,7 +9,7 @@ import { getSiteUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 180;
+export const maxDuration = 300;
 
 const KINDS = new Set<DraftKind>(["news", "destination", "story", "tip", "mistakes"]);
 

@@ -213,7 +213,7 @@ export function BlogEditor({ initial, hasPexels }: { initial: BlogPost | null; h
           </select>
           <span style={{ fontSize: 12, color: "var(--ink-dim)" }}>in {f.language === "bg" ? "Bulgarian" : "English"} (set below)</span>
           <button type="button" style={button} onClick={draft} disabled={!topic.trim() || busy !== null}>
-            {busy === "draft" ? "Writing… (up to three minutes)" : "Write draft"}
+            {busy === "draft" ? "Writing… (up to five minutes)" : "Write draft"}
           </button>
         </div>
         <p style={{ fontSize: 11, color: "var(--ink-dim)", margin: "8px 0 0" }}>

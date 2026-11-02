@@ -9,12 +9,29 @@ import { blogPath } from "@/lib/blogPaths";
 import { MarkAdminUi } from "@/components/MarkAdminUi";
 import { StarterPostsButton } from "@/components/blog/StarterPostsButton";
 import { AutopilotButton } from "@/components/blog/AutopilotButton";
+import { readLastRun, type AutopilotRunRecord } from "@/lib/blogAutopilotRun";
+
+/** The last automatic run in a sentence: when, and what came of it. */
+function lastRunLine(run: AutopilotRunRecord | null, now: number): string {
+  if (!run) return "No run recorded yet.";
+  const when = new Date(run.startedAt).toUTCString().replace(" GMT", " UTC");
+  const how = run.scheduled ? "Scheduled run" : "Manual run";
+  if (!run.finishedAt) {
+    return now - run.startedAt > 6 * 60_000
+      ? `${how} started ${when} and was cut off before it finished. Use "Write a post now" to try again.`
+      : `${how} started ${when} and is still writing.`;
+  }
+  const what =
+    run.outcome === "published" ? `published "${run.title}"` : run.outcome === "draft" ? `saved "${run.title}" as a draft for you to check` : "did not post";
+  return `${how} ${when}: ${what}.${run.detail ? ` ${run.detail}` : ""}`;
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function AdminBlogPage() {
   const db = getDb();
+  const lastRun = await readLastRun();
   let posts: BlogPost[] = [];
   let error: string | null = null;
   if (db) {
@@ -35,6 +52,9 @@ export default async function AdminBlogPage() {
       </h1>
       <p style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 6px" }}>
         A new post is written and published automatically every Monday and Thursday morning, and its Instagram post is emailed to you.
+      </p>
+      <p style={{ fontSize: 12, margin: "0 0 6px" }}>
+        <strong>Last run:</strong> {lastRunLine(lastRun, Date.now())}
       </p>
       <p style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 18px" }}>
         Public at <Link href="/blog" style={{ color: "var(--grounded)" }}>/blog</Link> and <Link href="/bg/blog" style={{ color: "var(--grounded)" }}>/bg/blog</Link>. Drafts are visible only here.

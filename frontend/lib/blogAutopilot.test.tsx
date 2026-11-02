@@ -3,7 +3,7 @@
 // Run: npm run test:blog-autopilot
 
 import { applyReview, instagramPackage, isAutopilotDay, kindFor, pickTopic, postFromDraft, TIP_THEMES } from "./blogAutopilot";
-import { parseReview, reviewSystemPrompt } from "./blogDraft";
+import { parseReview, reviewSystemPrompt, writeDraftWithReason } from "./blogDraft";
 import { parseBlogInput } from "./blogQuery";
 import { STARTER_POSTS } from "./blogStarter";
 import { check, finish, heading, section } from "./testutil";
@@ -110,6 +110,18 @@ section("a tip is not dressed up as a city piece");
   check("no photo, no cover", postFromDraft(draft, topic, "/destinations/porto.jpg").coverUrl === null);
 }
 
+section("a draft is held to the run's deadline");
+const deadlineChecks = (async () => {
+  let called = 0;
+  const neverCalled = { messages: { create: async () => { called++; throw new Error("should not be called"); } } } as unknown as Parameters<typeof writeDraftWithReason>[0];
+  const input = { kind: "tip" as const, topic: "t", language: "en" as const, today: "2026-11-02" };
+  const late = await writeDraftWithReason(neverCalled, input, Date.now() + 5_000);
+  check("too little time left: not started, and says so", late.draft === null && late.problem === "it ran out of time" && called === 0, JSON.stringify(late));
+  const slow = { messages: { create: async () => { const e = new Error("Request timed out."); e.name = "APIConnectionTimeoutError"; throw e; } } } as unknown as Parameters<typeof writeDraftWithReason>[0];
+  const timedOut = await writeDraftWithReason(slow, input, Date.now() + 60_000);
+  check("a call that times out is reported, not thrown", timedOut.draft === null && timedOut.problem === "it took too long", JSON.stringify(timedOut));
+})();
+
 section("the Instagram package, from a real post");
 {
   const venice = STARTER_POSTS.find((p) => p.language === "en" && p.slug.includes("venice"))!;
@@ -123,4 +135,4 @@ section("the Instagram package, from a real post");
   check("no dashes in the caption", !/[\u2013\u2014]/.test(pkg.caption));
 }
 
-finish();
+void deadlineChecks.then(() => finish());
