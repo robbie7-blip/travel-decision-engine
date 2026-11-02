@@ -87,7 +87,12 @@ export async function runAutopilotAndNotify(opts: {
 
   if (opts.scheduled) {
     try {
-      const lock = `blog:autopilot:${opts.catchUp ? "catchup:" : ""}${now.toISOString().slice(0, 10)}`;
+      // A catch-up is locked per missed day AND per day it runs on, so a
+      // missed post is retried by each of the next runs (two a day, for two
+      // days) until one gets it out, but never twice by the same run.
+      const lock = opts.catchUp
+        ? `blog:autopilot:catchup:${now.toISOString().slice(0, 10)}:${new Date().toISOString().slice(0, 13)}`
+        : `blog:autopilot:${now.toISOString().slice(0, 10)}`;
       const first = await getRedis().set(lock, "1", { nx: true, ex: 3 * 86_400 });
       if (first !== "OK") return { ok: false, detail: "Already ran today.", skipped: true };
     } catch {
@@ -125,7 +130,7 @@ export async function runAutopilotAndNotify(opts: {
           `<p>Today's post (${escape(result.topic.city)}, ${escape(result.topic.kind)}) was written but <strong>not published</strong>: the copy check was not happy with it, or did not finish in time.</p>` +
             issues +
             (opts.catchUp
-              ? `<p>That was today's second try, so the next post comes on the next Monday or Thursday. The draft stays in <a href="${site}/admin/blog">/admin/blog</a> if you want it.</p>`
+              ? `<p>Nothing to do: the next scheduled run tries again by itself. The draft stays in <a href="${site}/admin/blog">/admin/blog</a> if you want it.</p>`
               : `<p>Nothing to do: this evening's run writes and publishes a different post. The draft stays in <a href="${site}/admin/blog">/admin/blog</a> if you want it.</p>`)
         );
       } else if (result.ok) {
@@ -147,7 +152,7 @@ export async function runAutopilotAndNotify(opts: {
           "The blog autopilot did not post today",
           `<p>${escape(result.detail)}</p>` +
             (opts.catchUp
-              ? `<p>That was today's second try, so the next post comes on the next Monday or Thursday.</p>`
+              ? `<p>Nothing to do: the next scheduled run tries again by itself.</p>`
               : `<p>Nothing to do: this evening's run tries again by itself.</p>`)
         );
       }

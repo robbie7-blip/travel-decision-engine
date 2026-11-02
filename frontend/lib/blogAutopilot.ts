@@ -160,11 +160,16 @@ export function applyReview(draft: BlogDraft, review: DraftReview | null): { dra
  * email: a sourced post searches the web first, and a run the platform
  * cuts off sends no email at all. The copy check's time is kept back from
  * the drafts. */
-const RUN_BUDGET_MS = 250_000;
+const RUN_BUDGET_MS = 270_000;
 const REVIEW_MAX_MS = 40_000;
 const REVIEW_MIN_MS = 5_000;
 /** Enough for a whole second draft. */
 const RETRY_MIN_MS = 90_000;
+/** The most a searched piece (tip, mistakes) may take, so that when it is
+ * too slow there is still time for the destination piece that replaces
+ * it. Without this cap the tip took the whole run (2 November 2026); with it
+ * the destination piece still gets over two minutes. */
+const SOURCED_MAX_MS = 95_000;
 
 /** Writes, checks, saves and (when the check passed) publishes one post.
  * Never throws. */
@@ -180,7 +185,8 @@ export async function runBlogAutopilot(db: Queryable, client: Anthropic, now = n
     const draftDeadline = deadline - REVIEW_MAX_MS;
     const notes: string[] = [];
     const attempt = async (t: AutopilotTopic) => {
-      const written = await writeDraftWithReason(client, { kind: t.kind, topic: t.topic, language: "en", today }, draftDeadline);
+      const until = SOURCED_KINDS.has(t.kind) ? Math.min(draftDeadline, Date.now() + SOURCED_MAX_MS) : draftDeadline;
+      const written = await writeDraftWithReason(client, { kind: t.kind, topic: t.topic, language: "en", today }, until);
       // A tip or mistakes piece rests on its sources; without them it is
       // not one, and is treated like a draft that failed.
       if (written.draft && SOURCED_KINDS.has(t.kind) && written.draft.sources.length === 0) {
@@ -202,7 +208,10 @@ export async function runBlogAutopilot(db: Queryable, client: Anthropic, now = n
       }
     }
     const draft = written.draft;
-    if (!draft) return { ok: false, detail: `The ${topic.kind} piece about ${topic.city} could not be used: ${written.problem}.` };
+    if (!draft) {
+      const what = topic.kind === "tip" ? "travel tip" : `${topic.kind} piece about ${topic.city}`;
+      return { ok: false, detail: `${[...notes, `The ${what} could not be used: ${written.problem}.`].join(" ")}` };
+    }
 
     const left = Math.min(REVIEW_MAX_MS, deadline - Date.now());
     const checked = applyReview(draft, left >= REVIEW_MIN_MS ? await reviewDraft(client, draft, "en", left) : null);

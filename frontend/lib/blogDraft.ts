@@ -146,7 +146,9 @@ export async function writeDraftWithReason(
   deadline?: number
 ): Promise<{ draft: BlogDraft | null; problem: string }> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: draftUserPrompt(input.kind, input.topic, input.today) }];
-  const tools = SOURCED_KINDS.has(input.kind) ? [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 3 }] : undefined;
+  // Two searches, not three: the searched kinds are the slow ones, and a
+  // third search mostly re-confirmed what the first two had found.
+  const tools = SOURCED_KINDS.has(input.kind) ? [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 2 }] : undefined;
   let text = "";
   let stop: string | null = null;
   // A response with server-side tools can pause mid-turn; it is continued
@@ -163,6 +165,11 @@ export async function writeDraftWithReason(
           // this. At 4096 a long story ran out partway through the article and
           // came back as half a JSON object (an Athens story, October 2026).
           max_tokens: 16000,
+          // Medium, not the default high: an article does not need the
+          // longest thinking, and at high a searched tip ran past every
+          // time limit it was given (2 November 2026). The copy check
+          // reads every post afterwards.
+          output_config: { effort: "medium" },
           system: draftSystemPrompt(input.language),
           messages,
           ...(tools ? { tools } : {}),

@@ -8,7 +8,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { runDailyReport } from "@/lib/dailyReportRun";
 import { isCronRequest } from "@/lib/cronAuth";
 import { isAutopilotDay } from "@/lib/blogAutopilot";
-import { runAutopilotAndNotify } from "@/lib/blogAutopilotRun";
+import { catchUpDay, readLastRun, runAutopilotAndNotify } from "@/lib/blogAutopilotRun";
 import { proofreadPublishedPosts } from "@/lib/blogProofread";
 
 export const runtime = "nodejs";
@@ -31,6 +31,16 @@ export async function GET(request: NextRequest) {
       const result = await runAutopilotAndNotify({ scheduled: true });
       console.log("[blog-autopilot]", result.ok ? `published ${result.post.slug}` : result.detail);
     });
+  } else {
+    // The morning after a post day is a second chance for a post that day
+    // never got out (see catchUpDay), alongside the evening one.
+    const missed = catchUpDay(new Date(), await readLastRun());
+    if (missed) {
+      after(async () => {
+        const result = await runAutopilotAndNotify({ scheduled: true, catchUp: true, now: missed });
+        console.log("[blog-autopilot catch-up]", result.ok ? `${result.status} ${result.post.slug}` : result.detail);
+      });
+    }
   }
   // Any published post the copy check has not seen yet (lib/blogProofread.ts).
   after(async () => {
