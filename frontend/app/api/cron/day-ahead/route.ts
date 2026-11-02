@@ -8,8 +8,9 @@
 // The same run also sends "How was your trip?" (lib/howWasIt.ts) for
 // signed-in trips that ended yesterday, once per trip, to the same owner.
 
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
+import { catchUpDay, readLastRun, runAutopilotAndNotify } from "@/lib/blogAutopilotRun";
 import { jobKey, readJobRecord, type Job } from "@/lib/jobs";
 import { isCronRequest } from "@/lib/cronAuth";
 import { dayAheadEmailFor, dayAheadKey, dayAheadSentKey, stopToken, tomorrowIso } from "@/lib/dayAhead";
@@ -21,13 +22,25 @@ import { daysBefore, howWasItEmailFor, howWasItSentKey, yesterdayIso } from "@/l
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// The emails keep to their own minute (READ_BUDGET_MS and the rest); the
+// rest of the 300 is for the blog's catch-up, which runs after them.
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
   if (!isCronRequest(request.headers.get("authorization"))) {
     return NextResponse.json({ detail: "Not allowed." }, { status: 401 });
   }
   const startedAt = Date.now();
+  // A Monday or Thursday post the morning run did not get out (cut off,
+  // failed, or only a draft) is written now, after the response, so the
+  // blog never waits for anyone. See catchUpDay.
+  const missed = catchUpDay(new Date(), await readLastRun());
+  if (missed) {
+    after(async () => {
+      const result = await runAutopilotAndNotify({ scheduled: true, catchUp: true, now: missed });
+      console.log("[blog-autopilot catch-up]", result.ok ? `${result.status} ${result.post.slug}` : result.detail);
+    });
+  }
   const redis = getRedis();
   const site = getSiteUrl().replace(/\/$/, "");
   const date = tomorrowIso();

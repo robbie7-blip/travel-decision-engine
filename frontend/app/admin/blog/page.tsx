@@ -15,10 +15,10 @@ import { readLastRun, type AutopilotRunRecord } from "@/lib/blogAutopilotRun";
 function lastRunLine(run: AutopilotRunRecord | null, now: number): string {
   if (!run) return "No run recorded yet.";
   const when = new Date(run.startedAt).toUTCString().replace(" GMT", " UTC");
-  const how = run.scheduled ? "Scheduled run" : "Manual run";
+  const how = run.catchUp ? "Evening catch-up" : run.scheduled ? "Scheduled run" : "Manual run";
   if (!run.finishedAt) {
     return now - run.startedAt > 6 * 60_000
-      ? `${how} started ${when} and was cut off before it finished. Use "Write a post now" to try again.`
+      ? `${how} started ${when} and was cut off before it finished. The evening catch-up tries again by itself.`
       : `${how} started ${when} and is still writing.`;
   }
   const what =
