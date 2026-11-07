@@ -91,16 +91,12 @@ const MODEL = "claude-sonnet-5";
 // strictly worse. The two numbers only make sense together.
 const MAX_TOKENS = 3000;
 
-// Pro-only: gives a signed-in Pro traveler's questions the same
-// web_search tool the itinerary engine uses (see worker/src/index.ts's
-// SEARCH_INSTRUCTIONS/web_search_20260209 declaration) so a question like
-// "is it going to rain in Lisbon next week" or "is [venue] actually still
-// open" gets a real, current answer instead of the honest-but-unhelpful
-// "I don't have live info, check an official source" the base system
-// prompt falls back to. Free stays exactly as it was - this is additive
-// capability, not a cap on how many questions anyone can ask (see
-// pricing.freePlanFeatures/paidPlanFeatures: both plans are "unlimited
-// Ask a Local Q&A").
+// Every plan gets the same web_search tool the itinerary engine uses (see
+// worker/src/index.ts's SEARCH_INSTRUCTIONS/web_search_20260209
+// declaration), so a question like "is it going to rain in Lisbon next
+// week" or "is [venue] actually still open" gets a real, current answer.
+// It was Pro-only until November 2026, and on Free the honest fallback
+// ("couldn't check live details") read as the feature being broken.
 //
 // Capped low (2, vs. the itinerary engine's estimateMaxSearchUses which
 // can go much higher across a multi-day plan): a single conversational
@@ -208,11 +204,12 @@ to hear what kind of software you are. If something genuinely cannot be settled,
 and name the single thing that would settle it.`;
 
 const WEB_SEARCH_MAX_USES = 2;
-const WEB_SEARCH_ADDENDUM = `\n\nYou also have a web_search tool available for this question - use it when a \
-current/time-sensitive detail would actually change the answer (today's weather, whether a specific place is \
-still open, a current price, a real advisory), not for background knowledge you already know. When you do use \
-it, answer based on what you actually found, and you no longer need the "I don't have live info" hedge for \
-whatever you searched. When a search gives you the actual URL behind a claim, paste it - that is the one case \
+const WEB_SEARCH_ADDENDUM = `\n\nYou also have a web_search tool. Use it whenever the answer depends on \
+something that can change or that you should confirm: a specific restaurant, bar, shop or sight you are about \
+to recommend (is it still open, still good), prices, opening hours, events, today's weather, a real advisory. \
+Skip it for timeless background (plug types, tipping customs). When you search, answer from what you found, \
+confidently, and never open with a hedge such as "I couldn't check live details" or "from what I know": either \
+you checked it, or you simply answer. When a search gives you the actual URL behind a claim, paste it - that is the one case \
 where you genuinely have a link rather than a guess at one, and it becomes tappable.`;
 
 // Anthropic's backend occasionally returns a transient 529 "overloaded"
@@ -551,7 +548,8 @@ export async function POST(request: NextRequest) {
       {
         type: "text" as const,
         text:
-          (isPaid ? SYSTEM_PROMPT + WEB_SEARCH_ADDENDUM : SYSTEM_PROMPT) +
+          SYSTEM_PROMPT +
+          WEB_SEARCH_ADDENDUM +
           PLACE_LOOKUP_ADDENDUM +
           (carriesImages ? PHOTO_ADDENDUM : ""),
       },
@@ -564,15 +562,11 @@ export async function POST(request: NextRequest) {
         text: contextBlock(readTripQAContext(body.context), language) + voiceInstruction(voice),
       },
     ],
-    // The place lookup is on both plans; web search stays Pro. Two
-    // different things that both answer "check this for me", and only one
-    // of them is what the pricing page sells.
-    tools: [
-      PLACE_LOOKUP_TOOL,
-      ...(isPaid
-        ? [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES }]
-        : []),
-    ],
+    // Web search on every plan (November 2026): without it a free
+    // question about "the most famous restaurant in Rome" came back
+    // "couldn't check live details", which reads as broken, not as a
+    // plan difference. The daily question limits bound what it costs.
+    tools: [PLACE_LOOKUP_TOOL, { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES }],
   };
 
   const conversation: Anthropic.MessageParam[] = trimmedMessages.map((m, i) => ({

@@ -1728,7 +1728,7 @@ const en: Dictionary = {
     freePlanFeatures: [
       "{count} full trips a month when you sign in",
       "Push back and change your plan as often as you like",
-      "Up to 10 Ask a Local questions a day",
+      "Up to 10 Ask a Local questions a day, checked live on the web",
       "Budget check and a trust score on every trip",
     ],
     paidPlanName: "Traveller",
@@ -1737,7 +1737,6 @@ const en: Dictionary = {
     paidPlanFeatures: [
       "Up to {count} trips a month",
       "Up to 20 Ask a Local questions a day",
-      "Ask a Local searches the live web for current answers: weather, opening hours, travel advisories",
       "Ask a Local with photos: snap a menu, a sign or a minibar card and ask what it says",
       "Cancel any time",
     ],
@@ -2592,7 +2591,7 @@ const bg: Dictionary = {
     freePlanFeatures: [
       "{count} пълни пътувания на месец, когато влезеш",
       "Променяй плана си колкото пъти искаш",
-      "До 10 въпроса на ден към Питай местен",
+      "До 10 въпроса на ден към Питай местен, с проверка на живо в мрежата",
       "Проверка на бюджета и ниво на доверие за всяко пътуване",
     ],
     paidPlanName: "Пътешественик",
@@ -2601,7 +2600,6 @@ const bg: Dictionary = {
     paidPlanFeatures: [
       "До {count} пътувания на месец",
       "До 20 въпроса на ден към Питай местен",
-      "Питай местен търси на живо в мрежата за актуални отговори: времето, работно време, предупреждения за пътуване",
       "Питай местен със снимки: снимай меню, табела или карта на минибар и питай какво пише",
       "Можеш да се откажеш по всяко време",
     ],
