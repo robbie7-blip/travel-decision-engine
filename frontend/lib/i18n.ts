@@ -766,6 +766,14 @@ export interface Dictionary {
     thinking: string; // shown while waiting for the first word of a reply
     copyAnswer: string;
     copied: string;
+    /** Asking by voice and hearing answers (lib/speech.ts). */
+    micStart: string;
+    micStop: string;
+    listening: string;
+    micBlocked: string;
+    micNothing: string;
+    readAloud: string;
+    stopReading: string;
     genericError: string;
     tooLong: string;
     // Photo questions (Pro) - "what is this / is this included", asked from
@@ -1639,6 +1647,13 @@ const en: Dictionary = {
     thinking: "Thinking...",
     copyAnswer: "Copy",
     copied: "Copied",
+    micStart: "Ask by voice",
+    micStop: "Stop listening",
+    listening: "Listening…",
+    micBlocked: "The microphone is blocked. Allow it for this site in your browser settings to ask by voice.",
+    micNothing: "Didn't catch that. Tap the microphone and try again.",
+    readAloud: "Read aloud",
+    stopReading: "Stop reading",
     genericError: "Something went wrong answering that. Try again.",
     tooLong: "That message is a bit long - try trimming it.",
     addPhoto: "Add photo",
@@ -2509,6 +2524,13 @@ const bg: Dictionary = {
     thinking: "Мисля...",
     copyAnswer: "Копирай",
     copied: "Копирано",
+    micStart: "Попитай с глас",
+    micStop: "Спри слушането",
+    listening: "Слушам…",
+    micBlocked: "Микрофонът е блокиран. Разреши го за този сайт в настройките на браузъра, за да питаш с глас.",
+    micNothing: "Не те чух. Натисни микрофона и опитай пак.",
+    readAloud: "Прочети на глас",
+    stopReading: "Спри четенето",
     genericError: "Нещо се обърка при отговора. Опитай отново.",
     tooLong: "Съобщението е малко дълго - опитай да го съкратиш.",
     addPhoto: "Добави снимка",

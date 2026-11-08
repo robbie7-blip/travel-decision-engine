@@ -26,6 +26,7 @@ import {
 import type { Language } from "@/lib/types";
 import { VOICE_AVATARS } from "./LocalVoiceAvatar";
 import { ThinkingMark } from "./ThinkingMark";
+import { canListen, canSpeak, createRecognizer, pickVoice, SPEECH_LANG, speakableText, transcriptOf, type Recognizer } from "@/lib/speech";
 
 /** The trip's start month, in the reading language, for the starter
  * questions. Returns "" on a missing or unparseable date, which leaves the
@@ -173,6 +174,18 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
   const fileInputRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  /** Asking by voice and hearing answers (lib/speech.ts). Whether the
+   * browser can do either is only known in the browser, so both start
+   * false and the buttons appear after mount, never in the server HTML. */
+  const [micAvailable, setMicAvailable] = useState(false);
+  const [speakAvailable, setSpeakAvailable] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const recognizerRef = useRef<Recognizer | null>(null);
+  const heardRef = useRef("");
+  /** A question asked by voice gets its answer read out: they are talking,
+   * so they are probably not looking at the screen. */
+  const speakNextAnswer = useRef(false);
   /** Whether the full character picker is showing.
    *
    * Shut by default, and that is the point: five cards, a greeting and a
@@ -253,8 +266,8 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
     }
   }
 
-  async function send() {
-    const content = draft.trim();
+  async function send(spoken?: string) {
+    const content = (spoken ?? draft).trim();
     // A photo on its own is a valid question - only require text when
     // there's no image attached.
     if ((!content && !pendingImage) || sending) return;
@@ -334,13 +347,103 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
         // is actually there.
         if (stored) setChats(getAskChats(tripId));
       }
+      if (speakNextAnswer.current && answer.trim() !== "") speakAnswer(assistantIndex, answer, true);
     } catch (e) {
       // Drop the empty assistant placeholder rather than leaving a blank
       // bubble - the error below is the only thing shown for this turn.
       setMessages((prev) => prev.filter((_, i) => i !== assistantIndex));
       setError(e instanceof Error ? e.message : t.tripQA.genericError);
     } finally {
+      speakNextAnswer.current = false;
       setSending(false);
+    }
+  }
+
+  useEffect(() => {
+    setMicAvailable(canListen());
+    setSpeakAvailable(canSpeak());
+    return () => {
+      recognizerRef.current?.abort();
+      if (canSpeak()) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  /** Reads one answer out, or stops it if it is the one being read (a
+   * tap); `fromVoice` always reads, for the answer to a spoken question. */
+  function speakAnswer(index: number, text: string, fromVoice = false) {
+    if (!canSpeak()) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    if (!fromVoice && speakingIndex === index) {
+      setSpeakingIndex(null);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(speakableText(text));
+    utterance.lang = SPEECH_LANG[language];
+    const chosen = pickVoice(synth.getVoices(), language);
+    if (chosen) utterance.voice = chosen;
+    const done = () => setSpeakingIndex((current) => (current === index ? null : current));
+    utterance.onend = done;
+    utterance.onerror = done;
+    setSpeakingIndex(index);
+    try {
+      synth.speak(utterance);
+    } catch {
+      setSpeakingIndex(null);
+    }
+  }
+
+  /** The microphone button: listens until they stop talking, writing what
+   * it hears into the box as they speak, then sends it. Tapping again
+   * stops early (and still sends what was heard). */
+  function toggleListening() {
+    if (listening) {
+      recognizerRef.current?.stop();
+      return;
+    }
+    const recognizer = createRecognizer();
+    if (!recognizer) return;
+    if (canSpeak()) {
+      // Stop any answer being read, and speak an empty line now, inside
+      // the tap: iOS only lets a page talk after a tap, and the answer to
+      // this question arrives long after it.
+      try {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+      } catch {
+        // Reading aloud is extra; it never stops the microphone.
+      }
+      setSpeakingIndex(null);
+    }
+    recognizer.lang = SPEECH_LANG[language];
+    recognizer.interimResults = true;
+    recognizer.continuous = false;
+    heardRef.current = "";
+    recognizer.onresult = (event) => {
+      heardRef.current = transcriptOf(event.results);
+      setDraft(heardRef.current);
+    };
+    recognizer.onerror = (event) => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") setError(t.tripQA.micBlocked);
+      else if (event.error === "no-speech") setError(t.tripQA.micNothing);
+    };
+    recognizer.onend = () => {
+      recognizerRef.current = null;
+      setListening(false);
+      const heard = heardRef.current.trim();
+      if (heard) {
+        speakNextAnswer.current = true;
+        void send(heard);
+      }
+    };
+    recognizerRef.current = recognizer;
+    setError("");
+    setListening(true);
+    try {
+      recognizer.start();
+    } catch {
+      recognizerRef.current = null;
+      setListening(false);
     }
   }
 
@@ -765,6 +868,16 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
                       >
                         {copiedIndex === i ? t.tripQA.copied : t.tripQA.copyAnswer}
                       </button>
+                      {speakAvailable && (
+                        <button
+                          type="button"
+                          onClick={() => speakAnswer(i, m.content)}
+                          className="font-ui qa-action"
+                          aria-pressed={speakingIndex === i}
+                        >
+                          {speakingIndex === i ? t.tripQA.stopReading : t.tripQA.readAloud}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -892,12 +1005,28 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
             />
           </svg>
         </button>
+        {micAvailable && (
+          <button
+            type="button"
+            onClick={toggleListening}
+            disabled={sending}
+            aria-label={listening ? t.tripQA.micStop : t.tripQA.micStart}
+            aria-pressed={listening}
+            title={listening ? t.tripQA.micStop : t.tripQA.micStart}
+            className={`font-ui qa-mic${listening ? " qa-mic--on" : ""}`}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
+              <rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+              <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
         <textarea
           ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={t.tripQA.placeholder}
+          placeholder={listening ? t.tripQA.listening : t.tripQA.placeholder}
           // A placeholder is not a label: it is the only thing naming this
           // box, and it disappears the moment you start typing. This box is
           // the whole feature, so with a screen reader it announced as an
@@ -920,7 +1049,7 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
         />
         <button
           type="button"
-          onClick={send}
+          onClick={() => void send()}
           disabled={sending || (!draft.trim() && !pendingImage)}
           className="font-ui qa-send"
           // The label is on the button rather than in it: the arrow says
