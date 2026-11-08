@@ -937,90 +937,6 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
       )}
       {/* One box, not three controls in a row. See .qa-composer. */}
       <div className="qa-composer">
-        {/* NO `capture` ATTRIBUTE, and that is the whole point of this
-            comment.
-
-            It used to carry capture="environment", which was chosen to
-            open the rear camera in one tap - the moment this feature is
-            for, standing in front of the thing you are asking about. On
-            iOS that attribute does not mean "default to the camera", it
-            means CAMERA ONLY: Safari skips the sheet entirely and goes
-            straight to a live viewfinder, so there is no way to attach a
-            photo you already have. Which is most of them. A screenshot of
-            a booking confirmation, a photo of a menu taken at lunch and
-            asked about on the walk home, a picture somebody sent you -
-            none of those could be attached at all.
-
-            Without it, iOS offers Photo Library, Take Photo and Choose
-            File, and Android offers the gallery with the camera beside it.
-            The camera is one tap further and everything else became
-            possible, which is the right way round. */}
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={onFilePicked} style={{ display: "none" }} />
-        <button
-          type="button"
-          onClick={onPhotoButtonClick}
-          disabled={sending}
-          aria-label={t.tripQA.addPhoto}
-          title={t.tripQA.addPhoto}
-          // A PICTURE, NOT A CAMERA. It was a camera glyph, which read as
-          // "take a photo" - and while the input carried capture it was
-          // telling the truth, because taking one was all it could do. Now
-          // that an existing photo can be attached, a camera icon would
-          // advertise the smaller half of what the button does.
-          className="font-ui qa-photo"
-          style={{
-            border: "none",
-            background: "transparent",
-            color: "var(--ink-soft)",
-            borderRadius: 999,
-            width: 36,
-            height: 36,
-            padding: 0,
-            cursor: sending ? "default" : "pointer",
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
-            <rect
-              x="3"
-              y="4.5"
-              width="18"
-              height="15"
-              rx="2.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-            />
-            <circle cx="8.6" cy="9.6" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            <path
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3.4 16.4l4.3-4.1a1.6 1.6 0 0 1 2.2 0l3.5 3.4m-1.5 1.4l2.8-2.7a1.6 1.6 0 0 1 2.2 0l3.7 3.5"
-            />
-          </svg>
-        </button>
-        {micAvailable && (
-          <button
-            type="button"
-            onClick={toggleListening}
-            disabled={sending}
-            aria-label={listening ? t.tripQA.micStop : t.tripQA.micStart}
-            aria-pressed={listening}
-            title={listening ? t.tripQA.micStop : t.tripQA.micStart}
-            className={`font-ui qa-mic${listening ? " qa-mic--on" : ""}`}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
-              <rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
-              <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-            </svg>
-          </button>
-        )}
         <textarea
           ref={inputRef}
           value={draft}
@@ -1047,39 +963,132 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
           // the whole page in. See .trip-qa-input.
           className="font-ui trip-qa-input"
         />
-        <button
-          type="button"
-          onClick={() => void send()}
-          disabled={sending || (!draft.trim() && !pendingImage)}
-          className="font-ui qa-send"
-          // The label is on the button rather than in it: the arrow says
-          // "send" to anyone looking, and says nothing at all to a screen
-          // reader.
-          aria-label={sending ? t.tripQA.sending : t.tripQA.send}
-          title={sending ? t.tripQA.sending : t.tripQA.send}
-        >
-          {sending ? (
-            // Three dots rather than a spinner, because the answer is
-            // already streaming in above and a spinner would suggest
-            // nothing is happening yet.
-            <svg viewBox="0 0 24 24" aria-hidden style={{ width: 18, height: 18 }}>
-              <circle cx="6" cy="12" r="1.6" fill="currentColor" />
-              <circle cx="12" cy="12" r="1.6" fill="currentColor" />
-              <circle cx="18" cy="12" r="1.6" fill="currentColor" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" aria-hidden style={{ width: 18, height: 18 }}>
-              <path
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 19V5M5 12l7-7 7 7"
-              />
-            </svg>
-          )}
-        </button>
+        {/* Under the text, not beside it: three buttons in the same row
+            left the box itself about four words wide on a phone, so the
+            placeholder wrapped and the question scrolled inside it. The
+            text gets the full width, the tools sit underneath, the way a
+            phone chat app lays them out. */}
+        <div className="qa-composer-tools">
+          <div className="qa-composer-left">
+                {/* NO `capture` ATTRIBUTE, and that is the whole point of this
+                    comment.
+
+                    It used to carry capture="environment", which was chosen to
+                    open the rear camera in one tap - the moment this feature is
+                    for, standing in front of the thing you are asking about. On
+                    iOS that attribute does not mean "default to the camera", it
+                    means CAMERA ONLY: Safari skips the sheet entirely and goes
+                    straight to a live viewfinder, so there is no way to attach a
+                    photo you already have. Which is most of them. A screenshot of
+                    a booking confirmation, a photo of a menu taken at lunch and
+                    asked about on the walk home, a picture somebody sent you -
+                    none of those could be attached at all.
+
+                    Without it, iOS offers Photo Library, Take Photo and Choose
+                    File, and Android offers the gallery with the camera beside it.
+                    The camera is one tap further and everything else became
+                    possible, which is the right way round. */}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={onFilePicked} style={{ display: "none" }} />
+                <button
+                  type="button"
+                  onClick={onPhotoButtonClick}
+                  disabled={sending}
+                  aria-label={t.tripQA.addPhoto}
+                  title={t.tripQA.addPhoto}
+                  // A PICTURE, NOT A CAMERA. It was a camera glyph, which read as
+                  // "take a photo" - and while the input carried capture it was
+                  // telling the truth, because taking one was all it could do. Now
+                  // that an existing photo can be attached, a camera icon would
+                  // advertise the smaller half of what the button does.
+                  className="font-ui qa-photo"
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--ink-soft)",
+                    borderRadius: 999,
+                    width: 36,
+                    height: 36,
+                    padding: 0,
+                    cursor: sending ? "default" : "pointer",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
+                    <rect
+                      x="3"
+                      y="4.5"
+                      width="18"
+                      height="15"
+                      rx="2.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                    />
+                    <circle cx="8.6" cy="9.6" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                    <path
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3.4 16.4l4.3-4.1a1.6 1.6 0 0 1 2.2 0l3.5 3.4m-1.5 1.4l2.8-2.7a1.6 1.6 0 0 1 2.2 0l3.7 3.5"
+                    />
+                  </svg>
+                </button>
+                {micAvailable && (
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    disabled={sending}
+                    aria-label={listening ? t.tripQA.micStop : t.tripQA.micStart}
+                    aria-pressed={listening}
+                    title={listening ? t.tripQA.micStop : t.tripQA.micStart}
+                    className={`font-ui qa-mic${listening ? " qa-mic--on" : ""}`}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
+                      <rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                      <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
+          </div>
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={sending || (!draft.trim() && !pendingImage)}
+              className="font-ui qa-send"
+              // The label is on the button rather than in it: the arrow says
+              // "send" to anyone looking, and says nothing at all to a screen
+              // reader.
+              aria-label={sending ? t.tripQA.sending : t.tripQA.send}
+              title={sending ? t.tripQA.sending : t.tripQA.send}
+            >
+              {sending ? (
+                // Three dots rather than a spinner, because the answer is
+                // already streaming in above and a spinner would suggest
+                // nothing is happening yet.
+                <svg viewBox="0 0 24 24" aria-hidden style={{ width: 18, height: 18 }}>
+                  <circle cx="6" cy="12" r="1.6" fill="currentColor" />
+                  <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+                  <circle cx="18" cy="12" r="1.6" fill="currentColor" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden style={{ width: 18, height: 18 }}>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 19V5M5 12l7-7 7 7"
+                  />
+                </svg>
+              )}
+            </button>
+        </div>
       </div>
       {error && (
         <div className="font-ui" style={{ fontSize: 12, color: "var(--infeasible)" }}>

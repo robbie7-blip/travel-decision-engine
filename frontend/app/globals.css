@@ -2646,14 +2646,17 @@ a.trip-notify-note {
    themselves separately; one box with things in it reads as "here is
    where you type". */
 .qa-composer {
+  /* Two rows: the text across the full width, the tools under it (see
+     .qa-composer-tools). In one row the photo, microphone and send
+     buttons left the text about four words wide on a phone. */
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   /* Taller than the pills under it. With 8px it was the same height as a
      starter suggestion and carried the same outline, so the eye had
      nothing to rank: a list of equals rather than one thing with support
      around it. */
-  padding: 11px 10px;
+  padding: 12px 12px 8px;
   /* The strong line, not the ordinary one. This is the primary control on
      the page and it was outlined exactly like the four starter pills under
      it, which is the sort of thing that makes a layout read as a list of
@@ -2661,6 +2664,20 @@ a.trip-notify-note {
   border: 1px solid var(--line-strong);
   border-radius: 22px;
   background: var(--bg-panel);
+}
+
+/* Photo and microphone on the left, send on the right. */
+.qa-composer-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.qa-composer-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .qa-composer:focus-within {
@@ -2710,7 +2727,8 @@ a.trip-notify-note {
    13px. Both problems are about size changing with the viewport, which is
    what a class can do and an inline style cannot. */
 .trip-qa-input {
-  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
   /* No border, no background, no corner radius of its own: it sits INSIDE
      .qa-composer now, and a bordered box within a bordered box is the
      thing that made the old composer read as three separate widgets. The
@@ -6292,5 +6310,33 @@ a.trip-notify-note {
 @media (prefers-reduced-motion: reduce) {
   .qa-mic--on {
     animation: none;
+  }
+}
+
+/* /ask: the box first, then what it is for (app/ask/page.tsx). */
+.ask-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: var(--shadow-panel);
+}
+
+.ask-topics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 20px;
+  margin-top: 32px;
+}
+
+@media (max-width: 640px) {
+  /* The box is the page on a phone: less frame around it, more room in
+     it. */
+  .ask-panel {
+    padding: 16px 14px;
+  }
+  .ask-topics {
+    gap: 16px;
+    margin-top: 24px;
   }
 }

@@ -94,14 +94,25 @@ export default function AskPage() {
           <h1 className="font-display" style={{ fontSize: "clamp(28px, 4.5vw, 38px)", fontWeight: 600, lineHeight: 1.2, margin: "0 0 8px", color: "var(--ink)" }}>
             {t.tripQA.pageHeading}
           </h1>
-          <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 32px", lineHeight: 1.5, maxWidth: 640 }}>
+          <p style={{ fontSize: 14, color: "var(--ink-dim)", margin: "0 0 20px", lineHeight: 1.5, maxWidth: 640 }}>
             {t.tripQA.pageSubheading}
           </p>
 
-          {/* Scope preview - what kind of question this is for, shown
-              before the input so a first-time visitor isn't staring at an
-              empty box wondering what's in bounds. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 36 }}>
+          <div className="ask-panel">
+            {/* saveHistory on THIS page only - see the prop's comment in
+                TripQA.tsx. A conversation here stands on its own, so it
+                can be reopened later and still make sense; the copy of
+                this component inside a generated itinerary is grounded in
+                that trip, and a saved thread reopened away from it would
+                have lost the thing it was about. */}
+            <TripQA language={language} t={t} saveHistory />
+          </div>
+          {/* Scope preview - what kind of question this is for. Under the
+              box, not above it: above, on a phone, the three cards filled
+              the whole first screen and the box you came to type in started
+              below it. The starter questions inside the box already say
+              what is in bounds. */}
+          <div className="ask-topics">
             {TOPIC_ICONS.map((icon, i) => (
               <div key={i}>
                 {/* Decorative: the title directly beneath it says the
@@ -121,23 +132,6 @@ export default function AskPage() {
             ))}
           </div>
 
-          <div
-            style={{
-              background: "var(--bg-panel)",
-              border: "1px solid var(--line)",
-              borderRadius: 10,
-              padding: 24,
-              boxShadow: "var(--shadow-panel)",
-            }}
-          >
-            {/* saveHistory on THIS page only - see the prop's comment in
-                TripQA.tsx. A conversation here stands on its own, so it
-                can be reopened later and still make sense; the copy of
-                this component inside a generated itinerary is grounded in
-                that trip, and a saved thread reopened away from it would
-                have lost the thing it was about. */}
-            <TripQA language={language} t={t} saveHistory />
-          </div>
         </div>
         </div>
       </div>
