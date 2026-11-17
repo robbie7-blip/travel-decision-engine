@@ -59,10 +59,14 @@ export const runtime = "nodejs";
 // roughly thirty seconds of streaming, so without this the longest
 // answers would be cut off by the platform rather than by the ceiling -
 // and a connection dropped mid-word says nothing to the traveler, while
-// the ceiling at least appends a line explaining itself. 60 is the cap on
-// every Vercel plan including Hobby, so this is portable; if the plan
-// allows less, the build says so rather than failing at runtime.
-export const maxDuration = 60;
+// the ceiling at least appends a line explaining itself.
+//
+// 300 since November 2026, when every plan got web search: a search or
+// two plus the answer ran past the old 60 seconds, the platform cut the
+// stream before the first word, and the traveler saw no reply at all.
+// The answers themselves stay quick (low effort, below); this is room
+// for a slow search, not a target.
+export const maxDuration = 300;
 
 const MODEL = "claude-sonnet-5";
 // 500 was too tight for the questions people actually ask. A traveler
@@ -89,7 +93,11 @@ const MODEL = "claude-sonnet-5";
 // the time budget cannot cover would trade a truncation that explains
 // itself for the platform cutting the connection mid-word, which is
 // strictly worse. The two numbers only make sense together.
-const MAX_TOKENS = 3000;
+//
+// 6000 since the model thinks before it answers and the thinking counts
+// against this too; with 3000 a question that needed some thought could
+// spend most of it before the first word of the answer.
+const MAX_TOKENS = 6000;
 
 // Every plan gets the same web_search tool the itinerary engine uses (see
 // worker/src/index.ts's SEARCH_INSTRUCTIONS/web_search_20260209
@@ -187,6 +195,8 @@ const MAX_PLACE_LOOKUPS_PER_ROUND = 4;
  * other spelling", which is a real case. A third would mostly buy
  * latency. */
 const MAX_TOOL_ROUNDS = 2;
+/** Continuations of a turn a web search paused (see the stream loop). */
+const MAX_PAUSES = 3;
 
 const PLACE_LOOKUP_ADDENDUM = `\n\nYou have a look_up_place tool. Use it whenever the traveler names a \
 specific business and the answer depends on what that place is really like - comparing two hotels, checking \
@@ -544,6 +554,10 @@ export async function POST(request: NextRequest) {
   const modelParams = {
     model: MODEL,
     max_tokens: MAX_TOKENS,
+    // Low effort: a chat answer should start in seconds, and at the
+    // default the model's own deliberation, on top of a web search, was
+    // what pushed replies past the time limit.
+    output_config: { effort: "low" as const },
     system: [
       {
         type: "text" as const,
@@ -637,6 +651,7 @@ export async function POST(request: NextRequest) {
        * in lib/toolRounds.ts, which is where it can be tested - driving a
        * Next route handler is not something this app can do in a suite
        * (same reason as lib/refineSource.ts). */
+      let pauses = 0;
       let roundState: ToolRoundState = {
         stopReason: null,
         toolRounds: 0,
@@ -665,6 +680,17 @@ export async function POST(request: NextRequest) {
             // Inside the round loop, so a tool round is billed too rather
             // than only the round that happens to finish the answer.
             await recordSpend(redis, estimateCostUsd(finalMessage.usage));
+
+            // A web search can pause the turn part way (stop_reason
+            // pause_turn): the answer is not finished, it is continued by
+            // sending the turn back as it stands. This used to fall through
+            // to "finished", so a search-heavy question could end with no
+            // answer at all.
+            if (finalMessage.stop_reason === "pause_turn" && pauses < MAX_PAUSES) {
+              pauses += 1;
+              conversation.push({ role: "assistant", content: finalMessage.content });
+              continue;
+            }
 
             roundState = { ...roundState, stopReason: finalMessage.stop_reason };
             const step = nextToolStep(roundState);

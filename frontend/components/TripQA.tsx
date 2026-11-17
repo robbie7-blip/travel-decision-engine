@@ -329,6 +329,11 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
         appendToAssistant(chunk);
       }
 
+      // A stream that closed without a word is a failed answer, not an
+      // empty one: say so, rather than leaving a blank bubble that looks
+      // like decide is still thinking.
+      if (answer.trim() === "") throw new Error(t.tripQA.genericError);
+
       // Saved when the answer is complete, not when it is asked: a
       // conversation worth reopening is one that got an answer, and a
       // half-streamed reply read back later would look like the model gave
