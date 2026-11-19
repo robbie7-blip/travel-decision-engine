@@ -1393,6 +1393,7 @@ jobs:
       - run: npm run test:signin-code
       - run: npm run test:blog-catch-up
       - run: npm run test:speech
+      - run: npm run test:ask-clock
       - run: npm run test:item-title
       - run: npm run test:tester-pass
       - run: npm run test:plans

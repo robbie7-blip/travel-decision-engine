@@ -27,6 +27,7 @@ import { getRedis } from "@/lib/redis";
 import { checkRateLimit, getClientIp, TRIP_QUESTIONS_FREE_RATE_LIMIT, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
 import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 import { contextBlock, readTripQAContext } from "@/lib/tripQAContext";
+import { nowLine, safeTimeZone } from "@/lib/askClock";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
 import { estimateCostUsd } from "@/lib/costBudget";
 import { getUserRecord, resolvePlan } from "@/lib/account";
@@ -213,14 +214,32 @@ NEVER describe your own tools, your training data or what you can and cannot acc
 to hear what kind of software you are. If something genuinely cannot be settled, answer with what you do know \
 and name the single thing that would settle it.`;
 
-const WEB_SEARCH_MAX_USES = 2;
+// Five searches and three pages read, not two searches: a live question
+// ("is my flight on time", "is there a strike at the airport") needs
+// several sources and the page itself, not a snippet (November 2026, after
+// a flight-status question went far worse here than elsewhere).
+const WEB_SEARCH_MAX_USES = 5;
+const WEB_FETCH_MAX_USES = 3;
 const WEB_SEARCH_ADDENDUM = `\n\nYou also have a web_search tool. Use it whenever the answer depends on \
 something that can change or that you should confirm: a specific restaurant, bar, shop or sight you are about \
 to recommend (is it still open, still good), prices, opening hours, events, today's weather, a real advisory. \
 Skip it for timeless background (plug types, tipping customs). When you search, answer from what you found, \
 confidently, and never open with a hedge such as "I couldn't check live details" or "from what I know": either \
 you checked it, or you simply answer. When a search gives you the actual URL behind a claim, paste it - that is the one case \
-where you genuinely have a link rather than a guess at one, and it becomes tappable.`;
+where you genuinely have a link rather than a guess at one, and it becomes tappable.
+
+You also have web_fetch, which opens a page you found and reads all of it. Use it when a snippet is not \
+enough: a flight-status page, an airline's or airport's live departures, a rail operator's disruption page, a \
+news article about a strike or closure.
+
+LIVE QUESTIONS (a flight's status, delays, gates, cancellations, strikes, airport or border queues, weather \
+warnings, closures): this is where you earn trust, so be thorough. Search more than once and from more than one \
+kind of source: flight trackers (FlightAware, Flightradar24, FlightStats), the airline, the airport, and news. \
+Open the most relevant pages with web_fetch. Then give the traveler the facts first: the status, scheduled and \
+expected times with their time zone, gate and terminal if known, and anything unusual (a delay pattern on this \
+route, a strike, weather). Say how recent the information is, and if sources disagree, say which says what. For \
+a flight, if the date or flight number is unclear, assume the nearest upcoming one from today's date below and \
+say so.`;
 
 // Anthropic's backend occasionally returns a transient 529 "overloaded"
 // error - confirmed happening in practice. One immediate retry (no
@@ -423,7 +442,7 @@ export async function POST(request: NextRequest) {
   // {"destinations": "Rome"} was an unhandled 500 from a public endpoint,
   // an array of objects became "[object Object]" in the prompt, and nothing
   // capped its size at all. See lib/tripQAContext.ts.
-  let body: { messages?: unknown; context?: unknown; language?: Language; voice?: unknown };
+  let body: { messages?: unknown; context?: unknown; language?: Language; voice?: unknown; timeZone?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -554,10 +573,11 @@ export async function POST(request: NextRequest) {
   const modelParams = {
     model: MODEL,
     max_tokens: MAX_TOKENS,
-    // Low effort: a chat answer should start in seconds, and at the
-    // default the model's own deliberation, on top of a web search, was
-    // what pushed replies past the time limit.
-    output_config: { effort: "low" as const },
+    // Medium, not the default high: a chat answer should start quickly,
+    // and at the default the model's deliberation on top of web searches
+    // pushed replies past the old time limit. Not low either: at low it
+    // skimmed live questions (one search, no pages read).
+    output_config: { effort: "medium" as const },
     system: [
       {
         type: "text" as const,
@@ -573,14 +593,18 @@ export async function POST(request: NextRequest) {
       // per-request anyway.
       {
         type: "text" as const,
-        text: contextBlock(readTripQAContext(body.context), language) + voiceInstruction(voice),
+        text: contextBlock(readTripQAContext(body.context), language) + voiceInstruction(voice) + nowLine(safeTimeZone(body.timeZone)),
       },
     ],
     // Web search on every plan (November 2026): without it a free
     // question about "the most famous restaurant in Rome" came back
     // "couldn't check live details", which reads as broken, not as a
     // plan difference. The daily question limits bound what it costs.
-    tools: [PLACE_LOOKUP_TOOL, { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES }],
+    tools: [
+      PLACE_LOOKUP_TOOL,
+      { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: WEB_SEARCH_MAX_USES },
+      { type: "web_fetch_20260209" as const, name: "web_fetch" as const, max_uses: WEB_FETCH_MAX_USES, max_content_tokens: 12000 },
+    ],
   };
 
   const conversation: Anthropic.MessageParam[] = trimmedMessages.map((m, i) => ({

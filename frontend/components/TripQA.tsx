@@ -304,7 +304,9 @@ export function TripQA({ context, language, t, saveHistory = false, tripId }: Tr
       const res = await fetch("/api/trip-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, context, language, voice }),
+        // The traveller's time zone, so "today" in an answer is their today
+        // (lib/askClock.ts).
+        body: JSON.stringify({ messages: next, context, language, voice, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       });
 
       if (!res.ok) {
