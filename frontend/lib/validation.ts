@@ -9,6 +9,7 @@ import type { TripBriefInput } from "./types";
 // "Trip length" section there; check:stats-keys holds the two copies equal.
 import { MAX_TRIP_DAYS, parseCalendarDate, tripDayCount } from "./jobs";
 import { isKnownAirportLabel } from "./airports";
+import { checkCityStays } from "./cityDates";
 
 export { MAX_TRIP_DAYS, tripDayCount };
 
@@ -225,6 +226,14 @@ export function parseTripBrief(body: unknown): TripBriefInput {
   // characters - so a malformed or huge array can't bloat the prompt.
   const visitedCountries = cleanList(b.visited_countries, "visited_countries");
 
+  // Which dates are spent where, on a trip to more than one place
+  // (lib/cityDates.ts). Optional; when sent it must add up exactly.
+  let cityDates: ReturnType<typeof checkCityStays> | null = null;
+  if (b.city_dates !== undefined && b.city_dates !== null) {
+    cityDates = checkCityStays(b.city_dates, destinations, startDate, endDate);
+    if (!cityDates.ok) throw new ValidationError(cityDates.error);
+  }
+
   return {
     destinations,
     origin,
@@ -251,5 +260,6 @@ export function parseTripBrief(body: unknown): TripBriefInput {
     arrival_airport,
     departure_airport,
     ...(visitedCountries.length > 0 ? { visited_countries: visitedCountries } : {}),
+    ...(cityDates?.ok ? { city_dates: cityDates.stays } : {}),
   };
 }

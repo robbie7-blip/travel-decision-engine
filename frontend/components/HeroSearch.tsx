@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { CityCombobox } from "./CityCombobox";
 import { DateRangePicker } from "./DateRangePicker";
 import { WhoPicker } from "./WhoPicker";
+import { CityDatesEditor } from "./CityDatesEditor";
 import type { TripFormState } from "./TripForm";
 import { splitCities } from "@/lib/cityOptions";
 import type { Dictionary } from "@/lib/i18n";
@@ -253,6 +254,11 @@ export function HeroSearch({ value, onChange, onSubmit, submitting, error, t }: 
           </span>
         </a>
       </form>
+
+      {/* Dates in each place, once there are two places and dates to
+          split. Same state as the full form's, so setting them here or
+          there is the same thing. */}
+      <CityDatesEditor value={value} onChange={onChange} t={t} />
 
       <div className="hero-search-message font-ui" role="status" aria-live="polite">
         {nudge === "shown" ? "" : message}

@@ -332,6 +332,16 @@ function tripBriefToPromptBlock(brief: TripBriefInput): string {
       `may stay in their common form.`,
     `Destinations: ${brief.destinations.join(", ")}`,
     `Dates: ${brief.start_date} to ${brief.end_date}`,
+    ...(brief.city_dates && brief.city_dates.length > 1
+      ? [
+          `Where each day is - the traveler chose these dates, follow them exactly: ` +
+            brief.city_dates.map((s) => `${s.city} from ${s.start_date} to ${s.end_date}`).join("; ") +
+            `. A date on which one stay ends and the next begins is the travel day between them: the ` +
+            `morning in the first place, the journey, then the afternoon and the night in the next. ` +
+            `Put the travel leg and its time on that day, and never plan a day in a place the traveler ` +
+            `is not in on that date.`,
+        ]
+      : []),
     `Travelers: ${brief.party_size} (${brief.party_composition})`,
     `Budget: ${brief.budget_total_eur != null ? `€${brief.budget_total_eur} total` : "not specified - assume mid-range"}`,
     `Pace: ${brief.pace}`,

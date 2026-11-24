@@ -233,6 +233,27 @@ export function checkBrief(value: unknown): BriefCheck {
     repaired.push("visited_countries");
   }
 
+  // Dates per place, checked by the site before the job was queued. Kept
+  // only in that exact shape; anything else is dropped (and noted), and the
+  // planner splits the days itself as it did before this existed.
+  const cityDates =
+    Array.isArray(b.city_dates) &&
+    b.city_dates.length > 1 &&
+    b.city_dates.every(
+      (s: unknown) =>
+        !!s &&
+        typeof (s as Record<string, unknown>).city === "string" &&
+        typeof (s as Record<string, unknown>).start_date === "string" &&
+        typeof (s as Record<string, unknown>).end_date === "string"
+    )
+      ? (b.city_dates as { city: string; start_date: string; end_date: string }[]).map((s) => ({
+          city: s.city,
+          start_date: s.start_date,
+          end_date: s.end_date,
+        }))
+      : undefined;
+  if (b.city_dates !== undefined && cityDates === undefined) repaired.push("city_dates");
+
   const partyComposition = requiredString(b.party_composition);
   note("party_composition", b.party_composition, partyComposition);
 
@@ -280,6 +301,7 @@ export function checkBrief(value: unknown): BriefCheck {
       transport_preference: transportPreference,
       ...lists,
       ...(visitedCountries.length > 0 ? { visited_countries: visitedCountries } : {}),
+      ...(cityDates ? { city_dates: cityDates } : {}),
       ...optional,
     },
   };

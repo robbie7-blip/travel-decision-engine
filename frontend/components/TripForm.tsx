@@ -12,6 +12,8 @@ import { MAX_TRIP_DAYS, tripDayCount } from "@/lib/validation";
 import type { Language, TripBriefInput } from "@/lib/types";
 import { airportLabel, airportsFor } from "@/lib/airports";
 import { splitCities } from "@/lib/cityOptions";
+import { CityDatesEditor, currentCityNights } from "./CityDatesEditor";
+import { staysFromNights } from "@/lib/cityDates";
 
 // Form-local shape: comma-separated fields stay strings while being typed;
 // they're split into arrays only at submit time (see toTripBriefInput).
@@ -61,6 +63,11 @@ export interface TripFormState {
   compareUseDifferentDates: boolean;
   compareStartDate: string;
   compareEndDate: string;
+  // Dates in each place on a trip to more than one (CityDatesEditor,
+  // lib/cityDates.ts): whether the traveller set them, and the nights in
+  // each place in the order the places were added.
+  cityDatesEnabled: boolean;
+  cityNights: number[];
 }
 
 export const DEFAULT_FORM_STATE: TripFormState = {
@@ -93,6 +100,8 @@ export const DEFAULT_FORM_STATE: TripFormState = {
   compareUseDifferentDates: false,
   compareStartDate: "",
   compareEndDate: "",
+  cityDatesEnabled: false,
+  cityNights: [],
 };
 
 /** The comparison side's own dates, when the traveler opted into different
@@ -142,7 +151,16 @@ export function toTripBriefInput(form: TripFormState): TripBriefInput {
     // flights for me" is no longer a fact about their trip.
     arrival_airport: form.needs_flight ? undefined : form.arrival_airport.trim() || undefined,
     departure_airport: form.needs_flight ? undefined : form.departure_airport.trim() || undefined,
+    ...cityDatesOf(form),
   };
+}
+
+/** The stays to send, when the traveller set dates for each place and
+ * there is more than one place to set them for. */
+function cityDatesOf(form: TripFormState): { city_dates?: TripBriefInput["city_dates"] } {
+  if (!form.cityDatesEnabled) return {};
+  const split = currentCityNights(form);
+  return split ? { city_dates: staysFromNights(split.cities, form.start_date.trim(), split.nights) } : {};
 }
 
 interface TripFormProps {
@@ -460,6 +478,7 @@ export function TripForm({ value, onChange, onSubmit, submitting, submittingLabe
               </div>
             )}
           </Field>
+          <CityDatesEditor value={value} onChange={onChange} t={t} />
         </div>
         {/* Where the homepage bar's "Full form" strip lands: the first
             group the bar does not fully cover. */}

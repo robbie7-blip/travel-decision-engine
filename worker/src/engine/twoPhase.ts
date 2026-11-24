@@ -70,6 +70,7 @@ import type {
 import { buildContext } from "./prompt";
 import { briefSpanDays } from "../jobs";
 import { usableCostEur } from "./money";
+import { cityOnDate } from "./cityDates";
 
 /** Phase 1's combined output. Deliberately mirrors the final Itinerary's
  * trip-level fields exactly (budget_feasibility/trip_summary/key_decisions/
@@ -786,7 +787,7 @@ export function normalizeFrame(frame: unknown): unknown {
  * quality loss, which is worse than the retry it saves. */
 export function normalizePlan(
   plan: unknown,
-  brief: Pick<TripBriefInput, "destinations" | "start_date" | "needs_lodging">
+  brief: Pick<TripBriefInput, "destinations" | "start_date" | "needs_lodging" | "city_dates">
 ): unknown {
   if (!plan || typeof plan !== "object") return plan;
   const p = plan as { days?: unknown };
@@ -873,6 +874,12 @@ export function normalizePlan(
     if ((typeof d.city !== "string" || d.city.trim() === "") && onlyCity !== null) {
       d.city = onlyCity;
     }
+
+    // Dates the traveller chose for each place (city_dates) are not a
+    // suggestion: the day is in the place they will be on that date, even
+    // when the model put it somewhere else.
+    const chosen = cityOnDate(brief.city_dates, d.date);
+    if (chosen) d.city = chosen;
 
     // The prompt's own rule, applied: every day is a night at the
     // accommodation except the departure day, and no day is when lodging

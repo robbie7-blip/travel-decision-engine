@@ -138,6 +138,7 @@ jobs:
       # verification, the answer is published while the job is still
       # running, and an unusable reply falls back to the full rewrite.
       - run: npm run test:refine-patch
+      - run: npm run test:city-dates
       - run: npm run test:db
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/decide_test
@@ -1394,6 +1395,7 @@ jobs:
       - run: npm run test:blog-catch-up
       - run: npm run test:speech
       - run: npm run test:ask-clock
+      - run: npm run test:city-dates
       - run: npm run test:item-title
       - run: npm run test:tester-pass
       - run: npm run test:plans

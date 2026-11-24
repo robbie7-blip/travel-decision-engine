@@ -123,6 +123,13 @@ export interface Dictionary {
     destinationsPlaceholder: string;
     destinationsAddMore: string;
     destinationRemove: string;
+    /** Dates in each place, on a trip to more than one (CityDatesEditor). */
+    cityDatesToggle: string;
+    cityDatesHint: string;
+    cityNightsOne: string;
+    cityNightsMany: string;
+    cityNightsLess: string;
+    cityNightsMore: string;
     destinationFreeText: string;
     /** The origin field's version. NOT destinationFreeText: that one says
      * "press Enter to add it anyway", which is the chip field's gesture -
@@ -1123,6 +1130,12 @@ const en: Dictionary = {
     destinationsPlaceholder: "Start typing a city",
     destinationsAddMore: "Add another city",
     destinationRemove: "Remove",
+    cityDatesToggle: "Set the dates for each place",
+    cityDatesHint: "Each day is planned where you'll be that day. On a moving day you start in one place and sleep in the next.",
+    cityNightsOne: "1 night",
+    cityNightsMany: "{n} nights",
+    cityNightsLess: "Fewer nights in {city}",
+    cityNightsMore: "More nights in {city}",
     destinationFreeText: "Not on the list? Press Enter to add it anyway.",
     originFreeText: "Not one we list, but we will use it exactly as you typed it.",
     timeUnknownHeading: "Not sure of the exact time",
@@ -2010,6 +2023,12 @@ const bg: Dictionary = {
     destinationsPlaceholder: "Започни да пишеш град",
     destinationsAddMore: "Добави още град",
     destinationRemove: "Премахни",
+    cityDatesToggle: "Задай датите за всяко място",
+    cityDatesHint: "Всеки ден се планира там, където ще бъдеш. В деня на преместването започваш на едното място и спиш на следващото.",
+    cityNightsOne: "1 нощувка",
+    cityNightsMany: "{n} нощувки",
+    cityNightsLess: "По-малко нощувки в {city}",
+    cityNightsMore: "Повече нощувки в {city}",
     destinationFreeText: "Няма го в списъка? Натисни Enter, за да го добавиш.",
     originFreeText: "Не е в списъка ни, но ще го използваме точно както го въведе.",
     timeUnknownHeading: "Не знам точния час",

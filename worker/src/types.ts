@@ -95,6 +95,18 @@ export interface TripBriefInput {
   // model's tone/framing (see tripBriefToPromptBlock in prompt.ts), never
   // something that should override an explicit constraint or the budget.
   visited_countries?: string[];
+  // On a trip to more than one place: which dates are spent where, one stay
+  // per destination in the order given, back to back from start_date to
+  // end_date. The day one stay ends and the next starts is the travel day
+  // between them. Absent means the planner chooses the split, as before.
+  city_dates?: CityStay[];
+}
+
+/** A stretch of a multi-place trip spent in one place (see city_dates). */
+export interface CityStay {
+  city: string;
+  start_date: string;
+  end_date: string;
 }
 
 // Mirrors the JSON schema in engine.py's SYSTEM_PROMPT - the output contract.
