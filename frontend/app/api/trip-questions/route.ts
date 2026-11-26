@@ -34,8 +34,9 @@ import { getUserRecord, resolvePlan } from "@/lib/account";
 import { describePlace, lookUpPlace } from "@/lib/placeLookup";
 import { applyToolStep, nextToolStep, type ToolRoundState } from "@/lib/toolRounds";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
+import { historyForModel, NOT_AN_ANSWER } from "@/lib/askModelHistory";
+import { buildWorkerFailure, WORKER_FAILURES_KEY, WORKER_FAILURES_KEPT, WORKER_FAILURE_TTL_SECONDS } from "@/lib/jobs";
 import {
-  MAX_TRIP_QA_HISTORY,
   MAX_TRIP_QA_IMAGE_BYTES,
   MAX_TRIP_QA_IMAGES_PER_MESSAGE,
   MAX_TRIP_QA_IMAGES_SENT,
@@ -261,8 +262,8 @@ const MAX_MODEL_ATTEMPTS = 2;
 // server: the traveler retried forever and the owner had no signal at all
 // unless they happened to open Vercel's runtime logs.
 const FALLBACK_REPLY: Record<Language, string> = {
-  en: "Give me a second and try asking again, I'm a little overloaded right now.",
-  bg: "Дай ми секунда и опитай пак, в момента съм малко претоварен.",
+  en: NOT_AN_ANSWER[0],
+  bg: NOT_AN_ANSWER[1],
 };
 
 // Deliberately does NOT say "try again": it would not work. Says the fault
@@ -276,8 +277,8 @@ const TRUNCATED_SUFFIX: Record<Language, string> = {
 };
 
 const MISCONFIGURED_REPLY: Record<Language, string> = {
-  en: "Ask a Local is temporarily unavailable. That's a problem on our side, not with your question.",
-  bg: "\u201eПитай местен\u201c временно не работи. Проблемът е при нас, не във въпроса ти.",
+  en: NOT_AN_ANSWER[2],
+  bg: NOT_AN_ANSWER[3],
 };
 
 /** A failure that no number of retries will fix. */
@@ -466,8 +467,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "The last message must be from the user." }, { status: 400 });
   }
   // The client keeps the full visible history; only the most recent
-  // messages are actually sent, bounding cost/latency on a long chat.
-  const trimmedMessages = messages.slice(-MAX_TRIP_QA_HISTORY);
+  // messages are actually sent, bounding cost/latency on a long chat. The
+  // window always starts at a question (lib/askModelHistory.ts).
+  const trimmedMessages = historyForModel(messages);
 
   const language: Language = body.language === "bg" ? "bg" : "en";
 
@@ -662,6 +664,22 @@ export async function POST(request: NextRequest) {
     return results;
   }
 
+  /** Puts the error on /admin/health beside the worker's, so a failed
+   * answer shows its real cause rather than only the traveler's "I'm a
+   * little overloaded". Redacted and capped by buildWorkerFailure; never
+   * the question. Never throws. */
+  async function logFailure(e: unknown, attempt: number): Promise<void> {
+    try {
+      const log = getRedis();
+      const failure = buildWorkerFailure("ask-a-local", e, { reached: [`attempt ${attempt}`], days: null });
+      await log.lpush(WORKER_FAILURES_KEY, JSON.stringify(failure));
+      await log.ltrim(WORKER_FAILURES_KEY, 0, WORKER_FAILURES_KEPT - 1);
+      await log.expire(WORKER_FAILURES_KEY, WORKER_FAILURE_TTL_SECONDS);
+    } catch {
+      // The log is a convenience; the answer path must not depend on it.
+    }
+  }
+
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       let sentAnyText = false;
@@ -683,7 +701,14 @@ export async function POST(request: NextRequest) {
         maxRounds: MAX_TOOL_ROUNDS,
       };
 
+      // Where the conversation stood before the first attempt. A retry
+      // starts from here: the failed attempt may have added its own turns,
+      // and sending those again (one can end on the assistant) fails too.
+      const startLength = conversation.length;
       for (let attempt = 1; attempt <= MAX_MODEL_ATTEMPTS; attempt++) {
+        conversation.length = startLength;
+        pauses = 0;
+        roundState = { stopReason: null, toolRounds: 0, refusedFurtherLookups: false, maxRounds: MAX_TOOL_ROUNDS };
         try {
           while (true) {
             const stream = client.messages.stream({ ...modelParams, messages: conversation });
@@ -765,6 +790,7 @@ export async function POST(request: NextRequest) {
           }
         } catch (e) {
           console.error(`[trip-questions] model attempt ${attempt} failed:`, e);
+          await logFailure(e, attempt);
           // No point spending a second call on a credential that cannot
           // work, and no point telling the traveler to try again.
           if (isConfigurationError(e)) {
