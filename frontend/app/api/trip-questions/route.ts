@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAnthropicClient, isMissingWorkspaceIdError } from "@/lib/anthropicClient";
 import { getRedis } from "@/lib/redis";
-import { checkRateLimit, getClientIp, TRIP_QUESTIONS_FREE_RATE_LIMIT, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
+import { checkRateLimit, getClientIp, refundRateLimit, TRIP_QUESTIONS_FREE_RATE_LIMIT, TRIP_QUESTIONS_RATE_LIMIT } from "@/lib/ratelimit";
 import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 import { contextBlock, readTripQAContext } from "@/lib/tripQAContext";
 import { nowLine, safeTimeZone } from "@/lib/askClock";
@@ -35,6 +35,7 @@ import { describePlace, lookUpPlace } from "@/lib/placeLookup";
 import { applyToolStep, nextToolStep, type ToolRoundState } from "@/lib/toolRounds";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
 import { historyForModel, NOT_AN_ANSWER } from "@/lib/askModelHistory";
+import { alertOutOfCredit, isOutOfCredit } from "@/lib/creditAlert";
 import { buildWorkerFailure, WORKER_FAILURES_KEY, WORKER_FAILURES_KEPT, WORKER_FAILURE_TTL_SECONDS } from "@/lib/jobs";
 import {
   MAX_TRIP_QA_IMAGE_BYTES,
@@ -283,7 +284,7 @@ const MISCONFIGURED_REPLY: Record<Language, string> = {
 
 /** A failure that no number of retries will fix. */
 function isConfigurationError(e: unknown): boolean {
-  return isMissingWorkspaceIdError(e) || e instanceof Anthropic.AuthenticationError;
+  return isMissingWorkspaceIdError(e) || e instanceof Anthropic.AuthenticationError || isOutOfCredit(e);
 }
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable travel assistant helping with practical trip \
@@ -502,7 +503,8 @@ export async function POST(request: NextRequest) {
   }
 
   const limits = isPaid ? TRIP_QUESTIONS_RATE_LIMIT : TRIP_QUESTIONS_FREE_RATE_LIMIT;
-  const rateLimit = await checkRateLimit(redis, getClientIp(request), limits);
+  const clientIp = getClientIp(request);
+  const rateLimit = await checkRateLimit(redis, clientIp, limits);
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
     return NextResponse.json(
@@ -680,6 +682,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  /** No answer reached the traveler: the question goes back to them. */
+  const giveQuestionBack = () => refundRateLimit(getRedis(), clientIp, limits);
+
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       let sentAnyText = false;
@@ -784,6 +789,7 @@ export async function POST(request: NextRequest) {
               // impossible - same fallback as a hard failure, since an empty
               // reply is just as unhelpful to the traveler either way.
               controller.enqueue(encoder.encode(FALLBACK_REPLY[language]));
+              await giveQuestionBack();
             }
             controller.close();
             return;
@@ -798,7 +804,11 @@ export async function POST(request: NextRequest) {
               "[trip-questions] THIS IS A CONFIGURATION FAILURE, not an overload - " +
                 "check ANTHROPIC_API_KEY and ANTHROPIC_WORKSPACE_ID on this deployment"
             );
-            if (!sentAnyText) controller.enqueue(encoder.encode(MISCONFIGURED_REPLY[language]));
+            if (isOutOfCredit(e)) await alertOutOfCredit();
+            if (!sentAnyText) {
+              controller.enqueue(encoder.encode(MISCONFIGURED_REPLY[language]));
+              await giveQuestionBack();
+            }
             controller.close();
             return;
           }
@@ -811,6 +821,7 @@ export async function POST(request: NextRequest) {
           }
           if (attempt >= MAX_MODEL_ATTEMPTS) {
             controller.enqueue(encoder.encode(FALLBACK_REPLY[language]));
+            await giveQuestionBack();
             controller.close();
             return;
           }

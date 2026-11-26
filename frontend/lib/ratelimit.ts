@@ -220,3 +220,17 @@ export async function checkRateLimit(
 // process.version. Nothing in getClientIp was ever Node-specific - it reads
 // request headers - it was only the company it kept.
 export { getClientIp } from "./clientIp";
+
+/** Gives back the one request checkRateLimit just counted, in both windows.
+ * For a request that failed on our side (Ask a Local when the model call
+ * fails): the traveler got no answer, so it must not use up their hour.
+ * The library refunds with a negative rate, which skips the limit check.
+ * Never throws. */
+export async function refundRateLimit(redis: Redis, ip: string, config: RateLimitConfig): Promise<void> {
+  try {
+    const { hourly, daily } = getLimiters(redis, config);
+    await Promise.all([hourly.limit(ip, { rate: -1 }), daily.limit(ip, { rate: -1 })]);
+  } catch {
+    // A missed refund costs one question; it must not break the reply.
+  }
+}
