@@ -127,6 +127,18 @@ const PRO_OVERRIDE_EMAILS = new Set(
     .filter(Boolean)
 );
 
+/** The site owner: the addresses in PRO_OVERRIDE_EMAILS and the one in
+ * ADMIN_REPORT_EMAIL. No question or trip limits apply to them (Ask a
+ * Local, generate, refine, retry); the global daily spend cap still does.
+ * Signing in needs the code sent to that inbox, so naming the address is
+ * not enough to get in as the owner. Read per call, so a Vercel edit takes
+ * effect on the next deploy without a code change. */
+export function isOwnerEmail(email: string | null | undefined): boolean {
+  const e = email?.toLowerCase().trim();
+  if (!e) return false;
+  return PRO_OVERRIDE_EMAILS.has(e) || process.env.ADMIN_REPORT_EMAIL?.trim().toLowerCase() === e;
+}
+
 /** The plan every route should actually gate features on - layers the
  * owner override on top of isPaidStatus rather than each call site
  * checking both separately. */

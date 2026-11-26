@@ -15,7 +15,7 @@ import { checkDailyBudget } from "@/lib/spendCheck";
 import { parseTripBrief, ValidationError } from "@/lib/validation";
 import { recordEvent, recordFunnelEvent } from "@/lib/analytics";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
-import { getUserRecord, getQuotaStatus, consumeQuota, resolvePlan, usedLastMonth, takeAnonymousTrip, ANON_MONTHLY_GENERATIONS, FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS, type QuotaResult } from "@/lib/account";
+import { isOwnerEmail, getUserRecord, getQuotaStatus, consumeQuota, resolvePlan, usedLastMonth, takeAnonymousTrip, ANON_MONTHLY_GENERATIONS, FREE_MONTHLY_GENERATIONS, PAID_MONTHLY_GENERATIONS, type QuotaResult } from "@/lib/account";
 import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 import { REFERRAL_COOKIE_NAME, isReferralCode, rewardReferral } from "@/lib/referral";
 import { getDb } from "@/lib/db";
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       visitedCodes = visited;
       const plan = resolvePlan(email, user?.subscriptionStatus ?? null, user?.tester || tester);
       const quota = await getQuotaStatus(redis, email, plan);
-      if (!quota.allowed) {
+      if (!quota.allowed && !isOwnerEmail(email)) {
         const detail =
           plan === "paid"
             ? `You've used all ${quota.limit} generations included this month. It resets at the start of next month.`

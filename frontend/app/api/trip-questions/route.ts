@@ -30,7 +30,7 @@ import { contextBlock, readTripQAContext } from "@/lib/tripQAContext";
 import { nowLine, safeTimeZone } from "@/lib/askClock";
 import { checkDailyBudget, recordSpend } from "@/lib/spendCheck";
 import { estimateCostUsd } from "@/lib/costBudget";
-import { getUserRecord, resolvePlan } from "@/lib/account";
+import { getUserRecord, isOwnerEmail, resolvePlan } from "@/lib/account";
 import { describePlace, lookUpPlace } from "@/lib/placeLookup";
 import { applyToolStep, nextToolStep, type ToolRoundState } from "@/lib/toolRounds";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
@@ -504,7 +504,8 @@ export async function POST(request: NextRequest) {
 
   const limits = isPaid ? TRIP_QUESTIONS_RATE_LIMIT : TRIP_QUESTIONS_FREE_RATE_LIMIT;
   const clientIp = getClientIp(request);
-  const rateLimit = await checkRateLimit(redis, clientIp, limits);
+  // The owner has no question limit (lib/account.ts isOwnerEmail).
+  const rateLimit = isOwnerEmail(email) ? { allowed: true as const, retryAfterSeconds: undefined } : await checkRateLimit(redis, clientIp, limits);
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
     return NextResponse.json(
@@ -683,7 +684,7 @@ export async function POST(request: NextRequest) {
   }
 
   /** No answer reached the traveler: the question goes back to them. */
-  const giveQuestionBack = () => refundRateLimit(getRedis(), clientIp, limits);
+  const giveQuestionBack = () => (isOwnerEmail(email) ? Promise.resolve() : refundRateLimit(getRedis(), clientIp, limits));
 
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {

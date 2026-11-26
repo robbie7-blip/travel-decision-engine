@@ -30,6 +30,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { JOBS_QUEUE_KEY, JOB_TTL_SECONDS, SAVED_JOB_TTL_SECONDS, jobKey, type Job } from "@/lib/jobs";
 import { verifySessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
+import { isOwnerEmail } from "@/lib/account";
 import { checkRateLimit, getClientIp, GENERATE_RATE_LIMIT, TESTER_GENERATE_RATE_LIMIT } from "@/lib/ratelimit";
 import { hasTesterPass, TESTER_COOKIE_NAME } from "@/lib/testerPass";
 import { checkDailyBudget } from "@/lib/spendCheck";
@@ -114,7 +115,10 @@ export async function POST(request: NextRequest) {
   // otherwise pushback would be a free way around the /api/generate cap.
   // The tester link's own, roomier limit (lib/ratelimit.ts).
   const tester = await hasTesterPass(redis, request.cookies.get(TESTER_COOKIE_NAME)?.value);
-  const rateLimit = await checkRateLimit(redis, getClientIp(request), tester ? TESTER_GENERATE_RATE_LIMIT : GENERATE_RATE_LIMIT);
+  // The owner has no limit (lib/account.ts isOwnerEmail).
+  const rateLimit = isOwnerEmail(verifySessionCookieValue(request.cookies.get(SESSION_COOKIE_NAME)?.value))
+    ? { allowed: true as const, retryAfterSeconds: undefined, reason: undefined }
+    : await checkRateLimit(redis, getClientIp(request), tester ? TESTER_GENERATE_RATE_LIMIT : GENERATE_RATE_LIMIT);
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.retryAfterSeconds ?? 60) / 60);
     return NextResponse.json(

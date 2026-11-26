@@ -158,6 +158,13 @@ async function main() {
     check("never falls back to the old €9 price", threw);
   }
 
+  heading("The owner has no limits");
+  process.env.ADMIN_REPORT_EMAIL = " Owner@Example.com ";
+  const { isOwnerEmail } = await import("./account");
+  check("the report address is the owner, any case", isOwnerEmail("owner@example.com") && isOwnerEmail("OWNER@example.com "));
+  check("anyone else is not", !isOwnerEmail("someone@example.com"));
+  check("no email is not", !isOwnerEmail(null) && !isOwnerEmail(""));
+
   finish();
 }
 
